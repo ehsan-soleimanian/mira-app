@@ -1,0 +1,29 @@
+{
+  "version": "0.2.2",
+  "configurations": [
+    {
+      "name": "Mira App (Android Emulator)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5554",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Mira App (Pixel 8)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "adb-44011FDJH000DW-0va885._adb-tls-connect._tcp",
+      "flutterMode": "debug"
+    },
+    {
+      "name": "Mira App (Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "flutterMode": "debug"
+    }
+  ]
+}
