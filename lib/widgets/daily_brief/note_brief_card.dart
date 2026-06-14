@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mira_app/models/daily_brief_models.dart';
 import 'package:mira_app/theme/daily_brief_theme.dart';
 import 'package:mira_app/widgets/daily_brief/brief_card_badge.dart';
 import 'package:mira_app/widgets/daily_brief/brief_card_shell.dart';
@@ -7,16 +8,14 @@ import 'package:mira_app/widgets/icons/note_brief_icon.dart';
 class NoteBriefCard extends StatelessWidget {
   const NoteBriefCard({
     super.key,
-    this.title = 'Lorem ipsum dolor sit amet,',
-    this.preview = 'consectetur adipiscing elit, sed do',
-    this.onTap,
+    required this.note,
     this.onMoreTap,
+    this.onTap,
   });
 
-  final String title;
-  final String preview;
-  final VoidCallback? onTap;
+  final BriefNote note;
   final VoidCallback? onMoreTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -33,10 +32,13 @@ class NoteBriefCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(right: 52),
-            child: Text(title, style: DailyBriefTypography.cardTitle(1)),
+            child: Text(note.title, style: DailyBriefTypography.cardTitle(1)),
           ),
           const SizedBox(height: 4),
-          Text(preview, style: DailyBriefTypography.cardBody(1)),
+          Text(
+            note.isExpanded ? note.fullText : note.preview,
+            style: DailyBriefTypography.cardBody(1),
+          ),
           GestureDetector(
             onTap: onMoreTap,
             behavior: HitTestBehavior.opaque,
@@ -45,9 +47,14 @@ class NoteBriefCard extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('more', style: DailyBriefTypography.cardBody(1)),
+                  Text(
+                    note.isExpanded ? 'less' : 'more',
+                    style: DailyBriefTypography.cardBody(1),
+                  ),
                   Icon(
-                    Icons.keyboard_arrow_down_rounded,
+                    note.isExpanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
                     size: 16,
                     color: DailyBriefColors.metaGrey,
                   ),

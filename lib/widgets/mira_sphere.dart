@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:mira_app/core/figma_assets.dart';
 
-/// گوی میرا — asset اصلی طراحی (145×145 @1x)
+/// Mira orb — Figma Ball component (692:4137 / 531:4634), 145×145 @1x.
 class MiraSphere extends StatelessWidget {
-  const MiraSphere({super.key, this.size = 194});
+  const MiraSphere({super.key, this.size = 145});
 
   final double size;
 
-  static const _assetPath = 'assets/images/mira_sphere.png';
-
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      _assetPath,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.high,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size),
+      child: Image.asset(
+        FigmaAssets.ball,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
+      ),
     );
   }
 }

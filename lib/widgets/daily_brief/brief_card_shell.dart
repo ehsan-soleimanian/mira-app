@@ -18,36 +18,39 @@ class BriefCardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: DailyBriefColors.cardBorder, width: 0.8),
-          boxShadow: const [
-            BoxShadow(
-              color: DailyBriefColors.cardShadow,
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                leading,
-                const SizedBox(width: 12),
-                Expanded(child: body),
-              ],
-            ),
-            Positioned(top: 0, right: 0, child: badge),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: DailyBriefColors.cardBorder, width: 0.8),
+        boxShadow: const [
+          BoxShadow(
+            color: DailyBriefColors.cardShadow,
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              leading,
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onTap,
+                  child: body,
+                ),
+              ),
+            ],
+          ),
+          Positioned(top: 0, right: 0, child: badge),
+        ],
       ),
     );
   }

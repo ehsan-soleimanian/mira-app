@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mira_app/models/daily_brief_models.dart';
 import 'package:mira_app/theme/daily_brief_theme.dart';
 import 'package:mira_app/widgets/daily_brief/brief_card_badge.dart';
 import 'package:mira_app/widgets/daily_brief/brief_card_shell.dart';
@@ -6,15 +7,11 @@ import 'package:mira_app/widgets/daily_brief/brief_card_shell.dart';
 class ImageBriefCard extends StatelessWidget {
   const ImageBriefCard({
     super.key,
-    this.title = 'Lorem ipsum dolor sit',
-    this.preview = 'consectetur adipiscing elit, sed do more',
-    this.imageAsset = 'assets/images/daily_brief/landscape_thumb.png',
+    required this.item,
     this.onTap,
   });
 
-  final String title;
-  final String preview;
-  final String imageAsset;
+  final BriefImageItem item;
   final VoidCallback? onTap;
 
   static const _thumbSize = 56.0;
@@ -26,7 +23,7 @@ class ImageBriefCard extends StatelessWidget {
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.asset(
-          imageAsset,
+          item.imageAsset,
           width: _thumbSize,
           height: _thumbSize,
           fit: BoxFit.cover,
@@ -43,10 +40,10 @@ class ImageBriefCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(right: 52),
-            child: Text(title, style: DailyBriefTypography.cardTitle(1)),
+            child: Text(item.title, style: DailyBriefTypography.cardTitle(1)),
           ),
           const SizedBox(height: 4),
-          Text(preview, style: DailyBriefTypography.cardBody(1)),
+          Text(item.preview, style: DailyBriefTypography.cardBody(1)),
         ],
       ),
     );

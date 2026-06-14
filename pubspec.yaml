@@ -35,6 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   google_fonts: ^8.1.0
+  flutter_svg: ^2.0.17
 
 dev_dependencies:
   flutter_test:
@@ -65,7 +66,8 @@ flutter:
     - assets/images/mic_icon.png
     - assets/images/home_icon.png
     - assets/images/coffee_icon.png
-    - assets/images/daily_brief/landscape_thumb.png
+    - assets/images/daily_brief/
+    - assets/images/figma/
     - Componnets-png/Navbar.png
     - Componnets-png/PromptInputBar.png
 

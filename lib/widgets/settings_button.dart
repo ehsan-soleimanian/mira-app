@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:mira_app/core/figma_assets.dart';
 import 'package:mira_app/screens/settings_screen.dart';
-import 'package:mira_app/theme/app_colors.dart';
 
+/// Settings gear — Figma Frame 121075695 (742:10837), 48×48.
 class SettingsButton extends StatelessWidget {
-  const SettingsButton({super.key, this.onTap});
+  const SettingsButton({super.key, this.onTap, this.size = 48});
 
   final VoidCallback? onTap;
+  final double size;
 
   void _openSettings(BuildContext context) {
     Navigator.of(context).push(
@@ -15,29 +18,23 @@ class SettingsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = size * (32 / 48);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap ?? () => _openSettings(context),
         customBorder: const CircleBorder(),
-        child: Ink(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.settings_outlined,
-            size: 22,
-            color: AppColors.settingsIcon,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Center(
+            child: SvgPicture.asset(
+              FigmaAssets.settingsIcon,
+              width: iconSize,
+              height: iconSize,
+              fit: BoxFit.contain,
+            ),
           ),
         ),
       ),

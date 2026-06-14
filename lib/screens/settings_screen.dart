@@ -5,9 +5,15 @@ import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/widgets/settings/settings_header.dart';
 import 'package:mira_app/widgets/settings/settings_list_tile.dart';
 
-/// Settings — structure from [ehsan-soleimanian/mira-app](https://github.com/ehsan-soleimanian/mira-app).
+/// Settings screen — list rows with working toggles and tap feedback.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  void _showSnack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,15 +34,17 @@ class SettingsScreen extends StatelessWidget {
                 builder: (context, _) {
                   return ListView(
                     children: [
-                      const SettingsListTile(
+                      SettingsListTile(
                         title: 'Account',
                         icon: Icons.person_outline,
                         showChevron: true,
+                        onTap: () => _showSnack(context, 'Account settings'),
                       ),
-                      const SettingsListTile(
+                      SettingsListTile(
                         title: 'Privacy',
                         icon: Icons.info_outline,
                         showChevron: true,
+                        onTap: () => _showSnack(context, 'Privacy settings'),
                       ),
                       SettingsListTile(
                         title: 'Appearance',
@@ -48,15 +56,17 @@ class SettingsScreen extends StatelessWidget {
                           onChanged: (_) => themeController.toggle(),
                         ),
                       ),
-                      const SettingsListTile(
+                      SettingsListTile(
                         title: 'Language',
                         icon: Icons.chat_bubble_outline,
                         showChevron: true,
+                        onTap: () => _showSnack(context, 'Language settings'),
                       ),
-                      const SettingsListTile(
+                      SettingsListTile(
                         title: 'Help & support',
                         icon: Icons.warning_amber_outlined,
                         showChevron: true,
+                        onTap: () => _showSnack(context, 'Help & support'),
                       ),
                       const SizedBox(height: 24),
                       Padding(

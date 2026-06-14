@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/screens/daily_brief_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
-import 'package:mira_app/theme/daily_brief_theme.dart';
 import 'package:mira_app/theme/app_typography.dart';
+import 'package:mira_app/theme/daily_brief_theme.dart';
+import 'package:mira_app/theme/home_screen_tokens.dart';
+import 'package:mira_app/theme/nav_bar_tokens.dart';
 import 'package:mira_app/widgets/app_bottom_shell.dart';
 import 'package:mira_app/widgets/hint_bar.dart';
 import 'package:mira_app/widgets/mira_sphere.dart';
 import 'package:mira_app/widgets/settings_button.dart';
 
+/// Home screen — Figma iPhone 16 - 150 (692:4127).
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -19,49 +22,56 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.sizeOf(context).height;
-    final sphereSize = MediaQuery.sizeOf(context).width * 0.40;
+    final width = MediaQuery.sizeOf(context).width;
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final scaler = FigmaScaler(width);
+    final s = scaler.scale;
+
+    final tipBottom = bottomInset +
+        NavBarTokens.designHeight * s +
+        HomeScreenTokens.tipGapAboveNav * s;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
+        child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: SettingsButton(
-                  key: const Key('settings_button'),
-                ),
+            Positioned(
+              top: HomeScreenTokens.settingsTop * s,
+              right: HomeScreenTokens.settingsRight * s,
+              child: SettingsButton(size: HomeScreenTokens.settingsSize * s),
+            ),
+            Positioned(
+              top: HomeScreenTokens.sphereTop * s,
+              left: (width - HomeScreenTokens.sphereSize * s) / 2,
+              child: MiraSphere(size: HomeScreenTokens.sphereSize * s),
+            ),
+            Positioned(
+              top: HomeScreenTokens.headlineTop * s,
+              left: 0,
+              right: 0,
+              child: Text(
+                'How can I help you ?',
+                textAlign: TextAlign.center,
+                style: AppTypography.homeHeadline(s),
               ),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    SizedBox(height: screenHeight * 0.04),
-                    MiraSphere(size: sphereSize),
-                    SizedBox(height: screenHeight * 0.045),
-                    Text(
-                      'How can I help you ?',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.headline(context),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Speak,ask or share anythings',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.subtitle(context),
-                    ),
-                    const Spacer(),
-                    const HintBar(),
-                    const SizedBox(height: 28),
-                  ],
-                ),
+            Positioned(
+              top: HomeScreenTokens.subtitleTop * s,
+              left: 0,
+              right: 0,
+              child: Text(
+                'Speak,ask or share anythings',
+                textAlign: TextAlign.center,
+                style: AppTypography.homeSubtitle(s),
               ),
+            ),
+            Positioned(
+              bottom: tipBottom,
+              left: (width - HomeScreenTokens.tipWidth * s) / 2,
+              width: HomeScreenTokens.tipWidth * s,
+              child: HintBar(scale: s),
             ),
           ],
         ),

@@ -1,31 +1,38 @@
 import 'package:flutter/material.dart';
-import 'package:mira_app/theme/app_colors.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:mira_app/core/figma_assets.dart';
 import 'package:mira_app/theme/app_typography.dart';
 
+/// Tip tooltip — Figma component Tip (742:10883).
 class HintBar extends StatelessWidget {
-  const HintBar({super.key});
+  const HintBar({super.key, this.scale = 1});
+
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 28),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.hintBarFill,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+    final s = scale;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: EdgeInsets.all(8 * s),
+          child: Text(
+            'Hold take a voic / Click send photo , link and text',
+            textAlign: TextAlign.center,
+            style: AppTypography.tip(s),
           ),
-        ],
-      ),
-      child: Text(
-        'Hold take a voic / Click send photo , link and text',
-        textAlign: TextAlign.center,
-        style: AppTypography.hint(context),
-      ),
+        ),
+        SizedBox(
+          width: 17 * s,
+          height: 5 * s,
+          child: SvgPicture.asset(
+            FigmaAssets.tipArrow,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ],
     );
   }
 }

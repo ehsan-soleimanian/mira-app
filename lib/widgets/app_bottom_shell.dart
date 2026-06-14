@@ -3,7 +3,7 @@ import 'package:mira_app/theme/daily_brief_theme.dart';
 import 'package:mira_app/widgets/mira_bottom_nav.dart';
 import 'package:mira_app/widgets/prompt_input_bar.dart';
 
-/// پوسته مشترک bottom bar (navbar / prompt input)
+/// Shared bottom shell — navbar or prompt input after mic short-tap.
 class AppBottomShell extends StatefulWidget {
   const AppBottomShell({
     super.key,
@@ -22,18 +22,42 @@ class AppBottomShell extends StatefulWidget {
 
 class _AppBottomShellState extends State<AppBottomShell> {
   bool _showPromptInput = false;
+  final _promptController = TextEditingController();
+
+  @override
+  void dispose() {
+    _promptController.dispose();
+    super.dispose();
+  }
 
   void _openPromptInput() => setState(() => _showPromptInput = true);
 
-  void _closePromptInput() => setState(() => _showPromptInput = false);
+  void _closePromptInput() {
+    setState(() {
+      _showPromptInput = false;
+      _promptController.clear();
+    });
+  }
+
+  void _submitPrompt(String value) {
+    final text = value.trim();
+    if (text.isEmpty) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Sent: $text'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    _closePromptInput();
+  }
 
   @override
   Widget build(BuildContext context) {
     if (_showPromptInput) {
       return PromptInputBar(
-        onAddTap: () {},
-        onFieldTap: () {},
+        controller: _promptController,
         onMicTap: _closePromptInput,
+        onSubmitted: _submitPrompt,
       );
     }
 
