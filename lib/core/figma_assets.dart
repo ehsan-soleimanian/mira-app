@@ -1,4 +1,4 @@
-/// Asset paths exported from Figma — Mira App home screen (node 473:6820).
+/// Asset paths exported from Figma — Mira App (frame 742:12525).
 abstract final class FigmaAssets {
   static const ball = 'assets/images/figma/mira_ball.png';
   static const settingsIcon = 'assets/images/figma/settings_icon.svg';

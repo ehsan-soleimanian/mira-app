@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Figma color tokens — Mira App UI Design / home screen.
+/// Figma color tokens — Mira App UI Design (frame 742:12525).
 abstract final class AppColors {
   static const background = Color(0xFFF5F5F5);
+  static const surface = Color(0xFFFFFFFF);
   static const textPrimary = Color(0xFF1A1C29);
   static const headline = Color(0xFF262626);
   static const subtitle = Color(0xFF454545);
@@ -10,7 +11,9 @@ abstract final class AppColors {
   static const textSecondary = Color(0xFF6B6B6B);
   static const textHint = Color(0xFF9A9A9A);
   static const textInactive = Color(0xFF1A1C29);
+  static const border = Color(0xFFD9D9D9);
   static const white = Color(0xFFFFFFFF);
+  static const accent = Color(0xFF4A6EFF);
   static const micBlue = Color(0xFF4B6EF5);
   static const micBlueNav = Color(0xFF4A6EFF);
   static const orbBlue = Color(0xFF5B7FFF);

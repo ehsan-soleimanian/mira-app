@@ -15,6 +15,7 @@ abstract final class HomeScreenTokens {
   static const settingsSize = 48.0;
   static const settingsTop = 24.0;
   static const settingsRight = 24.0;
+  static const catalogLeft = 24.0;
 
   static const tipWidth = 320.0;
   static const tipHeight = 43.0;

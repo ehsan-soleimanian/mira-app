@@ -4,6 +4,32 @@ import 'package:mira_app/theme/app_colors.dart';
 
 /// Typography from Figma — Dosis (headline/nav) + Vazirmatn (body).
 abstract final class AppTypography {
+  static TextStyle dosis({
+    required double size,
+    FontWeight weight = FontWeight.w400,
+    Color? color,
+    double? height,
+  }) =>
+      GoogleFonts.dosis(
+        fontSize: size,
+        fontWeight: weight,
+        height: height,
+        color: color ?? AppColors.textPrimary,
+      );
+
+  static TextStyle vazirmatn({
+    required double size,
+    FontWeight weight = FontWeight.w400,
+    Color? color,
+    double? height,
+  }) =>
+      GoogleFonts.vazirmatn(
+        fontSize: size,
+        fontWeight: weight,
+        height: height,
+        color: color ?? AppColors.textSecondary,
+      );
+
   static TextStyle homeHeadline(double scale) => GoogleFonts.dosis(
         fontSize: 40 * scale,
         fontWeight: FontWeight.w700,
@@ -38,11 +64,4 @@ abstract final class AppTypography {
         height: 1.0,
         color: AppColors.textPrimary,
       );
-
-  // Legacy helpers for other screens.
-  static TextStyle headline(BuildContext context) => homeHeadline(1);
-
-  static TextStyle subtitle(BuildContext context) => homeSubtitle(1);
-
-  static TextStyle hint(BuildContext context) => tip(1);
 }

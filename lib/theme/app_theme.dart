@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/theme/app_colors.dart';
 
 abstract final class AppTheme {
@@ -8,10 +7,9 @@ abstract final class AppTheme {
         brightness: Brightness.light,
         scaffoldBackgroundColor: AppColors.background,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.micBlueNav,
-          brightness: Brightness.light,
+          seedColor: AppColors.accent,
+          surface: AppColors.surface,
         ),
-        textTheme: GoogleFonts.interTextTheme(),
       );
 
   static ThemeData dark() => ThemeData(
@@ -19,9 +17,8 @@ abstract final class AppTheme {
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF1E1E1E),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.micBlueNav,
+          seedColor: AppColors.accent,
           brightness: Brightness.dark,
         ),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
       );
 }
