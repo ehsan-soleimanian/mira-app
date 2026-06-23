@@ -14,7 +14,15 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+
+    // Plugins (e.g. file_picker) may ship compileSdk 34 while lifecycle needs 36+.
+    afterEvaluate {
+        extensions.findByType(com.android.build.gradle.BaseExtension::class.java)?.apply {
+            compileSdkVersion(36)
+        }
+    }
 }
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }

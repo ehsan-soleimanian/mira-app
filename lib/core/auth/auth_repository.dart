@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:mira_app/core/api/api_client.dart';
+import 'package:mira_app/core/auth/google_sign_in_service.dart';
 import 'package:mira_app/core/auth/token_storage.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 
@@ -7,14 +8,13 @@ import 'package:mira_app/models/api/auth_models.dart';
 class AuthRepository {
   AuthRepository({
     required ApiClient apiClient,
-    required TokenStorage tokenStorage,
-  }) : _dio = apiClient.dio,
-       // Public constructor names stay friendly while fields remain private.
-       // ignore: prefer_initializing_formals
-       _tokenStorage = tokenStorage;
+    required this.tokenStorage,
+    this.googleSignInService,
+  }) : _dio = apiClient.dio;
 
   final Dio _dio;
-  final TokenStorage _tokenStorage;
+  final TokenStorage tokenStorage;
+  final GoogleSignInService? googleSignInService;
 
   AuthConfig? _cachedAuthConfig;
 
@@ -39,7 +39,7 @@ class AuthRepository {
       data: {'email': email, 'password': password, 'display_name': displayName},
     );
     final body = AuthSession.fromJson(response.data!);
-    await _tokenStorage.saveTokens(
+    await tokenStorage.saveTokens(
       accessToken: body.tokens.accessToken,
       refreshToken: body.tokens.refreshToken,
     );
@@ -55,7 +55,7 @@ class AuthRepository {
       data: {'email': email, 'password': password},
     );
     final body = AuthSession.fromJson(response.data!);
-    await _tokenStorage.saveTokens(
+    await tokenStorage.saveTokens(
       accessToken: body.tokens.accessToken,
       refreshToken: body.tokens.refreshToken,
     );
@@ -90,15 +90,29 @@ class AuthRepository {
       data: {'email': email.trim(), 'code': code.trim()},
     );
     final body = AuthSession.fromJson(response.data!);
-    await _tokenStorage.saveTokens(
+    await tokenStorage.saveTokens(
       accessToken: body.tokens.accessToken,
       refreshToken: body.tokens.refreshToken,
     );
     return body.user;
   }
 
+  /// Exchange Google ID token for MIRA session tokens.
+  Future<AuthSession> signInWithGoogle({required String idToken}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/google',
+      data: {'id_token': idToken},
+    );
+    final body = AuthSession.fromJson(response.data!);
+    await tokenStorage.saveTokens(
+      accessToken: body.tokens.accessToken,
+      refreshToken: body.tokens.refreshToken,
+    );
+    return body;
+  }
+
   Future<String?> refreshAccessToken() async {
-    final refresh = await _tokenStorage.readRefreshToken();
+    final refresh = await tokenStorage.readRefreshToken();
     if (refresh == null) return null;
     try {
       final response = await _dio.post<Map<String, dynamic>>(
@@ -106,19 +120,19 @@ class AuthRepository {
         data: {'refresh_token': refresh},
       );
       final tokens = TokenPair.fromJson(response.data!);
-      await _tokenStorage.saveTokens(
+      await tokenStorage.saveTokens(
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       );
       return tokens.accessToken;
     } on DioException {
-      await _tokenStorage.clear();
+      await tokenStorage.clear();
       return null;
     }
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await _tokenStorage.readAccessToken();
+    final token = await tokenStorage.readAccessToken();
     return token != null && token.isNotEmpty;
   }
 
@@ -128,7 +142,7 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    final refresh = await _tokenStorage.readRefreshToken();
+    final refresh = await tokenStorage.readRefreshToken();
     if (refresh != null) {
       try {
         await _dio.post('/auth/logout', data: {'refresh_token': refresh});
@@ -136,6 +150,14 @@ class AuthRepository {
         // Best-effort logout.
       }
     }
-    await _tokenStorage.clear();
+    final google = googleSignInService;
+    if (google != null && google.isConfigured) {
+      try {
+        await google.signOut();
+      } catch (_) {
+        // Best-effort Google session clear.
+      }
+    }
+    await tokenStorage.clear();
   }
 }

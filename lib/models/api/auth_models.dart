@@ -56,26 +56,37 @@ class TokenPair {
 }
 
 class AuthSession {
-  const AuthSession({required this.user, required this.tokens});
+  const AuthSession({
+    required this.user,
+    required this.tokens,
+    this.isNewUser = false,
+  });
 
   factory AuthSession.fromJson(Map<String, dynamic> json) => AuthSession(
     user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
     tokens: TokenPair.fromJson(json['tokens'] as Map<String, dynamic>),
+    isNewUser: json['is_new_user'] as bool? ?? false,
   );
 
   final AuthUser user;
   final TokenPair tokens;
+  final bool isNewUser;
 }
 
 /// Public onboarding auth settings from `GET /auth/config`.
 class AuthConfig {
-  const AuthConfig({required this.referralRequired});
+  const AuthConfig({
+    required this.referralRequired,
+    this.googleSignInEnabled = false,
+  });
 
   factory AuthConfig.fromJson(Map<String, dynamic> json) => AuthConfig(
     referralRequired: json['referral_required'] as bool? ?? true,
+    googleSignInEnabled: json['google_sign_in_enabled'] as bool? ?? false,
   );
 
   final bool referralRequired;
+  final bool googleSignInEnabled;
 }
 
 class EmailStartResult {

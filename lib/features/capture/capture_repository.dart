@@ -20,10 +20,38 @@ class CaptureRepository {
     return CaptureResponse.fromJson(response.data!);
   }
 
+  /// Submit a URL (+ optional note) for Resource-style processing.
+  Future<CaptureResponse> createLinkCapture({
+    required String url,
+    String? note,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/link',
+      data: {
+        'url': url,
+        if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+        'channel': 'mobile',
+      },
+    );
+    return CaptureResponse.fromJson(response.data!);
+  }
+
   /// Upload voice audio for STT only — returns transcript; no capture job.
   Future<VoiceTranscriptResult> transcribeVoice({
     required int durationMs,
     String? audioPath,
+  }) async {
+    return _transcribeVoiceWithRetry(
+      durationMs: durationMs,
+      audioPath: audioPath,
+      allowRetry: true,
+    );
+  }
+
+  Future<VoiceTranscriptResult> _transcribeVoiceWithRetry({
+    required int durationMs,
+    String? audioPath,
+    required bool allowRetry,
   }) async {
     try {
       return await _postTranscribeVoice(
@@ -32,10 +60,16 @@ class CaptureRepository {
       );
     } on DioException catch (error) {
       if (error.response?.statusCode == 401 && audioPath != null) {
-        // Multipart streams are single-use; retry after token refresh.
         return _postTranscribeVoice(
           durationMs: durationMs,
           audioPath: audioPath,
+        );
+      }
+      if (allowRetry && _isRetriableVoiceError(error)) {
+        return _transcribeVoiceWithRetry(
+          durationMs: durationMs,
+          audioPath: audioPath,
+          allowRetry: false,
         );
       }
       rethrow;
@@ -70,6 +104,18 @@ class CaptureRepository {
     required int durationMs,
     String? audioPath,
   }) async {
+    return _createVoiceCaptureWithRetry(
+      durationMs: durationMs,
+      audioPath: audioPath,
+      allowRetry: true,
+    );
+  }
+
+  Future<CaptureResponse> _createVoiceCaptureWithRetry({
+    required int durationMs,
+    String? audioPath,
+    required bool allowRetry,
+  }) async {
     try {
       return await _postVoiceCapture(
         durationMs: durationMs,
@@ -81,6 +127,13 @@ class CaptureRepository {
       }
       if (error.response?.statusCode == 401 && audioPath != null) {
         return _postVoiceCapture(durationMs: durationMs, audioPath: audioPath);
+      }
+      if (allowRetry && _isRetriableVoiceError(error)) {
+        return _createVoiceCaptureWithRetry(
+          durationMs: durationMs,
+          audioPath: audioPath,
+          allowRetry: false,
+        );
       }
       rethrow;
     }
@@ -111,8 +164,15 @@ class CaptureRepository {
     return error.type == DioExceptionType.connectionError ||
         error.type == DioExceptionType.connectionTimeout ||
         code == 404 ||
-        code == 422 ||
         code == 501;
+  }
+
+  bool _isRetriableVoiceError(DioException error) {
+    final code = error.response?.statusCode;
+    return error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        code == 503;
   }
 
   Future<CaptureResponse> createImageCapture({

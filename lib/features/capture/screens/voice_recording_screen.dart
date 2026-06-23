@@ -7,6 +7,9 @@ import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/widgets/capture_approval_panel.dart';
+import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
+import 'package:mira_app/features/graph/widgets/memory_graph_icon_button.dart';
+import 'package:mira_app/features/capture/widgets/voice_capture_failure_panel.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
@@ -65,6 +68,11 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
       return;
     }
 
+    if (flow.requestTextPrompt) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+
     if (flow.phase == CaptureUiPhase.idle && flow.voiceSessionActive == false) {
       Navigator.of(context).maybePop();
       return;
@@ -85,6 +93,9 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
         await flow.cancelRecording();
       case CaptureUiPhase.approving:
         await flow.dismissPendingCapture();
+        if (mounted) Navigator.of(context).maybePop();
+      case CaptureUiPhase.voiceFailed:
+        flow.dismissVoiceFailure();
         if (mounted) Navigator.of(context).maybePop();
       case CaptureUiPhase.uploading:
       case CaptureUiPhase.processing:
@@ -132,7 +143,17 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
                         size: HomeScreenTokens.settingsSize * s,
                         onTap: _handleBack,
                       ),
-                      SettingsButton(size: HomeScreenTokens.settingsSize * s),
+                      MemoryGraphIconButton(
+                        size: HomeScreenTokens.settingsSize * s,
+                        active: flow.pendingProposal != null || flow.phase == CaptureUiPhase.approving,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const MemoryGraphScreen(),
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -154,6 +175,16 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
         busy: flow.approvalBusy,
         onSave: () => unawaited(flow.approvePendingCapture()),
         onCancel: () => unawaited(flow.dismissPendingCapture()),
+      );
+    }
+
+    if (flow.phase == CaptureUiPhase.voiceFailed &&
+        flow.voiceFailureMessage != null) {
+      return VoiceCaptureFailurePanel(
+        scale: s,
+        message: flow.voiceFailureMessage!,
+        onRetry: () => unawaited(flow.retryVoiceAfterFailure()),
+        onWriteText: flow.openTextFallbackFromVoice,
       );
     }
 

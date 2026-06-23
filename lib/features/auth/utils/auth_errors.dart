@@ -32,6 +32,9 @@ String formatAuthError(Object error) {
       return 'HTTP $status: ${error.message ?? 'request failed'}';
     }
   }
+  if (error is StateError) {
+    return error.message;
+  }
   return '$error';
 }
 

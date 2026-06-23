@@ -153,11 +153,41 @@ Client-safe onboarding auth settings. No auth required.
 **Response** `200`
 ```json
 {
-  "referral_required": true
+  "referral_required": true,
+  "google_sign_in_enabled": false
 }
 ```
 
 `referral_required` is toggled from Super Admin → **Referral** (`PATCH /admin/api/referral/settings`). When `false`, new users skip the invite step and receive the email OTP immediately.
+
+`google_sign_in_enabled` is `true` when the server has `GOOGLE_OAUTH_CLIENT_IDS` configured.
+
+---
+
+### Google Sign-In
+`POST /auth/google`
+
+Exchange a Google Sign-In **ID token** (from Flutter `google_sign_in`) for MIRA JWT tokens. No auth required.
+
+**Request Body**
+```json
+{
+  "id_token": "eyJhbGciOiJSUzI1NiIs..."
+}
+```
+
+**Response** `200` — same shape as email verify, plus signup hint:
+```json
+{
+  "user": { "id": "...", "email": "user@gmail.com", "display_name": "User", "onboarding_completed": false, "is_active": true, "created_at": "..." },
+  "tokens": { "access_token": "...", "refresh_token": "...", "token_type": "bearer", "expires_in": 900 },
+  "is_new_user": true
+}
+```
+
+**Errors:** `401` invalid/expired Google token · `401` Google email not verified · `401` when Google Sign-In disabled on server
+
+New Google users skip the email OTP and referral invite flow. Existing accounts with the same verified email are linked automatically.
 
 ---
 
@@ -417,7 +447,7 @@ Requires auth. Saves profile answers from the onboarding wizard (Figma 659:3546)
 
 All capture endpoints require `Authorization: Bearer <access_token>`.
 
-Phase 2 supports **`type: "text"`**, **`POST /captures/voice`**, **`POST /captures/image`**, and **`POST /captures/file`**. Voice/image require admin flags `capture_voice` / `capture_image`. Raw audio/image bytes are never persisted.
+Phase 2 supports **`type: "text"`**, **`POST /captures/voice`**, **`POST /captures/link`**, **`POST /captures/image`**, and **`POST /captures/file`**. Voice/image/link require admin flags `capture_voice` / `capture_image` / `capture_link`. Raw audio/image bytes are never persisted.
 
 When admin flag **`multimodal_embed`** is on, image captures compute a transient multimodal vector at upload time (used on approve for Neo4j; not returned in API proposals).
 
@@ -529,6 +559,45 @@ Multipart upload. Image bytes are analyzed via vision (stub metadata or live mod
 **Response** `202` — `capture_type: "image"`, proposal `node_type: "Resource"`. Proposal responses omit raw `multimodal_embedding` vectors.
 
 **Errors**: `401` · `422` (`capture_image` off) · `413` file too large
+
+---
+
+### Create link capture
+`POST /captures/link`
+
+Submit a URL (+ optional note) for Resource-style processing. Page content is not fetched yet; the URL is stored in proposal metadata only.
+
+**Request Body**
+```json
+{
+  "url": "https://example.com/article",
+  "note": "Read later",
+  "channel": "mobile"
+}
+```
+
+| Field | Type | Rules |
+|-------|------|-------|
+| `url` | string | required, max 2048 — `https://` added when scheme omitted |
+| `note` | string | optional, max 2000 |
+| `channel` | string | optional, default `mobile` |
+
+**Response** `202` — `capture_type: "link"`, proposal `node_type: "Resource"`.
+
+**Errors**: `401` · `422` (`capture_link` off or empty URL) · `404` · `403`
+
+---
+
+### Create file capture
+`POST /captures/file`
+
+Multipart upload. File bytes are used transiently for metadata only (filename, size, sha256); content is not persisted.
+
+**Request** `multipart/form-data`: `file` (required), optional `caption`, `channel`.
+
+**Response** `202` — `capture_type: "file"`, proposal `node_type: "Resource"`.
+
+**Errors**: `401` · `413` file too large
 
 ---
 

@@ -30,6 +30,38 @@ void main() {
 
     controller.dispose();
   });
+
+  test('retryVoiceAfterFailure starts recording from voiceFailed', () async {
+    final recorder = _FakeVoiceRecorder();
+    final controller = _controller(recorder);
+    controller.phase = CaptureUiPhase.voiceFailed;
+    controller.voiceFailureMessage = 'failed';
+
+    await controller.retryVoiceAfterFailure();
+
+    expect(controller.phase, CaptureUiPhase.recording);
+    expect(controller.voiceFailureMessage, isNull);
+    expect(recorder.startCount, 1);
+
+    controller.dispose();
+  });
+
+  test('openTextFallbackFromVoice requests text prompt and resets session', () {
+    final recorder = _FakeVoiceRecorder();
+    final controller = _controller(recorder);
+    controller.phase = CaptureUiPhase.voiceFailed;
+    controller.voiceSessionActive = true;
+    controller.voiceFailureMessage = 'failed';
+
+    controller.openTextFallbackFromVoice();
+
+    expect(controller.phase, CaptureUiPhase.idle);
+    expect(controller.voiceSessionActive, isFalse);
+    expect(controller.requestTextPrompt, isTrue);
+    expect(controller.voiceFailureMessage, isNull);
+
+    controller.dispose();
+  });
 }
 
 CaptureFlowController _controller(VoiceRecorderPort recorder) {

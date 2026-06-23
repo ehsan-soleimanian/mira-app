@@ -7,6 +7,8 @@ import 'package:mira_app/components/molecules/mira_back_button.dart';
 import 'package:mira_app/components/molecules/mira_button.dart';
 import 'package:mira_app/components/molecules/mira_input_field.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
+import 'package:mira_app/features/capture/utils/capture_errors.dart';
+import 'package:mira_app/features/capture/widgets/voice_capture_failure_panel.dart';
 import 'package:mira_app/features/auth/widgets/auth_step_widgets.dart';
 import 'package:mira_app/features/auth/widgets/onboarding_capture_mic_button.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
@@ -41,6 +43,7 @@ class _OnboardingFirstCaptureScreenState
   bool _submitting = false;
   bool _recording = false;
   bool _transcribing = false;
+  String? _voiceFailureMessage;
   Duration _recordingDuration = Duration.zero;
   Timer? _recordingTimer;
 
@@ -68,6 +71,7 @@ class _OnboardingFirstCaptureScreenState
   Future<void> _startRecording() async {
     if (_recording || _submitting || _transcribing) return;
     FocusScope.of(context).unfocus();
+    setState(() => _voiceFailureMessage = null);
     final ok = await _recorder.start();
     if (!ok || !mounted) return;
     setState(() {
@@ -106,12 +110,9 @@ class _OnboardingFirstCaptureScreenState
       _applyTranscript(transcript.text);
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(formatAuthError(error)),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        setState(() {
+          _voiceFailureMessage = formatVoiceCaptureError(error);
+        });
       }
     } finally {
       if (mounted) setState(() => _transcribing = false);
@@ -157,6 +158,11 @@ class _OnboardingFirstCaptureScreenState
     if (mounted) widget.onContinue();
   }
 
+  void _focusTextFallback() {
+    setState(() => _voiceFailureMessage = null);
+    _focusNode.requestFocus();
+  }
+
   bool get _busy => _submitting || _transcribing;
 
   @override
@@ -186,108 +192,122 @@ class _OnboardingFirstCaptureScreenState
                   ),
                 ),
                 Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(hPad, 8, hPad, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Center(
-                          child: MiraSphere(size: OnboardingTokens.sphereSize),
-                        ),
-                        const SizedBox(
-                          height: OnboardingFirstCaptureTokens.sphereToTitle,
-                        ),
-                        const Text(
-                          'What do you want Mira to remember?',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 22,
-                            height: 1.2,
-                            fontWeight: FontWeight.w800,
-                            color: OnboardingTokens.headlineColor,
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: OnboardingFirstCaptureTokens.titleToSubtitle,
-                        ),
-                        const Text(
-                          "Anything you don't want to forget. An idea. "
-                          'A decision. A task. A link. Even a feeling.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            height: 1.45,
-                            color: OnboardingTokens.subtitleColor,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: OnboardingFirstCaptureTokens.subtitleToField,
-                        ),
-                        SizedBox(
-                          height: OnboardingFirstCaptureTokens.captureFieldHeight,
-                          child: Stack(
+                  child: _voiceFailureMessage != null
+                      ? VoiceCaptureFailurePanel(
+                          scale: 1,
+                          message: _voiceFailureMessage!,
+                          onRetry: _startRecording,
+                          onWriteText: _focusTextFallback,
+                        )
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(hPad, 8, hPad, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              MiraInputField(
-                                controller: _textController,
-                                focusNode: _focusNode,
-                                hintText: _recording
-                                    ? 'Listening…'
-                                    : 'Press the button and speak or type',
-                                showMic: false,
-                                variant: MiraInputVariant.flat,
-                                flatFillColor: Colors.white,
-                                flatBoxShadow:
-                                    OnboardingCaptureMicTokens.captureFieldShadow,
-                                height: OnboardingFirstCaptureTokens.captureFieldHeight,
-                                maxLines: 6,
-                                radius: OnboardingFirstCaptureTokens.captureFieldRadius,
-                                enabled: !_recording && !_transcribing,
-                                textInputAction: TextInputAction.newline,
-                              ),
-                              if (_transcribing)
-                                Positioned.fill(
-                                  child: _CaptureFieldTranscribingOverlay(
-                                    radius:
-                                        OnboardingFirstCaptureTokens.captureFieldRadius,
-                                  ),
+                              const Center(
+                                child: MiraSphere(
+                                  size: OnboardingTokens.sphereSize,
                                 ),
+                              ),
+                              const SizedBox(
+                                height: OnboardingFirstCaptureTokens.sphereToTitle,
+                              ),
+                              const Text(
+                                'What do you want Mira to remember?',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  height: 1.2,
+                                  fontWeight: FontWeight.w800,
+                                  color: OnboardingTokens.headlineColor,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              const SizedBox(
+                                height: OnboardingFirstCaptureTokens.titleToSubtitle,
+                              ),
+                              const Text(
+                                "Anything you don't want to forget. An idea. "
+                                'A decision. A task. A link. Even a feeling.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  height: 1.45,
+                                  color: OnboardingTokens.subtitleColor,
+                                ),
+                              ),
+                              const SizedBox(
+                                height:
+                                    OnboardingFirstCaptureTokens.subtitleToField,
+                              ),
+                              SizedBox(
+                                height:
+                                    OnboardingFirstCaptureTokens.captureFieldHeight,
+                                child: Stack(
+                                  children: [
+                                    MiraInputField(
+                                      controller: _textController,
+                                      focusNode: _focusNode,
+                                      hintText: _recording
+                                          ? 'Listening…'
+                                          : 'Press the button and speak or type',
+                                      showMic: false,
+                                      variant: MiraInputVariant.flat,
+                                      flatFillColor: Colors.white,
+                                      flatBoxShadow: OnboardingCaptureMicTokens
+                                          .captureFieldShadow,
+                                      height: OnboardingFirstCaptureTokens
+                                          .captureFieldHeight,
+                                      maxLines: 6,
+                                      radius: OnboardingFirstCaptureTokens
+                                          .captureFieldRadius,
+                                      enabled: !_recording && !_transcribing,
+                                      textInputAction: TextInputAction.newline,
+                                    ),
+                                    if (_transcribing)
+                                      Positioned.fill(
+                                        child: _CaptureFieldTranscribingOverlay(
+                                          radius: OnboardingFirstCaptureTokens
+                                              .captureFieldRadius,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
+                        ),
+                ),
+                if (_voiceFailureMessage == null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(hPad, 0, hPad, 0),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: OnboardingFirstCaptureTokens.fieldToMic,
+                        ),
+                        if (_recording)
+                          OnboardingCaptureRecordingControls(
+                            duration: _recordingDuration,
+                            onStop: _stopRecording,
+                          )
+                        else if (!_transcribing)
+                          Center(
+                            child: OnboardingCaptureMicButton(
+                              onTap: _startRecording,
+                              enabled: !_busy,
+                            ),
+                          )
+                        else
+                          const SizedBox(
+                            height: OnboardingCaptureMicTokens.diameter,
+                          ),
+                        SizedBox(
+                          height: OnboardingFirstCaptureTokens.micToCta,
                         ),
                       ],
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(hPad, 0, hPad, 0),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: OnboardingFirstCaptureTokens.fieldToMic,
-                      ),
-                      if (_recording)
-                        OnboardingCaptureRecordingControls(
-                          duration: _recordingDuration,
-                          onStop: _stopRecording,
-                        )
-                      else if (!_transcribing)
-                        Center(
-                          child: OnboardingCaptureMicButton(
-                            onTap: _startRecording,
-                            enabled: !_busy,
-                          ),
-                        )
-                      else
-                        const SizedBox(
-                          height: OnboardingCaptureMicTokens.diameter,
-                        ),
-                      SizedBox(
-                        height: OnboardingFirstCaptureTokens.micToCta,
-                      ),
-                    ],
-                  ),
-                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(hPad, 0, hPad, 24),
                   child: Column(
@@ -298,7 +318,8 @@ class _OnboardingFirstCaptureScreenState
                         controller: _textController,
                         isReady: (text) => text.trim().isNotEmpty,
                         loading: _submitting,
-                        enabled: !_recording && !_transcribing,
+                        enabled:
+                            !_recording && !_transcribing && _voiceFailureMessage == null,
                         onPressed: _submitCapture,
                       ),
                       const SizedBox(height: 12),
@@ -307,7 +328,9 @@ class _OnboardingFirstCaptureScreenState
                         variant: MiraButtonVariant.outlined,
                         size: MiraButtonSize.large,
                         expand: true,
-                        onPressed: _recording || _busy ? null : widget.onSkip,
+                        onPressed: _recording || _busy || _voiceFailureMessage != null
+                            ? null
+                            : widget.onSkip,
                       ),
                     ],
                   ),

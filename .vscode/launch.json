@@ -7,7 +7,10 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "emulator-5554",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define-from-file=dart_defines.json"
+      ]
     },
     {
       "name": "Mira App (Pixel 8)",
@@ -15,7 +18,10 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "adb-44011FDJH000DW-0va885._adb-tls-connect._tcp",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define-from-file=dart_defines.json"
+      ]
     },
     {
       "name": "Mira App (Chrome)",
@@ -23,7 +29,10 @@
       "type": "dart",
       "program": "lib/main.dart",
       "deviceId": "chrome",
-      "flutterMode": "debug"
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define-from-file=dart_defines.json"
+      ]
     }
   ]
 }

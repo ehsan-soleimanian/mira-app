@@ -4,6 +4,8 @@ import 'package:mira_app/components/components.dart';
 import 'package:mira_app/core/mira_nav_config.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
+import 'package:mira_app/features/capture/capture_workflow_initial_action.dart';
+import 'package:mira_app/features/capture/screens/capture_workflow_screen.dart';
 import 'package:mira_app/features/capture/widgets/capture_bubble_menu.dart';
 import 'package:mira_app/screens/daily_brief/daily_brief_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
@@ -46,6 +48,15 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute<void>(builder: (_) => const DailyBriefScreen()));
+  }
+
+  void _openCaptureWorkflow(CaptureWorkflowInitialAction? action) {
+    _flow?.hideBubbleMenu();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CaptureWorkflowScreen(initialAction: action),
+      ),
+    );
   }
 
   @override
@@ -121,6 +132,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 right: 16 * s,
                 child: CaptureBubbleMenu(
                   onTextTap: () => flow.openTextPrompt(),
+                  onLinkTap: () =>
+                      _openCaptureWorkflow(CaptureWorkflowInitialAction.link),
+                  onImageTap: () => _openCaptureWorkflow(
+                    CaptureWorkflowInitialAction.attachMenu,
+                  ),
                   onDismiss: () => flow.hideBubbleMenu(),
                 ),
               ),

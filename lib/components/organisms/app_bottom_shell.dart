@@ -6,7 +6,6 @@ import 'package:mira_app/components/organisms/mira_bottom_nav_bar.dart';
 import 'package:mira_app/core/mira_nav_config.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
-import 'package:mira_app/features/capture/screens/capture_workflow_screen.dart';
 import 'package:mira_app/features/capture/screens/voice_recording_screen.dart';
 import 'package:mira_app/theme/daily_brief_theme.dart';
 
@@ -67,10 +66,8 @@ class _AppBottomShellState extends State<AppBottomShell> {
     setState(() {});
   }
 
-  void _openTapWorkflow() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const CaptureWorkflowScreen()),
-    );
+  void _openBubbleMenu() {
+    _flow?.showBubbleMenu();
   }
 
   Future<void> _startVoiceRecording() async {
@@ -132,7 +129,7 @@ class _AppBottomShellState extends State<AppBottomShell> {
       MiraNavVariant.cradle => MiraBottomNav(
         activeTab: widget.activeTab,
         onHomeTap: widget.onHomeTap,
-        onVoiceShortTap: _openTapWorkflow,
+        onVoiceShortTap: _openBubbleMenu,
         onRecordingStart: _startVoiceRecording,
         recordingActive: _recordingActive,
         recordingProgress: _recordingProgress,
@@ -141,7 +138,7 @@ class _AppBottomShellState extends State<AppBottomShell> {
       MiraNavVariant.earNotch => MiraBottomNavBar(
         activeTab: widget.activeTab,
         onItemTap: _onEarItemTap,
-        onMicShortTap: _openTapWorkflow,
+        onMicShortTap: _openBubbleMenu,
         onRecordingStart: _startVoiceRecording,
         recordingActive: _recordingActive,
         recordingProgress: _recordingProgress,

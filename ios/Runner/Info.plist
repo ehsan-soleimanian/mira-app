@@ -68,5 +68,23 @@
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Mira needs microphone access to capture voice notes.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Mira needs camera access to attach photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mira needs photo library access to attach images.</string>
+	<!-- Google Sign-In (iOS OAuth client — must match GOOGLE_IOS_CLIENT_ID in dart_defines.json) -->
+	<key>GIDClientID</key>
+	<string>266934427341-1e0ueahd0bg0uqh9a2n2rkni21frbn40.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.266934427341-1e0ueahd0bg0uqh9a2n2rkni21frbn40</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

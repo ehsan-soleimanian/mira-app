@@ -1,6 +1,6 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-06-23 (prod `api.miramind.io`; release builds; subdomain architecture)
+> Last updated: 2026-06-24 (memory graph screen + 768-dim embeddings)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
 
@@ -66,7 +66,8 @@ lib/
 │   │   ├── onboarding_repository.dart
 │   │   ├── screens/               # welcome, auth, your details, first capture, processing
 │   │   └── widgets/               # auth_step_widgets, onboarding_flow_scaffold
-│   └── capture/                   # CaptureRepository, flow controller, sheets
+│   ├── capture/                   # CaptureRepository, flow controller, sheets
+│   └── graph/                     # GraphRepository, radial layout, MemoryGraphScreen
 ├── models/
 │   ├── api/                       # auth_models, capture_models
 │   └── daily_brief_models.dart    # UI models (daily brief still mock)
@@ -82,11 +83,11 @@ test/
 | Area | Status |
 |------|--------|
 | **Auth** | `OnboardingFlow` (welcome → email → invite? → OTP → your details → first capture → processing blur); no step counter; `GET /auth/config` before auth |
-| **Capture** | Text capture → SSE stream → approval sheet → time clarification |
+| **Capture** | Text + voice (long-press) + bubble workflow; SSE → approval; voice failure recovery in-place |
 | **Home** | Figma UI + composer bar; shows GraphRAG answer when returned |
 | **Daily Brief** | UI complete; **mock data** (`DailyBriefData.initialItems()`) |
 | **Settings** | UI shell |
-| **Graph screen** | Not started |
+| **Graph screen** | `MemoryGraphScreen` — radial graph from `GET /graph`, node tap → blurred bottom sheet |
 
 ### Commands
 
@@ -137,6 +138,23 @@ Coordinator: `OnboardingFlow` in `onboarding_flow.dart`. Legacy profile wizard (
 
 **Auth UI widgets** (`widgets/auth_step_widgets.dart`): `AuthCtaButton`, `AuthOrDivider`, `AuthSocialButton`, `AuthLegalFooter`, `AuthShieldBadge`, `AuthOtpField`. Scaffold: `onboarding_flow_scaffold.dart`.
 
+### Google Sign-In
+
+Passwordless alternative to email OTP — `POST /auth/google` with Google `id_token`.
+
+| Item | Location |
+|------|----------|
+| Flutter SDK | `google_sign_in` + `GoogleSignInService` |
+| Client IDs | `dart_defines.json` (gitignored) — copy from `dart_defines.example.json` |
+| VS Code / Cursor run | `.vscode/launch.json` passes `--dart-define-from-file=dart_defines.json` |
+| Backend verify | `GOOGLE_OAUTH_CLIENT_IDS` in `.env` (Web + Android + iOS, comma-separated) |
+| iOS native | `ios/Runner/Info.plist` — `GIDClientID` + reversed URL scheme |
+| Android | package `com.mira.mira_app` + SHA-1 in Google Cloud Console |
+
+Run: `flutter run --dart-define-from-file=dart_defines.json` · migration: `alembic upgrade head` · config flag: `GET /auth/config` → `google_sign_in_enabled`.
+
+Apple Sign-In button is **hidden** in auth UI until implemented.
+
 ### Other flows (implemented)
 
 ```
@@ -147,7 +165,102 @@ Home composer → CaptureFlowController.submitText()
              → approve / confirm-time / dismiss
 ```
 
+### Voice capture architecture
+
+Full STT / API error matrix: [`../mira-backend/AGENTS.md`](../mira-backend/AGENTS.md#voice-capture-architecture). API contract: [`API_BOOK.md`](API_BOOK.md) (`POST /captures/transcribe`, `POST /captures/voice`).
+
+**Invariant:** audio is never stored on device or server after upload — failure means re-record or type manually.
+
+| Flow | UI | API | Recovery on failure |
+|------|-----|-----|---------------------|
+| **Onboarding** | `onboarding_first_capture_screen.dart` | `transcribeVoice` → edit field → text submit | `VoiceCaptureFailurePanel` — **دوباره بگو** / **با متن بنویس** (focus field) |
+| **Home long-press** | `VoiceRecordingScreen` + `CaptureFlowController` | `createVoiceCapture` → SSE | `CaptureUiPhase.voiceFailed` — same panel; text opens home composer |
+
+```mermaid
+flowchart TD
+    A[Record] --> B{Mic OK?}
+    B -->|no| C[SimulatedVoiceRecorder / stop]
+    B -->|yes| D{Flow}
+    D -->|onboarding| E[POST /captures/transcribe]
+    D -->|home| F[POST /captures/voice]
+    E -->|fail| G[VoiceCaptureFailurePanel]
+    E -->|ok| H[Edit transcript]
+    F -->|fail| G
+    F -->|ok| I[SSE → approval]
+    I -->|error event| G
+    G --> R[دوباره بگو → re-record]
+    G --> T[با متن بنویس → composer / field]
+```
+
+**UI phases** (`capture_ui_phase.dart`): `idle` · `recording` · `uploading` · `processing` · `voiceFailed` · `approving`
+
+**Client files:**
+
+| File | Role |
+|------|------|
+| `capture_flow_controller.dart` | Orchestration; `retryVoiceAfterFailure()`, `openTextFallbackFromVoice()`, `dismissVoiceFailure()` |
+| `capture_repository.dart` | One automatic retry on `503` / connection timeout before surfacing error |
+| `utils/capture_errors.dart` | Persian user messages via `formatVoiceCaptureError()` |
+| `widgets/voice_capture_failure_panel.dart` | Shared in-place recovery UI |
+| `screens/voice_recording_screen.dart` | Home voice route |
+| `voice/device_voice_recorder.dart` | Mic + `SimulatedVoiceRecorder` fallback |
+
+**Client behaviour:**
+
+- `DeviceVoiceRecorder` → `SimulatedVoiceRecorder` when permission/hardware/web fails.
+- `createVoiceCapture`: dev mock pipeline on connection error / timeout / `404` / `501` (`CaptureMockData`); `401` retries multipart once after token refresh; **one silent retry** on `503` / network before failure UI.
+- STT / upload / SSE `error` on voice route → `voiceFailed` (not SnackBar + pop). Save/cancel errors during approval still use SnackBar (`lastCaptureError`).
+- **با متن بنویس** (Home): sets `requestTextPrompt` → pops voice screen → `AppBottomShell` opens `PromptInputBar`.
+- No offline queue or failed-capture inbox.
+
 **Backend onboarding endpoints** (see [`API_BOOK.md`](API_BOOK.md)): `GET /auth/config`, `POST /auth/email/start`, `POST /auth/invite/verify`, `POST /auth/email/verify` (creates user + tokens), `GET /auth/onboarding/status`, `POST /auth/onboarding` (saves profile, sets `onboarding_completed`).
+
+---
+
+## Graph screen (mobile UI)
+
+Radial memory graph — **no extra pub package**; `InteractiveViewer` + `CustomPaint` matches the Figma hub layout better than generic libraries (`graphview` / force-directed packages suit trees, not this star layout).
+
+| File | Role |
+|------|------|
+| `features/graph/screens/memory_graph_screen.dart` | `GET /graph`, loading / empty / graph body |
+| `features/graph/widgets/memory_graph_canvas.dart` | Nodes, edges, pinch-zoom, tap |
+| `features/graph/widgets/graph_node_detail_sheet.dart` | `BackdropFilter` blur + memory cards |
+| `features/graph/widgets/memory_graph_icon_button.dart` | Brain icon in workflow + voice headers |
+
+Tap the psychology icon (top-right) during capture or voice recording. Tap any node → bottom sheet with summary cards and dates. Pass `highlightNodeId` to mark a newly saved memory.
+
+---
+
+## Graph memory & embeddings (backend contract)
+
+Approved captures become **Neo4j graph nodes** with **768-dimensional** vectors (GraphRAG). Flutter consumes results via `GET /graph` and question answers from the capture SSE pipeline — no graph logic in the client.
+
+### Approval → graph pipeline
+
+```
+POST /captures/{id}/approve
+  → primary MemoryNode in Neo4j (+ MariaDB memory_nodes)
+  → secondary entities materialized (Person, Project, …) as extra nodes
+  → edges: PART_OF (Task→Project), INVOLVES (Event→Person), RELATES_TO (default)
+  → embedding: 768-dim text vector (OpenRouter `dimensions=768` or normalized)
+```
+
+### Invariants (client must not duplicate)
+
+| Rule | Backend |
+|------|---------|
+| Vector size | **768** — Neo4j `memory_node_embeddings` index |
+| One capture | One **primary** node; `secondary` from LLM → additional nodes on approve |
+| People | `Person` nodes in graph (secondary), linked with `INVOLVES` |
+| Relationships | Resolved by `target_title` + `entity_resolution` flag |
+| Raw input | Never stored — only approved summaries |
+
+### GraphRAG (Home questions)
+
+Same composer as capture → intent `question` → vector search over approved nodes → LLM answer. Requires live `embed` route (768-dim) and worker running.
+
+**Ops:** Super Admin → Users explorer shows per-user nodes/edges. Stuck `processing` captures → flush Redis + restart worker (`../mira-backend/AGENTS.md`).
 
 ---
 

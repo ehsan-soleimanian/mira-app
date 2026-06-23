@@ -8,4 +8,7 @@ enum CaptureUiPhase {
 
   /// Voice long-press: proposal ready — show Save / cancel on recording route.
   approving,
+
+  /// STT / upload failed — retry in place or switch to text input.
+  voiceFailed,
 }

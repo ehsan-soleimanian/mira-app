@@ -3,15 +3,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mira_app/core/api/api_client.dart';
 import 'package:mira_app/core/auth/auth_repository.dart';
+import 'package:mira_app/core/auth/google_sign_in_service.dart';
 import 'package:mira_app/core/auth/token_storage.dart';
 import 'package:mira_app/features/auth/onboarding_repository.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
+import 'package:mira_app/features/capture/utils/capture_errors.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/capture/widgets/approval_sheet.dart';
 import 'package:mira_app/features/capture/widgets/time_clarification_sheet.dart';
 import 'package:mira_app/features/daily_brief/daily_brief_repository.dart';
+import 'package:mira_app/features/graph/graph_repository.dart';
 import 'package:mira_app/features/settings/settings_repository.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 
@@ -39,6 +42,7 @@ class CaptureFlowController extends ChangeNotifier {
   String? voiceSessionPrompt;
   bool approvalBusy = false;
   String? lastCaptureError;
+  String? voiceFailureMessage;
   Map<String, dynamic>? pendingTimeClarification;
 
   Timer? _recordingTimer;
@@ -84,10 +88,13 @@ class CaptureFlowController extends ChangeNotifier {
   }
 
   Future<void> startRecording() async {
-    if (phase != CaptureUiPhase.idle && phase != CaptureUiPhase.bubbleMenu) {
+    if (phase != CaptureUiPhase.idle &&
+        phase != CaptureUiPhase.bubbleMenu &&
+        phase != CaptureUiPhase.voiceFailed) {
       return;
     }
     hideBubbleMenu();
+    voiceFailureMessage = null;
     final started = await _recorder.start();
     if (!started) {
       if (phase == CaptureUiPhase.bubbleMenu) {
@@ -115,8 +122,32 @@ class CaptureFlowController extends ChangeNotifier {
     _recordingTimer?.cancel();
     await _recorder.cancel();
     recordingDuration = Duration.zero;
+    voiceFailureMessage = null;
     _resetVoiceSession();
     phase = CaptureUiPhase.idle;
+    notifyListeners();
+  }
+
+  /// Leave voice failure screen without recording again.
+  void dismissVoiceFailure() {
+    voiceFailureMessage = null;
+    _resetVoiceSession();
+    phase = CaptureUiPhase.idle;
+    notifyListeners();
+  }
+
+  /// Re-record after STT / upload failure (stays on voice route).
+  Future<void> retryVoiceAfterFailure() async {
+    if (phase != CaptureUiPhase.voiceFailed) return;
+    await startRecording();
+  }
+
+  /// Close voice route and open home text composer.
+  void openTextFallbackFromVoice() {
+    voiceFailureMessage = null;
+    _resetVoiceSession();
+    phase = CaptureUiPhase.idle;
+    requestTextPrompt = true;
     notifyListeners();
   }
 
@@ -148,10 +179,7 @@ class CaptureFlowController extends ChangeNotifier {
         presentation: _CapturePresentation.voiceRoute,
       );
     } catch (error) {
-      lastCaptureError = 'Voice capture error: $error';
-      _resetVoiceSession();
-      phase = CaptureUiPhase.idle;
-      notifyListeners();
+      _enterVoiceFailure(formatVoiceCaptureError(error));
     } finally {
       recordingDuration = Duration.zero;
       notifyListeners();
@@ -222,6 +250,18 @@ class CaptureFlowController extends ChangeNotifier {
     }
   }
 
+  void _enterVoiceFailure(String message) {
+    voiceSessionActive = true;
+    voiceFailureMessage = message;
+    activeCaptureId = null;
+    pendingProposal = null;
+    voiceSessionPrompt = null;
+    pendingTimeClarification = null;
+    approvalBusy = false;
+    phase = CaptureUiPhase.voiceFailed;
+    notifyListeners();
+  }
+
   void _resetVoiceSession() {
     voiceSessionActive = false;
     activeCaptureId = null;
@@ -285,9 +325,11 @@ class CaptureFlowController extends ChangeNotifier {
           final detail =
               event.data['detail']?.toString() ?? 'Capture failed';
           if (presentation == _CapturePresentation.voiceRoute) {
-            lastCaptureError = detail;
-            _resetVoiceSession();
-            phase = CaptureUiPhase.idle;
+            _enterVoiceFailure(
+              detail.length > 120
+                  ? 'خطا در پردازش صدا. دوباره امتحان کن.'
+                  : detail,
+            );
           } else if (sheetContext != null && sheetContext.mounted) {
             ScaffoldMessenger.of(sheetContext).showSnackBar(
               SnackBar(content: Text(detail)),
@@ -431,9 +473,11 @@ class MiraServices {
     required this.tokenStorage,
     required this.apiClient,
     required this.authRepository,
+    required this.googleSignInService,
     required this.onboardingRepository,
     required this.captureRepository,
     required this.dailyBriefRepository,
+    required this.graphRepository,
     required this.settingsRepository,
     required this.captureFlow,
   });
@@ -445,13 +489,16 @@ class MiraServices {
       tokenStorage: tokenStorage,
       onRefresh: () => authRepository.refreshAccessToken(),
     );
+    final googleSignInService = GoogleSignInService();
     authRepository = AuthRepository(
       apiClient: apiClient,
       tokenStorage: tokenStorage,
+      googleSignInService: googleSignInService,
     );
     final onboardingRepository = OnboardingRepository(apiClient: apiClient);
     final captureRepository = CaptureRepository(apiClient: apiClient);
     final dailyBriefRepository = DailyBriefRepository(apiClient: apiClient);
+    final graphRepository = GraphRepository(apiClient: apiClient);
     final settingsRepository = SettingsRepository(apiClient: apiClient);
     final captureFlow = CaptureFlowController(
       captureRepository: captureRepository,
@@ -460,9 +507,11 @@ class MiraServices {
       tokenStorage: tokenStorage,
       apiClient: apiClient,
       authRepository: authRepository,
+      googleSignInService: googleSignInService,
       onboardingRepository: onboardingRepository,
       captureRepository: captureRepository,
       dailyBriefRepository: dailyBriefRepository,
+      graphRepository: graphRepository,
       settingsRepository: settingsRepository,
       captureFlow: captureFlow,
     );
@@ -471,9 +520,11 @@ class MiraServices {
   final TokenStorage tokenStorage;
   final ApiClient apiClient;
   final AuthRepository authRepository;
+  final GoogleSignInService googleSignInService;
   final OnboardingRepository onboardingRepository;
   final CaptureRepository captureRepository;
   final DailyBriefRepository dailyBriefRepository;
+  final GraphRepository graphRepository;
   final SettingsRepository settingsRepository;
   final CaptureFlowController captureFlow;
 }

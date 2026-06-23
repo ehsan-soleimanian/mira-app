@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
@@ -10,91 +8,28 @@ import 'package:mira_app/components/molecules/mira_inner_shadow_painter.dart';
 import 'package:mira_app/components/molecules/mira_stop_button.dart';
 import 'package:mira_app/components/organisms/mira_composer_bar.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
+import 'package:mira_app/features/capture/capture_workflow_initial_action.dart';
+import 'package:mira_app/features/capture/media/capture_media_picker.dart';
+import 'package:mira_app/features/capture/utils/capture_errors.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
+import 'package:mira_app/features/capture/widgets/capture_link_sheet.dart';
+import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
+import 'package:mira_app/features/graph/widgets/memory_graph_icon_button.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
-import 'package:mira_app/theme/composer_tokens.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
 import 'package:mira_app/theme/stop_button_tokens.dart';
 
 enum _CaptureWorkflowMode { compose, listening, conversation }
 
-enum _AttachmentKind { camera, picture, file }
-
-const _transparentPngBytes = <int>[
-  0x89,
-  0x50,
-  0x4E,
-  0x47,
-  0x0D,
-  0x0A,
-  0x1A,
-  0x0A,
-  0x00,
-  0x00,
-  0x00,
-  0x0D,
-  0x49,
-  0x48,
-  0x44,
-  0x52,
-  0x00,
-  0x00,
-  0x00,
-  0x01,
-  0x00,
-  0x00,
-  0x00,
-  0x01,
-  0x08,
-  0x06,
-  0x00,
-  0x00,
-  0x00,
-  0x1F,
-  0x15,
-  0xC4,
-  0x89,
-  0x00,
-  0x00,
-  0x00,
-  0x0A,
-  0x49,
-  0x44,
-  0x41,
-  0x54,
-  0x78,
-  0x9C,
-  0x63,
-  0x00,
-  0x01,
-  0x00,
-  0x00,
-  0x05,
-  0x00,
-  0x01,
-  0x0D,
-  0x0A,
-  0x2D,
-  0xB4,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0x49,
-  0x45,
-  0x4E,
-  0x44,
-  0xAE,
-  0x42,
-  0x60,
-  0x82,
-];
+enum _AttachmentKind { camera, picture, file, link }
 
 class CaptureWorkflowScreen extends StatefulWidget {
-  const CaptureWorkflowScreen({super.key});
+  const CaptureWorkflowScreen({super.key, this.initialAction});
+
+  final CaptureWorkflowInitialAction? initialAction;
 
   @override
   State<CaptureWorkflowScreen> createState() => _CaptureWorkflowScreenState();
@@ -103,6 +38,7 @@ class CaptureWorkflowScreen extends StatefulWidget {
 class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   final _controller = TextEditingController();
   final VoiceRecorderPort _recorder = createVoiceRecorder();
+  final CaptureMediaPickerPort _mediaPicker = createCaptureMediaPicker();
 
   CaptureRepository? _captures;
   _CaptureWorkflowMode _mode = _CaptureWorkflowMode.compose;
@@ -117,6 +53,24 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   Map<String, dynamic>? _proposal;
   String? _answer;
   String? _statusText;
+
+  @override
+  void initState() {
+    super.initState();
+    final action = widget.initialAction;
+    if (action == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      switch (action) {
+        case CaptureWorkflowInitialAction.attachMenu:
+          setState(() => _showAttachMenu = true);
+        case CaptureWorkflowInitialAction.link:
+          unawaited(_submitLink());
+        case CaptureWorkflowInitialAction.gallery:
+          unawaited(_submitAttachment(_AttachmentKind.picture));
+      }
+    });
+  }
 
   @override
   void didChangeDependencies() {
@@ -188,29 +142,68 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
 
   Future<void> _submitAttachment(_AttachmentKind kind) async {
     if (_busy) return;
-    final label = switch (kind) {
-      _AttachmentKind.camera => 'Camera photo',
-      _AttachmentKind.picture => 'Picture',
-      _AttachmentKind.file => 'File',
-    };
+    if (kind == _AttachmentKind.link) {
+      await _submitLink();
+      return;
+    }
+
+    setState(() => _showAttachMenu = false);
+
+    final PickedCaptureMedia? picked;
+    switch (kind) {
+      case _AttachmentKind.camera:
+        picked = await _mediaPicker.pickCameraImage();
+      case _AttachmentKind.picture:
+        picked = await _mediaPicker.pickGalleryImage();
+      case _AttachmentKind.file:
+        picked = await _mediaPicker.pickFile();
+      case _AttachmentKind.link:
+        return;
+    }
+    if (!mounted || picked == null) return;
+    final media = picked;
+
+    if (media.bytes.length > captureMediaMaxBytes) {
+      _showSnack('File is too large (max 10 MB).');
+      return;
+    }
+
+    final caption = _controller.text.trim();
+    final prompt = caption.isNotEmpty ? caption : media.filename;
+    if (caption.isNotEmpty) _controller.clear();
+
     await _submitCapture(
-      prompt: label,
+      prompt: prompt,
       create: (repo) {
         if (kind == _AttachmentKind.file) {
           return repo.createFileCapture(
-            bytes: utf8.encode('Mira file capture placeholder'),
-            filename: 'mira-note.txt',
-            caption: 'File shared from Mira composer',
+            bytes: media.bytes,
+            filename: media.filename,
+            caption: caption.isEmpty ? null : caption,
           );
         }
         return repo.createImageCapture(
-          bytes: _transparentPngBytes,
-          filename: kind == _AttachmentKind.camera
-              ? 'mira-camera.png'
-              : 'mira-picture.png',
-          caption: '$label shared from Mira composer',
+          bytes: media.bytes,
+          filename: media.filename,
+          caption: caption.isEmpty ? null : caption,
         );
       },
+    );
+  }
+
+  Future<void> _submitLink() async {
+    if (_busy) return;
+    setState(() => _showAttachMenu = false);
+    final input = await showCaptureLinkSheet(context);
+    if (!mounted || input == null) return;
+
+    final prompt = input.note?.isNotEmpty == true ? input.note! : input.url;
+    await _submitCapture(
+      prompt: prompt,
+      create: (repo) => repo.createLinkCapture(
+        url: input.url,
+        note: input.note,
+      ),
     );
   }
 
@@ -237,7 +230,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       final created = await create(repo);
       await _consumeCaptureStream(repo, created);
     } catch (error) {
-      _showSnack('Capture error: $error');
+      _showSnack(formatCaptureError(error));
       if (mounted) {
         setState(() => _statusText = 'Capture failed. Try again.');
       }
@@ -393,6 +386,14 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
     }
   }
 
+  void _openMemoryGraph({String? highlightNodeId}) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MemoryGraphScreen(highlightNodeId: highlightNodeId),
+      ),
+    );
+  }
+
   void _showSnack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -441,6 +442,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
             _WorkflowHeader(
               scale: s,
               memoryActive: _memorySaved || _pendingApproval,
+              onGraphTap: _openMemoryGraph,
             ),
             if (_mode != _CaptureWorkflowMode.listening)
               Positioned(
@@ -486,10 +488,15 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
 }
 
 class _WorkflowHeader extends StatelessWidget {
-  const _WorkflowHeader({required this.scale, required this.memoryActive});
+  const _WorkflowHeader({
+    required this.scale,
+    required this.memoryActive,
+    required this.onGraphTap,
+  });
 
   final double scale;
   final bool memoryActive;
+  final VoidCallback onGraphTap;
 
   @override
   Widget build(BuildContext context) {
@@ -503,7 +510,11 @@ class _WorkflowHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           MiraBackButton(size: 48 * s),
-          _MemoryIconButton(size: 48 * s, active: memoryActive),
+          MemoryGraphIconButton(
+            size: 48 * s,
+            active: memoryActive,
+            onTap: onGraphTap,
+          ),
         ],
       ),
     );
@@ -593,8 +604,8 @@ class _WorkflowContent extends StatelessWidget {
         Positioned(
           left: 74 * s,
           right: 74 * s,
-          bottom: 104 * s,
-          child: const _WorkflowHint(),
+          bottom: 134 * s,
+          child: _WorkflowHint(scale: s),
         ),
       ],
     );
@@ -1021,51 +1032,57 @@ class _MemoryToggle extends StatelessWidget {
 }
 
 class _WorkflowHint extends StatelessWidget {
-  const _WorkflowHint();
+  const _WorkflowHint({required this.scale});
+
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
-    return const _InsetTip(
+    return _InsetTip(
+      scale: scale,
       text: 'You can send or ask in memory photo link',
-      color: Color(0xFF1F3C82),
+      color: const Color(0xFF1F3C82),
     );
   }
 }
 
 class _InsetTip extends StatelessWidget {
-  const _InsetTip({required this.text, required this.color});
+  const _InsetTip({
+    required this.scale,
+    required this.text,
+    required this.color,
+  });
 
+  final double scale;
   final String text;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
+    final s = scale;
+
     return CustomPaint(
       painter: MiraInnerShadowPainter(
         shape: (size) => Path()
           ..addRRect(
             RRect.fromRectAndRadius(
               Offset.zero & size,
-              const Radius.circular(4),
+              Radius.circular(4 * s),
             ),
           ),
         baseColor: const Color(0xFFF4F4F5),
         darkShadow: const Color(0xFFD0D0D4).withValues(alpha: 0.58),
         lightShadow: Colors.white.withValues(alpha: 0.95),
-        blur: 6,
-        offset: 3,
+        blur: 6 * s,
+        offset: 3 * s,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 11 * s),
         child: Text(
           text,
           maxLines: 1,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16,
-            color: color,
-            fontWeight: FontWeight.w400,
-          ),
+          style: AppTypography.tip(s).copyWith(color: color),
         ),
       ),
     );
@@ -1132,6 +1149,12 @@ class _AttachmentMenu extends StatelessWidget {
                   label: 'file',
                   onTap: () => onSelected(_AttachmentKind.file),
                 ),
+                _AttachmentItem(
+                  scale: s,
+                  icon: Icons.link_rounded,
+                  label: 'link',
+                  onTap: () => onSelected(_AttachmentKind.link),
+                ),
               ],
             ),
           ),
@@ -1182,56 +1205,6 @@ class _AttachmentItem extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _MemoryIconButton extends StatelessWidget {
-  const _MemoryIconButton({required this.size, required this.active});
-
-  final double size;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: MiraInnerShadowPainter(
-                shape: (s) => Path()..addOval(Offset.zero & s),
-                baseColor: ComposerTokens.insetBase,
-                darkShadow: ComposerTokens.softShadow.withValues(alpha: 0.7),
-                lightShadow: Colors.white,
-                blur: size * 0.17,
-                offset: size * 0.10,
-              ),
-              child: Icon(
-                Icons.psychology_alt_outlined,
-                size: size * 0.48,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          if (active)
-            Positioned(
-              right: 1,
-              top: 1,
-              child: Container(
-                width: math.max(7, size * 0.16),
-                height: math.max(7, size * 0.16),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.micBlueNav,
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
