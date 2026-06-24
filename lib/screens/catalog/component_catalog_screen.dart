@@ -13,6 +13,7 @@ import 'package:mira_app/screens/catalog/voice_recording_workflow_preview_pane.d
 import 'package:mira_app/models/daily_brief_models.dart';
 import 'package:mira_app/screens/daily_brief/daily_brief_screen.dart';
 import 'package:mira_app/screens/home/home_screen.dart';
+import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/mira_spacing.dart';
 
@@ -39,9 +40,8 @@ class _ComponentCatalogScreenState extends State<ComponentCatalogScreen> {
         elevation: 0,
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute<void>(builder: (_) => const HomeScreen())),
+            onPressed: () =>
+                Navigator.of(context).pushMira((_) => const HomeScreen()),
             child: const Text('Home'),
           ),
         ],
@@ -62,16 +62,14 @@ class _ComponentCatalogScreenState extends State<ComponentCatalogScreen> {
               runSpacing: MiraSpacing.sm,
               children: [
                 FilledButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+                  onPressed: () => Navigator.of(context).pushMira(
+                    (_) => const HomeScreen(),
                   ),
                   child: const Text('Home Screen'),
                 ),
                 FilledButton(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const DailyBriefScreen(),
-                    ),
+                  onPressed: () => Navigator.of(context).pushMira(
+                    (_) => const DailyBriefScreen(),
                   ),
                   child: const Text('Daily Brief'),
                 ),

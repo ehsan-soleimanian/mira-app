@@ -36,6 +36,7 @@ class MiraInputField extends StatefulWidget {
     this.enabled = true,
     this.sendButtonSize = ComposerTokens.sendButtonSize,
     this.maxLines = 1,
+    this.minLines = 1,
     this.variant = MiraInputVariant.raised,
     this.onChanged,
     this.flatFillColor,
@@ -59,6 +60,7 @@ class MiraInputField extends StatefulWidget {
   final bool enabled;
   final double sendButtonSize;
   final int maxLines;
+  final int minLines;
   final MiraInputVariant variant;
   final ValueChanged<String>? onChanged;
   /// Override fill for [MiraInputVariant.flat] (e.g. white capture card).
@@ -175,8 +177,17 @@ class _MiraInputFieldState extends State<MiraInputField> {
         ? ComposerTokens.composerTextColor
         : ComposerTokens.formTextColor;
 
+    final multiline = widget.maxLines > 1;
+    final lineHeight = 22.0;
+    final maxInputHeight = widget.height + (widget.maxLines - 1) * lineHeight;
+
     return Container(
-      height: widget.height,
+      constraints: multiline
+          ? BoxConstraints(
+              minHeight: widget.height,
+              maxHeight: maxInputHeight,
+            )
+          : BoxConstraints.tightFor(height: widget.height),
       decoration: ComposerTokens.raisedSurfaceDecoration(
         borderRadius: BorderRadius.circular(widget.radius),
         active: active,
@@ -192,24 +203,33 @@ class _MiraInputFieldState extends State<MiraInputField> {
             right: suffix != null ? (active ? 7 : 12) : 18,
           ),
           child: Row(
-            crossAxisAlignment: widget.maxLines > 1
-                ? CrossAxisAlignment.start
+            crossAxisAlignment: multiline
+                ? CrossAxisAlignment.end
                 : CrossAxisAlignment.center,
             children: [
               Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(top: widget.maxLines > 1 ? 14 : 0),
+                  padding: EdgeInsets.only(
+                    top: multiline ? 12 : 0,
+                    bottom: multiline ? 10 : 0,
+                  ),
                   child: TextField(
                     controller: _controller,
                     focusNode: widget.focusNode,
-                    onSubmitted: widget.onSubmitted,
+                    onSubmitted: multiline ? null : widget.onSubmitted,
                     obscureText: widget.obscureText,
-                    keyboardType: widget.keyboardType,
-                    textInputAction: widget.textInputAction,
+                    keyboardType: multiline
+                        ? TextInputType.multiline
+                        : widget.keyboardType,
+                    textInputAction: widget.textInputAction ??
+                        (multiline
+                            ? TextInputAction.newline
+                            : TextInputAction.send),
                     autocorrect: widget.autocorrect,
                     enabled: widget.enabled,
+                    minLines: multiline ? widget.minLines : null,
                     maxLines: widget.maxLines,
-                    textAlignVertical: widget.maxLines > 1
+                    textAlignVertical: multiline
                         ? TextAlignVertical.top
                         : TextAlignVertical.center,
                     onChanged: widget.onChanged,
@@ -227,7 +247,10 @@ class _MiraInputFieldState extends State<MiraInputField> {
               ),
               if (suffix != null) ...[
                 const SizedBox(width: 8),
-                suffix,
+                Padding(
+                  padding: EdgeInsets.only(bottom: multiline ? 8 : 0),
+                  child: suffix,
+                ),
               ],
             ],
           ),

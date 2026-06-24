@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mira_app/components/molecules/mira_back_button.dart';
+import 'package:mira_app/components/molecules/mira_page_header.dart';
 import 'package:mira_app/features/auth/onboarding_flow_step.dart';
-import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/onboarding_tokens.dart';
 
 /// Shared chrome for auth steps 2–4 (back + optional title).
@@ -24,37 +23,21 @@ class OnboardingFlowScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: OnboardingTokens.background,
       body: SafeArea(
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(
               maxWidth: OnboardingTokens.maxContentWidth,
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    children: [
-                      if (onBack != null)
-                        MiraBackButton(size: 58, onTap: onBack)
-                      else
-                        const SizedBox(width: 58),
-                      Expanded(
-                        child: centerTitle == null
-                            ? const SizedBox.shrink()
-                            : Text(
-                                centerTitle!,
-                                textAlign: TextAlign.center,
-                                style: AppTypography.dosis(
-                                  size: 20,
-                                  weight: FontWeight.w800,
-                                  color: OnboardingTokens.headlineColor,
-                                ),
-                              ),
-                      ),
-                      const SizedBox(width: 58),
-                    ],
+                  MiraPageHeader(
+                    showBack: onBack != null,
+                    onBack: onBack,
+                    title: centerTitle,
                   ),
                   const SizedBox(height: 20),
                   Expanded(child: child),

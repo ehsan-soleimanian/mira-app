@@ -1,49 +1,49 @@
 import 'package:dio/dio.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
 
-/// User-facing Persian messages for voice capture / STT failures.
+/// User-facing messages for voice capture / STT failures.
 String formatVoiceCaptureError(Object error) {
   final raw = formatAuthError(error).toLowerCase();
 
   if (raw.contains('empty transcript') ||
       raw.contains('voice capture produced')) {
-    return 'صدات را نشنیدم. دوباره واضح‌تر صحبت کن.';
+    return "I couldn't hear you. Try speaking a little louder.";
   }
   if (raw.contains('no audio data') || raw.contains('microphone permission')) {
-    return 'دسترسی میکروفون را بده و دوباره ضبط کن.';
+    return 'Allow microphone access and try recording again.';
   }
   if (raw.contains('stt') ||
       raw.contains('503') ||
       raw.contains('provider error')) {
-    return 'مشکل در تبدیل صدا به متن. دوباره امتحان کن.';
+    return 'Speech-to-text is unavailable. Try again in a moment.';
   }
   if (error is DioException &&
       (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.receiveTimeout)) {
-    return 'اتصال قطع شد. دوباره امتحان کن.';
+    return 'Connection lost. Try again.';
   }
   if (raw.contains('capture type disabled') || raw.contains('capture_voice')) {
-    return 'ضبط صدا در حال حاضر غیرفعال است.';
+    return 'Voice capture is currently disabled.';
   }
   if (raw.contains('capture_image')) {
-    return 'ارسال عکس در حال حاضر غیرفعال است.';
+    return 'Image capture is currently disabled.';
   }
   if (raw.contains('capture_link')) {
-    return 'ارسال لینک در حال حاضر غیرفعال است.';
+    return 'Link capture is currently disabled.';
   }
   if (raw.contains('413') || raw.contains('exceeds maximum')) {
-    return 'فایل صوتی خیلی بزرگ است. ضبط کوتاه‌تری بزن.';
+    return 'Recording is too long. Try a shorter clip.';
   }
 
   final detail = formatAuthError(error);
   if (detail.length > 120) {
-    return 'خطا در پردازش صدا. دوباره امتحان کن.';
+    return 'Voice processing failed. Try again.';
   }
   return detail;
 }
 
-/// User-facing Persian messages for text / media / link capture failures.
+/// User-facing messages for text / media / link capture failures.
 String formatCaptureError(Object error) {
   if (error is DioException) {
     final status = error.response?.statusCode;
@@ -51,32 +51,32 @@ String formatCaptureError(Object error) {
     final raw = (detail ?? '').toLowerCase();
 
     if (raw.contains('capture_image')) {
-      return 'ارسال عکس در حال حاضر غیرفعال است.';
+      return 'Image capture is currently disabled.';
     }
     if (raw.contains('capture_link')) {
-      return 'ارسال لینک در حال حاضر غیرفعال است.';
+      return 'Link capture is currently disabled.';
     }
     if (raw.contains('capture_voice')) {
-      return 'ضبط صدا در حال حاضر غیرفعال است.';
+      return 'Voice capture is currently disabled.';
     }
     if (status == 413 || raw.contains('exceeds maximum')) {
-      return 'فایل خیلی بزرگ است (حداکثر ۱۰ مگابایت).';
+      return 'File is too large (max 10 MB).';
     }
     if (status == 422 && detail != null) {
-      return detail.length > 120 ? 'این نوع ورودی غیرفعال است.' : detail;
+      return detail.length > 120 ? 'This input type is disabled.' : detail;
     }
-    if (status == 401) return 'نشست منقضی شده. دوباره وارد شو.';
+    if (status == 401) return 'Session expired. Please sign in again.';
     if (status == 503 || raw.contains('provider error')) {
-      return 'سرویس هوش مصنوعی در دسترس نیست. بعداً امتحان کن.';
+      return 'AI service is unavailable. Try again later.';
     }
     if (error.type == DioExceptionType.connectionError ||
         error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
-      return 'اتصال قطع شد. دوباره امتحان کن.';
+      return 'Connection lost. Try again.';
     }
     if (detail != null && detail.length <= 120) return detail;
   }
-  return 'خطا در ثبت ورودی. دوباره امتحان کن.';
+  return 'Could not save your input. Try again.';
 }
 
 String? _captureDetail(Object? data) {

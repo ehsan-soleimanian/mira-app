@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/components/components.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
@@ -13,6 +14,7 @@ import 'package:mira_app/features/capture/widgets/voice_capture_failure_panel.da
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
+import 'package:mira_app/theme/page_header_tokens.dart';
 import 'package:mira_app/theme/stop_button_tokens.dart';
 
 /// Full-screen voice capture — listening → processing → approval (Figma).
@@ -123,42 +125,28 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
           unawaited(flow.cancelRecording());
         }
       },
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            bottom: false,
-            child: Stack(
-              children: [
-                Positioned.fill(child: _buildBody(flow, s)),
-                Positioned(
-                  top: HomeScreenTokens.settingsTop * s,
-                  left: HomeScreenTokens.settingsRight * s,
-                  right: HomeScreenTokens.settingsRight * s,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      MiraBackButton(
-                        size: HomeScreenTokens.settingsSize * s,
-                        onTap: _handleBack,
-                      ),
-                      MemoryGraphIconButton(
-                        size: HomeScreenTokens.settingsSize * s,
-                        active: flow.pendingProposal != null || flow.phase == CaptureUiPhase.approving,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const MemoryGraphScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              MiraPageHeader(
+                onBack: _handleBack,
+                trailing: MemoryGraphIconButton(
+                  size: PageHeaderTokens.actionSize,
+                  active:
+                      flow.pendingProposal != null ||
+                      flow.phase == CaptureUiPhase.approving,
+                  onTap: () {
+                    Navigator.of(context).pushMira(
+                      (_) => const MemoryGraphScreen(),
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+              Expanded(child: _buildBody(flow, s)),
+            ],
           ),
         ),
       ),
@@ -185,17 +173,23 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
         message: flow.voiceFailureMessage!,
         onRetry: () => unawaited(flow.retryVoiceAfterFailure()),
         onWriteText: flow.openTextFallbackFromVoice,
+        belowPageHeader: true,
       );
     }
 
     if (flow.isProcessing) {
-      return _ProcessingBody(scale: s);
+      return _ProcessingBody(
+        scale: s,
+        uploading: flow.phase == CaptureUiPhase.uploading,
+        belowPageHeader: true,
+      );
     }
 
     return _ListeningBody(
       scale: s,
       duration: flow.recordingDuration,
       onStop: _stopAndSubmit,
+      belowPageHeader: true,
     );
   }
 }
@@ -205,29 +199,34 @@ class _ListeningBody extends StatelessWidget {
     required this.scale,
     required this.duration,
     required this.onStop,
+    this.belowPageHeader = false,
   });
 
   final double scale;
   final Duration duration;
   final VoidCallback onStop;
+  final bool belowPageHeader;
+
+  double _headlineTop(double s) => belowPageHeader
+      ? HomeScreenTokens.headlineYBelowHeader(s)
+      : HomeScreenTokens.headlineY(s);
+
+  double _subtitleTop(double s) => belowPageHeader
+      ? HomeScreenTokens.subtitleYBelowHeader(s)
+      : HomeScreenTokens.subtitleY(s);
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
     return Stack(
       children: [
+        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader),
         Positioned(
-          top: 88 * s,
-          left: 0,
-          right: 0,
-          child: Center(child: MiraSphere(size: HomeScreenTokens.sphereSize * s)),
-        ),
-        Positioned(
-          top: HomeScreenTokens.headlineTop * s,
+          top: _headlineTop(s),
           left: 24 * s,
           right: 24 * s,
           child: Text(
-            'دارم گوش می\u200cدهم…',
+            "I'm listening...",
             textAlign: TextAlign.center,
             style: AppTypography.dosis(
               size: 34 * s,
@@ -237,13 +236,13 @@ class _ListeningBody extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: HomeScreenTokens.subtitleTop * s,
+          top: _subtitleTop(s),
           left: 24 * s,
           right: 24 * s,
           child: Text(
-            'راحت صحبت کن؛ میرا یادداشت می\u200cگیرد',
+            'Speak naturally — Mira is taking notes',
             textAlign: TextAlign.center,
-            style: AppTypography.vazirmatn(
+            style: AppTypography.dosis(
               size: 16 * s,
               color: AppColors.subtitle,
             ),
@@ -271,7 +270,7 @@ class _ListeningBody extends StatelessWidget {
               ),
               SizedBox(height: 18 * s),
               Text(
-                'برای توقف ضبط، لمس کنید',
+                'Tap to stop recording',
                 style: TextStyle(
                   fontSize: 12 * s,
                   letterSpacing: 0.2,
@@ -287,43 +286,66 @@ class _ListeningBody extends StatelessWidget {
 }
 
 class _ProcessingBody extends StatelessWidget {
-  const _ProcessingBody({required this.scale});
+  const _ProcessingBody({
+    required this.scale,
+    required this.uploading,
+    this.belowPageHeader = false,
+  });
 
   final double scale;
+  final bool uploading;
+  final bool belowPageHeader;
+
+  double _headlineTop(double s) => belowPageHeader
+      ? HomeScreenTokens.headlineYBelowHeader(s)
+      : HomeScreenTokens.headlineY(s);
+
+  double _subtitleTop(double s) => belowPageHeader
+      ? HomeScreenTokens.subtitleYBelowHeader(s)
+      : HomeScreenTokens.subtitleY(s);
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
     return Stack(
       children: [
-        Positioned(
-          top: 88 * s,
-          left: 0,
-          right: 0,
-          child: Center(child: MiraSphere(size: HomeScreenTokens.sphereSize * s)),
+        MiraHeroOrb(
+          scale: s,
+          processing: true,
+          belowPageHeader: belowPageHeader,
         ),
         Positioned(
-          top: HomeScreenTokens.headlineTop * s,
+          top: _headlineTop(s),
+          left: 24 * s,
+          right: 24 * s,
+          child: uploading
+              ? Text(
+                  'Uploading voice…',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.dosis(
+                    size: 34 * s,
+                    weight: FontWeight.w700,
+                    color: AppColors.headline,
+                  ),
+                )
+              : ShimmerText(
+                  text: 'Mira is thinking...',
+                  style: AppTypography.dosis(
+                    size: 34 * s,
+                    weight: FontWeight.w700,
+                  ),
+                  baseColor: const Color(0xFF9A9AA1),
+                  highlightColor: const Color(0xFFF8F8FA),
+                ),
+        ),
+        Positioned(
+          top: _subtitleTop(s),
           left: 24 * s,
           right: 24 * s,
           child: Text(
-            'دارم می\u200cفهمم…',
+            'Just a moment',
             textAlign: TextAlign.center,
             style: AppTypography.dosis(
-              size: 34 * s,
-              weight: FontWeight.w700,
-              color: AppColors.headline,
-            ),
-          ),
-        ),
-        Positioned(
-          top: HomeScreenTokens.subtitleTop * s,
-          left: 24 * s,
-          right: 24 * s,
-          child: Text(
-            'چند لحظه صبر کن',
-            textAlign: TextAlign.center,
-            style: AppTypography.vazirmatn(
               size: 16 * s,
               color: AppColors.subtitle,
             ),

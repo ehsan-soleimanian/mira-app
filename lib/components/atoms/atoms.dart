@@ -1,3 +1,4 @@
+export 'shimmer_text.dart';
 export 'brief_card_badge.dart';
 export 'circle_icon_button.dart';
 export 'figma_svg_icon.dart';

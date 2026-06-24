@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
-import 'package:mira_app/components/molecules/mira_back_button.dart';
+import 'package:mira_app/components/molecules/mira_page_header.dart';
 import 'package:mira_app/features/graph/graph_layout.dart';
 import 'package:mira_app/features/graph/graph_layout_models.dart';
 import 'package:mira_app/features/graph/graph_repository.dart';
@@ -108,42 +108,35 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
     final s = width / HomeScreenTokens.designWidth;
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: TextDirection.ltr,
       child: Scaffold(
         backgroundColor: AppColors.background,
         body: SafeArea(
+          bottom: false,
           child: Column(
             children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(24 * s, 16 * s, 24 * s, 8 * s),
-                child: Row(
+              MiraPageHeader(
+                center: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    MiraBackButton(size: 48 * s),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            widget.title,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.dosis(
-                              size: 28 * s,
-                              weight: FontWeight.w700,
-                              color: AppColors.headline,
-                            ),
-                          ),
-                          SizedBox(height: 6 * s),
-                          Text(
-                            widget.subtitle,
-                            textAlign: TextAlign.center,
-                            style: AppTypography.vazirmatn(
-                              size: 14 * s,
-                              color: AppColors.subtitle,
-                            ),
-                          ),
-                        ],
+                    Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.dosis(
+                        size: 28 * s,
+                        weight: FontWeight.w700,
+                        color: AppColors.headline,
                       ),
                     ),
-                    SizedBox(width: 48 * s),
+                    SizedBox(height: 6 * s),
+                    Text(
+                      widget.subtitle,
+                      textAlign: TextAlign.center,
+                      style: AppTypography.dosis(
+                        size: 14 * s,
+                        color: AppColors.subtitle,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -169,14 +162,14 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'گراف حافظه بارگذاری نشد',
-                style: AppTypography.vazirmatn(
+                'Could not load memory graph',
+                style: AppTypography.dosis(
                   size: 16 * s,
                   color: AppColors.textPrimary,
                 ),
               ),
               SizedBox(height: 12 * s),
-              TextButton(onPressed: _loadGraph, child: const Text('تلاش دوباره')),
+              TextButton(onPressed: _loadGraph, child: const Text('Retry')),
             ],
           ),
         ),
@@ -189,9 +182,9 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
         child: Padding(
           padding: EdgeInsets.all(24 * s),
           child: Text(
-            'هنوز خاطره‌ای تأیید نشده.\nاول یک capture را Save کنید.',
+            'No approved memories yet.\nSave a capture to grow your graph.',
             textAlign: TextAlign.center,
-            style: AppTypography.vazirmatn(
+            style: AppTypography.dosis(
               size: 16 * s,
               height: 1.5,
               color: AppColors.subtitle,
@@ -273,7 +266,7 @@ class _AllSetBanner extends StatelessWidget {
                   SizedBox(height: 4 * s),
                   Text(
                     "It's part of your mind now. You can find it anytime with a simple question.",
-                    style: AppTypography.vazirmatn(
+                    style: AppTypography.dosis(
                       size: 13 * s,
                       height: 1.4,
                       color: AppColors.subtitle,

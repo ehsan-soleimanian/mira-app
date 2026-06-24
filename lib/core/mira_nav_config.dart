@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import 'package:mira_app/components/molecules/nav_bar_shell_painter.dart';
+import 'package:mira_app/theme/home_screen_tokens.dart';
 import 'package:mira_app/theme/mira_ear_nav_tokens.dart';
 import 'package:mira_app/theme/nav_bar_tokens.dart';
 
@@ -25,5 +28,30 @@ abstract final class MiraNavConfig {
       MiraNavVariant.earNotch =>
         MiraEarNavTokens.totalHeight * scale,
     };
+  }
+
+  /// Distance from the home body bottom to the hint tooltip bottom edge.
+  static double homeTipBottomInset(double screenWidth) {
+    final scale = screenWidth / NavBarTokens.designWidth;
+    return switch (variant) {
+      MiraNavVariant.cradle => _cradleTipBottomInset(screenWidth, scale),
+      MiraNavVariant.earNotch => _earNotchTipBottomInset(scale),
+    };
+  }
+
+  static double _cradleTipBottomInset(double screenWidth, double scale) {
+    final barH = NavBarTokens.designHeight * scale;
+    final barSize = Size(screenWidth, barH);
+    final micButtonSize = MiraEarNavTokens.fabSize * scale;
+    final fabCenter = NavBarPathBuilder.fabCenter(barSize, scale);
+    final fabTop = fabCenter.dy - micButtonSize / 2;
+    final micProtrusion = fabTop < 0 ? -fabTop : 0.0;
+    return micProtrusion + HomeScreenTokens.tipGapAboveMic * scale;
+  }
+
+  static double _earNotchTipBottomInset(double scale) {
+    final fabTop = MiraEarNavTokens.fabTop * scale;
+    final fabSize = MiraEarNavTokens.fabSize * scale;
+    return fabTop + fabSize + HomeScreenTokens.tipGapAboveMic * scale;
   }
 }

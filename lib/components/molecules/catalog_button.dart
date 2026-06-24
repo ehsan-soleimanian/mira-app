@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/screens/catalog/component_catalog_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
 
@@ -10,9 +11,7 @@ class CatalogButton extends StatelessWidget {
   final double size;
 
   void _openCatalog(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const ComponentCatalogScreen()),
-    );
+    Navigator.of(context).pushMira((_) => const ComponentCatalogScreen());
   }
 
   @override

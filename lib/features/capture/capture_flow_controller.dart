@@ -327,7 +327,7 @@ class CaptureFlowController extends ChangeNotifier {
           if (presentation == _CapturePresentation.voiceRoute) {
             _enterVoiceFailure(
               detail.length > 120
-                  ? 'خطا در پردازش صدا. دوباره امتحان کن.'
+                  ? 'Voice processing failed. Try again.'
                   : detail,
             );
           } else if (sheetContext != null && sheetContext.mounted) {

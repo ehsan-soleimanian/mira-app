@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
-import 'package:mira_app/components/atoms/mira_sphere.dart';
-import 'package:mira_app/components/molecules/mira_back_button.dart';
+import 'package:mira_app/core/mira_navigation.dart';
+import 'package:mira_app/components/atoms/shimmer_text.dart';
+import 'package:mira_app/components/organisms/mira_hero_orb.dart';
+import 'package:mira_app/components/molecules/mira_page_header.dart';
 import 'package:mira_app/components/molecules/mira_inner_shadow_painter.dart';
 import 'package:mira_app/components/molecules/mira_stop_button.dart';
 import 'package:mira_app/components/organisms/mira_composer_bar.dart';
@@ -13,6 +15,7 @@ import 'package:mira_app/features/capture/media/capture_media_picker.dart';
 import 'package:mira_app/features/capture/utils/capture_errors.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
+import 'package:mira_app/features/capture/widgets/capture_chat_widgets.dart';
 import 'package:mira_app/features/capture/widgets/capture_link_sheet.dart';
 import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
 import 'package:mira_app/features/graph/widgets/memory_graph_icon_button.dart';
@@ -21,6 +24,7 @@ import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/composer_tokens.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
+import 'package:mira_app/theme/page_header_tokens.dart';
 import 'package:mira_app/theme/stop_button_tokens.dart';
 
 enum _CaptureWorkflowMode { compose, listening, conversation }
@@ -398,10 +402,8 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   }
 
   void _openMemoryGraph({String? highlightNodeId}) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MemoryGraphScreen(highlightNodeId: highlightNodeId),
-      ),
+    Navigator.of(context).pushMira(
+      (_) => MemoryGraphScreen(highlightNodeId: highlightNodeId),
     );
   }
 
@@ -424,70 +426,77 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         bottom: false,
-        child: Stack(
+        child: Column(
           children: [
-            Positioned.fill(
-              child: _mode == _CaptureWorkflowMode.listening
-                  ? _ListeningContent(
-                      scale: s,
-                      duration: _listeningDuration,
-                      onStop: () {
-                        _stopListening();
-                      },
-                    )
-                  : _WorkflowContent(
-                      scale: s,
-                      mode: _mode,
-                      prompt: _lastPrompt,
-                      proposal: _proposal,
-                      answer: _answer,
-                      statusText: _statusText,
-                      memorySaved: _memorySaved,
-                      pendingApproval: _pendingApproval,
-                      busy: _busy,
-                      onSave: _approveCurrentCapture,
-                      onCancel: _dismissCurrentCapture,
-                      onMemoryToggle: _handleMemoryToggle,
-                    ),
-            ),
             _WorkflowHeader(
-              scale: s,
               memoryActive: _memorySaved || _pendingApproval,
               onGraphTap: _openMemoryGraph,
             ),
-            if (_mode != _CaptureWorkflowMode.listening)
-              Positioned(
-                left: 24 * s,
-                right: 24 * s,
-                bottom: keyboardInset + bottomInset + 20 * s,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_showAttachMenu) ...[
-                      _AttachmentMenu(
-                        scale: s,
-                        onSelected: _submitAttachment,
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: _mode == _CaptureWorkflowMode.listening
+                        ? _ListeningContent(
+                            scale: s,
+                            duration: _listeningDuration,
+                            belowPageHeader: true,
+                            onStop: () {
+                              _stopListening();
+                            },
+                          )
+                        : _WorkflowContent(
+                            scale: s,
+                            mode: _mode,
+                            prompt: _lastPrompt,
+                            proposal: _proposal,
+                            answer: _answer,
+                            statusText: _statusText,
+                            memorySaved: _memorySaved,
+                            pendingApproval: _pendingApproval,
+                            busy: _busy,
+                            belowPageHeader: true,
+                            onSave: _approveCurrentCapture,
+                            onCancel: _dismissCurrentCapture,
+                            onMemoryToggle: _handleMemoryToggle,
+                          ),
+                  ),
+                  if (_mode != _CaptureWorkflowMode.listening)
+                    Positioned(
+                      left: 24 * s,
+                      right: 24 * s,
+                      bottom: keyboardInset + bottomInset + 20 * s,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_showAttachMenu) ...[
+                            _AttachmentMenu(
+                              scale: s,
+                              onSelected: _submitAttachment,
+                            ),
+                            SizedBox(height: 8 * s),
+                          ],
+                          MiraComposerBar(
+                            controller: _controller,
+                            scale: s,
+                            onAdd: _toggleAttachMenu,
+                            onMicTap: () {
+                              _startListening();
+                            },
+                            onSend: (value) {
+                              _submitText(value);
+                            },
+                            onSubmitted: (value) {
+                              _submitText(value);
+                            },
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 8 * s),
-                    ],
-                    MiraComposerBar(
-                      controller: _controller,
-                      scale: s,
-                      onAdd: _toggleAttachMenu,
-                      onMicTap: () {
-                        _startListening();
-                      },
-                      onSend: (value) {
-                        _submitText(value);
-                      },
-                      onSubmitted: (value) {
-                        _submitText(value);
-                      },
                     ),
-                  ],
-                ),
+                ],
               ),
+            ),
           ],
         ),
       ),
@@ -497,33 +506,20 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
 
 class _WorkflowHeader extends StatelessWidget {
   const _WorkflowHeader({
-    required this.scale,
     required this.memoryActive,
     required this.onGraphTap,
   });
 
-  final double scale;
   final bool memoryActive;
   final VoidCallback onGraphTap;
 
   @override
   Widget build(BuildContext context) {
-    final s = scale;
-
-    return Positioned(
-      top: 24 * s,
-      left: 24 * s,
-      right: 24 * s,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          MiraBackButton(size: 48 * s),
-          MemoryGraphIconButton(
-            size: 48 * s,
-            active: memoryActive,
-            onTap: onGraphTap,
-          ),
-        ],
+    return MiraPageHeader(
+      trailing: MemoryGraphIconButton(
+        size: PageHeaderTokens.actionSize,
+        active: memoryActive,
+        onTap: onGraphTap,
       ),
     );
   }
@@ -543,6 +539,7 @@ class _WorkflowContent extends StatelessWidget {
     required this.onSave,
     required this.onCancel,
     required this.onMemoryToggle,
+    this.belowPageHeader = false,
   });
 
   final double scale;
@@ -554,6 +551,7 @@ class _WorkflowContent extends StatelessWidget {
   final bool memorySaved;
   final bool pendingApproval;
   final bool busy;
+  final bool belowPageHeader;
   final VoidCallback onSave;
   final VoidCallback onCancel;
   final VoidCallback onMemoryToggle;
@@ -563,8 +561,16 @@ class _WorkflowContent extends StatelessWidget {
     final s = scale;
 
     if (mode == _CaptureWorkflowMode.conversation) {
+      final topInset = belowPageHeader
+          ? HomeScreenTokens.subtitleYBelowHeader(s) + 24 * s
+          : HomeScreenTokens.subtitleY(s) + 24 * s;
       return Padding(
-        padding: EdgeInsets.fromLTRB(24 * s, 96 * s, 24 * s, 120 * s),
+        padding: EdgeInsets.fromLTRB(
+          24 * s,
+          topInset,
+          24 * s,
+          120 * s,
+        ),
         child: _ConversationView(
           scale: s,
           prompt: prompt ?? 'Call John about the contract',
@@ -583,14 +589,11 @@ class _WorkflowContent extends StatelessWidget {
 
     return Stack(
       children: [
+        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader),
         Positioned(
-          top: 210 * s,
-          left: 0,
-          right: 0,
-          child: Center(child: MiraSphere(size: 145 * s)),
-        ),
-        Positioned(
-          top: 412 * s,
+          top: belowPageHeader
+              ? HomeScreenTokens.headlineYBelowHeader(s)
+              : HomeScreenTokens.headlineY(s),
           left: 0,
           right: 0,
           child: Text(
@@ -600,7 +603,9 @@ class _WorkflowContent extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: 472 * s,
+          top: belowPageHeader
+              ? HomeScreenTokens.subtitleYBelowHeader(s)
+              : HomeScreenTokens.subtitleY(s),
           left: 0,
           right: 0,
           child: Text(
@@ -625,11 +630,17 @@ class _ListeningContent extends StatelessWidget {
     required this.scale,
     required this.duration,
     required this.onStop,
+    this.belowPageHeader = false,
   });
 
   final double scale;
   final Duration duration;
   final VoidCallback onStop;
+  final bool belowPageHeader;
+
+  double _headlineTop(double s) => belowPageHeader
+      ? HomeScreenTokens.headlineYBelowHeader(s)
+      : HomeScreenTokens.headlineY(s);
 
   @override
   Widget build(BuildContext context) {
@@ -637,20 +648,15 @@ class _ListeningContent extends StatelessWidget {
 
     return Stack(
       children: [
+        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader),
         Positioned(
-          top: 74 * s,
-          left: 0,
-          right: 0,
-          child: Center(child: MiraSphere(size: 145 * s)),
-        ),
-        Positioned(
-          top: 214 * s,
+          top: _headlineTop(s),
           left: 0,
           right: 0,
           child: Column(
             children: [
               Text(
-                'Im listening...',
+                "I'm listening...",
                 textAlign: TextAlign.center,
                 style: AppTypography.dosis(
                   size: 34 * s,
@@ -660,9 +666,9 @@ class _ListeningContent extends StatelessWidget {
               ),
               SizedBox(height: 12 * s),
               Text(
-                'Speak naturally Mira is taking notes',
+                'Speak naturally — Mira is taking notes',
                 textAlign: TextAlign.center,
-                style: AppTypography.vazirmatn(
+                style: AppTypography.dosis(
                   size: 16 * s,
                   color: AppColors.subtitle,
                 ),
@@ -757,36 +763,40 @@ class _ConversationView extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return CaptureConversationColumn(
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: _ChatBubble(scale: s, text: prompt, maxWidth: 252 * s),
-        ),
+        CaptureUserBubble(scale: s, text: prompt),
         SizedBox(height: 22 * s),
-        Text(
-          "Saved to your memory  If this is wrong, tell me. I'll\nchange it.",
-          style: TextStyle(fontSize: 16 * s, height: 1.2, color: Colors.black),
+        CaptureMiraMessage(
+          scale: s,
+          text:
+              "Saved to your memory. If this is wrong, tell me. I'll change it.",
         ),
         SizedBox(height: 10 * s),
-        _MemoryToggle(scale: s, saved: memorySaved, onTap: onMemoryToggle),
+        CaptureMemoryToggle(
+          scale: s,
+          saved: memorySaved,
+          onTap: onMemoryToggle,
+        ),
         SizedBox(height: 30 * s),
-        Align(
-          alignment: Alignment.centerRight,
-          child: _ChatBubble(
-            scale: s,
-            text: "It's not a task. It's a\nreminder for tomorrow.",
-            maxWidth: 210 * s,
-          ),
+        CaptureUserBubble(
+          scale: s,
+          text: "It's not a task. It's a reminder for tomorrow.",
+          maxWidth: 210,
         ),
         SizedBox(height: 20 * s),
-        Text(
-          'Got it. I updated it\n"Call John about the contract — tomorrow"',
-          style: TextStyle(fontSize: 15 * s, height: 1.2, color: Colors.black),
+        CaptureMiraMessage(
+          scale: s,
+          fontSize: 15,
+          text:
+              'Got it. I updated it\n"Call John about the contract — tomorrow"',
         ),
         SizedBox(height: 10 * s),
-        _MemoryToggle(scale: s, saved: memorySaved, onTap: onMemoryToggle),
+        CaptureMemoryToggle(
+          scale: s,
+          saved: memorySaved,
+          onTap: onMemoryToggle,
+        ),
       ],
     );
   }
@@ -826,55 +836,33 @@ class _DynamicConversationBody extends StatelessWidget {
     final proposalSummary = proposal?['summary']?.toString();
     final hasProposal = proposalTitle != null || proposalSummary != null;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return CaptureConversationColumn(
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: _ChatBubble(scale: s, text: prompt, maxWidth: 252 * s),
-        ),
+        CaptureUserBubble(scale: s, text: prompt),
         SizedBox(height: 22 * s),
         if (hasProposal) ...[
           if (proposalTitle != null)
-            Align(
-              alignment: Alignment.centerRight,
-              child: _ChatBubble(
-                scale: s,
-                text: proposalTitle,
-                maxWidth: 286 * s,
-              ),
-            ),
-          if (proposalTitle != null) SizedBox(height: 20 * s),
-          Text(
-            memorySaved
-                ? "Saved to your memory  If this is wrong, tell me. I'll\nchange it."
-                : "Save this to your memory  If this is wrong, tell me. I'll\nchange it.",
-            style: TextStyle(
-              fontSize: 16 * s,
-              height: 1.2,
-              color: Colors.black,
-            ),
+            CaptureMiraMessage(scale: s, text: proposalTitle),
+          if (proposalTitle != null && proposalSummary != null)
+            SizedBox(height: 16 * s),
+          if (proposalSummary != null)
+            CaptureMiraMessage(scale: s, text: proposalSummary),
+          SizedBox(height: 20 * s),
+          CaptureMiraMessage(
+            scale: s,
+            text: memorySaved
+                ? "Saved to your memory. If this is wrong, tell me. I'll change it."
+                : "Save this to your memory. If this is wrong, tell me. I'll change it.",
           ),
           SizedBox(height: 10 * s),
-          _MemoryToggle(
+          CaptureMemoryToggle(
             scale: s,
             saved: memorySaved || pendingApproval,
             onTap: onMemoryToggle,
           ),
-          if (proposalSummary != null) ...[
-            SizedBox(height: 30 * s),
-            Align(
-              alignment: Alignment.centerRight,
-              child: _ChatBubble(
-                scale: s,
-                text: proposalSummary,
-                maxWidth: 230 * s,
-              ),
-            ),
-          ],
           if (pendingApproval) ...[
             SizedBox(height: 28 * s),
-            _ApprovalActions(
+            CaptureApprovalActions(
               scale: s,
               busy: busy,
               onSave: onSave,
@@ -882,159 +870,31 @@ class _DynamicConversationBody extends StatelessWidget {
             ),
           ],
         ] else if (answer != null) ...[
-          Text(
-            answer!,
-            style: TextStyle(
-              fontSize: 16 * s,
-              height: 1.25,
-              color: Colors.black,
-            ),
-          ),
+          CaptureMiraMessage(scale: s, text: answer!),
         ] else ...[
-          Text(
-            statusText ?? 'Mira is processing...',
-            style: TextStyle(
-              fontSize: 16 * s,
-              height: 1.25,
+          if (isMiraThinkingStatus(statusText))
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ShimmerText(
+                text: statusText ?? 'Mira is thinking...',
+                style: TextStyle(
+                  fontSize: 16 * s,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25,
+                  letterSpacing: -0.2,
+                ),
+                baseColor: const Color(0xFF9A9AA1),
+                highlightColor: const Color(0xFFF8F8FA),
+              ),
+            )
+          else
+            CaptureMiraMessage(
+              scale: s,
+              text: statusText ?? 'Mira is processing...',
               color: AppColors.textSecondary,
             ),
-          ),
         ],
       ],
-    );
-  }
-}
-
-class _ApprovalActions extends StatelessWidget {
-  const _ApprovalActions({
-    required this.scale,
-    required this.busy,
-    required this.onSave,
-    required this.onCancel,
-  });
-
-  final double scale;
-  final bool busy;
-  final VoidCallback onSave;
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = scale;
-
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 38 * s,
-            child: ElevatedButton(
-              onPressed: busy ? null : onSave,
-              style: ElevatedButton.styleFrom(
-                elevation: 0,
-                backgroundColor: const Color(0xFF0B399D),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8 * s),
-                ),
-              ),
-              child: Text('Save', style: TextStyle(fontSize: 14 * s)),
-            ),
-          ),
-        ),
-        SizedBox(width: 8 * s),
-        Expanded(
-          child: SizedBox(
-            height: 38 * s,
-            child: OutlinedButton(
-              onPressed: busy ? null : onCancel,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF0B399D),
-                side: const BorderSide(color: Color(0xFF0B399D)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8 * s),
-                ),
-              ),
-              child: Text('cancel', style: TextStyle(fontSize: 14 * s)),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({
-    required this.scale,
-    required this.text,
-    required this.maxWidth,
-  });
-
-  final double scale;
-  final String text;
-  final double maxWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = scale;
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16 * s),
-        ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16 * s, vertical: 14 * s),
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 16 * s,
-              height: 1.18,
-              color: Colors.black,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MemoryToggle extends StatelessWidget {
-  const _MemoryToggle({
-    required this.scale,
-    required this.saved,
-    required this.onTap,
-  });
-
-  final double scale;
-  final bool saved;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = scale;
-    final color = saved ? AppColors.micBlueNav : const Color(0xFF9B2C2C);
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            saved ? Icons.verified_outlined : Icons.cancel_outlined,
-            size: 16 * s,
-            color: color,
-          ),
-          SizedBox(width: 5 * s),
-          Text(
-            saved ? 'save to memory' : 'Remove memory',
-            style: TextStyle(fontSize: 14 * s, color: color),
-          ),
-        ],
-      ),
     );
   }
 }

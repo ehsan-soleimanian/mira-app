@@ -34,7 +34,7 @@ class MiraComposerBar extends StatelessWidget {
     final sendSize = ComposerTokens.sendButtonSize * s;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         MiraAddButton(size: addSize, onTap: onAdd),
         SizedBox(width: MiraSpacing.sm * s),
@@ -48,6 +48,9 @@ class MiraComposerBar extends StatelessWidget {
             height: inputH,
             radius: inputR,
             sendButtonSize: sendSize,
+            minLines: 1,
+            maxLines: 6,
+            textInputAction: TextInputAction.newline,
           ),
         ),
       ],

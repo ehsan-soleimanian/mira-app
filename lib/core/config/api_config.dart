@@ -15,6 +15,8 @@ class ApiConfig {
 
   static String _devOverride = '';
 
+  static bool get hasExplicitBaseUrl => _defineBase.isNotEmpty;
+
   /// Load persisted dev URL before creating [ApiClient].
   static Future<void> init() async {
     if (!kDebugMode) return;
@@ -24,8 +26,8 @@ class ApiConfig {
 
   static String get baseUrl {
     if (kReleaseMode) return _normalize(_productionBase);
-    if (_devOverride.isNotEmpty) return _normalize(_devOverride);
     if (_defineBase.isNotEmpty) return _normalize(_defineBase);
+    if (_devOverride.isNotEmpty) return _normalize(_devOverride);
     if (Platform.isAndroid) return 'http://10.0.2.2:8000';
     return 'http://localhost:8000';
   }

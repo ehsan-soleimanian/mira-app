@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/atoms/mira_sphere.dart';
 import 'package:mira_app/components/molecules/mira_back_button.dart';
+import 'package:mira_app/components/molecules/mira_page_header.dart';
 import 'package:mira_app/components/molecules/mira_button.dart';
 import 'package:mira_app/components/molecules/mira_input_field.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
@@ -173,6 +174,7 @@ class _OnboardingFirstCaptureScreenState
       backgroundColor: OnboardingTokens.background,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(
@@ -181,14 +183,10 @@ class _OnboardingFirstCaptureScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(hPad, 12, hPad, 0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: IgnorePointer(
-                      ignoring: _recording || _busy,
-                      child: MiraBackButton(onTap: widget.onBack),
-                    ),
+                MiraPageHeader(
+                  leading: IgnorePointer(
+                    ignoring: _recording || _busy,
+                    child: MiraBackButton(onTap: widget.onBack),
                   ),
                 ),
                 Expanded(

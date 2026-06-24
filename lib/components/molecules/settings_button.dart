@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/components/molecules/neumorphic_icon_button.dart';
+import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/screens/settings/settings_screen.dart';
 import 'package:mira_app/theme/neumorphic_tokens.dart';
 
@@ -19,9 +20,7 @@ class SettingsButton extends StatelessWidget {
   final NeumorphicStyle style;
 
   void _openSettings(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-    );
+    Navigator.of(context).pushMira((_) => const SettingsScreen());
   }
 
   @override

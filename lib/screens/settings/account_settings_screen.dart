@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/components.dart';
+import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/features/auth/auth_gate.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 import 'package:mira_app/screens/settings/settings_widgets.dart';
@@ -105,7 +106,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     await AppScope.servicesOf(context).authRepository.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const AuthGate()),
+      miraRoute((_) => const AuthGate()),
       (_) => false,
     );
   }

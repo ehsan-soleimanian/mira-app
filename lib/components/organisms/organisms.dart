@@ -1,3 +1,4 @@
+export 'mira_hero_orb.dart';
 export 'app_bottom_shell.dart';
 export 'daily_brief_header.dart';
 export 'home_hero.dart';

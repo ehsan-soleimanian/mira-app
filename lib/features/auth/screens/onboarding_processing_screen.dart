@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/atoms/mira_sphere.dart';
-import 'package:mira_app/components/molecules/mira_back_button.dart';
+import 'package:mira_app/components/molecules/mira_page_header.dart';
 import 'package:mira_app/components/molecules/mira_button.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
 import 'package:mira_app/features/auth/widgets/auth_step_widgets.dart';
@@ -117,16 +117,13 @@ class _BlurredCaptureBackdrop extends StatelessWidget {
       child: ColoredBox(
         color: OnboardingTokens.background,
         child: SafeArea(
+          bottom: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: MiraBackButton(),
-                ),
-                const SizedBox(height: 8),
+                const MiraPageHeader(),
                 const Center(
                   child: MiraSphere(size: OnboardingTokens.sphereSize),
                 ),

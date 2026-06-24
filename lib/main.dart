@@ -37,16 +37,22 @@ Future<void> main() async {
   final services = MiraServices.create();
 
   if (kDebugMode) {
-    final resolved = await ApiEndpointResolver.probeFirstReachable();
-    if (resolved != null) {
-      await ApiConfig.setDevBaseUrl(resolved);
-      services.apiClient.setBaseUrl(resolved);
-      debugPrint('MIRA API auto-selected: $resolved');
+    if (ApiConfig.hasExplicitBaseUrl) {
+      final url = ApiConfig.baseUrl;
+      services.apiClient.setBaseUrl(url);
+      debugPrint('MIRA API: $url');
     } else {
-      debugPrint(
-        'MIRA API probe failed — set URL on login screen. '
-        'Tried: ${ApiConfig.probeCandidates.join(', ')}',
-      );
+      final resolved = await ApiEndpointResolver.probeFirstReachable();
+      if (resolved != null) {
+        await ApiConfig.setDevBaseUrl(resolved);
+        services.apiClient.setBaseUrl(resolved);
+        debugPrint('MIRA API auto-selected: $resolved');
+      } else {
+        debugPrint(
+          'MIRA API probe failed — set URL on login screen. '
+          'Tried: ${ApiConfig.probeCandidates.join(', ')}',
+        );
+      }
     }
   }
 

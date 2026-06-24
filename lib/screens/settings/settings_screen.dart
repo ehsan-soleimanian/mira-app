@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/features/auth/auth_gate.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 import 'package:mira_app/models/api/settings_models.dart';
 import 'package:mira_app/screens/settings/account_settings_screen.dart';
+import 'package:mira_app/screens/settings/connector_settings_screen.dart';
 import 'package:mira_app/screens/settings/help_support_screen.dart';
 import 'package:mira_app/screens/settings/notification_settings_screen.dart';
 import 'package:mira_app/screens/settings/privacy_settings_screen.dart';
@@ -68,14 +70,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _error = null;
     });
     await _load();
-  }
-
-  Future<void> _copy(String value) async {
-    await Clipboard.setData(ClipboardData(text: value));
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Copied')));
   }
 
   Future<void> _logout() async {
@@ -166,7 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await authRepository.logout();
     if (!mounted) return;
     navigator.pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const AuthGate()),
+      miraRoute((_) => const AuthGate()),
       (_) => false,
     );
   }
@@ -201,28 +195,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         inviteCode: _inviteCode,
         miraLink: _miraLink,
         onRefresh: _refresh,
-        onCopyInvite: () => _copy(_inviteCode),
-        onCopyLink: () => _copy(_miraLink),
-        onAccount: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => AccountSettingsScreen(initialUser: _user),
-          ),
+        onAccount: () => Navigator.of(context).pushMira(
+          (_) => AccountSettingsScreen(initialUser: _user),
         ),
-        onNotifications: () => Navigator.of(context).push(
-          MaterialPageRoute<UserSettings>(
-            builder: (_) =>
-                NotificationSettingsScreen(initialSettings: _settings!),
-          ),
+        onNotifications: () => Navigator.of(context).pushMira(
+          (_) => NotificationSettingsScreen(initialSettings: _settings!),
         ),
-        onPrivacy: () => Navigator.of(context).push(
-          MaterialPageRoute<UserSettings>(
-            builder: (_) => PrivacySettingsScreen(initialSettings: _settings!),
-          ),
+        onConnectors: () => Navigator.of(context).pushMira(
+          (_) => const ConnectorSettingsScreen(),
         ),
-        onAbout: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => HelpSupportScreen(user: _user),
-          ),
+        onPrivacy: () => Navigator.of(context).pushMira(
+          (_) => PrivacySettingsScreen(initialSettings: _settings!),
+        ),
+        onAbout: () => Navigator.of(context).pushMira(
+          (_) => HelpSupportScreen(user: _user),
         ),
         onLogout: _logout,
       );
@@ -231,7 +217,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        top: false,
         bottom: false,
         child: Column(
           children: [
@@ -254,10 +239,9 @@ class _SettingsContent extends StatelessWidget {
     required this.inviteCode,
     required this.miraLink,
     required this.onRefresh,
-    required this.onCopyInvite,
-    required this.onCopyLink,
     required this.onAccount,
     required this.onNotifications,
+    required this.onConnectors,
     required this.onPrivacy,
     required this.onAbout,
     required this.onLogout,
@@ -268,10 +252,9 @@ class _SettingsContent extends StatelessWidget {
   final String inviteCode;
   final String miraLink;
   final Future<void> Function() onRefresh;
-  final VoidCallback onCopyInvite;
-  final VoidCallback onCopyLink;
   final VoidCallback onAccount;
   final VoidCallback onNotifications;
+  final VoidCallback onConnectors;
   final VoidCallback onPrivacy;
   final VoidCallback onAbout;
   final VoidCallback onLogout;
@@ -328,6 +311,15 @@ class _SettingsContent extends StatelessWidget {
               showBadge: settings.notificationsEnabled,
             ),
           ),
+          FigmaSettingsCard(
+            padding: figmaInsets(context, 16, 31, 28, 31),
+            onTap: onConnectors,
+            child: const _PrimaryTile(
+              icon: Icons.hub_outlined,
+              title: 'Connector Settings',
+              subtitle: 'Gmail, Calendar, Drive and more',
+            ),
+          ),
           const FigmaSettingsSectionLabel('Invite'),
           FigmaSettingsCard(
             padding: figmaInsets(context, 16, 31, 16, 31),
@@ -340,7 +332,7 @@ class _SettingsContent extends StatelessWidget {
                   showChevron: false,
                 ),
                 SizedBox(height: 18 * s),
-                _CopyField(value: inviteCode, onCopy: onCopyInvite),
+                _CopyField(value: inviteCode),
               ],
             ),
           ),
@@ -356,7 +348,7 @@ class _SettingsContent extends StatelessWidget {
                   showChevron: false,
                 ),
                 SizedBox(height: 18 * s),
-                _CopyField(value: miraLink, onCopy: onCopyLink),
+                _CopyField(value: miraLink),
               ],
             ),
           ),
@@ -502,42 +494,71 @@ class _PeachIconBox extends StatelessWidget {
   }
 }
 
-class _CopyField extends StatelessWidget {
-  const _CopyField({required this.value, required this.onCopy});
+class _CopyField extends StatefulWidget {
+  const _CopyField({required this.value});
 
   final String value;
-  final VoidCallback onCopy;
+
+  @override
+  State<_CopyField> createState() => _CopyFieldState();
+}
+
+class _CopyFieldState extends State<_CopyField> {
+  static const _copiedFill = Color(0xFFDFF5E4);
+  static const _copiedBorder = Color(0xFF3D9B5A);
+  static const _defaultFill = Color(0xFFEFF3FF);
+
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.value));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (mounted) setState(() => _copied = false);
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = figmaSettingsScale(context);
-    return Material(
-      color: const Color(0xFFEFF3FF),
-      borderRadius: BorderRadius.circular(13 * s),
-      child: InkWell(
-        onTap: onCopy,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: _copied ? _copiedFill : _defaultFill,
         borderRadius: BorderRadius.circular(13 * s),
-        child: Container(
-          height: 80 * s,
-          padding: EdgeInsets.only(left: 16 * s, right: 28 * s),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  value,
-                  style: GoogleFonts.inter(
-                    fontSize: 29 * s,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textPrimary,
+        border: Border.all(
+          color: _copied ? _copiedBorder : Colors.transparent,
+          width: 1.5 * s,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _copy,
+          borderRadius: BorderRadius.circular(13 * s),
+          child: Container(
+            height: 80 * s,
+            padding: EdgeInsets.only(left: 16 * s, right: 28 * s),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.value,
+                    style: GoogleFonts.inter(
+                      fontSize: 29 * s,
+                      fontWeight: FontWeight.w400,
+                      color: _copied ? _copiedBorder : AppColors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
-              Icon(
-                Icons.copy_rounded,
-                size: 40 * s,
-                color: const Color(0xFF202020),
-              ),
-            ],
+                Icon(
+                  _copied ? Icons.check_rounded : Icons.copy_rounded,
+                  size: 40 * s,
+                  color: _copied ? _copiedBorder : const Color(0xFF202020),
+                ),
+              ],
+            ),
           ),
         ),
       ),

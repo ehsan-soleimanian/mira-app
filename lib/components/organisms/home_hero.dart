@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/components/molecules/hint_bar.dart';
-import 'package:mira_app/features/capture/widgets/capture_processing_sphere.dart';
+import 'package:mira_app/components/organisms/mira_hero_orb.dart';
 import 'package:mira_app/components/molecules/catalog_button.dart';
 import 'package:mira_app/components/molecules/settings_button.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
+import 'package:mira_app/theme/page_header_tokens.dart';
 
 /// Home hero stack — sphere, headline, subtitle, tip (Figma 692:4127).
 class HomeHero extends StatelessWidget {
@@ -20,29 +21,21 @@ class HomeHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = scale;
-    final width = MediaQuery.sizeOf(context).width;
 
     return Stack(
       clipBehavior: Clip.none,
       children: [
         Positioned(
-          top: HomeScreenTokens.settingsTop * s,
-          left: HomeScreenTokens.catalogLeft * s,
-          child: CatalogButton(size: HomeScreenTokens.settingsSize * s),
+          top: PageHeaderTokens.topPadding,
+          left: PageHeaderTokens.horizontalPadding,
+          child: CatalogButton(size: PageHeaderTokens.actionSize),
         ),
         Positioned(
-          top: HomeScreenTokens.settingsTop * s,
-          right: HomeScreenTokens.settingsRight * s,
-          child: SettingsButton(size: HomeScreenTokens.settingsSize * s),
+          top: PageHeaderTokens.topPadding,
+          right: PageHeaderTokens.horizontalPadding,
+          child: SettingsButton(size: PageHeaderTokens.actionSize),
         ),
-        Positioned(
-          top: HomeScreenTokens.sphereTop * s,
-          left: (width - HomeScreenTokens.sphereSize * s) / 2,
-          child: CaptureProcessingSphere(
-            size: HomeScreenTokens.sphereSize * s,
-            processing: processing,
-          ),
-        ),
+        MiraHeroOrb(scale: s, processing: processing),
         Positioned(
           top: HomeScreenTokens.headlineTop * s,
           left: 0,

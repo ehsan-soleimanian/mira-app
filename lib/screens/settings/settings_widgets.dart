@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mira_app/components/molecules/mira_back_button.dart';
+import 'package:mira_app/components/molecules/mira_page_header.dart';
 import 'package:mira_app/theme/app_colors.dart';
+import 'package:mira_app/theme/page_header_tokens.dart';
 
 double figmaSettingsScale(BuildContext context) {
   final width = MediaQuery.sizeOf(context).width;
@@ -28,28 +29,7 @@ class FigmaSettingsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = figmaSettingsScale(context);
-    return Padding(
-      padding: EdgeInsets.fromLTRB(48 * s, 50 * s, 48 * s, 34 * s),
-      child: Row(
-        children: [
-          MiraBackButton(onTap: onBack, size: 94 * s),
-          Expanded(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 34 * s,
-                fontWeight: FontWeight.w800,
-                height: 1,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ),
-          SizedBox(width: 94 * s),
-        ],
-      ),
-    );
+    return MiraPageHeader(title: title, onBack: onBack);
   }
 }
 
@@ -128,7 +108,6 @@ class SettingsPageScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : AppColors.textPrimary;
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF1E1E1E) : AppColors.background,
@@ -136,41 +115,22 @@ class SettingsPageScaffold extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: onBack ?? () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                    color: textColor,
-                    tooltip: 'Back',
-                  ),
-                  Expanded(
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: textColor,
+            MiraPageHeader(
+              title: title,
+              onBack: onBack ?? () => Navigator.of(context).pop(),
+              trailing: isSaving
+                  ? const SizedBox(
+                      width: PageHeaderTokens.actionSize,
+                      height: PageHeaderTokens.actionSize,
+                      child: Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 48,
-                    child: isSaving
-                        ? const Center(
-                            child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : null,
-                  ),
-                ],
-              ),
+                    )
+                  : null,
             ),
             Expanded(
               child: ListView(

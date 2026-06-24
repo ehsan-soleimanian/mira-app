@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/atoms/mira_sphere.dart';
+import 'package:mira_app/components/molecules/mira_back_button.dart';
 import 'package:mira_app/components/molecules/mira_input_field.dart';
 import 'package:mira_app/features/auth/models/onboarding_data.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
@@ -15,6 +16,7 @@ import 'package:mira_app/features/capture/widgets/voice_recording_overlay.dart';
 import 'package:mira_app/theme/composer_tokens.dart';
 import 'package:mira_app/theme/mira_spacing.dart';
 import 'package:mira_app/theme/onboarding_tokens.dart';
+import 'package:mira_app/theme/page_header_tokens.dart';
 
 /// Multi-step onboarding wizard - name, role, gender, bio, voice (659:3546).
 class OnboardingScreen extends StatefulWidget {
@@ -590,26 +592,22 @@ class _OnboardingTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(
+        PageHeaderTokens.horizontalPadding,
+        PageHeaderTokens.topPadding,
+        PageHeaderTokens.horizontalPadding,
+        PageHeaderTokens.bottomPadding,
+      ),
       child: Row(
         children: [
           SizedBox(
-            width: 44,
-            height: 44,
+            width: PageHeaderTokens.actionSize,
+            height: PageHeaderTokens.actionSize,
             child: onBack == null
                 ? const SizedBox.shrink()
-                : Material(
-                    color: Colors.transparent,
-                    shape: const CircleBorder(),
-                    child: InkWell(
-                      customBorder: const CircleBorder(),
-                      onTap: disabled ? null : onBack,
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        size: 19,
-                        color: OnboardingTokens.headlineColor,
-                      ),
-                    ),
+                : IgnorePointer(
+                    ignoring: disabled,
+                    child: MiraBackButton(onTap: onBack),
                   ),
           ),
           Expanded(
@@ -618,7 +616,7 @@ class _OnboardingTopBar extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 44,
+            width: PageHeaderTokens.actionSize,
             child: Text(
               '$_displayStep/$_displayTotal',
               textAlign: TextAlign.right,

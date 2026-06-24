@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/components.dart';
 import 'package:mira_app/core/mira_nav_config.dart';
+import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/screens/daily_brief/daily_brief_screen.dart';
+import 'package:mira_app/components/atoms/mira_markdown_text.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/daily_brief_theme.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
@@ -42,23 +44,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openDailyBrief(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const DailyBriefScreen()));
+    Navigator.of(context).pushMira((_) => const DailyBriefScreen());
   }
 
   @override
   Widget build(BuildContext context) {
     final flow = _flow!;
     final width = MediaQuery.sizeOf(context).width;
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final scaler = FigmaScaler(width);
     final s = scaler.scale;
     final answer = flow.lastAnswer;
 
-    final navHeight = MiraNavConfig.barHeightForWidth(width);
-    final tipBottom =
-        bottomInset + navHeight + HomeScreenTokens.tipGapAboveNav * s;
+    final tipBottom = MiraNavConfig.homeTipBottomInset(width);
 
     final showTip = flow.phase == CaptureUiPhase.idle;
     final processing = flow.isProcessing;
@@ -81,7 +78,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.surface,
                   child: Padding(
                     padding: EdgeInsets.all(12 * s),
-                    child: Text(answer, style: TextStyle(fontSize: 14 * s)),
+                    child: MiraMarkdownText(
+                      data: answer,
+                      scale: s,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
               ),
@@ -90,16 +91,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 top: HomeScreenTokens.headlineTop * s - 8 * s,
                 left: 0,
                 right: 0,
-                child: Text(
-                  flow.phase == CaptureUiPhase.uploading
-                      ? 'Uploading voice…'
-                      : 'Thinking…',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15 * s,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.micBlueNav,
-                  ),
+                child: MiraThinkingLabel(
+                  scale: s,
+                  uploading: flow.phase == CaptureUiPhase.uploading,
                 ),
               ),
             if (showTip)

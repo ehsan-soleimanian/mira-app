@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/theme/app_colors.dart';
 
-/// Typography from Figma — Dosis (headline/nav) + Vazirmatn (body).
+/// Typography — Dosis across the English UI.
 abstract final class AppTypography {
   static TextStyle dosis({
     required double size,
@@ -37,14 +37,14 @@ abstract final class AppTypography {
         color: AppColors.headline,
       );
 
-  static TextStyle homeSubtitle(double scale) => GoogleFonts.vazirmatn(
+  static TextStyle homeSubtitle(double scale) => GoogleFonts.dosis(
         fontSize: 18 * scale,
         fontWeight: FontWeight.w400,
         height: 1.0,
         color: AppColors.subtitle,
       );
 
-  static TextStyle tip(double scale) => GoogleFonts.vazirmatn(
+  static TextStyle tip(double scale) => GoogleFonts.dosis(
         fontSize: 14 * scale,
         fontWeight: FontWeight.w400,
         height: 1.0,

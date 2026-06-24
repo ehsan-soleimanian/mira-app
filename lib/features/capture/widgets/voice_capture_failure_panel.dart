@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/components/components.dart';
+import 'package:mira_app/components/organisms/mira_hero_orb.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
@@ -13,6 +14,7 @@ class VoiceCaptureFailurePanel extends StatelessWidget {
     required this.onRetry,
     required this.onWriteText,
     this.busy = false,
+    this.belowPageHeader = false,
   });
 
   final double scale;
@@ -20,24 +22,28 @@ class VoiceCaptureFailurePanel extends StatelessWidget {
   final VoidCallback? onRetry;
   final VoidCallback? onWriteText;
   final bool busy;
+  final bool belowPageHeader;
+
+  double _headlineTop(double s) => belowPageHeader
+      ? HomeScreenTokens.headlineYBelowHeader(s)
+      : HomeScreenTokens.headlineY(s);
+
+  double _subtitleTop(double s) => belowPageHeader
+      ? HomeScreenTokens.subtitleYBelowHeader(s)
+      : HomeScreenTokens.subtitleY(s);
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
     return Stack(
       children: [
+        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader),
         Positioned(
-          top: 88 * s,
-          left: 0,
-          right: 0,
-          child: Center(child: MiraSphere(size: HomeScreenTokens.sphereSize * s)),
-        ),
-        Positioned(
-          top: HomeScreenTokens.headlineTop * s,
+          top: _headlineTop(s),
           left: 24 * s,
           right: 24 * s,
           child: Text(
-            'شنیدم نشد',
+            "Couldn't hear that",
             textAlign: TextAlign.center,
             style: AppTypography.dosis(
               size: 34 * s,
@@ -47,13 +53,13 @@ class VoiceCaptureFailurePanel extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: HomeScreenTokens.subtitleTop * s,
+          top: _subtitleTop(s),
           left: 24 * s,
           right: 24 * s,
           child: Text(
             message,
             textAlign: TextAlign.center,
-            style: AppTypography.vazirmatn(
+            style: AppTypography.dosis(
               size: 16 * s,
               color: AppColors.subtitle,
               height: 1.45,
@@ -80,14 +86,14 @@ class VoiceCaptureFailurePanel extends StatelessWidget {
                   ),
                 ),
               MiraButton(
-                label: 'دوباره بگو',
+                label: 'Try again',
                 size: MiraButtonSize.large,
                 expand: true,
                 onPressed: busy ? null : onRetry,
               ),
               SizedBox(height: 12 * s),
               MiraButton(
-                label: 'با متن بنویس',
+                label: 'Write with text',
                 variant: MiraButtonVariant.outlined,
                 size: MiraButtonSize.large,
                 expand: true,

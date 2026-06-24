@@ -1,34 +1,30 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
-import 'package:mira_app/components/molecules/mira_inner_shadow_painter.dart';
-import 'package:mira_app/theme/mira_ear_nav_tokens.dart';
 import 'package:mira_app/theme/stop_button_tokens.dart';
 
-/// Circular stop button styled like the 741:4986 inset mic well.
-///
-/// Figma `618:3447` - e.g. stop voice recording.
-///
-/// ```dart
-/// MiraStopButton(onTap: _stopRecording);
-/// ```
+/// Glass sky-blue stop disc with a saturated blue square icon.
 class MiraStopButton extends StatelessWidget {
   const MiraStopButton({
     super.key,
     this.size = StopButtonTokens.defaultSize,
     this.onTap,
     this.fillColor = StopButtonTokens.fillColor,
+    this.borderColor = StopButtonTokens.borderColor,
     this.iconColor = StopButtonTokens.iconColor,
   });
 
-  /// Diameter of the circle (excludes the soft shadow margin).
   final double size;
   final VoidCallback? onTap;
   final Color fillColor;
+  final Color borderColor;
   final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
     final square = size * (20 / StopButtonTokens.defaultSize);
     final s = size / StopButtonTokens.defaultSize;
+    final borderWidth = 1.5 * s;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -40,33 +36,46 @@ class MiraStopButton extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: MiraEarNavTokens.shadowDark.withValues(alpha: 0.6),
-              offset: Offset(0, 7 * s),
-              blurRadius: 15 * s,
-            ),
-            BoxShadow(
-              color: MiraEarNavTokens.shadowLight,
-              offset: Offset(-4 * s, -4 * s),
-              blurRadius: 10 * s,
+              color: const Color(0xFF4B8FE8).withValues(alpha: 0.18),
+              offset: Offset(0, 8 * s),
+              blurRadius: 18 * s,
             ),
           ],
         ),
-        child: CustomPaint(
-          painter: MiraInnerShadowPainter(
-            shape: (size) => Path()..addOval(Offset.zero & size),
-            baseColor: fillColor,
-            darkShadow: MiraEarNavTokens.shadowDark.withValues(alpha: 0.75),
-            lightShadow: Colors.white,
-            blur: 9 * s,
-            offset: 6 * s,
-          ),
-          child: Center(
+        child: ClipOval(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14 * s, sigmaY: 14 * s),
             child: Container(
-              width: square,
-              height: square,
               decoration: BoxDecoration(
-                color: iconColor,
-                borderRadius: BorderRadius.circular(square * 0.2),
+                shape: BoxShape.circle,
+                color: fillColor,
+                border: Border.all(color: borderColor, width: borderWidth),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.55),
+                    fillColor,
+                    const Color(0xFF8EC5FF).withValues(alpha: 0.35),
+                  ],
+                ),
+              ),
+              child: Center(
+                child: Container(
+                  width: square,
+                  height: square,
+                  decoration: BoxDecoration(
+                    color: iconColor,
+                    borderRadius: BorderRadius.circular(square * 0.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconColor.withValues(alpha: 0.45),
+                        blurRadius: 6 * s,
+                        offset: Offset(0, 2 * s),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),

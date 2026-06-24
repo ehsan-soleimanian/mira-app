@@ -4,6 +4,7 @@ import 'package:mira_app/components/molecules/prompt_input_bar.dart';
 import 'package:mira_app/components/organisms/mira_bottom_nav.dart';
 import 'package:mira_app/components/organisms/mira_bottom_nav_bar.dart';
 import 'package:mira_app/core/mira_nav_config.dart';
+import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/features/capture/screens/capture_workflow_screen.dart';
@@ -65,11 +66,7 @@ class _AppBottomShellState extends State<AppBottomShell> {
   }
 
   void _openCaptureWorkflow() {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => const CaptureWorkflowScreen(),
-      ),
-    );
+    Navigator.of(context).pushMira((_) => const CaptureWorkflowScreen());
   }
 
   Future<void> _startVoiceRecording() async {
@@ -77,9 +74,7 @@ class _AppBottomShellState extends State<AppBottomShell> {
     if (flow == null) return;
     await flow.startRecording();
     if (!mounted || flow.phase != CaptureUiPhase.recording) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => const VoiceRecordingScreen()),
-    );
+    await Navigator.of(context).pushMira((_) => const VoiceRecordingScreen());
   }
 
   void _openPromptInput() {
