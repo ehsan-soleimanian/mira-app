@@ -1,6 +1,6 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-06-24 (memory graph screen + 768-dim embeddings)
+> Last updated: 2026-06-24 (graph entity normalization + Topic/Person linking)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
 
@@ -237,33 +237,70 @@ Tap the psychology icon (top-right) during capture or voice recording. Tap any n
 
 ## Graph memory & embeddings (backend contract)
 
-Approved captures become **Neo4j graph nodes** with **768-dimensional** vectors (GraphRAG). Flutter consumes results via `GET /graph` and question answers from the capture SSE pipeline — no graph logic in the client.
+Approved captures become **Neo4j graph nodes** with **768-dimensional** vectors (GraphRAG). Flutter consumes results via `GET /graph` and question answers from the capture SSE pipeline — **no graph logic in the client**.
+
+### Entity vs memory (normalization)
+
+The backend splits **what the user said** (memory card) from **canonical entities** (graph hubs):
+
+| Layer | Neo4j `node_type` | Title example | Role |
+|-------|-------------------|---------------|------|
+| **Memory** | `Note`, `Task`, `Preference`, … | «mobbina is 39» | Approved fact the user sees in the graph sheet |
+| **Entity** | `Person`, `Project`, `Topic`, … | `Mobbina`, `Volleyball` | Stable hub; deduped by `(title, node_type)` |
+
+Rules (server-side only — see `mira-backend` `proposal_normalization.py`, `proposal_entities.py`, `graph_entity_sync.py`):
+
+- Long-form **Person** approvals (`raw_extraction.primary.name` ≠ card title) → graph memory becomes **`Note`** + canonical **`Person`** node + `INVOLVES` edge.
+- **Topics** from `topics` / `raw_extraction.topics` (e.g. `volleyball`) → **`Topic`** node + `ABOUT` from memory.
+- **Projects / secondaries** from `related_nodes` / `raw_extraction.secondary` → materialized + `RELATES_TO` / `PART_OF` / `FOUNDEROF` from `relationships[]`.
+- LLM alias fields normalized: `relation`→`relationship`, `target_id`→`target_node_id`, `primary`/`secondary` slots resolved via `GraphLinkContext`.
+- **Mention sync** (bidirectional): new memory ↔ existing entities when title/summary contains entity name (`sync_graph_entity_mentions`).
+- **Inferred semantics**: e.g. «volleyball coach» → `COACH_OF` between `Person` and `Topic` (`infer_semantic_entity_relationships`).
+- Person names are **never** materialized as `Topic` (avoids `Topic Alex` vs `Person Alex`).
 
 ### Approval → graph pipeline
 
 ```
 POST /captures/{id}/approve
+  → resolve_graph_memory_fields (Note vs Person card, canonical titles)
   → primary MemoryNode in Neo4j (+ MariaDB memory_nodes)
-  → secondary entities materialized (Person, Project, …) as extra nodes
-  → edges: PART_OF (Task→Project), INVOLVES (Event→Person), RELATES_TO (default)
-  → embedding: 768-dim text vector (OpenRouter `dimensions=768` or normalized)
+  → materialize entities (Person, Project, Topic, …)
+  → link_proposal_relationships (FOUNDEROF, … from relationships[])
+  → sync_graph_entity_mentions (forward + backfill to older memories)
+  → infer_semantic_entity_relationships (COACH_OF, …)
+  → embedding: 768-dim vector (OpenRouter dimensions=768 or normalized)
 ```
+
+### Edge types (Flutter displays `relationship` as-is)
+
+| Edge | Meaning | Example |
+|------|---------|---------|
+| `INVOLVES` | Memory/event ↔ **Person** | «Call Alex» → Alex |
+| `ABOUT` | Memory ↔ **Topic** | «Love for Volleyball» → Volleyball |
+| `RELATES_TO` | General link | Note ↔ Project |
+| `PART_OF` | Task → Project | Task inside a project |
+| `FOUNDEROF` | Person → Project | Alex → Perfect Peach |
+| `COACH_OF` | Person → Topic | Mobbina → Volleyball |
+
+Neo4j stores types uppercased; duplicate parallel edges are **MERGE**-deduped server-side.
 
 ### Invariants (client must not duplicate)
 
 | Rule | Backend |
 |------|---------|
 | Vector size | **768** — Neo4j `memory_node_embeddings` index |
-| One capture | One **primary** node; `secondary` from LLM → additional nodes on approve |
-| People | `Person` nodes in graph (secondary), linked with `INVOLVES` |
-| Relationships | Resolved by `target_title` + `entity_resolution` flag |
+| One capture | One **primary** memory node; entities are extra nodes on approve |
+| Entity resolution | `find_nodes_by_title(title, node_type=…)` — same title, different types stay distinct |
+| People | Canonical `Person` from `raw.name`; memory card may stay a long `Note` title |
+| Topics | Concrete concepts only (`Volleyball` yes; generic `Age` / `Company` bucket no) |
 | Raw input | Never stored — only approved summaries |
+| Repair | Super Admin `POST /admin/api/users/{id}/repair-graph` rebuilds entities/edges from payloads |
 
 ### GraphRAG (Home questions)
 
 Same composer as capture → intent `question` → vector search over approved nodes → LLM answer. Requires live `embed` route (768-dim) and worker running.
 
-**Ops:** Super Admin → Users explorer shows per-user nodes/edges. Stuck `processing` captures → flush Redis + restart worker (`../mira-backend/AGENTS.md`).
+**Ops:** Super Admin → Users explorer shows per-user nodes/edges. Stuck `processing` captures → flush Redis + restart worker (`../mira-backend/AGENTS.md`). After graph linker changes, run **repair-graph** for affected users.
 
 ---
 
