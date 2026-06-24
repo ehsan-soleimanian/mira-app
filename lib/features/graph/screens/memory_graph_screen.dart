@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/molecules/mira_back_button.dart';
 import 'package:mira_app/features/graph/graph_layout.dart';
+import 'package:mira_app/features/graph/graph_layout_models.dart';
 import 'package:mira_app/features/graph/graph_repository.dart';
 import 'package:mira_app/features/graph/widgets/graph_node_detail_sheet.dart';
 import 'package:mira_app/features/graph/widgets/memory_graph_canvas.dart';
@@ -32,6 +35,14 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
   GraphResponse? _graph;
   Object? _error;
   var _loading = true;
+  Timer? _layoutSaveTimer;
+  var _layoutSaveInFlight = false;
+
+  @override
+  void dispose() {
+    _layoutSaveTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -60,6 +71,23 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
         _error = error;
         _loading = false;
       });
+    }
+  }
+
+  void _scheduleLayoutSave(GraphLayout layout) {
+    _layoutSaveTimer?.cancel();
+    _layoutSaveTimer = Timer(const Duration(seconds: 2), () => _persistLayout(layout));
+  }
+
+  Future<void> _persistLayout(GraphLayout layout) async {
+    if (_layoutSaveInFlight) return;
+    _layoutSaveInFlight = true;
+    try {
+      await _repository!.saveLayout(layout);
+    } catch (_) {
+      // Best-effort — layout restores on next successful fetch.
+    } finally {
+      _layoutSaveInFlight = false;
     }
   }
 
@@ -180,8 +208,11 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
           viewport: Size(constraints.maxWidth, constraints.maxHeight),
           highlightNodeId: widget.highlightNodeId,
         );
+        final savedLayout = GraphLayout.fromResponse(graph.layout);
         return MemoryGraphCanvas(
-          layout: layout,
+          graph: graph,
+          baseLayout: layout,
+          savedLayout: savedLayout,
           scale: s,
           onNodeTap: (node) {
             GraphNodeDetailSheet.show(
@@ -191,6 +222,7 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
               scale: s,
             );
           },
+          onLayoutChanged: _scheduleLayoutSave,
         );
       },
     );

@@ -6,10 +6,11 @@ import 'package:mira_app/components/organisms/mira_bottom_nav_bar.dart';
 import 'package:mira_app/core/mira_nav_config.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
+import 'package:mira_app/features/capture/screens/capture_workflow_screen.dart';
 import 'package:mira_app/features/capture/screens/voice_recording_screen.dart';
 import 'package:mira_app/theme/daily_brief_theme.dart';
 
-/// Shared bottom shell — tap opens capture flow, hold starts voice recording.
+/// Shared bottom shell — tap opens capture workflow, hold starts voice recording.
 class AppBottomShell extends StatefulWidget {
   const AppBottomShell({
     super.key,
@@ -60,14 +61,15 @@ class _AppBottomShellState extends State<AppBottomShell> {
       _openPromptInput();
       return;
     }
-    if (_flow?.phase == CaptureUiPhase.bubbleMenu && _showPromptInput) {
-      _showPromptInput = false;
-    }
     setState(() {});
   }
 
-  void _openBubbleMenu() {
-    _flow?.showBubbleMenu();
+  void _openCaptureWorkflow() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const CaptureWorkflowScreen(),
+      ),
+    );
   }
 
   Future<void> _startVoiceRecording() async {
@@ -81,7 +83,6 @@ class _AppBottomShellState extends State<AppBottomShell> {
   }
 
   void _openPromptInput() {
-    _flow?.hideBubbleMenu();
     setState(() => _showPromptInput = true);
   }
 
@@ -129,7 +130,7 @@ class _AppBottomShellState extends State<AppBottomShell> {
       MiraNavVariant.cradle => MiraBottomNav(
         activeTab: widget.activeTab,
         onHomeTap: widget.onHomeTap,
-        onVoiceShortTap: _openBubbleMenu,
+        onVoiceShortTap: _openCaptureWorkflow,
         onRecordingStart: _startVoiceRecording,
         recordingActive: _recordingActive,
         recordingProgress: _recordingProgress,
@@ -138,7 +139,7 @@ class _AppBottomShellState extends State<AppBottomShell> {
       MiraNavVariant.earNotch => MiraBottomNavBar(
         activeTab: widget.activeTab,
         onItemTap: _onEarItemTap,
-        onMicShortTap: _openBubbleMenu,
+        onMicShortTap: _openCaptureWorkflow,
         onRecordingStart: _startVoiceRecording,
         recordingActive: _recordingActive,
         recordingProgress: _recordingProgress,

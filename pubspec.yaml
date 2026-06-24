@@ -38,6 +38,7 @@ flutter:
     - assets/images/figma/mira_ball.png
     - assets/images/onboarding/welcome_illustration.png
     - assets/images/daily_brief/landscape_thumb.png
+    - dart_defines.json
 
 flutter_launcher_icons:
   android: true

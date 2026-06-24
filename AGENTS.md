@@ -219,14 +219,17 @@ flowchart TD
 
 ## Graph screen (mobile UI)
 
-Radial memory graph — **no extra pub package**; `InteractiveViewer` + `CustomPaint` matches the Figma hub layout better than generic libraries (`graphview` / force-directed packages suit trees, not this star layout).
+Radial memory graph — **no extra pub package**; `InteractiveViewer` + `CustomPaint` + local force physics (`graph_physics_engine.dart`).
 
 | File | Role |
 |------|------|
-| `features/graph/screens/memory_graph_screen.dart` | `GET /graph`, loading / empty / graph body |
-| `features/graph/widgets/memory_graph_canvas.dart` | Nodes, edges, pinch-zoom, tap |
+| `features/graph/screens/memory_graph_screen.dart` | `GET /graph`, debounced `PUT /graph/layout` |
+| `features/graph/widgets/memory_graph_canvas.dart` | Drag nodes, spring physics, pinch-zoom, tap |
+| `features/graph/graph_physics_engine.dart` | Repulsion + edge springs between connected nodes |
 | `features/graph/widgets/graph_node_detail_sheet.dart` | `BackdropFilter` blur + memory cards |
 | `features/graph/widgets/memory_graph_icon_button.dart` | Brain icon in workflow + voice headers |
+
+**Interaction:** drag any node (edges follow); release → physics settles; layout auto-saves to MariaDB (`graph_layouts`) after 2s. `GET /graph` returns optional `layout` with normalized `x`/`y` (0–1) per node.
 
 Tap the psychology icon (top-right) during capture or voice recording. Tap any node → bottom sheet with summary cards and dates. Pass `highlightNodeId` to mark a newly saved memory.
 

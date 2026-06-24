@@ -6,10 +6,15 @@ import 'package:mira_app/core/auth/google_sign_in_config.dart';
 
 /// Native Google Sign-In — returns an ID token for backend verification.
 class GoogleSignInService {
-  GoogleSignInService({GoogleSignIn? signIn})
-    : _signIn =
-          signIn ??
-          GoogleSignIn(
+  GoogleSignInService({GoogleSignIn? signIn}) : _injected = signIn;
+
+  final GoogleSignIn? _injected;
+  GoogleSignIn? _signIn;
+
+  bool get isConfigured => GoogleSignInConfig.isConfigured;
+
+  GoogleSignIn get _client =>
+      _injected ?? (_signIn ??= GoogleSignIn(
             scopes: const ['email', 'profile'],
             serverClientId: GoogleSignInConfig.webClientId.isNotEmpty
                 ? GoogleSignInConfig.webClientId
@@ -20,11 +25,7 @@ class GoogleSignInService {
                     GoogleSignInConfig.iosClientId.isNotEmpty
                 ? GoogleSignInConfig.iosClientId
                 : null,
-          );
-
-  final GoogleSignIn _signIn;
-
-  bool get isConfigured => GoogleSignInConfig.isConfigured;
+          ));
 
   /// Opens the Google account picker and returns a verified ID token, or null if cancelled.
   Future<String?> signInAndGetIdToken() async {
@@ -32,7 +33,7 @@ class GoogleSignInService {
       throw StateError('Google Sign-In client IDs are not configured');
     }
 
-    final account = await _signIn.signIn();
+    final account = await _client.signIn();
     if (account == null) return null;
 
     final auth = await account.authentication;
@@ -43,5 +44,5 @@ class GoogleSignInService {
     return idToken;
   }
 
-  Future<void> signOut() => _signIn.signOut();
+  Future<void> signOut() => _client.signOut();
 }

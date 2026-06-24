@@ -19,6 +19,7 @@ import 'package:mira_app/features/graph/widgets/memory_graph_icon_button.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
+import 'package:mira_app/theme/composer_tokens.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
 import 'package:mira_app/theme/stop_button_tokens.dart';
 
@@ -160,7 +161,17 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       case _AttachmentKind.link:
         return;
     }
-    if (!mounted || picked == null) return;
+    if (!mounted) return;
+    if (picked == null) {
+      _showSnack(
+        kind == _AttachmentKind.camera
+            ? 'دسترسی دوربین داده نشد یا انتخاب لغو شد.'
+            : kind == _AttachmentKind.picture
+            ? 'دسترسی به تصاویر داده نشد یا انتخاب لغو شد.'
+            : 'انتخاب فایل لغو شد.',
+      );
+      return;
+    }
     final media = picked;
 
     if (media.bytes.length > captureMediaMaxBytes) {
@@ -449,9 +460,17 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                 left: 24 * s,
                 right: 24 * s,
                 bottom: keyboardInset + bottomInset + 20 * s,
-                child: Stack(
-                  clipBehavior: Clip.none,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_showAttachMenu) ...[
+                      _AttachmentMenu(
+                        scale: s,
+                        onSelected: _submitAttachment,
+                      ),
+                      SizedBox(height: 8 * s),
+                    ],
                     MiraComposerBar(
                       controller: _controller,
                       scale: s,
@@ -465,17 +484,6 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                       onSubmitted: (value) {
                         _submitText(value);
                       },
-                    ),
-                    Positioned(
-                      left: 0,
-                      bottom: 62 * s,
-                      child: _AttachmentMenu(
-                        visible: _showAttachMenu,
-                        scale: s,
-                        onSelected: (_AttachmentKind kind) {
-                          _submitAttachment(kind);
-                        },
-                      ),
                     ),
                   ],
                 ),
@@ -1091,74 +1099,45 @@ class _InsetTip extends StatelessWidget {
 
 class _AttachmentMenu extends StatelessWidget {
   const _AttachmentMenu({
-    required this.visible,
     required this.scale,
     required this.onSelected,
   });
 
-  final bool visible;
   final double scale;
   final ValueChanged<_AttachmentKind> onSelected;
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
+    final inset = (ComposerTokens.addButtonSize * s - 40 * s) / 2;
 
-    return AnimatedSlide(
-      offset: visible ? Offset.zero : const Offset(0, 0.12),
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
-      child: AnimatedOpacity(
-        opacity: visible ? 1 : 0,
-        duration: const Duration(milliseconds: 160),
-        child: IgnorePointer(
-          ignoring: !visible,
-          child: Container(
-            width: 160 * s,
-            padding: EdgeInsets.symmetric(horizontal: 12 * s, vertical: 12 * s),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14 * s),
-              border: Border.all(color: AppColors.border),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 20 * s,
-                  offset: Offset(0, 8 * s),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _AttachmentItem(
-                  scale: s,
-                  icon: Icons.photo_camera_outlined,
-                  label: 'camera',
-                  onTap: () => onSelected(_AttachmentKind.camera),
-                ),
-                _AttachmentItem(
-                  scale: s,
-                  icon: Icons.add_photo_alternate_outlined,
-                  label: 'picture',
-                  onTap: () => onSelected(_AttachmentKind.picture),
-                ),
-                _AttachmentItem(
-                  scale: s,
-                  icon: Icons.create_new_folder_outlined,
-                  label: 'file',
-                  onTap: () => onSelected(_AttachmentKind.file),
-                ),
-                _AttachmentItem(
-                  scale: s,
-                  icon: Icons.link_rounded,
-                  label: 'link',
-                  onTap: () => onSelected(_AttachmentKind.link),
-                ),
-              ],
-            ),
+    return Padding(
+      padding: EdgeInsets.only(left: inset.clamp(0.0, double.infinity)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _AttachmentItem(
+            scale: s,
+            icon: Icons.photo_camera_outlined,
+            onTap: () => onSelected(_AttachmentKind.camera),
           ),
-        ),
+          _AttachmentItem(
+            scale: s,
+            icon: Icons.add_photo_alternate_outlined,
+            onTap: () => onSelected(_AttachmentKind.picture),
+          ),
+          _AttachmentItem(
+            scale: s,
+            icon: Icons.create_new_folder_outlined,
+            onTap: () => onSelected(_AttachmentKind.file),
+          ),
+          _AttachmentItem(
+            scale: s,
+            icon: Icons.link_rounded,
+            onTap: () => onSelected(_AttachmentKind.link),
+          ),
+        ],
       ),
     );
   }
@@ -1168,44 +1147,22 @@ class _AttachmentItem extends StatelessWidget {
   const _AttachmentItem({
     required this.scale,
     required this.icon,
-    required this.label,
     required this.onTap,
   });
 
   final double scale;
   final IconData icon;
-  final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10 * s),
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 8 * s),
-        child: Row(
-          children: [
-            Container(
-              width: 30 * s,
-              height: 30 * s,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(9 * s),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Icon(icon, size: 18 * s, color: AppColors.textPrimary),
-            ),
-            SizedBox(width: 10 * s),
-            Text(
-              label,
-              style: TextStyle(fontSize: 14 * s, color: AppColors.textPrimary),
-            ),
-          ],
-        ),
-      ),
+    return IconButton(
+      onPressed: onTap,
+      padding: EdgeInsets.zero,
+      constraints: BoxConstraints(minWidth: 40 * s, minHeight: 40 * s),
+      icon: Icon(icon, size: 24 * s, color: AppColors.textPrimary),
     );
   }
 }

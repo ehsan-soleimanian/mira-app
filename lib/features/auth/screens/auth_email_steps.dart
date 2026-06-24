@@ -14,7 +14,6 @@ class AuthEmailStep extends StatelessWidget {
     required this.canSubmit,
     required this.onSubmit,
     required this.onGoogle,
-    this.googleEnabled = false,
   });
 
   final TextEditingController emailController;
@@ -23,7 +22,6 @@ class AuthEmailStep extends StatelessWidget {
   final bool canSubmit;
   final VoidCallback onSubmit;
   final VoidCallback onGoogle;
-  final bool googleEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +61,7 @@ class AuthEmailStep extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          onPressed: loading || !googleEnabled ? null : onGoogle,
+          onPressed: loading ? null : onGoogle,
         ),
         // Apple Sign-In — hidden until Sign in with Apple is implemented.
         // const SizedBox(height: 12),

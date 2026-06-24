@@ -745,7 +745,49 @@ Returns nodes and edges for the authenticated user's memory graph (Neo4j).
 }
 ```
 
+Optional `layout` — saved interactive positions (normalized 0–1) from `PUT /graph/layout`:
+
+```json
+"layout": {
+  "positions": [
+    {"node_id": "660e8400-e29b-41d4-a716-446655440001", "x": 0.42, "y": 0.55}
+  ],
+  "pan_x": 0,
+  "pan_y": 0,
+  "scale": 1.0
+}
+```
+
 **Errors**: `401`
+
+---
+
+### Save graph layout
+`PUT /graph/layout`
+
+Persists node positions (normalized canvas coordinates) and viewport pan/zoom for the interactive graph UI.
+
+**Request**
+```json
+{
+  "positions": [
+    {"node_id": "660e8400-e29b-41d4-a716-446655440001", "x": 0.42, "y": 0.55}
+  ],
+  "pan_x": 12.0,
+  "pan_y": -8.0,
+  "scale": 1.1
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `positions` | array | `x`/`y` in `0.0`–`1.0`; unknown node IDs are ignored |
+| `pan_x` / `pan_y` | float | InteractiveViewer translation |
+| `scale` | float | `0.5`–`3.0` |
+
+**Response** `200` — same shape as `layout` in `GET /graph`
+
+**Errors**: `401` · `422`
 
 ---
 

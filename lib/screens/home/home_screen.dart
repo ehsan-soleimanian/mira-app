@@ -4,9 +4,6 @@ import 'package:mira_app/components/components.dart';
 import 'package:mira_app/core/mira_nav_config.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
-import 'package:mira_app/features/capture/capture_workflow_initial_action.dart';
-import 'package:mira_app/features/capture/screens/capture_workflow_screen.dart';
-import 'package:mira_app/features/capture/widgets/capture_bubble_menu.dart';
 import 'package:mira_app/screens/daily_brief/daily_brief_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/daily_brief_theme.dart';
@@ -50,15 +47,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ).push(MaterialPageRoute<void>(builder: (_) => const DailyBriefScreen()));
   }
 
-  void _openCaptureWorkflow(CaptureWorkflowInitialAction? action) {
-    _flow?.hideBubbleMenu();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => CaptureWorkflowScreen(initialAction: action),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final flow = _flow!;
@@ -71,12 +59,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final navHeight = MiraNavConfig.barHeightForWidth(width);
     final tipBottom =
         bottomInset + navHeight + HomeScreenTokens.tipGapAboveNav * s;
-    final overlayBottom = bottomInset + navHeight + 24 * s;
 
-    final showTip =
-        flow.phase == CaptureUiPhase.idle ||
-        flow.phase == CaptureUiPhase.bubbleMenu;
-    final showBubble = flow.phase == CaptureUiPhase.bubbleMenu;
+    final showTip = flow.phase == CaptureUiPhase.idle;
     final processing = flow.isProcessing;
 
     return Scaffold(
@@ -124,21 +108,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 left: 0,
                 right: 0,
                 child: HomeTipBar(scale: s),
-              ),
-            if (showBubble)
-              Positioned(
-                bottom: overlayBottom + 56 * s,
-                left: 16 * s,
-                right: 16 * s,
-                child: CaptureBubbleMenu(
-                  onTextTap: () => flow.openTextPrompt(),
-                  onLinkTap: () =>
-                      _openCaptureWorkflow(CaptureWorkflowInitialAction.link),
-                  onImageTap: () => _openCaptureWorkflow(
-                    CaptureWorkflowInitialAction.attachMenu,
-                  ),
-                  onDismiss: () => flow.hideBubbleMenu(),
-                ),
               ),
           ],
         ),

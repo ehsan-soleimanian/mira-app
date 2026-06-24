@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
-import 'package:mira_app/core/auth/google_sign_in_config.dart';
 import 'package:mira_app/features/auth/onboarding_flow_step.dart';
 import 'package:mira_app/features/auth/screens/auth_email_steps.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
@@ -19,7 +18,6 @@ class AuthScreen extends StatefulWidget {
     required this.onExit,
     required this.onSuccess,
     this.referralRequired = true,
-    this.googleSignInEnabled = false,
   });
 
   final AuthCredentialsStep step;
@@ -31,9 +29,6 @@ class AuthScreen extends StatefulWidget {
 
   /// From `GET /auth/config` — when false, back from OTP skips invite step.
   final bool referralRequired;
-
-  /// From `GET /auth/config` — backend has Google OAuth client IDs configured.
-  final bool googleSignInEnabled;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -52,13 +47,11 @@ class _AuthScreenState extends State<AuthScreen> {
   String? _devEmailCode;
   bool _wasExistingUser = true;
   bool _referralRequired = true;
-  bool _googleSignInEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _referralRequired = widget.referralRequired;
-    _googleSignInEnabled = widget.googleSignInEnabled;
     _emailController.addListener(_refresh);
     _inviteController.addListener(_refresh);
     _codeController.addListener(_refresh);
@@ -69,9 +62,6 @@ class _AuthScreenState extends State<AuthScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.referralRequired != widget.referralRequired) {
       _referralRequired = widget.referralRequired;
-    }
-    if (oldWidget.googleSignInEnabled != widget.googleSignInEnabled) {
-      _googleSignInEnabled = widget.googleSignInEnabled;
     }
   }
 
@@ -174,20 +164,20 @@ class _AuthScreenState extends State<AuthScreen> {
     final services = AppScope.servicesOf(context);
     if (!services.googleSignInService.isConfigured) {
       _snack(
-        'Google Sign-In is not configured.\n'
-        'Add client IDs via dart_defines.json (see dart_defines.example.json).',
+        'ورود با گوگل پیکربندی نشده.\n'
+        'فایل dart_defines.json را بسازید (نمونه: dart_defines.example.json) '
+        'و اپ را دوباره اجرا کنید.',
       );
       return;
     }
-    if (!_googleSignInEnabled) {
-      _snack('Google Sign-In is not enabled on the server yet.');
-      return;
-    }
-
     setState(() => _loading = true);
     try {
       final idToken = await services.googleSignInService.signInAndGetIdToken();
-      if (!mounted || idToken == null) return;
+      if (!mounted) return;
+      if (idToken == null) {
+        _snack('ورود با گوگل لغو شد.');
+        return;
+      }
 
       final session = await services.authRepository.signInWithGoogle(
         idToken: idToken,
@@ -233,8 +223,6 @@ class _AuthScreenState extends State<AuthScreen> {
             canSubmit: _canSubmit,
             onSubmit: _submit,
             onGoogle: _signInWithGoogle,
-            googleEnabled:
-                _googleSignInEnabled && GoogleSignInConfig.isConfigured,
           ),
         AuthCredentialsStep.invite => AuthInviteStep(
             controller: _inviteController,

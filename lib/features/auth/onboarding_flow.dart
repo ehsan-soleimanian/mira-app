@@ -27,7 +27,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   AuthCredentialsStep _authStep = AuthCredentialsStep.email;
   String _displayName = '';
   bool _referralRequired = true;
-  bool _googleSignInEnabled = false;
   bool _authConfigLoading = false;
   final _authKey = GlobalKey<State<AuthScreen>>();
 
@@ -53,7 +52,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       ).authRepository.fetchAuthConfig();
       if (mounted) {
         _referralRequired = config.referralRequired;
-        _googleSignInEnabled = config.googleSignInEnabled;
       }
     } catch (_) {
       if (mounted) _referralRequired = true;
@@ -142,7 +140,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           key: _authKey,
           step: _authCredentialsStep,
           referralRequired: _referralRequired,
-          googleSignInEnabled: _googleSignInEnabled,
           onStepChanged: _onAuthStepChanged,
           onExit: () => _goTo(OnboardingFlowStep.welcome),
           onSuccess: (wasExistingUser) =>

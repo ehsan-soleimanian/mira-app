@@ -1,9 +1,16 @@
+import 'package:mira_app/features/graph/graph_layout_models.dart';
+
 class GraphResponse {
-  const GraphResponse({required this.nodes, required this.edges});
+  const GraphResponse({
+    required this.nodes,
+    required this.edges,
+    this.layout,
+  });
 
   factory GraphResponse.fromJson(Map<String, dynamic> json) {
     final rawNodes = json['nodes'] as List<dynamic>? ?? const [];
     final rawEdges = json['edges'] as List<dynamic>? ?? const [];
+    final rawLayout = json['layout'];
     return GraphResponse(
       nodes: rawNodes
           .whereType<Map<String, dynamic>>()
@@ -13,11 +20,15 @@ class GraphResponse {
           .whereType<Map<String, dynamic>>()
           .map(GraphEdge.fromJson)
           .toList(),
+      layout: rawLayout is Map<String, dynamic>
+          ? GraphLayoutResponse.fromJson(rawLayout)
+          : null,
     );
   }
 
   final List<GraphNode> nodes;
   final List<GraphEdge> edges;
+  final GraphLayoutResponse? layout;
 }
 
 class GraphNode {

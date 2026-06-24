@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/atoms/figma_svg_icon.dart';
 import 'package:mira_app/core/app_theme_controller.dart';
+import 'package:mira_app/core/auth/google_sign_in_config.dart';
 import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/config/api_endpoint_resolver.dart';
 import 'package:mira_app/core/figma_assets.dart';
@@ -32,6 +33,7 @@ Future<void> main() async {
   ]);
 
   await ApiConfig.init();
+  await GoogleSignInConfig.ensureLoaded();
   final services = MiraServices.create();
 
   if (kDebugMode) {
