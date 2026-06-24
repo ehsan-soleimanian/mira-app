@@ -3,6 +3,7 @@ import 'package:mira_app/features/graph/graph_layout_models.dart';
 /// Graph v2 API models — evidence-first knowledge graph.
 
 enum GraphNodeKind {
+  user,
   entity,
   capture,
   mention,

@@ -166,6 +166,12 @@ class MemoryGraphLayout {
     List<GraphNode> nodes,
     Map<String, Set<String>> adjacency,
   ) {
+    for (final node in nodes) {
+      if (node.kind.toUpperCase() == 'USER') {
+        return node;
+      }
+    }
+
     GraphNode? personHub;
     var bestPersonDegree = -1;
     GraphNode? degreeHub;

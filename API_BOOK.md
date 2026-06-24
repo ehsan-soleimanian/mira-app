@@ -801,6 +801,13 @@ Returns nodes, edges, and optional saved layout for the authenticated user.
   "view": "knowledge",
   "nodes": [
     {
+      "id": "b08d1048-31cf-4f2f-84c8-20264d1f6272",
+      "kind": "USER",
+      "labels": ["User"],
+      "title": "You",
+      "status": "ACTIVE"
+    },
+    {
       "id": "ent_a1b2c3",
       "kind": "ENTITY",
       "entityType": "Person",
@@ -815,7 +822,7 @@ Returns nodes, edges, and optional saved layout for the authenticated user.
       "id": "edge-1",
       "kind": "DOMAIN",
       "type": "HAS_ROLE_RELATION",
-      "sourceId": "ent_user",
+      "sourceId": "b08d1048-31cf-4f2f-84c8-20264d1f6272",
       "targetId": "ent_a1b2c3",
       "confidence": 0.91,
       "evidenceCount": 1
@@ -833,7 +840,7 @@ Returns nodes, edges, and optional saved layout for the authenticated user.
 | Field | Type | Notes |
 |-------|------|-------|
 | `nodes[].id` | string | `ent_*`, `task_*`, `cap_*`, … |
-| `nodes[].kind` | string | `ENTITY`, `TASK`, `CAPTURE`, … |
+| `nodes[].kind` | string | `USER` (knowledge hub), `ENTITY`, `TASK`, `CAPTURE`, … |
 | `nodes[].entityType` | string \| null | `Person`, `Activity`, `Organization`, … |
 | `edges[].type` | string | Materialized rel (`AFFILIATED_WITH`, `HAS_ROLE_RELATION`, …) |
 | `layout` | object \| null | Omitted until first `PUT /v2/graph/layout` |
