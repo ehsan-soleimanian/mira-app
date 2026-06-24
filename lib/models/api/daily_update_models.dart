@@ -21,6 +21,8 @@ class DailyUpdateItem {
     required this.title,
     required this.summary,
     required this.createdAt,
+    this.captureType,
+    this.thumbnailB64,
   });
 
   factory DailyUpdateItem.fromJson(Map<String, dynamic> json) =>
@@ -30,6 +32,8 @@ class DailyUpdateItem {
         title: json['title'] as String? ?? '',
         summary: json['summary'] as String? ?? '',
         createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
+        captureType: json['capture_type'] as String?,
+        thumbnailB64: json['thumbnail_b64'] as String?,
       );
 
   final String id;
@@ -37,4 +41,6 @@ class DailyUpdateItem {
   final String title;
   final String summary;
   final DateTime createdAt;
+  final String? captureType;
+  final String? thumbnailB64;
 }

@@ -47,4 +47,34 @@ void main() {
     expect(items.last, isA<BriefNote>());
     expect((items.last as BriefNote).nodeType, 'Idea');
   });
+
+  test('maps image capture resources into image brief cards', () {
+    final now = DateTime.now();
+    final items = DailyBriefData.fromDailyUpdateItems([
+      DailyUpdateItem(
+        id: 'img-1',
+        nodeType: 'Resource',
+        title: 'pricing.png',
+        summary: 'Screenshot of pricing notes',
+        createdAt: now,
+        captureType: 'image',
+        thumbnailB64: 'aW1hZ2U=',
+      ),
+      DailyUpdateItem(
+        id: 'idea-1',
+        nodeType: 'Idea',
+        title: 'Daily graph highlight',
+        summary: 'Surface the newest graph connection.',
+        createdAt: now,
+      ),
+    ]);
+
+    expect(items, hasLength(2));
+    expect(items.first, isA<BriefImageItem>());
+    final image = items.first as BriefImageItem;
+    expect(image.nodeType, 'Image');
+    expect(image.thumbnailB64, 'aW1hZ2U=');
+    expect(image.imageAsset, isNull);
+    expect(items.last, isA<BriefNote>());
+  });
 }

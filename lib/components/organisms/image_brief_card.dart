@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:mira_app/components/atoms/brief_card_badge.dart';
 import 'package:mira_app/components/molecules/brief_card_shell.dart';
@@ -18,13 +21,7 @@ class ImageBriefCard extends StatelessWidget {
       onTap: onTap,
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Image.asset(
-          item.imageAsset,
-          width: _thumbSize,
-          height: _thumbSize,
-          fit: BoxFit.cover,
-          filterQuality: FilterQuality.high,
-        ),
+        child: _Thumbnail(item: item),
       ),
       badge: BriefCardBadge(
         label: item.nodeType,
@@ -43,5 +40,62 @@ class ImageBriefCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _Thumbnail extends StatelessWidget {
+  const _Thumbnail({required this.item});
+
+  final BriefImageItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final bytes = _decodeThumbnail(item.thumbnailB64);
+    if (bytes != null) {
+      return Image.memory(
+        bytes,
+        width: ImageBriefCard._thumbSize,
+        height: ImageBriefCard._thumbSize,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
+        errorBuilder: (_, __, ___) => _placeholder(),
+      );
+    }
+
+    final asset = item.imageAsset;
+    if (asset != null && asset.isNotEmpty) {
+      return Image.asset(
+        asset,
+        width: ImageBriefCard._thumbSize,
+        height: ImageBriefCard._thumbSize,
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.high,
+      );
+    }
+
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
+    return Container(
+      width: ImageBriefCard._thumbSize,
+      height: ImageBriefCard._thumbSize,
+      color: DailyBriefColors.imageBadgeBg,
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.image_outlined,
+        color: DailyBriefColors.imageBadgeText,
+        size: 28,
+      ),
+    );
+  }
+
+  Uint8List? _decodeThumbnail(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      return base64Decode(raw);
+    } catch (_) {
+      return null;
+    }
   }
 }

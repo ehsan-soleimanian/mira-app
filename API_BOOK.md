@@ -2,7 +2,7 @@
 
 > **For Flutter client (`mira_app`)** — contract to implement HTTP integration.
 > **Source of truth**: `C:\Users\User\Desktop\mira-backend\src\mira\**\router.py`
-> Last updated: 2026-06-23 (production: `api.miramind.io`; admin: `admin.miramind.io`)
+> Last updated: 2026-06-24 (production: `api.miramind.io`; admin: `admin.miramind.io`)
 
 **Base URL (production)**: `https://api.miramind.io`
 
@@ -31,7 +31,37 @@ Authorization: Bearer <access_token>
 { "detail": "Human-readable message" }
 ```
 
-**Content-Type**: `application/json` for all POST bodies.
+**Content-Type**: `application/json` for all POST bodies (except multipart capture routes).
+
+---
+
+## App endpoints (quick reference)
+
+Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
+
+| Method | Path | Flutter consumer | Purpose |
+|--------|------|------------------|---------|
+| `GET` | `/health/ready` | `settings_repository.dart` | Dev connectivity check |
+| `GET` | `/auth/config` | `auth_repository.dart` | Onboarding flags (referral, Google) |
+| `POST` | `/auth/email/start` | `auth_repository.dart` | Start passwordless flow |
+| `POST` | `/auth/invite/verify` | `auth_repository.dart` | Verify invite code |
+| `POST` | `/auth/email/verify` | `auth_repository.dart` | Verify OTP → tokens |
+| `POST` | `/auth/google` | `auth_repository.dart` | Google Sign-In → tokens |
+| `POST` | `/auth/refresh` | `api_client.dart` | Rotate access token |
+| `GET` | `/auth/me` | `auth_repository.dart`, onboarding | Current user profile |
+| `POST` | `/auth/onboarding` | `onboarding_repository.dart` | Complete onboarding wizard |
+| `GET` | `/auth/settings` | `settings_repository.dart` | User preferences |
+| `PATCH` | `/auth/settings` | `settings_repository.dart` | Update preferences |
+| `POST` | `/captures` | `capture_repository.dart` | Text capture |
+| `POST` | `/captures/transcribe` | `capture_repository.dart` | STT only (onboarding) |
+| `POST` | `/captures/voice` | `capture_repository.dart` | Voice capture (home) |
+| `GET` | `/captures/{id}/stream` | `capture_repository.dart` | SSE pipeline events |
+| `POST` | `/captures/{id}/confirm-time` | `capture_repository.dart` | Resolve ambiguous time |
+| `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Save to memory graph |
+| `POST` | `/captures/{id}/dismiss` | `capture_repository.dart` | Discard capture |
+| `GET` | `/graph` | `graph_repository.dart` | Memory graph nodes + edges + layout |
+| `PUT` | `/graph/layout` | `graph_repository.dart` | Persist interactive layout |
+| `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
 
 ---
 
@@ -44,6 +74,8 @@ Authorization: Bearer <access_token>
 5. [Super Admin](#super-admin)
 6. [Flutter integration notes](#flutter-integration-notes)
 7. [Planned — Phase 4+](#planned--phase-4)
+
+App-facing routes summary: [App endpoints (quick reference)](#app-endpoints-quick-reference).
 
 ---
 
@@ -491,6 +523,47 @@ Accepts text, enqueues processing. With worker running, poll `GET /captures/{id}
 
 States: `processing` → `awaiting_approval` (save) · `question_answered` (question) · `clarification_needed` (ambiguous intent or ambiguous time).
 
+**Proposal shape** (when `state` is `awaiting_approval` or `clarification_needed`):
+
+```json
+{
+  "summary": "Task: send deck to Sara by Friday",
+  "node_type": "Task",
+  "title": "Send deck to Sara",
+  "related_nodes": [
+    {"type": "Person", "title": "Sara", "summary": "شخص: Sara"}
+  ],
+  "relationships": [
+    {"target_title": "Beta launch", "relationship": "RELATES_TO", "label": "supports"}
+  ],
+  "deadline": "Friday 15:00",
+  "time": {
+    "raw": "Friday afternoon",
+    "resolved": "Friday 15:00",
+    "ambiguous": false,
+    "suggestion": null
+  },
+  "source": {
+    "capture_type": "image",
+    "filename": "pricing.png",
+    "stored_raw": false
+  }
+}
+```
+
+| Proposal field | Type | Notes |
+|----------------|------|-------|
+| `summary` | string | Short description shown in approval UI |
+| `node_type` | string | `Task`, `Note`, `Idea`, `Event`, `Person`, `Project`, `Resource`, `Reminder`, … |
+| `title` | string | Primary node title |
+| `related_nodes` | array | Secondary entities materialized as extra graph nodes on approve |
+| `relationships` | array | Edges to existing or new nodes (`target_node_id` or `target_title`) |
+| `deadline` | string \| null | Resolved time string when present |
+| `time` | object \| null | Ambiguous-time block — triggers `time_clarification` SSE when `ambiguous: true` |
+| `source` | object | Present for image/file/link captures — **no raw bytes** in API |
+
+On approve, secondary entities from `related_nodes` / `relationships` (e.g. `Person`) become additional Neo4j nodes linked with `INVOLVES`, `PART_OF`, or `RELATES_TO`.
+
 **Errors**: `401` · `422` unsupported type
 
 ---
@@ -723,10 +796,12 @@ Nothing stored. Purges all transient data.
 
 All endpoints require `Authorization: Bearer <access_token>`.
 
+Phase 3 surfaces approved memory from Neo4j. Vectors (768-dim) are used server-side for GraphRAG — not returned in these responses.
+
 ### Memory graph
 `GET /graph`
 
-Returns nodes and edges for the authenticated user's memory graph (Neo4j).
+Returns nodes, edges, and optional saved layout for the authenticated user's memory graph (Neo4j).
 
 **Response** `200`
 ```json
@@ -741,22 +816,32 @@ Returns nodes and edges for the authenticated user's memory graph (Neo4j).
       "created_at": "2026-06-14T12:01:00+00:00"
     }
   ],
-  "edges": []
-}
-```
-
-Optional `layout` — saved interactive positions (normalized 0–1) from `PUT /graph/layout`:
-
-```json
-"layout": {
-  "positions": [
-    {"node_id": "660e8400-e29b-41d4-a716-446655440001", "x": 0.42, "y": 0.55}
+  "edges": [
+    {
+      "id": "edge-uuid",
+      "source_id": "660e8400-e29b-41d4-a716-446655440001",
+      "target_id": "770e8400-e29b-41d4-a716-446655440002",
+      "relationship": "RELATES_TO"
+    }
   ],
-  "pan_x": 0,
-  "pan_y": 0,
-  "scale": 1.0
+  "layout": {
+    "positions": [
+      {"node_id": "660e8400-e29b-41d4-a716-446655440001", "x": 0.42, "y": 0.55}
+    ],
+    "pan_x": 0,
+    "pan_y": 0,
+    "scale": 1.0
+  }
 }
 ```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `nodes[].id` | string | Neo4j graph node id |
+| `nodes[].node_type` | string | Entity type (`Task`, `Note`, `Person`, …) |
+| `nodes[].capture_id` | string \| null | Source capture when created via approval |
+| `edges[].relationship` | string | `RELATES_TO`, `PART_OF`, `INVOLVES`, … |
+| `layout` | object \| null | Omitted or `null` until first `PUT /graph/layout` |
 
 **Errors**: `401`
 
@@ -794,7 +879,9 @@ Persists node positions (normalized canvas coordinates) and viewport pan/zoom fo
 ### Daily update
 `GET /daily-update`
 
-Returns recent memory items for the daily brief screen.
+Returns the **20 most recent** approved memory nodes for the Daily Brief screen (`DailyBriefRepository.fetchDailyUpdate()`). Ordered by `created_at` descending.
+
+No query parameters.
 
 **Response** `200`
 ```json
@@ -805,11 +892,37 @@ Returns recent memory items for the daily brief screen.
       "node_type": "Task",
       "title": "Send deck to Sara",
       "summary": "Follow up deck delivery",
-      "created_at": "2026-06-14T12:01:00+00:00"
+      "created_at": "2026-06-14T12:01:00+00:00",
+      "capture_type": "text"
+    },
+    {
+      "id": "770e8400-e29b-41d4-a716-446655440002",
+      "node_type": "Resource",
+      "title": "pricing.png",
+      "summary": "Pricing screenshot",
+      "created_at": "2026-06-13T09:30:00+00:00",
+      "capture_type": "image",
+      "thumbnail_b64": "<jpeg-base64>"
     }
   ]
 }
 ```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `items[].id` | string | Memory node id (same as graph node id) |
+| `items[].node_type` | string | `Task`, `Note`, `Resource`, `Idea`, … |
+| `items[].title` | string | Display title |
+| `items[].summary` | string | Body / preview text |
+| `items[].created_at` | datetime (ISO 8601) | Approval timestamp — client groups into Today / Yesterday |
+| `items[].capture_type` | string \| null | Original capture channel: `text`, `voice`, `image`, `file`, `link` — from approved payload `source.capture_type`; `null` for legacy nodes |
+| `items[].thumbnail_b64` | string \| null | JPEG display thumb (~168px) for `capture_type: image`; full upload bytes are never stored |
+
+**Flutter mapping** (`DailyBriefData.fromDailyUpdateItems`):
+
+- `node_type` `Task` / `Reminder` → task card
+- `capture_type` `image` → `ImageBriefCard` (`Image.memory` when `thumbnail_b64` present; placeholder otherwise)
+- otherwise → expandable note card
 
 **Errors**: `401`
 
@@ -910,11 +1023,72 @@ User types in prompt bar (AppBottomShell)
   → question_answer → SnackBar + Home answer capsule
 ```
 
+Voice (home): long-press → `POST /captures/voice` → same SSE path. On STT/upload/SSE error → in-place `VoiceCaptureFailurePanel` (retry or text fallback).
+
+Onboarding first capture: `POST /captures/transcribe` → edit transcript → optional `POST /captures`.
+
 Base URL: `lib/core/config/api_config.dart` (`10.0.2.2` on Android emulator).
 
 Packages: `dio`, `flutter_secure_storage`.
-  → if proposal: show ApprovalBottomSheet
-  → POST /approve or POST /dismiss
+
+### Daily Brief flow (Flutter)
+
+Implemented in `lib/features/daily_brief/` + `lib/screens/daily_brief/`:
+
+```
+DailyBriefScreen init
+  → GET /daily-update
+  → DailyUpdateResponse → DailyBriefData.fromDailyUpdateItems()
+  → section grouping (Today / Yesterday / date) client-side from created_at
+```
+
+Models: `lib/models/api/daily_update_models.dart`.
+
+### Memory graph flow (Flutter)
+
+Implemented in `lib/features/graph/`:
+
+```
+MemoryGraphScreen
+  → GET /graph
+  → radial layout + InteractiveViewer (local physics)
+  → debounced PUT /graph/layout (2s after drag/zoom settles)
+  → tap node → GraphNodeDetailSheet
+```
+
+Models: `lib/models/api/graph_models.dart`, `lib/features/graph/graph_layout_models.dart`.
+
+Pass `highlightNodeId` after approve to mark a newly saved node.
+
+### Suggested Dart models (extended)
+
+Also mirror in `lib/models/api/`:
+
+```dart
+class DailyUpdateItem {
+  final String id;
+  final String nodeType;
+  final String title;
+  final String summary;
+  final DateTime createdAt;
+  final String? captureType;
+}
+
+class GraphNode {
+  final String id;
+  final String nodeType;
+  final String title;
+  final String summary;
+  final String? captureId;
+  final DateTime createdAt;
+}
+
+class GraphEdge {
+  final String id;
+  final String sourceId;
+  final String targetId;
+  final String relationship;
+}
 ```
 
 ---
@@ -925,9 +1099,8 @@ Not implemented yet.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| — | — | Link / image capture types |
-| — | — | Real STT + LLM adapters (Anthropic) |
-| — | — | Bots, billing |
+| — | — | Real Anthropic LLM adapter |
+| — | — | Bots, billing, subscription UI |
 
 ---
 

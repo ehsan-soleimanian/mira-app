@@ -85,20 +85,26 @@ class BriefImageItem extends BriefItem {
     required super.section,
     required this.title,
     required this.preview,
-    required this.imageAsset,
+    this.imageAsset,
+    this.thumbnailB64,
     this.nodeType = 'Image',
     this.createdAt,
   });
 
   final String title;
   final String preview;
-  final String imageAsset;
+  final String? imageAsset;
+  final String? thumbnailB64;
   final String nodeType;
   final DateTime? createdAt;
 
   @override
   BriefItemType get type => BriefItemType.image;
 }
+
+/// Placeholder thumb for API-backed image memories (raw bytes are not stored).
+const String kDailyBriefImagePlaceholderAsset =
+    'assets/images/daily_brief/landscape_thumb.png';
 
 /// Default feed mirroring Figma Daily Brief frames (564:2520).
 abstract final class DailyBriefData {
@@ -110,6 +116,7 @@ abstract final class DailyBriefData {
 
   static BriefItem _fromDailyUpdateItem(DailyUpdateItem item) {
     final nodeType = _normalizedNodeType(item.nodeType);
+    final captureType = item.captureType?.trim().toLowerCase();
     final section = sectionFor(item.createdAt);
     final title = item.title.trim().isEmpty ? 'Untitled memory' : item.title;
     final summary = item.summary.trim().isEmpty ? title : item.summary;
@@ -126,6 +133,21 @@ abstract final class DailyBriefData {
       );
     }
 
+    if (_isImageBriefItem(captureType, nodeType, summary)) {
+      return BriefImageItem(
+        id: item.id,
+        section: section,
+        title: title,
+        preview: summary,
+        thumbnailB64: item.thumbnailB64,
+        imageAsset: item.thumbnailB64 == null
+            ? kDailyBriefImagePlaceholderAsset
+            : null,
+        nodeType: 'Image',
+        createdAt: item.createdAt,
+      );
+    }
+
     return BriefNote(
       id: item.id,
       section: section,
@@ -135,6 +157,16 @@ abstract final class DailyBriefData {
       nodeType: nodeType,
       createdAt: item.createdAt,
     );
+  }
+
+  static bool _isImageBriefItem(
+    String? captureType,
+    String nodeType,
+    String summary,
+  ) {
+    if (captureType == 'image') return true;
+    if (nodeType != 'Resource') return false;
+    return summary.toLowerCase().contains('image upload');
   }
 
   static String _normalizedNodeType(String value) {
@@ -204,7 +236,7 @@ abstract final class DailyBriefData {
       section: today,
       title: 'Lorem ipsum dolor sit',
       preview: 'consectetur adipiscing elit, sed do more',
-      imageAsset: 'assets/images/daily_brief/landscape_thumb.png',
+      imageAsset: kDailyBriefImagePlaceholderAsset,
     ),
     const BriefTask(
       id: 'task-yesterday-1',
