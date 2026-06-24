@@ -1,4 +1,4 @@
-/// Normalized graph layout persisted via `PUT /graph/layout`.
+/// Normalized graph layout persisted via `PUT /v2/graph/layout`.
 class GraphLayout {
   const GraphLayout({
     required this.positions,

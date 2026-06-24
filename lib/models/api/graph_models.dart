@@ -1,9 +1,39 @@
 import 'package:mira_app/features/graph/graph_layout_models.dart';
 
+/// Graph v2 API models — evidence-first knowledge graph.
+
+enum GraphNodeKind {
+  entity,
+  capture,
+  mention,
+  assertion,
+  task,
+  preference;
+
+  static GraphNodeKind? fromApi(String? value) {
+    if (value == null) return null;
+    return GraphNodeKind.values.cast<GraphNodeKind?>().firstWhere(
+          (k) => k?.name.toUpperCase() == value.toUpperCase(),
+          orElse: () => null,
+        );
+  }
+}
+
+enum GraphViewMode {
+  knowledge('knowledge'),
+  evidence('evidence'),
+  hybrid('hybrid'),
+  tasks('tasks');
+
+  const GraphViewMode(this.apiValue);
+  final String apiValue;
+}
+
 class GraphResponse {
   const GraphResponse({
     required this.nodes,
     required this.edges,
+    this.view,
     this.layout,
   });
 
@@ -12,6 +42,7 @@ class GraphResponse {
     final rawEdges = json['edges'] as List<dynamic>? ?? const [];
     final rawLayout = json['layout'];
     return GraphResponse(
+      view: json['view'] as String?,
       nodes: rawNodes
           .whereType<Map<String, dynamic>>()
           .map(GraphNode.fromJson)
@@ -26,6 +57,7 @@ class GraphResponse {
     );
   }
 
+  final String? view;
   final List<GraphNode> nodes;
   final List<GraphEdge> edges;
   final GraphLayoutResponse? layout;
@@ -34,28 +66,48 @@ class GraphResponse {
 class GraphNode {
   const GraphNode({
     required this.id,
+    required this.kind,
     required this.nodeType,
     required this.title,
     required this.summary,
-    required this.captureId,
-    required this.createdAt,
+    this.entityType,
+    this.status,
+    this.labels = const [],
+    this.captureId,
+    this.createdAt,
   });
 
-  factory GraphNode.fromJson(Map<String, dynamic> json) => GraphNode(
-        id: json['id'] as String,
-        nodeType: json['node_type'] as String? ?? 'Note',
-        title: json['title'] as String? ?? '',
-        summary: json['summary'] as String? ?? '',
-        captureId: json['capture_id'] as String?,
-        createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
-      );
+  factory GraphNode.fromJson(Map<String, dynamic> json) {
+    final kind = json['kind'] as String? ?? 'ENTITY';
+    final entityType = json['entityType'] as String? ?? json['entity_type'] as String?;
+    return GraphNode(
+      id: json['id'] as String,
+      kind: kind,
+      nodeType: entityType ?? kind,
+      entityType: entityType,
+      title: json['title'] as String? ?? '',
+      summary: json['subtitle'] as String? ?? json['summary'] as String? ?? '',
+      status: json['status'] as String?,
+      labels: (json['labels'] as List<dynamic>? ?? const [])
+          .map((e) => e.toString())
+          .toList(),
+      captureId: json['captureId'] as String? ?? json['capture_id'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String).toLocal()
+          : null,
+    );
+  }
 
   final String id;
+  final String kind;
   final String nodeType;
+  final String? entityType;
   final String title;
   final String summary;
+  final String? status;
+  final List<String> labels;
   final String? captureId;
-  final DateTime createdAt;
+  final DateTime? createdAt;
 }
 
 class GraphEdge {
@@ -64,17 +116,75 @@ class GraphEdge {
     required this.sourceId,
     required this.targetId,
     required this.relationship,
+    this.kind,
+    this.confidence,
+    this.evidenceCount,
   });
 
   factory GraphEdge.fromJson(Map<String, dynamic> json) => GraphEdge(
         id: json['id'] as String,
-        sourceId: json['source_id'] as String,
-        targetId: json['target_id'] as String,
-        relationship: json['relationship'] as String? ?? 'RELATES_TO',
+        sourceId: json['sourceId'] as String? ?? json['source_id'] as String,
+        targetId: json['targetId'] as String? ?? json['target_id'] as String,
+        relationship: json['type'] as String? ??
+            json['relationship'] as String? ??
+            'RELATED',
+        kind: json['kind'] as String?,
+        confidence: (json['confidence'] as num?)?.toDouble(),
+        evidenceCount: json['evidenceCount'] as int? ?? json['evidence_count'] as int?,
       );
 
   final String id;
   final String sourceId;
   final String targetId;
   final String relationship;
+  final String? kind;
+  final double? confidence;
+  final int? evidenceCount;
+}
+
+class GraphIngestResponse {
+  const GraphIngestResponse({
+    required this.captureId,
+    this.createdEntities = const [],
+    this.createdAssertions = const [],
+    this.materializedEdges = const [],
+    this.tasks = const [],
+    this.preferences = const [],
+  });
+
+  factory GraphIngestResponse.fromJson(Map<String, dynamic> json) =>
+      GraphIngestResponse(
+        captureId: json['captureId'] as String? ?? json['capture_id'] as String,
+        createdEntities: (json['createdEntities'] as List<dynamic>? ??
+                json['created_entities'] as List<dynamic>? ??
+                const [])
+            .map((e) => e.toString())
+            .toList(),
+        createdAssertions: (json['createdAssertions'] as List<dynamic>? ??
+                json['created_assertions'] as List<dynamic>? ??
+                const [])
+            .map((e) => e.toString())
+            .toList(),
+        materializedEdges: (json['materializedEdges'] as List<dynamic>? ??
+                json['materialized_edges'] as List<dynamic>? ??
+                const [])
+            .map((e) => e.toString())
+            .toList(),
+        tasks: (json['tasks'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        preferences: (json['preferences'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+      );
+
+  final String captureId;
+  final List<String> createdEntities;
+  final List<String> createdAssertions;
+  final List<String> materializedEdges;
+  final List<String> tasks;
+  final List<String> preferences;
+
+  String? get highlightEntityId =>
+      createdEntities.isNotEmpty ? createdEntities.first : null;
 }

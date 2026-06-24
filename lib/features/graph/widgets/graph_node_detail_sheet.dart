@@ -202,7 +202,9 @@ class _MemoryDetailCardState extends State<_MemoryDetailCard> {
           Row(
             children: [
               Text(
-                _formatDate(widget.node.createdAt),
+                widget.node.createdAt != null
+                    ? _formatDate(widget.node.createdAt!)
+                    : '',
                 style: AppTypography.vazirmatn(
                   size: 13 * s,
                   color: AppColors.textSecondary,

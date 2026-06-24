@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:mira_app/core/api/api_client.dart';
 import 'package:mira_app/features/capture/capture_mock_data.dart';
 import 'package:mira_app/models/api/capture_models.dart';
+import 'package:mira_app/models/api/graph_models.dart';
 
 /// Capture create, SSE stream, approve/dismiss/confirm-time.
 class CaptureRepository {
@@ -260,20 +261,18 @@ class CaptureRepository {
     );
   }
 
-  Future<MemoryNodeResponse> approve(String captureId) async {
+  Future<GraphIngestResponse> approve(String captureId) async {
     if (captureId == CaptureMockData.mockVoiceCaptureResponse().captureId) {
-      return MemoryNodeResponse(
-        id: 'mock-memory-node',
-        captureId: captureId,
-        nodeType: 'Task',
-        title: CaptureMockData.sampleTaskProposal()['title'] as String,
-        summary: CaptureMockData.sampleTranscript,
+      return const GraphIngestResponse(
+        captureId: 'mock-capture',
+        createdEntities: ['mock-entity-1'],
+        tasks: ['mock-task-1'],
       );
     }
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/$captureId/approve',
     );
-    return MemoryNodeResponse.fromJson(response.data!);
+    return GraphIngestResponse.fromJson(response.data!);
   }
 
   Future<void> dismiss(String captureId) async {

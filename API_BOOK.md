@@ -57,10 +57,14 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/captures/voice` | `capture_repository.dart` | Voice capture (home) |
 | `GET` | `/captures/{id}/stream` | `capture_repository.dart` | SSE pipeline events |
 | `POST` | `/captures/{id}/confirm-time` | `capture_repository.dart` | Resolve ambiguous time |
-| `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Save to memory graph |
+| `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Ingest approved capture into graph v2 |
 | `POST` | `/captures/{id}/dismiss` | `capture_repository.dart` | Discard capture |
-| `GET` | `/graph` | `graph_repository.dart` | Memory graph nodes + edges + layout |
-| `PUT` | `/graph/layout` | `graph_repository.dart` | Persist interactive layout |
+| `GET` | `/v2/graph` | `graph_repository.dart` | Knowledge / evidence / hybrid / tasks graph |
+| `PUT` | `/v2/graph/layout` | `graph_repository.dart` | Persist interactive layout |
+| `GET` | `/v2/entities/{id}` | `graph_repository.dart` | Entity detail + assertions |
+| `GET` | `/v2/tasks` | `graph_repository.dart` | Open tasks list |
+| `GET` | `/v2/search` | — | Hybrid entity + capture search |
+| `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
 
 ---
@@ -741,41 +745,23 @@ data: {"detail": "..."}
 ### Approve proposal
 `POST /captures/{capture_id}/approve`
 
-Persists approved structured node to memory graph (Neo4j) and interim MariaDB table. Purges capture from Redis.
+Runs graph v2 ingest: creates `:Capture`, `:Entity`, `:Assertion`, tasks/preferences, and materialized edges per predicate registry. Purges capture from Redis. Raw text is persisted on the `:Capture` node at approve time only.
 
-**Request Body** (optional edits)
-```json
-{
-  "title": "Send deck to Sara",
-  "summary": "Follow up deck delivery",
-  "node_type": "Task",
-  "relationships": [
-    {
-      "target_node_id": "neo4j-memory-node-uuid",
-      "target_title": "Beta launch",
-      "relationship": "RELATES_TO",
-      "label": "supports"
-    }
-  ]
-}
-```
-
-`target_node_id` is preferred. When admin flag `entity_resolution` is enabled, `target_title` resolves to a single exact title match among approved graph nodes.
+**Request Body** (optional edits) — legacy v1 fields are ignored; proposal v2 comes from Redis/SSE.
 
 **Response** `200`
 ```json
 {
-  "id": "660e8400-e29b-41d4-a716-446655440001",
-  "capture_id": "550e8400-e29b-41d4-a716-446655440000",
-  "node_type": "Task",
-  "title": "Send deck to Sara",
-  "summary": "Follow up deck delivery",
-  "payload": {
-    "graph_node_id": "neo4j-memory-node-uuid"
-  },
-  "created_at": "2026-06-19T12:01:00+00:00"
+  "captureId": "550e8400-e29b-41d4-a716-446655440000",
+  "createdEntities": ["ent_a1b2c3d4"],
+  "createdAssertions": ["asrt_e5f6g7h8"],
+  "materializedEdges": ["edge_1"],
+  "tasks": ["task_9abc"],
+  "preferences": []
 }
 ```
+
+Use `createdEntities[0]` as `highlightNodeId` on `MemoryGraphScreen` after save.
 
 **Errors**: `409` wrong state · `404` · `403`
 
@@ -792,44 +778,53 @@ Nothing stored. Purges all transient data.
 
 ---
 
-## Graph & Daily Update
+## Graph v2 & Daily Update
 
 All endpoints require `Authorization: Bearer <access_token>`.
 
-Phase 3 surfaces approved memory from Neo4j. Vectors (768-dim) are used server-side for GraphRAG — not returned in these responses.
+Graph v2 is evidence-first: **Capture → Mention → Entity → Assertion → Predicate Registry → materialized edges**. Vectors (768-dim) power GraphRAG server-side — not returned in API responses.
 
-### Memory graph
-`GET /graph`
+### Graph view
+`GET /v2/graph?view=knowledge|evidence|hybrid|tasks`
 
-Returns nodes, edges, and optional saved layout for the authenticated user's memory graph (Neo4j).
+Returns nodes, edges, and optional saved layout for the authenticated user.
+
+**Query**
+
+| Param | Default | Values |
+|-------|---------|--------|
+| `view` | `knowledge` | `knowledge`, `evidence`, `hybrid`, `tasks` |
 
 **Response** `200`
 ```json
 {
+  "view": "knowledge",
   "nodes": [
     {
-      "id": "660e8400-e29b-41d4-a716-446655440001",
-      "node_type": "Task",
-      "title": "Send deck to Sara",
-      "summary": "Follow up deck delivery",
-      "capture_id": "550e8400-e29b-41d4-a716-446655440000",
-      "created_at": "2026-06-14T12:01:00+00:00"
+      "id": "ent_a1b2c3",
+      "kind": "ENTITY",
+      "entityType": "Person",
+      "labels": ["Entity", "Person"],
+      "title": "Alex",
+      "subtitle": null,
+      "status": "ACTIVE"
     }
   ],
   "edges": [
     {
-      "id": "edge-uuid",
-      "source_id": "660e8400-e29b-41d4-a716-446655440001",
-      "target_id": "770e8400-e29b-41d4-a716-446655440002",
-      "relationship": "RELATES_TO"
+      "id": "edge-1",
+      "kind": "DOMAIN",
+      "type": "HAS_ROLE_RELATION",
+      "sourceId": "ent_user",
+      "targetId": "ent_a1b2c3",
+      "confidence": 0.91,
+      "evidenceCount": 1
     }
   ],
   "layout": {
-    "positions": [
-      {"node_id": "660e8400-e29b-41d4-a716-446655440001", "x": 0.42, "y": 0.55}
-    ],
-    "pan_x": 0,
-    "pan_y": 0,
+    "positions": [{"nodeId": "ent_a1b2c3", "x": 0.42, "y": 0.55}],
+    "panX": 0,
+    "panY": 0,
     "scale": 1.0
   }
 }
@@ -837,42 +832,70 @@ Returns nodes, edges, and optional saved layout for the authenticated user's mem
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `nodes[].id` | string | Neo4j graph node id |
-| `nodes[].node_type` | string | Entity type (`Task`, `Note`, `Person`, …) |
-| `nodes[].capture_id` | string \| null | Source capture when created via approval |
-| `edges[].relationship` | string | `RELATES_TO`, `PART_OF`, `INVOLVES`, … |
-| `layout` | object \| null | Omitted or `null` until first `PUT /graph/layout` |
+| `nodes[].id` | string | `ent_*`, `task_*`, `cap_*`, … |
+| `nodes[].kind` | string | `ENTITY`, `TASK`, `CAPTURE`, … |
+| `nodes[].entityType` | string \| null | `Person`, `Activity`, `Organization`, … |
+| `edges[].type` | string | Materialized rel (`AFFILIATED_WITH`, `HAS_ROLE_RELATION`, …) |
+| `layout` | object \| null | Omitted until first `PUT /v2/graph/layout` |
 
 **Errors**: `401`
 
 ---
 
 ### Save graph layout
-`PUT /graph/layout`
+`PUT /v2/graph/layout`
 
-Persists node positions (normalized canvas coordinates) and viewport pan/zoom for the interactive graph UI.
+Persists node positions (normalized `0.0`–`1.0`) and viewport pan/zoom. Node IDs are v2 graph ids (`ent_*`, `task_*`).
 
 **Request**
 ```json
 {
-  "positions": [
-    {"node_id": "660e8400-e29b-41d4-a716-446655440001", "x": 0.42, "y": 0.55}
-  ],
-  "pan_x": 12.0,
-  "pan_y": -8.0,
+  "positions": [{"nodeId": "ent_a1b2c3", "x": 0.42, "y": 0.55}],
+  "panX": 12.0,
+  "panY": -8.0,
   "scale": 1.1
 }
 ```
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `positions` | array | `x`/`y` in `0.0`–`1.0`; unknown node IDs are ignored |
-| `pan_x` / `pan_y` | float | InteractiveViewer translation |
-| `scale` | float | `0.5`–`3.0` |
-
-**Response** `200` — same shape as `layout` in `GET /graph`
+**Response** `200` — same shape as `layout` in `GET /v2/graph`
 
 **Errors**: `401` · `422`
+
+---
+
+### Entity detail
+`GET /v2/entities/{entity_id}`
+
+Returns entity metadata, assertions (with capture citations), and mention snippets.
+
+**Errors**: `401` · `404`
+
+---
+
+### Tasks
+`GET /v2/tasks?status=OPEN`
+
+Returns task nodes for the tasks graph view / daily brief integration.
+
+**Errors**: `401`
+
+---
+
+### Hybrid search
+`GET /v2/search?q=<query>&limit=10`
+
+Returns matching entities (full-text + vector) and captures.
+
+**Errors**: `401` · `422`
+
+---
+
+### Ontology catalog
+`GET /v2/ontology`
+
+Public predicate registry, entity types, and ontology version for client rendering.
+
+**Errors**: none (no auth required in dev; Bearer optional)
 
 ---
 
@@ -1050,15 +1073,15 @@ Implemented in `lib/features/graph/`:
 
 ```
 MemoryGraphScreen
-  → GET /graph
+  → GET /v2/graph?view=knowledge|evidence|hybrid|tasks
   → radial layout + InteractiveViewer (local physics)
-  → debounced PUT /graph/layout (2s after drag/zoom settles)
+  → debounced PUT /v2/graph/layout (2s after drag/zoom settles)
   → tap node → GraphNodeDetailSheet
 ```
 
-Models: `lib/models/api/graph_models.dart`, `lib/features/graph/graph_layout_models.dart`.
+Models: `lib/models/api/graph_models.dart`, `lib/features/graph/graph_layout_models.dart`, `lib/features/graph_v2/widgets/graph_view_mode_switcher.dart`.
 
-Pass `highlightNodeId` after approve to mark a newly saved node.
+Pass `highlightNodeId` (first `createdEntities` id from approve response) after save.
 
 ### Suggested Dart models (extended)
 

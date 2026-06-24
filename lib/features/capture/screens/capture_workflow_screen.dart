@@ -342,18 +342,19 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
     if (repo == null || captureId == null || _busy) return;
     setState(() => _busy = true);
     try {
-      final node = await repo.approve(captureId);
+      final result = await repo.approve(captureId);
       if (!mounted) return;
       setState(() {
         _memorySaved = true;
         _pendingApproval = false;
         _proposal = {
-          'title': node.title,
-          'summary': node.summary,
-          'node_type': node.nodeType,
+          'captureId': result.captureId,
+          'entities': result.createdEntities,
+          'tasks': result.tasks,
         };
       });
       _showSnack('Saved to memory');
+      _openMemoryGraph(highlightNodeId: result.highlightEntityId);
     } catch (error) {
       _showSnack('Save failed: $error');
     } finally {

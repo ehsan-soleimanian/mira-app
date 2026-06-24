@@ -8,12 +8,13 @@ import 'package:mira_app/features/graph/graph_layout_models.dart';
 import 'package:mira_app/features/graph/graph_repository.dart';
 import 'package:mira_app/features/graph/widgets/graph_node_detail_sheet.dart';
 import 'package:mira_app/features/graph/widgets/memory_graph_canvas.dart';
+import 'package:mira_app/features/graph_v2/widgets/graph_view_mode_switcher.dart';
 import 'package:mira_app/models/api/graph_models.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
 
-/// Full-screen radial memory graph — `GET /graph`.
+/// Full-screen radial knowledge graph — `GET /v2/graph`.
 class MemoryGraphScreen extends StatefulWidget {
   const MemoryGraphScreen({
     super.key,
@@ -33,6 +34,7 @@ class MemoryGraphScreen extends StatefulWidget {
 class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
   GraphRepository? _repository;
   GraphResponse? _graph;
+  GraphViewMode _viewMode = GraphViewMode.knowledge;
   Object? _error;
   var _loading = true;
   Timer? _layoutSaveTimer;
@@ -59,7 +61,7 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
       _error = null;
     });
     try {
-      final graph = await _repository!.fetchGraph();
+      final graph = await _repository!.fetchGraph(view: _viewMode);
       if (!mounted) return;
       setState(() {
         _graph = graph;
@@ -138,6 +140,18 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24 * s, vertical: 8 * s),
+                child: GraphViewModeSwitcher(
+                  value: _viewMode,
+                  scale: s,
+                  onChanged: (mode) {
+                    if (mode == _viewMode) return;
+                    setState(() => _viewMode = mode);
+                    _loadGraph();
+                  },
                 ),
               ),
               Expanded(child: _buildBody(s)),
