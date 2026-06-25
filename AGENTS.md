@@ -1,6 +1,6 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-06-25 (capture clarification + i18n scaffold + Graph V2 admin views)
+> Last updated: 2026-06-25 (graph mutations UX + ontology.2026_06_25 predicate catalog)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
 
@@ -423,7 +423,9 @@ Admin endpoints are backend-only (`/admin/api/users/{user_id}/graph?view=...`) a
 
 ### Assertion and predicate behavior (important for app expectations)
 
-- `predicate_key` is ontology-driven and resolved server-side from Graph V2 registry.
+- Ontology version **production**: `ontology.2026_06_25` — **40 predicate keys** (work, education, personal, health, travel, …). Full list: `GET /v2/ontology` or `mira-backend/AGENTS.md` ontology table.
+- `predicate_key` is ontology-driven and resolved server-side from Graph V2 registry (`registry.py` + `everyday_predicates.py`).
+- LLM outputs `predicateKey` and/or `predicateFamily` + `role`; backend `resolve_predicate_key()` normalizes aliases before ingest.
 - Unknown/unsupported predicates still persist as assertion evidence; they may not materialize to knowledge edges.
 - `NEEDS_REVIEW`/`UNKNOWN` assertions are backend review concerns; Flutter should continue rendering capture/question flows without assuming domain edge creation.
 - Evidence view fixed behavior: `SUPPORTED_BY` is assertion -> capture (no assertion self-loop).
