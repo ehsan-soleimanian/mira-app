@@ -372,7 +372,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       });
       _openMemoryGraph(highlightNodeId: result.highlightEntityId);
     } catch (error) {
-      _showSnack('Save failed: $error');
+      _showSnack(formatCaptureError(error));
     } finally {
       if (mounted) {
         setState(() => _busy = false);

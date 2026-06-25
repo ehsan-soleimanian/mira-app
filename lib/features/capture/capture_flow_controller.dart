@@ -228,7 +228,7 @@ class CaptureFlowController extends ChangeNotifier {
       _resetVoiceSession();
       phase = CaptureUiPhase.idle;
     } catch (error) {
-      lastCaptureError = 'Save failed: $error';
+      lastCaptureError = formatCaptureError(error);
     } finally {
       approvalBusy = false;
       notifyListeners();
