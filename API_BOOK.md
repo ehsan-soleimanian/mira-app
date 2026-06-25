@@ -57,6 +57,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/captures/voice` | `capture_repository.dart` | Voice capture (home) |
 | `GET` | `/captures/{id}/stream` | `capture_repository.dart` | SSE pipeline events |
 | `POST` | `/captures/{id}/confirm-time` | `capture_repository.dart` | Resolve ambiguous time |
+| `POST` | `/captures/{id}/clarify-intent` | `capture_repository.dart` | Resolve ambiguous question-vs-save intent |
 | `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Ingest approved capture into graph v2 |
 | `POST` | `/captures/{id}/dismiss` | `capture_repository.dart` | Discard capture |
 | `GET` | `/v2/graph` | `graph_repository.dart` | Knowledge / evidence / hybrid / tasks graph |
@@ -699,6 +700,32 @@ After SSE `time_clarification` or when `state` is `clarification_needed` with a 
 **Response** `200` — capture response with `state: awaiting_approval` and updated `proposal.time.resolved`.
 
 **Errors**: `409` wrong state · `404` · `403`
+
+---
+
+### Clarify ambiguous intent
+`POST /captures/{capture_id}/clarify-intent`
+
+Use when capture state is `clarification_needed` and backend asks:
+`Could you clarify — is this a question or something to save?`
+
+**Request Body**
+```json
+{
+  "intent": "question"
+}
+```
+
+| Field | Type | Rules |
+|-------|------|-------|
+| `intent` | string | required, enum: `question`, `save` |
+
+**Response** `200` — capture response in one of:
+- `question_answered` + `answer`
+- `awaiting_approval` + `proposal`
+- `clarification_needed` (if still ambiguous)
+
+**Errors**: `409` wrong state · `404` · `403` · `422` invalid intent
 
 ---
 

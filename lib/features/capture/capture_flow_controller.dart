@@ -44,6 +44,7 @@ class CaptureFlowController extends ChangeNotifier {
   String? lastCaptureError;
   String? voiceFailureMessage;
   Map<String, dynamic>? pendingTimeClarification;
+  Map<String, dynamic>? pendingIntentClarification;
 
   Timer? _recordingTimer;
   Stream<double>? _amplitudeStream;
@@ -257,6 +258,7 @@ class CaptureFlowController extends ChangeNotifier {
     pendingProposal = null;
     voiceSessionPrompt = null;
     pendingTimeClarification = null;
+    pendingIntentClarification = null;
     approvalBusy = false;
     phase = CaptureUiPhase.voiceFailed;
     notifyListeners();
@@ -268,6 +270,8 @@ class CaptureFlowController extends ChangeNotifier {
     pendingProposal = null;
     voiceSessionPrompt = null;
     approvalBusy = false;
+    pendingTimeClarification = null;
+    pendingIntentClarification = null;
   }
 
   void _enterVoiceApproval(String captureId, Map<String, dynamic> proposal) {
@@ -300,6 +304,23 @@ class CaptureFlowController extends ChangeNotifier {
               created.captureId,
               event,
               presentation: presentation,
+            );
+          }
+        case 'clarification':
+          if (presentation == _CapturePresentation.voiceRoute) {
+            activeCaptureId = created.captureId;
+            pendingIntentClarification = {
+              'prompt':
+                  event.data['prompt']?.toString() ??
+                  'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟',
+            };
+            phase = CaptureUiPhase.approving;
+            notifyListeners();
+          } else if (sheetContext != null && sheetContext.mounted) {
+            await _handleIntentClarification(
+              sheetContext,
+              created.captureId,
+              event.data['prompt']?.toString(),
             );
           }
         case 'proposal':
@@ -363,6 +384,20 @@ class CaptureFlowController extends ChangeNotifier {
           presentation: presentation,
         );
       }
+    } else if (created.state == 'clarification_needed' && created.answer != null) {
+      if (presentation == _CapturePresentation.voiceRoute) {
+        activeCaptureId = created.captureId;
+        pendingIntentClarification = {
+          'prompt': created.answer!,
+        };
+        phase = CaptureUiPhase.approving;
+      } else if (sheetContext != null && sheetContext.mounted) {
+        await _handleIntentClarification(
+          sheetContext,
+          created.captureId,
+          created.answer,
+        );
+      }
     } else if (created.state == 'awaiting_approval' &&
         created.proposal != null) {
       if (presentation == _CapturePresentation.voiceRoute) {
@@ -424,6 +459,41 @@ class CaptureFlowController extends ChangeNotifier {
     );
   }
 
+  Future<void> resolvePendingIntentClarification({
+    required bool asQuestion,
+  }) async {
+    final captureId = activeCaptureId;
+    if (captureId == null || approvalBusy) return;
+    approvalBusy = true;
+    notifyListeners();
+    try {
+      final updated = await _captures.clarifyIntent(
+        captureId,
+        intent: asQuestion ? 'question' : 'save',
+      );
+      pendingIntentClarification = null;
+      if (updated.state == 'awaiting_approval' && updated.proposal != null) {
+        _enterVoiceApproval(captureId, updated.proposal!);
+      } else if (updated.state == 'question_answered' && updated.answer != null) {
+        lastAnswer = updated.answer;
+        _resetVoiceSession();
+        phase = CaptureUiPhase.idle;
+      } else if (updated.state == 'clarification_needed') {
+        pendingIntentClarification = {
+          'prompt':
+              updated.answer ??
+              'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟',
+        };
+        phase = CaptureUiPhase.approving;
+      }
+    } catch (error) {
+      lastCaptureError = 'Clarification failed: $error';
+    } finally {
+      approvalBusy = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> _handleTimeClarification(
     BuildContext context,
     String captureId,
@@ -452,6 +522,38 @@ class CaptureFlowController extends ChangeNotifier {
     );
   }
 
+  Future<void> _handleIntentClarification(
+    BuildContext context,
+    String captureId,
+    String? prompt,
+  ) async {
+    if (!context.mounted) return;
+    final selectedIntent = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _IntentClarificationSheet(
+        prompt:
+            prompt ??
+            'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟',
+      ),
+    );
+    if (selectedIntent == null) return;
+    final updated = await _captures.clarifyIntent(captureId, intent: selectedIntent);
+    if (updated.state == 'awaiting_approval' && updated.proposal != null) {
+      if (context.mounted) {
+        await _handleProposal(context, captureId, updated.proposal!);
+      }
+    } else if (updated.state == 'question_answered' && updated.answer != null) {
+      lastAnswer = updated.answer;
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(updated.answer!)),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _recordingTimer?.cancel();
@@ -466,6 +568,47 @@ class CaptureFlowController extends ChangeNotifier {
 }
 
 enum _CapturePresentation { voiceRoute, sheet }
+
+class _IntentClarificationSheet extends StatelessWidget {
+  const _IntentClarificationSheet({required this.prompt});
+
+  final String prompt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Material(
+        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF0D1430),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(prompt, style: const TextStyle(color: Colors.white)),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop('question'),
+                child: const Text('این یک سوال است'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () => Navigator.of(context).pop('save'),
+                child: const Text('به حافظه ذخیره کن'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// App-wide services for API access.
 class MiraServices {

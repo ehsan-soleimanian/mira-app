@@ -57,6 +57,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   Map<String, dynamic>? _proposal;
   String? _answer;
   String? _statusText;
+  String? _intentClarificationPrompt;
 
   @override
   void initState() {
@@ -239,6 +240,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       _memorySaved = false;
       _pendingApproval = false;
       _statusText = 'Mira is thinking...';
+      _intentClarificationPrompt = null;
     });
 
     try {
@@ -280,6 +282,13 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
           if (updated.proposal != null) {
             _applyProposal(updated.proposal!, created.captureId);
           }
+        case 'clarification':
+          setState(() {
+            _intentClarificationPrompt =
+                event.data['prompt']?.toString() ??
+                'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟';
+            _statusText = null;
+          });
         case 'proposal':
           _applyProposal(event.data, created.captureId);
         case 'question_answer':
@@ -301,15 +310,22 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
     } else if (created.state == 'clarification_needed' &&
         created.proposal != null) {
       final time = created.proposal!['time'];
-      final suggestion = time is Map ? time['suggestion']?.toString() : null;
-      final updated = await repo.confirmTime(
-        created.captureId,
-        accepted: true,
-        resolvedTime: suggestion,
-      );
-      if (updated.proposal != null) {
-        _applyProposal(updated.proposal!, created.captureId);
+      if (time is Map) {
+        final suggestion = time['suggestion']?.toString();
+        final updated = await repo.confirmTime(
+          created.captureId,
+          accepted: true,
+          resolvedTime: suggestion,
+        );
+        if (updated.proposal != null) {
+          _applyProposal(updated.proposal!, created.captureId);
+        }
       }
+    } else if (created.state == 'clarification_needed' && created.answer != null) {
+      setState(() {
+        _intentClarificationPrompt = created.answer;
+        _statusText = null;
+      });
     }
   }
 
@@ -322,6 +338,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       _pendingApproval = true;
       _memorySaved = false;
       _statusText = null;
+      _intentClarificationPrompt = null;
     });
   }
 
@@ -333,6 +350,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       _pendingApproval = false;
       _memorySaved = false;
       _statusText = null;
+      _intentClarificationPrompt = null;
     });
   }
 
@@ -384,6 +402,38 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       });
     } catch (error) {
       _showSnack('Cancel failed: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<void> _clarifyIntent({required bool asQuestion}) async {
+    final repo = _captures;
+    final captureId = _captureId;
+    if (repo == null || captureId == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final updated = await repo.clarifyIntent(
+        captureId,
+        intent: asQuestion ? 'question' : 'save',
+      );
+      if (!mounted) return;
+      if (updated.state == 'awaiting_approval' && updated.proposal != null) {
+        _applyProposal(updated.proposal!, captureId);
+      } else if (updated.state == 'question_answered' && updated.answer != null) {
+        _applyAnswer(updated.answer!);
+      } else if (updated.state == 'clarification_needed') {
+        setState(() {
+          _intentClarificationPrompt =
+              updated.answer ??
+              'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟';
+          _statusText = null;
+        });
+      }
+    } catch (error) {
+      _showSnack('Clarification failed: $error');
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -452,6 +502,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                             proposal: _proposal,
                             answer: _answer,
                             statusText: _statusText,
+                            intentClarificationPrompt: _intentClarificationPrompt,
                             memorySaved: _memorySaved,
                             pendingApproval: _pendingApproval,
                             busy: _busy,
@@ -459,6 +510,10 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                             onSave: _approveCurrentCapture,
                             onCancel: _dismissCurrentCapture,
                             onMemoryToggle: _handleMemoryToggle,
+                            onClarifyAsQuestion: () =>
+                                _clarifyIntent(asQuestion: true),
+                            onClarifyAsSave: () =>
+                                _clarifyIntent(asQuestion: false),
                           ),
                   ),
                   if (_mode != _CaptureWorkflowMode.listening)
@@ -538,12 +593,15 @@ class _WorkflowContent extends StatelessWidget {
     required this.proposal,
     required this.answer,
     required this.statusText,
+    required this.intentClarificationPrompt,
     required this.memorySaved,
     required this.pendingApproval,
     required this.busy,
     required this.onSave,
     required this.onCancel,
     required this.onMemoryToggle,
+    required this.onClarifyAsQuestion,
+    required this.onClarifyAsSave,
     this.belowPageHeader = false,
   });
 
@@ -553,6 +611,7 @@ class _WorkflowContent extends StatelessWidget {
   final Map<String, dynamic>? proposal;
   final String? answer;
   final String? statusText;
+  final String? intentClarificationPrompt;
   final bool memorySaved;
   final bool pendingApproval;
   final bool busy;
@@ -560,6 +619,8 @@ class _WorkflowContent extends StatelessWidget {
   final VoidCallback onSave;
   final VoidCallback onCancel;
   final VoidCallback onMemoryToggle;
+  final VoidCallback onClarifyAsQuestion;
+  final VoidCallback onClarifyAsSave;
 
   @override
   Widget build(BuildContext context) {
@@ -579,12 +640,15 @@ class _WorkflowContent extends StatelessWidget {
           proposal: proposal,
           answer: answer,
           statusText: statusText,
+          intentClarificationPrompt: intentClarificationPrompt,
           memorySaved: memorySaved,
           pendingApproval: pendingApproval,
           busy: busy,
           onSave: onSave,
           onCancel: onCancel,
           onMemoryToggle: onMemoryToggle,
+          onClarifyAsQuestion: onClarifyAsQuestion,
+          onClarifyAsSave: onClarifyAsSave,
         ),
       );
     }
@@ -721,12 +785,15 @@ class _ConversationView extends StatelessWidget {
     required this.proposal,
     required this.answer,
     required this.statusText,
+    required this.intentClarificationPrompt,
     required this.memorySaved,
     required this.pendingApproval,
     required this.busy,
     required this.onSave,
     required this.onCancel,
     required this.onMemoryToggle,
+    required this.onClarifyAsQuestion,
+    required this.onClarifyAsSave,
   });
 
   final double scale;
@@ -734,12 +801,15 @@ class _ConversationView extends StatelessWidget {
   final Map<String, dynamic>? proposal;
   final String? answer;
   final String? statusText;
+  final String? intentClarificationPrompt;
   final bool memorySaved;
   final bool pendingApproval;
   final bool busy;
   final VoidCallback onSave;
   final VoidCallback onCancel;
   final VoidCallback onMemoryToggle;
+  final VoidCallback onClarifyAsQuestion;
+  final VoidCallback onClarifyAsSave;
 
   @override
   Widget build(BuildContext context) {
@@ -756,12 +826,15 @@ class _ConversationView extends StatelessWidget {
         proposal: proposal,
         answer: answer,
         statusText: statusText,
+        intentClarificationPrompt: intentClarificationPrompt,
         memorySaved: memorySaved,
         pendingApproval: pendingApproval,
         busy: busy,
         onSave: onSave,
         onCancel: onCancel,
         onMemoryToggle: onMemoryToggle,
+        onClarifyAsQuestion: onClarifyAsQuestion,
+        onClarifyAsSave: onClarifyAsSave,
       );
     }
 
@@ -811,12 +884,15 @@ class _DynamicConversationBody extends StatelessWidget {
     required this.proposal,
     required this.answer,
     required this.statusText,
+    required this.intentClarificationPrompt,
     required this.memorySaved,
     required this.pendingApproval,
     required this.busy,
     required this.onSave,
     required this.onCancel,
     required this.onMemoryToggle,
+    required this.onClarifyAsQuestion,
+    required this.onClarifyAsSave,
   });
 
   final double scale;
@@ -824,12 +900,15 @@ class _DynamicConversationBody extends StatelessWidget {
   final Map<String, dynamic>? proposal;
   final String? answer;
   final String? statusText;
+  final String? intentClarificationPrompt;
   final bool memorySaved;
   final bool pendingApproval;
   final bool busy;
   final VoidCallback onSave;
   final VoidCallback onCancel;
   final VoidCallback onMemoryToggle;
+  final VoidCallback onClarifyAsQuestion;
+  final VoidCallback onClarifyAsSave;
 
   @override
   Widget build(BuildContext context) {
@@ -874,6 +953,61 @@ class _DynamicConversationBody extends StatelessWidget {
           ],
         ] else if (answer != null) ...[
           CaptureMiraMessage(scale: s, text: answer!),
+        ] else if (intentClarificationPrompt != null) ...[
+          CaptureMiraMessage(scale: s, text: intentClarificationPrompt!),
+          SizedBox(height: 28 * s),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 38 * s,
+                  child: ElevatedButton(
+                    onPressed: busy ? null : onClarifyAsQuestion,
+                    style: ElevatedButton.styleFrom(
+                      elevation: 0,
+                      backgroundColor: const Color(0xFF0B399D),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8 * s),
+                      ),
+                    ),
+                    child: Text(
+                      'این یک سوال است',
+                      style: AppTypography.dosis(
+                        size: 13 * s,
+                        weight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 8 * s),
+              Expanded(
+                child: SizedBox(
+                  height: 38 * s,
+                  child: OutlinedButton(
+                    onPressed: busy ? null : onClarifyAsSave,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0B399D),
+                      side: const BorderSide(color: Color(0xFF0B399D)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8 * s),
+                      ),
+                    ),
+                    child: Text(
+                      'به حافظه ذخیره کن',
+                      style: AppTypography.dosis(
+                        size: 13 * s,
+                        weight: FontWeight.w600,
+                        color: const Color(0xFF0B399D),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ] else ...[
           if (isMiraThinkingStatus(statusText))
             Align(

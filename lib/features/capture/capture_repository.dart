@@ -297,4 +297,15 @@ class CaptureRepository {
     );
     return CaptureResponse.fromJson(response.data!);
   }
+
+  Future<CaptureResponse> clarifyIntent(
+    String captureId, {
+    required String intent,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/$captureId/clarify-intent',
+      data: {'intent': intent},
+    );
+    return CaptureResponse.fromJson(response.data!);
+  }
 }

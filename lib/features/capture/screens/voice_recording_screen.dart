@@ -8,6 +8,7 @@ import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/widgets/capture_approval_panel.dart';
+import 'package:mira_app/features/capture/widgets/intent_clarification_panel.dart';
 import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
 import 'package:mira_app/features/graph/widgets/memory_graph_icon_button.dart';
 import 'package:mira_app/features/capture/widgets/voice_capture_failure_panel.dart';
@@ -154,6 +155,22 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
   }
 
   Widget _buildBody(CaptureFlowController flow, double s) {
+    if (flow.pendingIntentClarification != null) {
+      return IntentClarificationPanel(
+        scale: s,
+        prompt:
+            flow.pendingIntentClarification!['prompt']?.toString() ??
+            'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟',
+        busy: flow.approvalBusy,
+        onQuestion: () => unawaited(
+          flow.resolvePendingIntentClarification(asQuestion: true),
+        ),
+        onSave: () => unawaited(
+          flow.resolvePendingIntentClarification(asQuestion: false),
+        ),
+      );
+    }
+
     if (flow.phase == CaptureUiPhase.approving &&
         flow.pendingProposal != null) {
       return CaptureApprovalPanel(
