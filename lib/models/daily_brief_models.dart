@@ -216,6 +216,35 @@ abstract final class DailyBriefData {
     'Dec',
   ][month - 1];
 
+  static List<BriefItem> placeholderPreviewItems() => [
+    const BriefTask(
+      id: 'preview-task',
+      section: 'Preview',
+      title: 'Your tasks will appear here',
+      timeLabel: 'Daily updates & reminders',
+      summary:
+          'When Mira understands something as a task, it will show up in your Daily Brief.',
+      nodeType: 'Task',
+    ),
+    const BriefNote(
+      id: 'preview-note',
+      section: 'Preview',
+      title: 'Context and notes land here',
+      preview: 'Daily update summaries and memory context',
+      fullText:
+          'Mira will surface the context that matters — meeting notes, ideas, and follow-ups in one calm feed.',
+      nodeType: 'Note',
+    ),
+    const BriefImageItem(
+      id: 'preview-image',
+      section: 'Preview',
+      title: 'Photos and files show up here',
+      preview: 'Images and attachments from your captures',
+      imageAsset: kDailyBriefImagePlaceholderAsset,
+      nodeType: 'Image',
+    ),
+  ];
+
   static List<BriefItem> initialItems() => [
     const BriefTask(
       id: 'task-today-1',

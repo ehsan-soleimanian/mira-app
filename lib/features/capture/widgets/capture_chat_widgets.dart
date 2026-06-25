@@ -3,6 +3,13 @@ import 'package:mira_app/components/atoms/mira_markdown_text.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
 
+/// Layout tokens for capture chat — content starts at top, not orb/home Y.
+abstract final class CaptureChatTokens {
+  static const contentTopPadding = 12.0;
+  static const horizontalPadding = 24.0;
+  static const bottomPadding = 120.0;
+}
+
 /// User prompt — right-aligned white bubble.
 class CaptureUserBubble extends StatelessWidget {
   const CaptureUserBubble({
@@ -81,23 +88,25 @@ class CaptureMiraMessage extends StatelessWidget {
   }
 }
 
-/// Memory save indicator under Mira text.
+/// Memory saved badge — blue verified icon + label.
 class CaptureMemoryToggle extends StatelessWidget {
   const CaptureMemoryToggle({
     super.key,
     required this.scale,
     required this.saved,
-    required this.onTap,
+    this.onTap,
   });
 
   final double scale;
   final bool saved;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
-    final color = saved ? AppColors.micBlueNav : const Color(0xFF9B2C2C);
+    if (!saved) return const SizedBox.shrink();
+
+    final color = AppColors.micBlueNav;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -108,15 +117,16 @@ class CaptureMemoryToggle extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              saved ? Icons.verified_outlined : Icons.cancel_outlined,
-              size: 16 * s,
+              Icons.verified,
+              size: 22 * s,
               color: color,
             ),
-            SizedBox(width: 5 * s),
+            SizedBox(width: 8 * s),
             Text(
-              saved ? 'save to memory' : 'Remove memory',
+              'save to memory',
               style: AppTypography.dosis(
-                size: 14 * s,
+                size: 16 * s,
+                weight: FontWeight.w500,
                 color: color,
               ),
             ),
@@ -197,6 +207,120 @@ class CaptureApprovalActions extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// White attach menu — camera / picture / file (Figma).
+class CaptureAttachMenu extends StatelessWidget {
+  const CaptureAttachMenu({
+    super.key,
+    required this.scale,
+    required this.onCamera,
+    required this.onPicture,
+    required this.onFile,
+  });
+
+  final double scale;
+  final VoidCallback onCamera;
+  final VoidCallback onPicture;
+  final VoidCallback onFile;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = scale;
+
+    return Container(
+      width: 200 * s,
+      padding: EdgeInsets.symmetric(horizontal: 18 * s, vertical: 16 * s),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22 * s),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20 * s,
+            offset: Offset(0, 8 * s),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _AttachRow(
+            scale: s,
+            icon: Icons.photo_camera_outlined,
+            label: 'camera',
+            onTap: onCamera,
+          ),
+          SizedBox(height: 18 * s),
+          _AttachRow(
+            scale: s,
+            icon: Icons.add_photo_alternate_outlined,
+            label: 'picture',
+            onTap: onPicture,
+          ),
+          SizedBox(height: 18 * s),
+          _AttachRow(
+            scale: s,
+            icon: Icons.create_new_folder_outlined,
+            label: 'file',
+            onTap: onFile,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AttachRow extends StatelessWidget {
+  const _AttachRow({
+    required this.scale,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final double scale;
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = scale;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12 * s),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 4 * s),
+          child: Row(
+            children: [
+              Container(
+                width: 44 * s,
+                height: 44 * s,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F2F5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 22 * s, color: AppColors.textPrimary),
+              ),
+              SizedBox(width: 14 * s),
+              Text(
+                label,
+                style: AppTypography.dosis(
+                  size: 18 * s,
+                  weight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

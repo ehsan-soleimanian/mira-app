@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/components/molecules/mira_mic_fab.dart';
+import 'package:mira_app/core/mira_haptics.dart';
 
 /// Mic touch target — short tap opens bubble menu; hold starts voice recording.
 class RecordMicButton extends StatefulWidget {
@@ -65,6 +66,7 @@ class _RecordMicButtonState extends State<RecordMicButton>
 
   void _onPressStart() {
     if (widget.recordingActive) return;
+    MiraHaptics.micPressDown();
     _downAt = DateTime.now().millisecondsSinceEpoch;
     _recordingTriggered = false;
     setState(() => _pressing = true);
@@ -74,6 +76,7 @@ class _RecordMicButtonState extends State<RecordMicButton>
       () {
         if (!_pressing || _recordingTriggered || !mounted) return;
         _recordingTriggered = true;
+        MiraHaptics.micRecordingEngaged();
         widget.onRecordingStart?.call();
       },
     );

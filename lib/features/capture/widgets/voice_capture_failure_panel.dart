@@ -37,7 +37,7 @@ class VoiceCaptureFailurePanel extends StatelessWidget {
     final s = scale;
     return Stack(
       children: [
-        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader),
+        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader, ambient: true),
         Positioned(
           top: _headlineTop(s),
           left: 24 * s,

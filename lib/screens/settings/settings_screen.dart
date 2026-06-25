@@ -311,6 +311,7 @@ class _SettingsContent extends StatelessWidget {
               showBadge: settings.notificationsEnabled,
             ),
           ),
+          SizedBox(height: 16 * s),
           FigmaSettingsCard(
             padding: figmaInsets(context, 16, 31, 28, 31),
             onTap: onConnectors,

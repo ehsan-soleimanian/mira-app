@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/features/capture/widgets/capture_chat_widgets.dart';
-import 'package:mira_app/theme/home_screen_tokens.dart';
 
 /// Figma conversation approval — user bubble right, Mira plain left, Save / cancel.
 class CaptureApprovalPanel extends StatelessWidget {
@@ -32,10 +31,10 @@ class CaptureApprovalPanel extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        24 * s,
-        HomeScreenTokens.subtitleY(s) + 24 * s,
-        24 * s,
-        120 * s,
+        CaptureChatTokens.horizontalPadding * s,
+        CaptureChatTokens.contentTopPadding * s,
+        CaptureChatTokens.horizontalPadding * s,
+        CaptureChatTokens.bottomPadding * s,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

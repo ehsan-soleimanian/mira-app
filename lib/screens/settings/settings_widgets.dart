@@ -249,3 +249,148 @@ class SettingsErrorView extends StatelessWidget {
     );
   }
 }
+
+/// Peach icon box used across Figma-style settings screens.
+class FigmaSettingsPeachIcon extends StatelessWidget {
+  const FigmaSettingsPeachIcon({super.key, required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = figmaSettingsScale(context);
+    return Container(
+      width: 80 * s,
+      height: 80 * s,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF2ED),
+        borderRadius: BorderRadius.circular(13 * s),
+      ),
+      child: Icon(icon, size: 38 * s, color: const Color(0xFF756A66)),
+    );
+  }
+}
+
+/// Toggle row inside a [FigmaSettingsCard].
+class FigmaSettingsToggleCard extends StatelessWidget {
+  const FigmaSettingsToggleCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = figmaSettingsScale(context);
+    return FigmaSettingsCard(
+      padding: figmaInsets(context, 20, 22, 20, 22),
+      child: Row(
+        children: [
+          FigmaSettingsPeachIcon(icon: icon),
+          SizedBox(width: 16 * s),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 26 * s,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 6 * s),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 20 * s,
+                    color: const Color(0xFF7A7A7A),
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            activeTrackColor: AppColors.micBlueNav,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tappable info row inside a [FigmaSettingsCard].
+class FigmaSettingsActionRow extends StatelessWidget {
+  const FigmaSettingsActionRow({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.onTap,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = figmaSettingsScale(context);
+    return FigmaSettingsCard(
+      padding: figmaInsets(context, 20, 22, 20, 22),
+      onTap: onTap,
+      child: Row(
+        children: [
+          FigmaSettingsPeachIcon(icon: icon),
+          SizedBox(width: 16 * s),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 26 * s,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 6 * s),
+                Text(
+                  subtitle,
+                  style: GoogleFonts.inter(
+                    fontSize: 20 * s,
+                    color: const Color(0xFF7A7A7A),
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          trailing ??
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 48 * s,
+                color: const Color(0xFF202020),
+              ),
+        ],
+      ),
+    );
+  }
+}

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
@@ -6,6 +8,7 @@ import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/features/daily_brief/daily_brief_repository.dart';
 import 'package:mira_app/models/daily_brief_models.dart';
+import 'package:mira_app/screens/daily_brief/daily_brief_empty_preview.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/daily_brief_theme.dart';
 
@@ -19,11 +22,16 @@ class DailyBriefScreen extends StatefulWidget {
 
 class _DailyBriefScreenState extends State<DailyBriefScreen> {
   List<BriefItem> _items = const [];
+  List<BriefItem> _previewItems = DailyBriefData.placeholderPreviewItems();
   DailyBriefRepository? _repository;
   CaptureFlowController? _captureFlow;
   CaptureUiPhase? _lastCapturePhase;
   bool _loading = true;
   Object? _error;
+  BriefItem? _lastDismissedPreview;
+  int _lastDismissedIndex = 0;
+  bool _showUndo = false;
+  Timer? _undoTimer;
 
   @override
   void initState() {
@@ -49,6 +57,7 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
   @override
   void dispose() {
     _captureFlow?.removeListener(_onCaptureFlowChanged);
+    _undoTimer?.cancel();
     super.dispose();
   }
 
@@ -111,6 +120,65 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
         }
         return item;
       }).toList();
+    });
+  }
+
+  void _togglePreviewTask(String id, bool completed) {
+    setState(() {
+      _previewItems = _previewItems.map((item) {
+        if (item is BriefTask && item.id == id) {
+          return item.copyWith(isCompleted: completed);
+        }
+        return item;
+      }).toList();
+    });
+  }
+
+  void _togglePreviewNoteExpand(String id) {
+    setState(() {
+      _previewItems = _previewItems.map((item) {
+        if (item is BriefNote && item.id == id) {
+          return item.copyWith(isExpanded: !item.isExpanded);
+        }
+        return item;
+      }).toList();
+    });
+  }
+
+  void _dismissPreviewCard(BriefItem item) {
+    final index = _previewItems.indexWhere((i) => i.id == item.id);
+    if (index < 0) return;
+
+    setState(() {
+      _lastDismissedPreview = item;
+      _lastDismissedIndex = index;
+      _previewItems = _previewItems.where((i) => i.id != item.id).toList();
+      _showUndo = true;
+    });
+
+    _undoTimer?.cancel();
+    _undoTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() {
+          _showUndo = false;
+          _lastDismissedPreview = null;
+        });
+      }
+    });
+  }
+
+  void _undoDismissPreview() {
+    final item = _lastDismissedPreview;
+    if (item == null) return;
+
+    _undoTimer?.cancel();
+    setState(() {
+      final next = List<BriefItem>.from(_previewItems);
+      final insertAt = _lastDismissedIndex.clamp(0, next.length);
+      next.insert(insertAt, item);
+      _previewItems = next;
+      _showUndo = false;
+      _lastDismissedPreview = null;
     });
   }
 
@@ -182,12 +250,26 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
     }
 
     if (_items.isEmpty) {
-      return _DailyBriefStatusView(
-        title: 'No memories yet',
-        message:
-            'Saved captures will appear here after Mira adds them to your memory graph.',
-        actionLabel: 'Refresh',
-        onAction: () => _load(showLoader: false),
+      return Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: () => _load(showLoader: false),
+            child: DailyBriefEmptyPreview(
+              items: _previewItems,
+              onDismiss: _dismissPreviewCard,
+              onCardTap: _showItemDetails,
+              onCheckboxChanged: _togglePreviewTask,
+              onNoteExpand: _togglePreviewNoteExpand,
+            ),
+          ),
+          if (_showUndo)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 12,
+              child: DailyBriefUndoBar(onUndo: _undoDismissPreview),
+            ),
+        ],
       );
     }
 

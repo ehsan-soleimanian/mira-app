@@ -13,7 +13,7 @@ class MiraComposerBar extends StatelessWidget {
     this.onMicTap,
     this.onSend,
     this.onSubmitted,
-    this.hintText = 'Type here...',
+    this.hintText = 'Type Here',
     this.scale = 1.0,
   });
 
@@ -34,7 +34,7 @@ class MiraComposerBar extends StatelessWidget {
     final sendSize = ComposerTokens.sendButtonSize * s;
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         MiraAddButton(size: addSize, onTap: onAdd),
         SizedBox(width: MiraSpacing.sm * s),

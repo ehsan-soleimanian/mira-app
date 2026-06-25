@@ -22,7 +22,6 @@ import 'package:mira_app/features/graph/widgets/memory_graph_icon_button.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
-import 'package:mira_app/theme/composer_tokens.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
 import 'package:mira_app/theme/page_header_tokens.dart';
 import 'package:mira_app/theme/stop_button_tokens.dart';
@@ -138,6 +137,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   Future<void> _submitText(String raw) async {
     final text = raw.trim();
     if (text.isEmpty || _busy) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     _controller.clear();
     await _submitCapture(
       prompt: text,
@@ -353,7 +353,6 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
           'tasks': result.tasks,
         };
       });
-      _showSnack('Saved to memory');
       _openMemoryGraph(highlightNodeId: result.highlightEntityId);
     } catch (error) {
       _showSnack('Save failed: $error');
@@ -472,11 +471,16 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (_showAttachMenu) ...[
-                            _AttachmentMenu(
+                            CaptureAttachMenu(
                               scale: s,
-                              onSelected: _submitAttachment,
+                              onCamera: () =>
+                                  _submitAttachment(_AttachmentKind.camera),
+                              onPicture: () =>
+                                  _submitAttachment(_AttachmentKind.picture),
+                              onFile: () =>
+                                  _submitAttachment(_AttachmentKind.file),
                             ),
-                            SizedBox(height: 8 * s),
+                            SizedBox(height: 10 * s),
                           ],
                           MiraComposerBar(
                             controller: _controller,
@@ -562,15 +566,12 @@ class _WorkflowContent extends StatelessWidget {
     final s = scale;
 
     if (mode == _CaptureWorkflowMode.conversation) {
-      final topInset = belowPageHeader
-          ? HomeScreenTokens.subtitleYBelowHeader(s) + 24 * s
-          : HomeScreenTokens.subtitleY(s) + 24 * s;
       return Padding(
         padding: EdgeInsets.fromLTRB(
-          24 * s,
-          topInset,
-          24 * s,
-          120 * s,
+          CaptureChatTokens.horizontalPadding * s,
+          CaptureChatTokens.contentTopPadding * s,
+          CaptureChatTokens.horizontalPadding * s,
+          CaptureChatTokens.bottomPadding * s,
         ),
         child: _ConversationView(
           scale: s,
@@ -590,7 +591,7 @@ class _WorkflowContent extends StatelessWidget {
 
     return Stack(
       children: [
-        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader),
+        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader, ambient: true),
         Positioned(
           top: belowPageHeader
               ? HomeScreenTokens.headlineYBelowHeader(s)
@@ -618,7 +619,7 @@ class _WorkflowContent extends StatelessWidget {
         Positioned(
           left: 74 * s,
           right: 74 * s,
-          bottom: 134 * s,
+          bottom: 96 * s,
           child: _WorkflowHint(scale: s),
         ),
       ],
@@ -649,7 +650,7 @@ class _ListeningContent extends StatelessWidget {
 
     return Stack(
       children: [
-        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader),
+        MiraHeroOrb(scale: s, belowPageHeader: belowPageHeader, ambient: true),
         Positioned(
           top: _headlineTop(s),
           left: 0,
@@ -776,7 +777,7 @@ class _ConversationView extends StatelessWidget {
         SizedBox(height: 10 * s),
         CaptureMemoryToggle(
           scale: s,
-          saved: memorySaved,
+          saved: true,
           onTap: onMemoryToggle,
         ),
         SizedBox(height: 30 * s),
@@ -795,7 +796,7 @@ class _ConversationView extends StatelessWidget {
         SizedBox(height: 10 * s),
         CaptureMemoryToggle(
           scale: s,
-          saved: memorySaved,
+          saved: true,
           onTap: onMemoryToggle,
         ),
       ],
@@ -855,12 +856,6 @@ class _DynamicConversationBody extends StatelessWidget {
                 ? "Saved to your memory. If this is wrong, tell me. I'll change it."
                 : "Save this to your memory. If this is wrong, tell me. I'll change it.",
           ),
-          SizedBox(height: 10 * s),
-          CaptureMemoryToggle(
-            scale: s,
-            saved: memorySaved || pendingApproval,
-            onTap: onMemoryToggle,
-          ),
           if (pendingApproval) ...[
             SizedBox(height: 28 * s),
             CaptureApprovalActions(
@@ -868,6 +863,13 @@ class _DynamicConversationBody extends StatelessWidget {
               busy: busy,
               onSave: onSave,
               onCancel: onCancel,
+            ),
+          ] else if (memorySaved) ...[
+            SizedBox(height: 10 * s),
+            CaptureMemoryToggle(
+              scale: s,
+              saved: true,
+              onTap: onMemoryToggle,
             ),
           ],
         ] else if (answer != null) ...[
@@ -954,76 +956,6 @@ class _InsetTip extends StatelessWidget {
           style: AppTypography.tip(s).copyWith(color: color),
         ),
       ),
-    );
-  }
-}
-
-class _AttachmentMenu extends StatelessWidget {
-  const _AttachmentMenu({
-    required this.scale,
-    required this.onSelected,
-  });
-
-  final double scale;
-  final ValueChanged<_AttachmentKind> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = scale;
-    final inset = (ComposerTokens.addButtonSize * s - 40 * s) / 2;
-
-    return Padding(
-      padding: EdgeInsets.only(left: inset.clamp(0.0, double.infinity)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _AttachmentItem(
-            scale: s,
-            icon: Icons.photo_camera_outlined,
-            onTap: () => onSelected(_AttachmentKind.camera),
-          ),
-          _AttachmentItem(
-            scale: s,
-            icon: Icons.add_photo_alternate_outlined,
-            onTap: () => onSelected(_AttachmentKind.picture),
-          ),
-          _AttachmentItem(
-            scale: s,
-            icon: Icons.create_new_folder_outlined,
-            onTap: () => onSelected(_AttachmentKind.file),
-          ),
-          _AttachmentItem(
-            scale: s,
-            icon: Icons.link_rounded,
-            onTap: () => onSelected(_AttachmentKind.link),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AttachmentItem extends StatelessWidget {
-  const _AttachmentItem({
-    required this.scale,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final double scale;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = scale;
-
-    return IconButton(
-      onPressed: onTap,
-      padding: EdgeInsets.zero,
-      constraints: BoxConstraints(minWidth: 40 * s, minHeight: 40 * s),
-      icon: Icon(icon, size: 24 * s, color: AppColors.textPrimary),
     );
   }
 }

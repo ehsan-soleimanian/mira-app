@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mira_app/components/atoms/figma_svg_icon.dart';
 import 'package:mira_app/components/molecules/mira_inner_shadow_painter.dart';
 import 'package:mira_app/core/figma_assets.dart';
+import 'package:mira_app/core/mira_haptics.dart';
 import 'package:mira_app/theme/mira_ear_nav_tokens.dart';
 
 /// Inset neumorphic mic well from Figma component 741:4986.
@@ -70,6 +71,7 @@ class _MiraEarNavMicButtonState extends State<MiraEarNavMicButton>
 
   void _onPressStart() {
     if (widget.recordingActive) return;
+    MiraHaptics.micPressDown();
     _downAt = DateTime.now().millisecondsSinceEpoch;
     _recordingTriggered = false;
     setState(() => _pressing = true);
@@ -77,6 +79,7 @@ class _MiraEarNavMicButtonState extends State<MiraEarNavMicButton>
     Future<void>.delayed(const Duration(milliseconds: _holdThresholdMs), () {
       if (!_pressing || _recordingTriggered || !mounted) return;
       _recordingTriggered = true;
+      MiraHaptics.micRecordingEngaged();
       widget.onRecordingStart?.call();
     });
   }

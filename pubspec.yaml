@@ -35,6 +35,8 @@ flutter:
     - assets/images/figma/nav_mic.svg
     - assets/images/figma/nav_coffee.svg
     - assets/images/figma/settings_icon.svg
+    - assets/images/figma/settings_icon.png
+    - assets/images/figma/graph_icon.png
     - assets/images/figma/tip_arrow.svg
     - assets/images/figma/mira_ball.png
     - assets/images/onboarding/welcome_illustration.png

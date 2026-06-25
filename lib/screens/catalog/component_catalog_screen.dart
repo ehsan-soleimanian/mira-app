@@ -150,7 +150,7 @@ class _ComponentCatalogScreenState extends State<ComponentCatalogScreen> {
           ),
           const SizedBox(height: MiraSpacing.md),
           _Section(
-            title: 'Molecules / SettingsButton (Neumorphic inset)',
+            title: 'Molecules / SettingsButton',
             child: Align(
               alignment: Alignment.centerLeft,
               child: SettingsButton(

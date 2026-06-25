@@ -8,7 +8,7 @@ import 'package:mira_app/theme/home_screen_tokens.dart';
 import 'package:mira_app/theme/page_header_tokens.dart';
 
 /// Home hero stack — sphere, headline, subtitle, tip (Figma 692:4127).
-class HomeHero extends StatelessWidget {
+class HomeHero extends StatefulWidget {
   const HomeHero({
     super.key,
     required this.scale,
@@ -19,8 +19,46 @@ class HomeHero extends StatelessWidget {
   final bool processing;
 
   @override
+  State<HomeHero> createState() => _HomeHeroState();
+}
+
+class _HomeHeroState extends State<HomeHero>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _holdRamp;
+  late final Animation<double> _holdCurve;
+
+  @override
+  void initState() {
+    super.initState();
+    _holdRamp = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+    _holdCurve = CurvedAnimation(
+      parent: _holdRamp,
+      curve: Curves.easeInOutCubic,
+    );
+    _holdRamp.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _holdRamp.dispose();
+    super.dispose();
+  }
+
+  void _onHoldStart() {
+    if (widget.processing) return;
+    _holdRamp.forward();
+  }
+
+  void _onHoldEnd() {
+    _holdRamp.reverse();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final s = scale;
+    final s = widget.scale;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -35,7 +73,13 @@ class HomeHero extends StatelessWidget {
           right: PageHeaderTokens.horizontalPadding,
           child: SettingsButton(size: PageHeaderTokens.actionSize),
         ),
-        MiraHeroOrb(scale: s, processing: processing),
+        MiraHeroOrb(
+          scale: s,
+          processing: widget.processing,
+          holdIntensity: _holdCurve.value,
+          onHoldStart: _onHoldStart,
+          onHoldEnd: _onHoldEnd,
+        ),
         Positioned(
           top: HomeScreenTokens.headlineTop * s,
           left: 0,
