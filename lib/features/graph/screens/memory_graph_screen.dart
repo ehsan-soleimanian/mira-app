@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/molecules/mira_page_header.dart';
+import 'package:mira_app/features/auth/auth_gate.dart';
 import 'package:mira_app/features/graph/graph_layout.dart';
 import 'package:mira_app/features/graph/graph_layout_models.dart';
 import 'package:mira_app/features/graph/graph_repository.dart';
@@ -36,6 +38,7 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
   GraphResponse? _graph;
   GraphViewMode _viewMode = GraphViewMode.knowledge;
   Object? _error;
+  String? _errorMessage;
   var _loading = true;
   Timer? _layoutSaveTimer;
   var _layoutSaveInFlight = false;
@@ -59,6 +62,7 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _errorMessage = null;
     });
     try {
       final graph = await _repository!.fetchGraph(view: _viewMode);
@@ -69,11 +73,44 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
       });
     } catch (error) {
       if (!mounted) return;
+      final message = _formatGraphLoadError(error);
       setState(() {
         _error = error;
+        _errorMessage = message;
         _loading = false;
       });
     }
+  }
+
+  String _formatGraphLoadError(Object error) {
+    if (error is DioException) {
+      final code = error.response?.statusCode;
+      if (code == 401) {
+        return 'جلسه شما منقضی شده. لطفاً دوباره وارد شوید.';
+      }
+      final detail = error.response?.data;
+      if (detail is Map && detail['detail'] != null) {
+        return detail['detail'].toString();
+      }
+      if (code != null) {
+        return 'خطا در دریافت گراف (HTTP $code).';
+      }
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout) {
+        return 'اتصال به سرور برقرار نشد. اینترنت/آدرس API را بررسی کنید.';
+      }
+    }
+    return 'Could not load memory graph';
+  }
+
+  Future<void> _logoutAndGoToAuth() async {
+    final services = AppScope.servicesOf(context);
+    await services.authRepository.logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthGate()),
+      (_) => false,
+    );
   }
 
   void _scheduleLayoutSave(GraphLayout layout) {
@@ -169,6 +206,8 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
+      final isUnauthorized = _error is DioException &&
+          (_error as DioException).response?.statusCode == 401;
       return Center(
         child: Padding(
           padding: EdgeInsets.all(24 * s),
@@ -176,14 +215,26 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Could not load memory graph',
+                _errorMessage ?? 'Could not load memory graph',
                 style: AppTypography.dosis(
                   size: 16 * s,
                   color: AppColors.textPrimary,
                 ),
               ),
               SizedBox(height: 12 * s),
-              TextButton(onPressed: _loadGraph, child: const Text('Retry')),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(onPressed: _loadGraph, child: const Text('Retry')),
+                  if (isUnauthorized) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: _logoutAndGoToAuth,
+                      child: const Text('Login again'),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -227,6 +278,8 @@ class _MemoryGraphScreenState extends State<MemoryGraphScreen> {
               node: node,
               related: _relatedNodes(node),
               scale: s,
+              repository: _repository!,
+              onChanged: _loadGraph,
             );
           },
           onLayoutChanged: _scheduleLayoutSave,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/features/capture/widgets/capture_chat_widgets.dart';
 
@@ -20,6 +21,7 @@ class IntentClarificationPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return CaptureConversationColumn(
       children: [
         CaptureMiraMessage(scale: scale, text: prompt),
@@ -40,7 +42,7 @@ class IntentClarificationPanel extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'این یک سوال است',
+                    l10n.captureIntentThisIsQuestion,
                     style: AppTypography.dosis(
                       size: 13 * scale,
                       weight: FontWeight.w600,
@@ -64,7 +66,7 @@ class IntentClarificationPanel extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'به حافظه ذخیره کن',
+                    l10n.captureIntentSaveToMemory,
                     style: AppTypography.dosis(
                       size: 13 * scale,
                       weight: FontWeight.w600,

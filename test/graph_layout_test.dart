@@ -9,6 +9,7 @@ void main() {
       nodes: [
         GraphNode(
           id: 'person',
+          kind: 'ENTITY',
           nodeType: 'Person',
           title: 'Sajad',
           summary: 'User',
@@ -17,6 +18,7 @@ void main() {
         ),
         GraphNode(
           id: 'task',
+          kind: 'TASK',
           nodeType: 'Task',
           title: 'Product Design',
           summary: 'Design work',

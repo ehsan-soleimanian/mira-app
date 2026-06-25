@@ -1,6 +1,6 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-06-24 (graph entity normalization + Topic/Person linking)
+> Last updated: 2026-06-25 (capture clarification + i18n scaffold + Graph V2 admin views)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
 
@@ -87,7 +87,8 @@ test/
 | **Home** | Figma UI + composer bar; shows GraphRAG answer when returned |
 | **Daily Brief** | UI complete; **mock data** (`DailyBriefData.initialItems()`) |
 | **Settings** | UI shell |
-| **Graph screen** | `MemoryGraphScreen` — radial graph from `GET /graph`, node tap → blurred bottom sheet |
+| **Graph screen** | `MemoryGraphScreen` — radial graph from `GET /v2/graph`; node tap → blurred bottom sheet with mutations |
+| **Daily Brief tasks** | Checkbox calls `PATCH /v2/tasks/{id}` via `GraphRepository.updateTaskStatus` |
 
 ### Commands
 
@@ -217,21 +218,120 @@ flowchart TD
 
 ---
 
+### Ambiguous intent clarification (`clarification_needed`)
+
+When `CaptureProcessor` cannot confidently decide between **question** vs **save**, backend sets `state: clarification_needed` and sends a clarification message.
+
+**Contract (see [`API_BOOK.md`](API_BOOK.md) · `POST /captures/{id}/clarify-intent`):**
+
+- `state: clarification_needed` with `answer: "Could you clarify — is this a question or something to save?"`
+- Client shows **two CTA buttons**:
+  - «این یک سوال است» → `intent = "question"`
+  - «به حافظه ذخیره کن» → `intent = "save"`
+- Flutter calls `CaptureRepository.clarifyIntent(captureId, intent: ...)` which hits:
+  - `POST /captures/{id}/clarify-intent` → returns **either**:
+    - `state: question_answered` + `answer`  
+    - `state: awaiting_approval` + `proposal`
+    - (rare) `state: clarification_needed` again if backend still ambiguous
+
+**Client files:**
+
+| File | Role |
+|------|------|
+| `features/capture/capture_repository.dart` | `clarifyIntent()` → HTTP client for `/captures/{id}/clarify-intent` |
+| `features/capture/capture_flow_controller.dart` | Consumes SSE `clarification` events + fallback on final `state == clarification_needed`, opens bottom sheets for intent clarification (sheet + voice flows) |
+| `features/capture/screens/capture_workflow_screen.dart` | Text capture conversational flow; shows intent clarification CTA row inside `_DynamicConversationBody` |
+| `features/capture/screens/voice_recording_screen.dart` | Voice route; renders `IntentClarificationPanel` when `pendingIntentClarification` is set |
+| `features/capture/widgets/intent_clarification_panel.dart` | Shared CTA UI for voice route («question» vs «save») |
+
+UX invariant: user **always** sees a clear choice and never stays indefinitely on «processing…» when backend is waiting for clarification.
+
+---
+
+### Localization / i18n scaffold
+
+Flutter app uses **Flutter gen-l10n** with ARB files; new UI copy must **not** be hard-coded.
+
+**Setup:**
+
+- `pubspec.yaml`
+  - `flutter_localizations` + `intl` dependencies
+  - `flutter: generate: true`
+- `l10n.yaml`
+  - `arb-dir: lib/l10n`
+  - `template-arb-file: app_en.arb`
+  - `output-localization-file: app_localizations.dart`
+- ARB files:
+  - `lib/l10n/app_en.arb`
+  - `lib/l10n/app_fa.arb`
+
+**Core wiring:**
+
+- `main.dart`
+  - `import 'package:mira_app/l10n/app_localizations.dart';`
+  - `onGenerateTitle: (ctx) => AppLocalizations.of(ctx)!.appTitle`
+  - `localizationsDelegates: AppLocalizations.localizationsDelegates`
+  - `supportedLocales: AppLocalizations.supportedLocales`
+
+**Capture clarification strings (keys):**
+
+| Key | Usage |
+|-----|-------|
+| `captureIntentClarificationPrompt` | Default prompt when backend answer is missing; used in sheet + voice flows |
+| `captureIntentThisIsQuestion` | Label for «این یک سوال است» |
+| `captureIntentSaveToMemory` | Label for «به حافظه ذخیره کن» |
+
+**Client usage examples:**
+
+- `features/capture/widgets/intent_clarification_panel.dart`
+  - Reads `AppLocalizations.of(context)!` and uses `captureIntentThisIsQuestion` / `captureIntentSaveToMemory`
+- `features/capture/screens/voice_recording_screen.dart`
+  - Uses `l10n.captureIntentClarificationPrompt` when backend did not send a custom prompt
+- `features/capture/screens/capture_workflow_screen.dart`
+  - Uses `localization.captureIntentClarificationPrompt` as fallback when `_intentClarificationPrompt` is null
+
+**Admin-managed translations (backend):**
+
+- Super Admin exposes `/admin/api/translations` to CRUD translation rows (`locale`, `key`, `text`).
+- HTML console section **Translations** in `dashboard.html` lets ops update values without redeploying.
+- For now Flutter still reads from bundled ARB; when wiring live translations, use keys consistent with ARB (`captureIntent*`) and treat admin values as overrides.
+
+When adding any new user-facing string, prefer:
+
+1. Add key to `app_en.arb` / `app_fa.arb`
+2. Use `AppLocalizations` in Dart
+3. Optionally register the same key in admin translations to allow hot-fix text in production.
+
+---
+
 ## Graph screen (mobile UI)
 
 Radial memory graph — **no extra pub package**; `InteractiveViewer` + `CustomPaint` + local force physics (`graph_physics_engine.dart`).
 
 | File | Role |
 |------|------|
-| `features/graph/screens/memory_graph_screen.dart` | `GET /graph`, debounced `PUT /graph/layout` |
+| `features/graph/screens/memory_graph_screen.dart` | `GET /v2/graph`, debounced `PUT /v2/graph/layout`, refresh on mutation |
+| `features/graph/graph_repository.dart` | Fetch graph + `updateTaskStatus`, `archiveCapture`, `patchCaptureTitle`, `correctCapture`, `rejectAssertion` |
 | `features/graph/widgets/memory_graph_canvas.dart` | Drag nodes, spring physics, pinch-zoom, tap |
 | `features/graph/graph_physics_engine.dart` | Repulsion + edge springs between connected nodes |
-| `features/graph/widgets/graph_node_detail_sheet.dart` | `BackdropFilter` blur + memory cards |
+| `features/graph/widgets/graph_node_detail_sheet.dart` | Blur sheet + actions by node kind (task/capture/entity) |
 | `features/graph/widgets/memory_graph_icon_button.dart` | Brain icon in workflow + voice headers |
 
-**Interaction:** drag any node (edges follow); release → physics settles; layout auto-saves to MariaDB (`graph_layouts`) after 2s. `GET /graph` returns optional `layout` with normalized `x`/`y` (0–1) per node.
+**Interaction:** drag any node (edges follow); release → physics settles; layout auto-saves to MariaDB (`graph_layouts`) after 2s. `GET /v2/graph` returns optional `layout` with normalized `x`/`y` (0–1) per node.
 
-Tap the psychology icon (top-right) during capture or voice recording. Tap any node → bottom sheet with summary cards and dates. Pass `highlightNodeId` to mark a newly saved memory.
+Tap the psychology icon (top-right) during capture or voice recording. Tap any node → bottom sheet with summary cards and mutation actions:
+
+| Node kind | Actions |
+|-----------|---------|
+| `TASK` | Mark done (`DONE`), cancel (`CANCELLED`) |
+| `CAPTURE` | Edit memory (title-only `PATCH` or semantic `POST /correct`), delete (`DELETE` archive) |
+| `ENTITY` | Assertion list from `GET /v2/entities/{id}`; reject per assertion |
+
+Daily brief task checkbox toggles `OPEN` ↔ `DONE` optimistically via `GraphRepository`.
+
+i18n keys: `graphMarkDone`, `graphCancelTask`, `graphEditMemory`, `graphDeleteMemory`, … in `app_en.arb` / `app_fa.arb`.
+
+Pass `highlightNodeId` to mark a newly saved memory.
 
 ---
 
@@ -301,6 +401,38 @@ Neo4j stores types uppercased; duplicate parallel edges are **MERGE**-deduped se
 Same composer as capture → intent `question` → vector search over approved nodes → LLM answer. Requires live `embed` route (768-dim) and worker running.
 
 **Ops:** Super Admin → Users explorer shows per-user nodes/edges. Stuck `processing` captures → flush Redis + restart worker (`../mira-backend/AGENTS.md`). After graph linker changes, run **repair-graph** for affected users.
+
+---
+
+## Graph V2 contract (admin-first, Flutter aware)
+
+Graph V2 ontology/predicate/assertion logic is backend-owned (`mira-backend`). Flutter should treat it as a read-only contract and must not re-implement inference/materialization rules.
+
+### Graph views in Super Admin
+
+Super Admin user inspect page supports Graph V2 views:
+
+| View | What it shows |
+|------|----------------|
+| `knowledge` | User + entity/domain edges (`FOUNDED`, `HAS_ROLE_RELATION`, ...) |
+| `evidence` | Capture/Mention/Assertion provenance edges (`SUPPORTED_BY`, `SUBJECT`, `OBJECT`, `CONTEXT`) |
+| `hybrid` | Combined knowledge + evidence |
+| `tasks` | Task nodes extracted from captures |
+
+Admin endpoints are backend-only (`/admin/api/users/{user_id}/graph?view=...`) and not consumed by the app runtime today.
+
+### Assertion and predicate behavior (important for app expectations)
+
+- `predicate_key` is ontology-driven and resolved server-side from Graph V2 registry.
+- Unknown/unsupported predicates still persist as assertion evidence; they may not materialize to knowledge edges.
+- `NEEDS_REVIEW`/`UNKNOWN` assertions are backend review concerns; Flutter should continue rendering capture/question flows without assuming domain edge creation.
+- Evidence view fixed behavior: `SUPPORTED_BY` is assertion -> capture (no assertion self-loop).
+
+### Client invariants for Graph V2
+
+- Keep app logic transport-only: consume API responses, do not infer `predicate_family`/`materialization` in Dart.
+- Do not treat missing knowledge edges as failure; evidence may still be valid and persisted.
+- If backend ontology expands (new predicates), app should remain forward-compatible by rendering unknown edge labels as-is where applicable.
 
 ---
 

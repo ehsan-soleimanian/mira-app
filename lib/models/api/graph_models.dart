@@ -189,3 +189,54 @@ class GraphIngestResponse {
   String? get highlightEntityId =>
       createdEntities.isNotEmpty ? createdEntities.first : null;
 }
+
+class GraphTaskDto {
+  const GraphTaskDto({
+    required this.taskId,
+    required this.title,
+    required this.actionType,
+    required this.status,
+    required this.captureId,
+  });
+
+  factory GraphTaskDto.fromJson(Map<String, dynamic> json) => GraphTaskDto(
+        taskId: json['taskId'] as String? ?? json['task_id'] as String,
+        title: json['title'] as String? ?? '',
+        actionType: json['actionType'] as String? ?? json['action_type'] as String? ?? '',
+        status: json['status'] as String? ?? 'OPEN',
+        captureId: json['captureId'] as String? ?? json['capture_id'] as String? ?? '',
+      );
+
+  final String taskId;
+  final String title;
+  final String actionType;
+  final String status;
+  final String captureId;
+}
+
+class ArchiveCaptureResponse {
+  const ArchiveCaptureResponse({
+    required this.archived,
+    required this.captureId,
+    this.assertionsRejected = 0,
+    this.tasksCancelled = 0,
+    this.edgesDemoted = 0,
+  });
+
+  factory ArchiveCaptureResponse.fromJson(Map<String, dynamic> json) =>
+      ArchiveCaptureResponse(
+        archived: json['archived'] as bool? ?? true,
+        captureId: json['captureId'] as String? ?? json['capture_id'] as String,
+        assertionsRejected:
+            json['assertionsRejected'] as int? ?? json['assertions_rejected'] as int? ?? 0,
+        tasksCancelled:
+            json['tasksCancelled'] as int? ?? json['tasks_cancelled'] as int? ?? 0,
+        edgesDemoted: json['edgesDemoted'] as int? ?? json['edges_demoted'] as int? ?? 0,
+      );
+
+  final bool archived;
+  final String captureId;
+  final int assertionsRejected;
+  final int tasksCancelled;
+  final int edgesDemoted;
+}

@@ -7,6 +7,7 @@ import 'package:mira_app/components/components.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/features/daily_brief/daily_brief_repository.dart';
+import 'package:mira_app/features/graph/graph_repository.dart';
 import 'package:mira_app/models/daily_brief_models.dart';
 import 'package:mira_app/screens/daily_brief/daily_brief_empty_preview.dart';
 import 'package:mira_app/theme/app_colors.dart';
@@ -24,6 +25,7 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
   List<BriefItem> _items = const [];
   List<BriefItem> _previewItems = DailyBriefData.placeholderPreviewItems();
   DailyBriefRepository? _repository;
+  GraphRepository? _graphRepository;
   CaptureFlowController? _captureFlow;
   CaptureUiPhase? _lastCapturePhase;
   bool _loading = true;
@@ -44,6 +46,7 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
     super.didChangeDependencies();
     final services = AppScope.servicesOf(context);
     _repository = services.dailyBriefRepository;
+    _graphRepository = services.graphRepository;
 
     final nextFlow = services.captureFlow;
     if (!identical(nextFlow, _captureFlow)) {
@@ -101,7 +104,8 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
     }
   }
 
-  void _toggleTask(String id, bool completed) {
+  Future<void> _toggleTask(String id, bool completed) async {
+    final previous = _items;
     setState(() {
       _items = _items.map((item) {
         if (item is BriefTask && item.id == id) {
@@ -110,6 +114,14 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
         return item;
       }).toList();
     });
+    final graphRepo = _graphRepository;
+    if (graphRepo == null) return;
+    try {
+      await graphRepo.updateTaskStatus(id, completed ? 'DONE' : 'OPEN');
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _items = previous);
+    }
   }
 
   void _toggleNoteExpand(String id) {

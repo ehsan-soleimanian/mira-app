@@ -112,7 +112,7 @@ class SettingsPageScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF1E1E1E) : AppColors.background,
       body: SafeArea(
-        bottom: false,
+        bottom: true,
         child: Column(
           children: [
             MiraPageHeader(

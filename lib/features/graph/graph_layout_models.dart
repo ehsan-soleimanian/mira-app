@@ -43,7 +43,7 @@ class GraphLayoutPosition {
 
   factory GraphLayoutPosition.fromJson(Map<String, dynamic> json) =>
       GraphLayoutPosition(
-        nodeId: json['node_id'] as String,
+        nodeId: (json['node_id'] as String?) ?? (json['nodeId'] as String),
         x: (json['x'] as num).toDouble(),
         y: (json['y'] as num).toDouble(),
       );
@@ -74,8 +74,14 @@ class GraphLayoutResponse {
           .whereType<Map<String, dynamic>>()
           .map(GraphLayoutPosition.fromJson)
           .toList(),
-      panX: (json['pan_x'] as num?)?.toDouble() ?? 0,
-      panY: (json['pan_y'] as num?)?.toDouble() ?? 0,
+      panX:
+          (json['pan_x'] as num?)?.toDouble() ??
+          (json['panX'] as num?)?.toDouble() ??
+          0,
+      panY:
+          (json['pan_y'] as num?)?.toDouble() ??
+          (json['panY'] as num?)?.toDouble() ??
+          0,
       scale: (json['scale'] as num?)?.toDouble() ?? 1,
     );
   }

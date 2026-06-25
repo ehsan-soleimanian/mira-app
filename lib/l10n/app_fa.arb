@@ -1,0 +1,18 @@
+{
+  "@@locale": "fa",
+  "appTitle": "میرا",
+  "captureIntentClarificationPrompt": "لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟",
+  "captureIntentThisIsQuestion": "این یک سوال است",
+  "captureIntentSaveToMemory": "به حافظه ذخیره کن",
+  "graphMarkDone": "انجام شد",
+  "graphCancelTask": "لغو کار",
+  "graphEditMemory": "ویرایش خاطره",
+  "graphDeleteMemory": "حذف خاطره",
+  "graphDeleteConfirmTitle": "این خاطره حذف شود؟",
+  "graphDeleteConfirmBody": "این capture از گراف حذف می‌شود. افراد مرتبط اگر جای دیگر استفاده شده باشند می‌مانند.",
+  "graphSave": "ذخیره",
+  "graphCorrectMemoryHint": "متن جدیدی که می‌خواهید میرا به خاطر بسپارد",
+  "graphMutationSuccess": "به‌روزرسانی شد",
+  "graphMutationFailed": "به‌روزرسانی نشد. دوباره تلاش کنید.",
+  "graphRejectAssertion": "رد این ادعا"
+}

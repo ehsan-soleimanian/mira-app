@@ -17,6 +17,7 @@ import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
 import 'package:mira_app/theme/page_header_tokens.dart';
 import 'package:mira_app/theme/stop_button_tokens.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 
 /// Full-screen voice capture — listening → processing → approval (Figma).
 class VoiceRecordingScreen extends StatefulWidget {
@@ -155,12 +156,13 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
   }
 
   Widget _buildBody(CaptureFlowController flow, double s) {
+    final l10n = AppLocalizations.of(context)!;
     if (flow.pendingIntentClarification != null) {
       return IntentClarificationPanel(
         scale: s,
         prompt:
             flow.pendingIntentClarification!['prompt']?.toString() ??
-            'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟',
+            l10n.captureIntentClarificationPrompt,
         busy: flow.approvalBusy,
         onQuestion: () => unawaited(
           flow.resolvePendingIntentClarification(asQuestion: true),

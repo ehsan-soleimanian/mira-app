@@ -2,7 +2,7 @@
 
 > **For Flutter client (`mira_app`)** — contract to implement HTTP integration.
 > **Source of truth**: `C:\Users\User\Desktop\mira-backend\src\mira\**\router.py`
-> Last updated: 2026-06-24 (production: `api.miramind.io`; admin: `admin.miramind.io`)
+> Last updated: 2026-06-25 (graph v2 mutations + daily brief task API)
 
 **Base URL (production)**: `https://api.miramind.io`
 
@@ -64,6 +64,11 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `PUT` | `/v2/graph/layout` | `graph_repository.dart` | Persist interactive layout |
 | `GET` | `/v2/entities/{id}` | `graph_repository.dart` | Entity detail + assertions |
 | `GET` | `/v2/tasks` | `graph_repository.dart` | Open tasks list |
+| `PATCH` | `/v2/tasks/{id}` | `graph_repository.dart` | Update task status/title/due |
+| `DELETE` | `/v2/captures/{id}` | `graph_repository.dart` | Archive capture + cascade |
+| `PATCH` | `/v2/captures/{id}` | `graph_repository.dart` | Display title-only edit |
+| `POST` | `/v2/captures/{id}/correct` | `graph_repository.dart` | Semantic correction (re-ingest) |
+| `POST` | `/v2/assertions/{id}/reject` | `graph_repository.dart` | Reject assertion from entity sheet |
 | `GET` | `/v2/search` | — | Hybrid entity + capture search |
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
@@ -912,6 +917,104 @@ Returns entity metadata, assertions (with capture citations), and mention snippe
 Returns task nodes for the tasks graph view / daily brief integration.
 
 **Errors**: `401`
+
+---
+
+### Update task
+`PATCH /v2/tasks/{task_id}`
+
+Update task lifecycle or metadata. Typical client use: mark `DONE` or `CANCELLED` from graph sheet or daily brief checkbox.
+
+**Request**
+```json
+{
+  "status": "DONE",
+  "title": "Optional new title",
+  "dueAt": "2026-06-25T18:00:00+00:00"
+}
+```
+
+All fields optional; send only what changes.
+
+**Response** `200`
+```json
+{
+  "taskId": "task_abc",
+  "title": "Call Alex",
+  "actionType": "CALL",
+  "status": "DONE",
+  "createdAt": "2026-06-20T10:00:00+00:00",
+  "captureId": "cap_xyz"
+}
+```
+
+**Errors**: `400` (invalid transition) · `401`
+
+---
+
+### Archive capture
+`DELETE /v2/captures/{capture_id}`
+
+Soft-delete: sets capture `ARCHIVED`, rejects its assertions, cancels its tasks, demotes materialized edges supported only by this capture. **Shared entities stay** when referenced by other captures.
+
+**Response** `200`
+```json
+{
+  "archived": true,
+  "captureId": "cap_xyz",
+  "assertionsRejected": 3,
+  "tasksCancelled": 1,
+  "edgesDemoted": 2
+}
+```
+
+**Errors**: `401` · `404`
+
+---
+
+### Patch capture title
+`PATCH /v2/captures/{capture_id}`
+
+Display-only title edit (no re-LLM). Use when user tweaks wording without changing meaning.
+
+**Request**
+```json
+{ "title": "Mobbina is 39 years old" }
+```
+
+**Response** `200`
+```json
+{ "captureId": "cap_xyz", "title": "Mobbina is 39 years old" }
+```
+
+**Errors**: `401` · `404` · `422`
+
+---
+
+### Correct capture (semantic edit)
+`POST /v2/captures/{capture_id}/correct`
+
+Archives the old capture subgraph, ingests corrected text as a **new** `capture_id`, and links `(new)-[:CORRECTS]->(old)`.
+
+**Request**
+```json
+{ "text": "Mobbina turned 40 this year" }
+```
+
+**Response** `200` — same shape as graph ingest (`captureId`, `createdEntities`, `tasks`, …) plus optional `correctsCaptureId`.
+
+**Errors**: `400` · `401` · `404` · `422`
+
+---
+
+### Reject assertion
+`POST /v2/assertions/{assertion_id}/reject`
+
+Marks an assertion `REJECTED` (entity detail sheet).
+
+**Response** `200` — `{ "status": "REJECTED" }`
+
+**Errors**: `401` · `404`
 
 ---
 

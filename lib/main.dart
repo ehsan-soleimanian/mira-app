@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/atoms/figma_svg_icon.dart';
 import 'package:mira_app/core/app_theme_controller.dart';
@@ -81,11 +83,18 @@ class MiraApp extends StatelessWidget {
         listenable: themeController,
         builder: (context, _) {
           return MaterialApp(
-            title: 'Mira',
+            onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
             debugShowCheckedModeBanner: false,
             themeMode: themeController.mode,
             theme: AppTheme.light(),
             darkTheme: AppTheme.dark(),
+            localizationsDelegates: [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
             home: const AuthGate(),
           );
         },

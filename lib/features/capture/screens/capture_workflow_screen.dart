@@ -25,6 +25,7 @@ import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';
 import 'package:mira_app/theme/page_header_tokens.dart';
 import 'package:mira_app/theme/stop_button_tokens.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 
 enum _CaptureWorkflowMode { compose, listening, conversation }
 
@@ -284,9 +285,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
           }
         case 'clarification':
           setState(() {
-            _intentClarificationPrompt =
-                event.data['prompt']?.toString() ??
-                'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟';
+            _intentClarificationPrompt = event.data['prompt']?.toString();
             _statusText = null;
           });
         case 'proposal':
@@ -426,9 +425,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
         _applyAnswer(updated.answer!);
       } else if (updated.state == 'clarification_needed') {
         setState(() {
-          _intentClarificationPrompt =
-              updated.answer ??
-              'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟';
+          _intentClarificationPrompt = updated.answer;
           _statusText = null;
         });
       }
@@ -466,6 +463,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final width = MediaQuery.sizeOf(context).width;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final s = width / HomeScreenTokens.designWidth;
@@ -514,6 +512,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                                 _clarifyIntent(asQuestion: true),
                             onClarifyAsSave: () =>
                                 _clarifyIntent(asQuestion: false),
+                            localization: l10n,
                           ),
                   ),
                   if (_mode != _CaptureWorkflowMode.listening)
@@ -602,6 +601,7 @@ class _WorkflowContent extends StatelessWidget {
     required this.onMemoryToggle,
     required this.onClarifyAsQuestion,
     required this.onClarifyAsSave,
+    required this.localization,
     this.belowPageHeader = false,
   });
 
@@ -621,6 +621,7 @@ class _WorkflowContent extends StatelessWidget {
   final VoidCallback onMemoryToggle;
   final VoidCallback onClarifyAsQuestion;
   final VoidCallback onClarifyAsSave;
+  final AppLocalizations localization;
 
   @override
   Widget build(BuildContext context) {
@@ -649,6 +650,7 @@ class _WorkflowContent extends StatelessWidget {
           onMemoryToggle: onMemoryToggle,
           onClarifyAsQuestion: onClarifyAsQuestion,
           onClarifyAsSave: onClarifyAsSave,
+          localization: localization,
         ),
       );
     }
@@ -794,6 +796,7 @@ class _ConversationView extends StatelessWidget {
     required this.onMemoryToggle,
     required this.onClarifyAsQuestion,
     required this.onClarifyAsSave,
+    required this.localization,
   });
 
   final double scale;
@@ -810,6 +813,7 @@ class _ConversationView extends StatelessWidget {
   final VoidCallback onMemoryToggle;
   final VoidCallback onClarifyAsQuestion;
   final VoidCallback onClarifyAsSave;
+  final AppLocalizations localization;
 
   @override
   Widget build(BuildContext context) {
@@ -835,6 +839,7 @@ class _ConversationView extends StatelessWidget {
         onMemoryToggle: onMemoryToggle,
         onClarifyAsQuestion: onClarifyAsQuestion,
         onClarifyAsSave: onClarifyAsSave,
+        localization: localization,
       );
     }
 
@@ -893,6 +898,7 @@ class _DynamicConversationBody extends StatelessWidget {
     required this.onMemoryToggle,
     required this.onClarifyAsQuestion,
     required this.onClarifyAsSave,
+    required this.localization,
   });
 
   final double scale;
@@ -909,6 +915,7 @@ class _DynamicConversationBody extends StatelessWidget {
   final VoidCallback onMemoryToggle;
   final VoidCallback onClarifyAsQuestion;
   final VoidCallback onClarifyAsSave;
+  final AppLocalizations localization;
 
   @override
   Widget build(BuildContext context) {
@@ -954,7 +961,10 @@ class _DynamicConversationBody extends StatelessWidget {
         ] else if (answer != null) ...[
           CaptureMiraMessage(scale: s, text: answer!),
         ] else if (intentClarificationPrompt != null) ...[
-          CaptureMiraMessage(scale: s, text: intentClarificationPrompt!),
+          CaptureMiraMessage(
+            scale: s,
+            text: intentClarificationPrompt ?? localization.captureIntentClarificationPrompt,
+          ),
           SizedBox(height: 28 * s),
           Row(
             children: [
@@ -972,7 +982,7 @@ class _DynamicConversationBody extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      'این یک سوال است',
+                      localization.captureIntentThisIsQuestion,
                       style: AppTypography.dosis(
                         size: 13 * s,
                         weight: FontWeight.w600,
@@ -996,7 +1006,7 @@ class _DynamicConversationBody extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      'به حافظه ذخیره کن',
+                      localization.captureIntentSaveToMemory,
                       style: AppTypography.dosis(
                         size: 13 * s,
                         weight: FontWeight.w600,

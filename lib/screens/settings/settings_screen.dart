@@ -217,7 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        bottom: false,
+        bottom: true,
         child: Column(
           children: [
             FigmaSettingsHeader(

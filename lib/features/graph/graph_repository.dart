@@ -36,4 +36,48 @@ class GraphRepository {
     final response = await _dio.get<Map<String, dynamic>>('/v2/entities/$entityId');
     return response.data!;
   }
+
+  Future<List<GraphTaskDto>> fetchTasks({String? status}) async {
+    final response = await _dio.get<List<dynamic>>(
+      '/v2/tasks',
+      queryParameters: status != null ? {'status': status} : null,
+    );
+    return (response.data ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(GraphTaskDto.fromJson)
+        .toList();
+  }
+
+  Future<GraphTaskDto> updateTaskStatus(String taskId, String status) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/v2/tasks/$taskId',
+      data: {'status': status},
+    );
+    return GraphTaskDto.fromJson(response.data!);
+  }
+
+  Future<ArchiveCaptureResponse> archiveCapture(String captureId) async {
+    final response = await _dio.delete<Map<String, dynamic>>('/v2/captures/$captureId');
+    return ArchiveCaptureResponse.fromJson(response.data!);
+  }
+
+  Future<String> patchCaptureTitle(String captureId, String title) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/v2/captures/$captureId',
+      data: {'title': title},
+    );
+    return response.data!['title'] as String? ?? title;
+  }
+
+  Future<GraphIngestResponse> correctCapture(String captureId, String text) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/v2/captures/$captureId/correct',
+      data: {'text': text},
+    );
+    return GraphIngestResponse.fromJson(response.data!);
+  }
+
+  Future<void> rejectAssertion(String assertionId) async {
+    await _dio.post<void>('/v2/assertions/$assertionId/reject');
+  }
 }

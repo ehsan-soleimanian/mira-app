@@ -1,0 +1,18 @@
+{
+  "@@locale": "en",
+  "appTitle": "Mira",
+  "captureIntentClarificationPrompt": "Could you clarify - is this a question or something to save?",
+  "captureIntentThisIsQuestion": "This is a question",
+  "captureIntentSaveToMemory": "Save to memory",
+  "graphMarkDone": "Mark done",
+  "graphCancelTask": "Cancel task",
+  "graphEditMemory": "Edit memory",
+  "graphDeleteMemory": "Delete memory",
+  "graphDeleteConfirmTitle": "Delete this memory?",
+  "graphDeleteConfirmBody": "This removes the capture from your graph. Related people stay if used elsewhere.",
+  "graphSave": "Save",
+  "graphCorrectMemoryHint": "Update what you want Mira to remember",
+  "graphMutationSuccess": "Updated",
+  "graphMutationFailed": "Could not update. Try again.",
+  "graphRejectAssertion": "Reject claim"
+}

@@ -16,6 +16,7 @@ import 'package:mira_app/features/capture/widgets/time_clarification_sheet.dart'
 import 'package:mira_app/features/daily_brief/daily_brief_repository.dart';
 import 'package:mira_app/features/graph/graph_repository.dart';
 import 'package:mira_app/features/settings/settings_repository.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 
 /// Orchestrates capture UI state, voice recording, submit → SSE → approval.
@@ -310,9 +311,7 @@ class CaptureFlowController extends ChangeNotifier {
           if (presentation == _CapturePresentation.voiceRoute) {
             activeCaptureId = created.captureId;
             pendingIntentClarification = {
-              'prompt':
-                  event.data['prompt']?.toString() ??
-                  'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟',
+              'prompt': event.data['prompt']?.toString(),
             };
             phase = CaptureUiPhase.approving;
             notifyListeners();
@@ -480,9 +479,7 @@ class CaptureFlowController extends ChangeNotifier {
         phase = CaptureUiPhase.idle;
       } else if (updated.state == 'clarification_needed') {
         pendingIntentClarification = {
-          'prompt':
-              updated.answer ??
-              'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟',
+          'prompt': updated.answer,
         };
         phase = CaptureUiPhase.approving;
       }
@@ -533,9 +530,7 @@ class CaptureFlowController extends ChangeNotifier {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) => _IntentClarificationSheet(
-        prompt:
-            prompt ??
-            'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟',
+        prompt: prompt,
       ),
     );
     if (selectedIntent == null) return;
@@ -572,10 +567,11 @@ enum _CapturePresentation { voiceRoute, sheet }
 class _IntentClarificationSheet extends StatelessWidget {
   const _IntentClarificationSheet({required this.prompt});
 
-  final String prompt;
+  final String? prompt;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: EdgeInsets.only(
         left: 16,
@@ -591,16 +587,19 @@ class _IntentClarificationSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(prompt, style: const TextStyle(color: Colors.white)),
+              Text(
+                prompt ?? l10n.captureIntentClarificationPrompt,
+                style: const TextStyle(color: Colors.white),
+              ),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop('question'),
-                child: const Text('این یک سوال است'),
+                child: Text(l10n.captureIntentThisIsQuestion),
               ),
               const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: () => Navigator.of(context).pop('save'),
-                child: const Text('به حافظه ذخیره کن'),
+                child: Text(l10n.captureIntentSaveToMemory),
               ),
             ],
           ),
