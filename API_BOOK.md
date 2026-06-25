@@ -72,6 +72,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/v2/search` | — | Hybrid entity + capture search |
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
+| `POST` | `/waitlist` | Landing (Next.js) | Waitlist signup — public, no auth |
 
 ---
 
@@ -81,9 +82,10 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 2. [Auth](#auth)
 3. [Captures](#captures)
 4. [Graph & Daily Update](#graph--daily-update)
-5. [Super Admin](#super-admin)
-6. [Flutter integration notes](#flutter-integration-notes)
-7. [Planned — Phase 4+](#planned--phase-4)
+5. [Waitlist (Landing)](#waitlist-landing)
+6. [Super Admin](#super-admin)
+7. [Flutter integration notes](#flutter-integration-notes)
+8. [Planned — Phase 4+](#planned--phase-4)
 
 App-facing routes summary: [App endpoints (quick reference)](#app-endpoints-quick-reference).
 
@@ -1085,6 +1087,75 @@ No query parameters.
 - otherwise → expandable note card
 
 **Errors**: `401`
+
+---
+
+## Waitlist (Landing)
+
+Public signup for **miramind.io** landing. No auth. CORS enabled for origins in `CORS_ALLOWED_ORIGINS` (default: `localhost:3000`, `miramind.io`, `www.miramind.io`).
+
+### Join waitlist
+`POST /waitlist`
+
+**Request Body**
+```json
+{
+  "mobile": "09123456789",
+  "first_name": "علی",
+  "last_name": "احمدی",
+  "email": "ali@example.com"
+}
+```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `mobile` | string | yes | Iranian mobile; normalized to `09XXXXXXXXX` |
+| `first_name` | string | yes | max 128 |
+| `last_name` | string | yes | max 128 |
+| `email` | string | no | valid email when provided |
+
+**Response** `201`
+```json
+{
+  "id": "uuid",
+  "mobile": "09123456789",
+  "first_name": "علی",
+  "last_name": "احمدی",
+  "email": "ali@example.com",
+  "created_at": "2026-06-26T12:00:00+00:00"
+}
+```
+
+**Errors**
+- `409` — mobile already registered
+- `422` — invalid mobile or validation error
+
+### Admin — list waitlist
+`GET /admin/api/waitlist`
+
+Admin Bearer. Query: `limit` (default 100, max 500), `offset` (default 0).
+
+**Response** `200`
+```json
+{
+  "count": 42,
+  "items": [
+    {
+      "id": "uuid",
+      "mobile": "09123456789",
+      "first_name": "علی",
+      "last_name": "احمدی",
+      "email": "ali@example.com",
+      "created_at": "2026-06-26T12:00:00+00:00"
+    }
+  ]
+}
+```
+
+### Admin — delete waitlist entry
+`DELETE /admin/api/waitlist/{entry_id}`
+
+Admin Bearer. **Response** `200` `{ "deleted": true }` · **404** when not found.
 
 ---
 
