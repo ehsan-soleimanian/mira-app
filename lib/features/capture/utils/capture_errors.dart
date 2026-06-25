@@ -1,44 +1,44 @@
 import 'package:dio/dio.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
 
-/// User-facing messages for voice capture / STT failures.
+/// User-facing messages for voice capture / STT failures (Persian UI).
 String formatVoiceCaptureError(Object error) {
   final raw = formatAuthError(error).toLowerCase();
 
   if (raw.contains('empty transcript') ||
       raw.contains('voice capture produced')) {
-    return "I couldn't hear you. Try speaking a little louder.";
+    return 'چیزی نشنیدم. یک‌بار دیگر بلندتر بگو.';
   }
   if (raw.contains('no audio data') || raw.contains('microphone permission')) {
-    return 'Allow microphone access and try recording again.';
+    return 'دسترسی میکروفون را بدهید و دوباره ضبط کنید.';
   }
   if (raw.contains('stt') ||
       raw.contains('503') ||
       raw.contains('provider error')) {
-    return 'Speech-to-text is unavailable. Try again in a moment.';
+    return 'تبدیل گفتار به متن در دسترس نیست. کمی بعد دوباره تلاش کنید.';
   }
   if (error is DioException &&
       (error.type == DioExceptionType.connectionError ||
           error.type == DioExceptionType.connectionTimeout ||
           error.type == DioExceptionType.receiveTimeout)) {
-    return 'Connection lost. Try again.';
+    return 'اتصال قطع شد. دوباره تلاش کنید.';
   }
   if (raw.contains('capture type disabled') || raw.contains('capture_voice')) {
-    return 'Voice capture is currently disabled.';
+    return 'ضبط صوتی فعلاً غیرفعال است.';
   }
   if (raw.contains('capture_image')) {
-    return 'Image capture is currently disabled.';
+    return 'ضبط تصویر فعلاً غیرفعال است.';
   }
   if (raw.contains('capture_link')) {
-    return 'Link capture is currently disabled.';
+    return 'ضبط لینک فعلاً غیرفعال است.';
   }
   if (raw.contains('413') || raw.contains('exceeds maximum')) {
-    return 'Recording is too long. Try a shorter clip.';
+    return 'ضبط خیلی طولانی است. یک قطعه کوتاه‌تر بزنید.';
   }
 
   final detail = formatAuthError(error);
   if (detail.length > 120) {
-    return 'Voice processing failed. Try again.';
+    return 'پردازش صدا انجام نشد. دوباره تلاش کنید.';
   }
   return detail;
 }
