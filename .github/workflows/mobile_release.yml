@@ -110,7 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           export DEPLOY_SSH_KEY_FILE=~/.ssh/deploy_key
           bash scripts/deploy-mobile-apk.sh \
