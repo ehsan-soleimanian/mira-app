@@ -58,6 +58,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/captures/{id}/stream` | `capture_repository.dart` | SSE pipeline events |
 | `POST` | `/captures/{id}/confirm-time` | `capture_repository.dart` | Resolve ambiguous time |
 | `POST` | `/captures/{id}/clarify-intent` | `capture_repository.dart` | Resolve ambiguous question-vs-save intent |
+| `POST` | `/captures/{id}/confirm-entity-equivalence` | `capture_repository.dart` | Confirm cross-language same person |
 | `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Ingest approved capture into graph v2 |
 | `POST` | `/captures/{id}/dismiss` | `capture_repository.dart` | Discard capture |
 | `GET` | `/v2/graph` | `graph_repository.dart` | Knowledge / evidence / hybrid / tasks graph |
@@ -736,6 +737,32 @@ Use when capture state is `clarification_needed` and backend asks:
 
 ---
 
+### Confirm entity equivalence (cross-language same person)
+`POST /captures/{capture_id}/confirm-entity-equivalence`
+
+Use when capture state is `clarification_needed` and `proposal.entityEquivalence.status` is `pending`, or after SSE `entity_clarification`.
+
+Typical prompt: `Are فاطمه and Fatemeh the same person in your memory?`
+
+**Request Body**
+```json
+{
+  "same": true,
+  "targetEntityId": "ent_09958ec81926"
+}
+```
+
+| Field | Type | Rules |
+|-------|------|-------|
+| `same` | boolean | required — `true` merges aliases; `false` keeps separate people |
+| `targetEntityId` | string | optional — canonical entity to keep when `same` is `true` |
+
+**Response** `200` — capture response with `state: awaiting_approval` and updated `proposal` (equivalence resolved, ready for approval).
+
+**Errors**: `409` wrong state · `404` · `403` · `422`
+
+---
+
 ### Get capture status
 `GET /captures/{capture_id}`
 
@@ -763,6 +790,9 @@ data: {"answer": "..."}
 
 event: clarification
 data: {"prompt": "..."}
+
+event: entity_clarification
+data: {"prompt": "Are فاطمه and Fatemeh the same person in your memory?", "entityEquivalence": {"status": "pending", "nameA": "فاطمه", "nameB": "Fatemeh", "candidates": [], "suggestedTargetEntityId": null}}
 
 event: time_clarification
 data: {"prompt": "Did you mean Friday at 3 PM?", "suggestion": "Friday 15:00", "time": {...}}
@@ -914,9 +944,9 @@ Returns entity metadata, assertions (with capture citations), and mention snippe
 ---
 
 ### Tasks
-`GET /v2/tasks?status=OPEN`
+`GET /v2/tasks?status=OPEN&entityId={entity_id}`
 
-Returns task nodes for the tasks graph view / daily brief integration.
+Returns task nodes for the tasks graph view / daily brief integration. Optional `entityId` filters tasks linked to that project/entity via `ABOUT` or `INVOLVES` edges.
 
 **Errors**: `401`
 

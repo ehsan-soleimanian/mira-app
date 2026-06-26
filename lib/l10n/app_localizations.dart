@@ -122,6 +122,15 @@ abstract class AppLocalizations {
   /// **'Save to memory'**
   String get captureIntentSaveToMemory;
 
+  /// No description provided for @captureEntityEquivalenceDefaultPrompt.
+  String get captureEntityEquivalenceDefaultPrompt;
+
+  /// No description provided for @captureEntityEquivalenceSamePerson.
+  String get captureEntityEquivalenceSamePerson;
+
+  /// No description provided for @captureEntityEquivalenceDifferentPeople.
+  String get captureEntityEquivalenceDifferentPeople;
+
   /// No description provided for @graphMarkDone.
   ///
   /// In en, this message translates to:

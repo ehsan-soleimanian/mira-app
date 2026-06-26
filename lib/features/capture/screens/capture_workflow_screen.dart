@@ -13,6 +13,8 @@ import 'package:mira_app/features/capture/capture_repository.dart';
 import 'package:mira_app/features/capture/capture_workflow_initial_action.dart';
 import 'package:mira_app/features/capture/media/capture_media_picker.dart';
 import 'package:mira_app/features/capture/utils/capture_errors.dart';
+import 'package:mira_app/features/capture/utils/proposal_display.dart';
+import 'package:mira_app/features/capture/widgets/entity_equivalence_panel.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/capture/widgets/capture_chat_widgets.dart';
@@ -59,6 +61,8 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   String? _answer;
   String? _statusText;
   String? _intentClarificationPrompt;
+  String? _entityClarificationPrompt;
+  String? _suggestedTargetEntityId;
 
   @override
   void initState() {
@@ -242,6 +246,8 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       _pendingApproval = false;
       _statusText = 'Mira is thinking...';
       _intentClarificationPrompt = null;
+      _entityClarificationPrompt = null;
+      _suggestedTargetEntityId = null;
     });
 
     try {
@@ -283,9 +289,24 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
           if (updated.proposal != null) {
             _applyProposal(updated.proposal!, created.captureId);
           }
+        case 'entity_clarification':
+          setState(() {
+            _entityClarificationPrompt =
+                event.data['prompt']?.toString() ??
+                AppLocalizations.of(context)!.captureEntityEquivalenceDefaultPrompt;
+            _intentClarificationPrompt = null;
+            final equivalence = event.data['entityEquivalence'];
+            if (equivalence is Map) {
+              _suggestedTargetEntityId =
+                  equivalence['suggestedTargetEntityId']?.toString();
+            }
+            _statusText = null;
+          });
         case 'clarification':
           setState(() {
             _intentClarificationPrompt = event.data['prompt']?.toString();
+            _entityClarificationPrompt = null;
+            _suggestedTargetEntityId = null;
             _statusText = null;
           });
         case 'proposal':
@@ -320,6 +341,19 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
           _applyProposal(updated.proposal!, created.captureId);
         }
       }
+    } else if (created.state == 'clarification_needed' &&
+        created.proposal?['entityEquivalence'] is Map &&
+        created.proposal!['entityEquivalence']['status'] == 'pending') {
+      setState(() {
+        _entityClarificationPrompt =
+            created.answer ??
+            AppLocalizations.of(context)!.captureEntityEquivalenceDefaultPrompt;
+        _intentClarificationPrompt = null;
+        _suggestedTargetEntityId =
+            created.proposal!['entityEquivalence']['suggestedTargetEntityId']
+                ?.toString();
+        _statusText = null;
+      });
     } else if (created.state == 'clarification_needed' && created.answer != null) {
       setState(() {
         _intentClarificationPrompt = created.answer;
@@ -338,6 +372,8 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       _memorySaved = false;
       _statusText = null;
       _intentClarificationPrompt = null;
+      _entityClarificationPrompt = null;
+      _suggestedTargetEntityId = null;
     });
   }
 
@@ -350,6 +386,8 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       _memorySaved = false;
       _statusText = null;
       _intentClarificationPrompt = null;
+      _entityClarificationPrompt = null;
+      _suggestedTargetEntityId = null;
     });
   }
 
@@ -401,6 +439,30 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       });
     } catch (error) {
       _showSnack('Cancel failed: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  Future<void> _confirmEntityEquivalence({required bool same}) async {
+    final repo = _captures;
+    final captureId = _captureId;
+    if (repo == null || captureId == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final updated = await repo.confirmEntityEquivalence(
+        captureId,
+        same: same,
+        targetEntityId: _suggestedTargetEntityId,
+      );
+      if (!mounted) return;
+      if (updated.state == 'awaiting_approval' && updated.proposal != null) {
+        _applyProposal(updated.proposal!, captureId);
+      }
+    } catch (error) {
+      _showSnack('Entity confirmation failed: $error');
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -501,6 +563,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                             answer: _answer,
                             statusText: _statusText,
                             intentClarificationPrompt: _intentClarificationPrompt,
+                            entityClarificationPrompt: _entityClarificationPrompt,
                             memorySaved: _memorySaved,
                             pendingApproval: _pendingApproval,
                             busy: _busy,
@@ -512,6 +575,10 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                                 _clarifyIntent(asQuestion: true),
                             onClarifyAsSave: () =>
                                 _clarifyIntent(asQuestion: false),
+                            onConfirmSamePerson: () =>
+                                _confirmEntityEquivalence(same: true),
+                            onConfirmDifferentPeople: () =>
+                                _confirmEntityEquivalence(same: false),
                             localization: l10n,
                           ),
                   ),
@@ -593,6 +660,7 @@ class _WorkflowContent extends StatelessWidget {
     required this.answer,
     required this.statusText,
     required this.intentClarificationPrompt,
+    required this.entityClarificationPrompt,
     required this.memorySaved,
     required this.pendingApproval,
     required this.busy,
@@ -601,6 +669,8 @@ class _WorkflowContent extends StatelessWidget {
     required this.onMemoryToggle,
     required this.onClarifyAsQuestion,
     required this.onClarifyAsSave,
+    required this.onConfirmSamePerson,
+    required this.onConfirmDifferentPeople,
     required this.localization,
     this.belowPageHeader = false,
   });
@@ -612,6 +682,7 @@ class _WorkflowContent extends StatelessWidget {
   final String? answer;
   final String? statusText;
   final String? intentClarificationPrompt;
+  final String? entityClarificationPrompt;
   final bool memorySaved;
   final bool pendingApproval;
   final bool busy;
@@ -621,6 +692,8 @@ class _WorkflowContent extends StatelessWidget {
   final VoidCallback onMemoryToggle;
   final VoidCallback onClarifyAsQuestion;
   final VoidCallback onClarifyAsSave;
+  final VoidCallback onConfirmSamePerson;
+  final VoidCallback onConfirmDifferentPeople;
   final AppLocalizations localization;
 
   @override
@@ -642,6 +715,7 @@ class _WorkflowContent extends StatelessWidget {
           answer: answer,
           statusText: statusText,
           intentClarificationPrompt: intentClarificationPrompt,
+          entityClarificationPrompt: entityClarificationPrompt,
           memorySaved: memorySaved,
           pendingApproval: pendingApproval,
           busy: busy,
@@ -650,6 +724,8 @@ class _WorkflowContent extends StatelessWidget {
           onMemoryToggle: onMemoryToggle,
           onClarifyAsQuestion: onClarifyAsQuestion,
           onClarifyAsSave: onClarifyAsSave,
+          onConfirmSamePerson: onConfirmSamePerson,
+          onConfirmDifferentPeople: onConfirmDifferentPeople,
           localization: localization,
         ),
       );
@@ -788,6 +864,7 @@ class _ConversationView extends StatelessWidget {
     required this.answer,
     required this.statusText,
     required this.intentClarificationPrompt,
+    required this.entityClarificationPrompt,
     required this.memorySaved,
     required this.pendingApproval,
     required this.busy,
@@ -796,6 +873,8 @@ class _ConversationView extends StatelessWidget {
     required this.onMemoryToggle,
     required this.onClarifyAsQuestion,
     required this.onClarifyAsSave,
+    required this.onConfirmSamePerson,
+    required this.onConfirmDifferentPeople,
     required this.localization,
   });
 
@@ -805,6 +884,7 @@ class _ConversationView extends StatelessWidget {
   final String? answer;
   final String? statusText;
   final String? intentClarificationPrompt;
+  final String? entityClarificationPrompt;
   final bool memorySaved;
   final bool pendingApproval;
   final bool busy;
@@ -813,6 +893,8 @@ class _ConversationView extends StatelessWidget {
   final VoidCallback onMemoryToggle;
   final VoidCallback onClarifyAsQuestion;
   final VoidCallback onClarifyAsSave;
+  final VoidCallback onConfirmSamePerson;
+  final VoidCallback onConfirmDifferentPeople;
   final AppLocalizations localization;
 
   @override
@@ -822,6 +904,8 @@ class _ConversationView extends StatelessWidget {
     if (proposal != null ||
         answer != null ||
         statusText != null ||
+        intentClarificationPrompt != null ||
+        entityClarificationPrompt != null ||
         pendingApproval ||
         !memorySaved) {
       return _DynamicConversationBody(
@@ -831,6 +915,7 @@ class _ConversationView extends StatelessWidget {
         answer: answer,
         statusText: statusText,
         intentClarificationPrompt: intentClarificationPrompt,
+        entityClarificationPrompt: entityClarificationPrompt,
         memorySaved: memorySaved,
         pendingApproval: pendingApproval,
         busy: busy,
@@ -839,6 +924,8 @@ class _ConversationView extends StatelessWidget {
         onMemoryToggle: onMemoryToggle,
         onClarifyAsQuestion: onClarifyAsQuestion,
         onClarifyAsSave: onClarifyAsSave,
+        onConfirmSamePerson: onConfirmSamePerson,
+        onConfirmDifferentPeople: onConfirmDifferentPeople,
         localization: localization,
       );
     }
@@ -890,6 +977,7 @@ class _DynamicConversationBody extends StatelessWidget {
     required this.answer,
     required this.statusText,
     required this.intentClarificationPrompt,
+    required this.entityClarificationPrompt,
     required this.memorySaved,
     required this.pendingApproval,
     required this.busy,
@@ -898,6 +986,8 @@ class _DynamicConversationBody extends StatelessWidget {
     required this.onMemoryToggle,
     required this.onClarifyAsQuestion,
     required this.onClarifyAsSave,
+    required this.onConfirmSamePerson,
+    required this.onConfirmDifferentPeople,
     required this.localization,
   });
 
@@ -907,6 +997,7 @@ class _DynamicConversationBody extends StatelessWidget {
   final String? answer;
   final String? statusText;
   final String? intentClarificationPrompt;
+  final String? entityClarificationPrompt;
   final bool memorySaved;
   final bool pendingApproval;
   final bool busy;
@@ -915,26 +1006,27 @@ class _DynamicConversationBody extends StatelessWidget {
   final VoidCallback onMemoryToggle;
   final VoidCallback onClarifyAsQuestion;
   final VoidCallback onClarifyAsSave;
+  final VoidCallback onConfirmSamePerson;
+  final VoidCallback onConfirmDifferentPeople;
   final AppLocalizations localization;
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
-    final proposalTitle = proposal?['title']?.toString();
-    final proposalSummary = proposal?['summary']?.toString();
-    final hasProposal = proposalTitle != null || proposalSummary != null;
+    final display = proposal != null ? resolveProposalDisplay(proposal!) : null;
+    final hasProposal = display?.hasContent ?? false;
 
     return CaptureConversationColumn(
       children: [
         CaptureUserBubble(scale: s, text: prompt),
         SizedBox(height: 22 * s),
-        if (hasProposal) ...[
-          if (proposalTitle != null)
-            CaptureMiraMessage(scale: s, text: proposalTitle),
-          if (proposalTitle != null && proposalSummary != null)
+        if (hasProposal && display != null) ...[
+          if (display.title.isNotEmpty)
+            CaptureMiraMessage(scale: s, text: display.title),
+          if (display.title.isNotEmpty && display.summary.isNotEmpty)
             SizedBox(height: 16 * s),
-          if (proposalSummary != null)
-            CaptureMiraMessage(scale: s, text: proposalSummary),
+          if (display.summary.isNotEmpty)
+            CaptureMiraMessage(scale: s, text: display.summary),
           SizedBox(height: 20 * s),
           CaptureMiraMessage(
             scale: s,
@@ -960,6 +1052,14 @@ class _DynamicConversationBody extends StatelessWidget {
           ],
         ] else if (answer != null) ...[
           CaptureMiraMessage(scale: s, text: answer!),
+        ] else if (entityClarificationPrompt != null) ...[
+          EntityEquivalencePanel(
+            scale: s,
+            prompt: entityClarificationPrompt!,
+            busy: busy,
+            onSamePerson: onConfirmSamePerson,
+            onDifferentPeople: onConfirmDifferentPeople,
+          ),
         ] else if (intentClarificationPrompt != null) ...[
           CaptureMiraMessage(
             scale: s,

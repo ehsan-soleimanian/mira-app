@@ -22,6 +22,16 @@ class AppLocalizationsFa extends AppLocalizations {
   String get captureIntentSaveToMemory => 'به حافظه ذخیره کن';
 
   @override
+  String get captureEntityEquivalenceDefaultPrompt =>
+      'آیا این‌ها در حافظه‌ات یک نفر هستند؟';
+
+  @override
+  String get captureEntityEquivalenceSamePerson => 'بله، یک نفرند';
+
+  @override
+  String get captureEntityEquivalenceDifferentPeople => 'نه، متفاوت‌اند';
+
+  @override
   String get graphMarkDone => 'انجام شد';
 
   @override

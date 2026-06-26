@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/theme/app_colors.dart';
 
 /// Bottom sheet for approving a structured capture proposal.
@@ -38,9 +39,10 @@ class ApprovalSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = proposal['title'] as String? ?? 'Memory';
-    final summary = proposal['summary'] as String? ?? '';
-    final nodeType = proposal['node_type'] as String? ?? 'Note';
+    final display = resolveProposalDisplay(proposal);
+    final title = display.title;
+    final summary = display.summary;
+    final nodeType = display.nodeType;
 
     return Padding(
       padding: EdgeInsets.only(

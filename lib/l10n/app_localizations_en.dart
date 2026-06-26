@@ -22,6 +22,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureIntentSaveToMemory => 'Save to memory';
 
   @override
+  String get captureEntityEquivalenceDefaultPrompt =>
+      'Are these the same person in your memory?';
+
+  @override
+  String get captureEntityEquivalenceSamePerson => 'Yes, same person';
+
+  @override
+  String get captureEntityEquivalenceDifferentPeople => 'No, different people';
+
+  @override
   String get graphMarkDone => 'Mark done';
 
   @override

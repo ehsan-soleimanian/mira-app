@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/widgets/capture_chat_widgets.dart';
 
 /// Figma conversation approval — user bubble right, Mira plain left, Save / cancel.
@@ -23,11 +24,12 @@ class CaptureApprovalPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = scale;
-    final title = proposal['title']?.toString();
-    final summary = proposal['summary']?.toString();
+    final display = resolveProposalDisplay(proposal);
+    final title = display.title;
+    final summary = display.summary;
     final userLine = (prompt?.trim().isNotEmpty == true)
         ? prompt!.trim()
-        : (summary ?? title ?? '');
+        : (summary.isNotEmpty ? summary : title);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -46,13 +48,14 @@ class CaptureApprovalPanel extends StatelessWidget {
                   CaptureUserBubble(scale: s, text: userLine),
                   SizedBox(height: 22 * s),
                 ],
-                if (title != null) ...[
+                if (title.isNotEmpty) ...[
                   CaptureMiraMessage(scale: s, text: title),
                   SizedBox(height: 16 * s),
                 ],
-                if (summary != null && summary != title)
+                if (summary.isNotEmpty && summary != title) ...[
                   CaptureMiraMessage(scale: s, text: summary),
-                if (summary != null && summary != title) SizedBox(height: 20 * s),
+                  SizedBox(height: 20 * s),
+                ],
                 CaptureMiraMessage(
                   scale: s,
                   text:

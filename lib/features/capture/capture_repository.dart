@@ -308,4 +308,19 @@ class CaptureRepository {
     );
     return CaptureResponse.fromJson(response.data!);
   }
+
+  Future<CaptureResponse> confirmEntityEquivalence(
+    String captureId, {
+    required bool same,
+    String? targetEntityId,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/$captureId/confirm-entity-equivalence',
+      data: {
+        'same': same,
+        if (targetEntityId != null) 'targetEntityId': targetEntityId,
+      },
+    );
+    return CaptureResponse.fromJson(response.data!);
+  }
 }

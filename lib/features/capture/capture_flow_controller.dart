@@ -9,6 +9,7 @@ import 'package:mira_app/features/auth/onboarding_repository.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/features/capture/utils/capture_errors.dart';
+import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/capture/widgets/approval_sheet.dart';
@@ -46,6 +47,7 @@ class CaptureFlowController extends ChangeNotifier {
   String? voiceFailureMessage;
   Map<String, dynamic>? pendingTimeClarification;
   Map<String, dynamic>? pendingIntentClarification;
+  Map<String, dynamic>? pendingEntityClarification;
 
   Timer? _recordingTimer;
   Stream<double>? _amplitudeStream;
@@ -278,8 +280,7 @@ class CaptureFlowController extends ChangeNotifier {
   void _enterVoiceApproval(String captureId, Map<String, dynamic> proposal) {
     activeCaptureId = captureId;
     pendingProposal = proposal;
-    voiceSessionPrompt =
-        proposal['summary']?.toString() ?? proposal['title']?.toString();
+    voiceSessionPrompt = resolveProposalDisplay(proposal).title;
     phase = CaptureUiPhase.approving;
     notifyListeners();
   }
@@ -304,6 +305,21 @@ class CaptureFlowController extends ChangeNotifier {
               sheetContext,
               created.captureId,
               event,
+              presentation: presentation,
+            );
+          }
+        case 'entity_clarification':
+          if (presentation == _CapturePresentation.voiceRoute) {
+            activeCaptureId = created.captureId;
+            pendingEntityClarification = event.data;
+            pendingIntentClarification = null;
+            phase = CaptureUiPhase.approving;
+            notifyListeners();
+          } else if (sheetContext != null && sheetContext.mounted) {
+            await _handleEntityClarification(
+              sheetContext,
+              created.captureId,
+              event.data,
               presentation: presentation,
             );
           }
@@ -380,6 +396,28 @@ class CaptureFlowController extends ChangeNotifier {
                   ?.toString(),
             },
           ),
+          presentation: presentation,
+        );
+      }
+    } else if (created.state == 'clarification_needed' &&
+        _isEntityEquivalencePending(created.proposal)) {
+      if (presentation == _CapturePresentation.voiceRoute) {
+        activeCaptureId = created.captureId;
+        pendingEntityClarification = {
+          'prompt': created.answer,
+          'entityEquivalence': created.proposal!['entityEquivalence'],
+        };
+        pendingIntentClarification = null;
+        phase = CaptureUiPhase.approving;
+        notifyListeners();
+      } else if (sheetContext != null && sheetContext.mounted) {
+        await _handleEntityClarification(
+          sheetContext,
+          created.captureId,
+          {
+            'prompt': created.answer,
+            'entityEquivalence': created.proposal!['entityEquivalence'],
+          },
           presentation: presentation,
         );
       }
@@ -519,6 +557,75 @@ class CaptureFlowController extends ChangeNotifier {
     );
   }
 
+  Future<void> confirmEntityEquivalenceChoice({
+    required String captureId,
+    required bool same,
+    String? targetEntityId,
+  }) async {
+    approvalBusy = true;
+    notifyListeners();
+    try {
+      final updated = await _captures.confirmEntityEquivalence(
+        captureId,
+        same: same,
+        targetEntityId: targetEntityId,
+      );
+      pendingEntityClarification = null;
+      if (updated.state == 'awaiting_approval' && updated.proposal != null) {
+        if (voiceSessionActive) {
+          _enterVoiceApproval(captureId, updated.proposal!);
+        }
+      }
+    } finally {
+      approvalBusy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _handleEntityClarification(
+    BuildContext context,
+    String captureId,
+    Map<String, dynamic> data, {
+    required _CapturePresentation presentation,
+  }) async {
+    if (!context.mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final prompt =
+        data['prompt']?.toString() ?? l10n.captureEntityEquivalenceDefaultPrompt;
+    final same = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _EntityEquivalenceSheet(prompt: prompt),
+    );
+    if (same == null) return;
+    final updated = await _captures.confirmEntityEquivalence(
+      captureId,
+      same: same,
+      targetEntityId: _suggestedTargetEntityId(data),
+    );
+    if (updated.state == 'awaiting_approval' && updated.proposal != null) {
+      if (presentation == _CapturePresentation.voiceRoute) {
+        _enterVoiceApproval(captureId, updated.proposal!);
+      } else if (context.mounted) {
+        await _handleProposal(context, captureId, updated.proposal!);
+      }
+    }
+  }
+
+  String? _suggestedTargetEntityId(Map<String, dynamic> data) {
+    final equivalence = data['entityEquivalence'];
+    if (equivalence is! Map) return null;
+    final suggested = equivalence['suggestedTargetEntityId'];
+    return suggested?.toString();
+  }
+
+  bool _isEntityEquivalencePending(Map<String, dynamic>? proposal) {
+    final equivalence = proposal?['entityEquivalence'];
+    if (equivalence is! Map) return false;
+    return equivalence['status']?.toString() == 'pending';
+  }
+
   Future<void> _handleIntentClarification(
     BuildContext context,
     String captureId,
@@ -563,6 +670,48 @@ class CaptureFlowController extends ChangeNotifier {
 }
 
 enum _CapturePresentation { voiceRoute, sheet }
+
+class _EntityEquivalenceSheet extends StatelessWidget {
+  const _EntityEquivalenceSheet({required this.prompt});
+
+  final String prompt;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Material(
+        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF0D1430),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(prompt, style: const TextStyle(color: Colors.white)),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(l10n.captureEntityEquivalenceSamePerson),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(l10n.captureEntityEquivalenceDifferentPeople),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _IntentClarificationSheet extends StatelessWidget {
   const _IntentClarificationSheet({required this.prompt});

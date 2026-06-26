@@ -9,6 +9,7 @@ import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/widgets/capture_approval_panel.dart';
 import 'package:mira_app/features/capture/widgets/intent_clarification_panel.dart';
+import 'package:mira_app/features/capture/widgets/entity_equivalence_panel.dart';
 import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
 import 'package:mira_app/features/graph/widgets/memory_graph_icon_button.dart';
 import 'package:mira_app/features/capture/widgets/voice_capture_failure_panel.dart';
@@ -157,6 +158,34 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
 
   Widget _buildBody(CaptureFlowController flow, double s) {
     final l10n = AppLocalizations.of(context)!;
+    if (flow.pendingEntityClarification != null) {
+      return EntityEquivalencePanel(
+        scale: s,
+        prompt:
+            flow.pendingEntityClarification!['prompt']?.toString() ??
+            l10n.captureEntityEquivalenceDefaultPrompt,
+        busy: flow.approvalBusy,
+        onSamePerson: () => unawaited(
+          flow.confirmEntityEquivalenceChoice(
+            captureId: flow.activeCaptureId!,
+            same: true,
+            targetEntityId: flow.pendingEntityClarification!['entityEquivalence']
+                is Map<String, dynamic>
+                ? flow.pendingEntityClarification!['entityEquivalence']
+                    ['suggestedTargetEntityId']
+                    ?.toString()
+                : null,
+          ),
+        ),
+        onDifferentPeople: () => unawaited(
+          flow.confirmEntityEquivalenceChoice(
+            captureId: flow.activeCaptureId!,
+            same: false,
+          ),
+        ),
+      );
+    }
+
     if (flow.pendingIntentClarification != null) {
       return IntentClarificationPanel(
         scale: s,
