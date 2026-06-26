@@ -43,7 +43,25 @@ Optional Android signing:
 | `ANDROID_KEY_PASSWORD` | Key password |
 | `ANDROID_KEY_ALIAS` | Key alias |
 
-Without keystore secrets, CI signs with the debug key (internal testing only).
+Without keystore secrets, CI signs with the debug key (internal testing only). **All production APKs must use the same release keystore** or Android will refuse in-place updates (signature mismatch).
+
+Release keystore SHA-1 (register in Google Cloud Console for Sign-In): ask ops or run `keytool -list -v -keystore release.keystore -alias mira`.
+
+| Secret | Value |
+|--------|-------|
+| `ANDROID_KEY_ALIAS` | `mira` |
+
+### Google Sign-In
+
+| Secret | Purpose |
+|--------|---------|
+| `GOOGLE_WEB_CLIENT_ID` | Compile-time `serverClientId` (required) |
+| `GOOGLE_ANDROID_CLIENT_ID` | Android OAuth client reference |
+| `GOOGLE_IOS_CLIENT_ID` | iOS builds |
+
+CI passes these as `--dart-define` on release builds. Copy values from local `dart_defines.json` into GitHub secrets.
+
+Google Cloud Console: Android OAuth client needs package `com.mira.mira_app` + SHA-1 of the APK signing key. If Sign-In fails with `ApiException: 10`, add the CI keystore SHA-1 in Credentials.
 
 ## Backend
 

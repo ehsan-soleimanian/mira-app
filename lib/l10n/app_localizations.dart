@@ -222,6 +222,70 @@ abstract class AppLocalizations {
     int latestBuild,
   );
 
+  /// No description provided for @appUpdateVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'v{currentVersion} → v{latestVersion} (build {latestBuild})'**
+  String appUpdateVersionLabel(
+    String currentVersion,
+    String latestVersion,
+    int latestBuild,
+  );
+
+  /// No description provided for @appUpdateProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% downloaded'**
+  String appUpdateProgress(int percent);
+
+  /// No description provided for @appUpdateProgressIndeterminate.
+  ///
+  /// In en, this message translates to:
+  /// **'{downloaded} downloaded'**
+  String appUpdateProgressIndeterminate(String downloaded);
+
+  /// No description provided for @appUpdateInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening installer…'**
+  String get appUpdateInstalling;
+
+  /// No description provided for @appUpdateInstallStarted.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow the system prompts to finish installing.'**
+  String get appUpdateInstallStarted;
+
+  /// No description provided for @appUpdateSignatureMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'This build was signed differently than the app on your phone. Uninstall Mira first, then download and install again.'**
+  String get appUpdateSignatureMismatch;
+
+  /// No description provided for @appUpdateInstallFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start installation. Try again or uninstall the old app first.'**
+  String get appUpdateInstallFailed;
+
+  /// No description provided for @appUpdateRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get appUpdateRetry;
+
+  /// No description provided for @appUpdateOpenSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open app settings to uninstall'**
+  String get appUpdateOpenSettings;
+
+  /// No description provided for @appUpdateClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get appUpdateClose;
+
   /// No description provided for @appUpdateDownload.
   ///
   /// In en, this message translates to:
@@ -237,7 +301,7 @@ abstract class AppLocalizations {
   /// No description provided for @appUpdateDownloadFailed.
   ///
   /// In en, this message translates to:
-  /// **'Download failed. Opening browser instead.'**
+  /// **'Download failed. Check your connection and try again.'**
   String get appUpdateDownloadFailed;
 }
 

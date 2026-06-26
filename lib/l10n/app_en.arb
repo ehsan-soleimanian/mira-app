@@ -20,6 +20,7 @@
   "graphRejectAssertion": "Reject claim",
   "appUpdateTitle": "Update available",
   "appUpdateBody": "You are on {currentVersion}. Mira {latestVersion} (build {latestBuild}) is ready to install.",
+  "appUpdateVersionLabel": "v{currentVersion} → v{latestVersion} (build {latestBuild})",
   "@appUpdateBody": {
     "placeholders": {
       "currentVersion": {"type": "String"},
@@ -27,7 +28,33 @@
       "latestBuild": {"type": "int"}
     }
   },
+  "@appUpdateVersionLabel": {
+    "placeholders": {
+      "currentVersion": {"type": "String"},
+      "latestVersion": {"type": "String"},
+      "latestBuild": {"type": "int"}
+    }
+  },
+  "appUpdateProgress": "{percent}% downloaded",
+  "@appUpdateProgress": {
+    "placeholders": {
+      "percent": {"type": "int"}
+    }
+  },
+  "appUpdateProgressIndeterminate": "{downloaded} downloaded",
+  "@appUpdateProgressIndeterminate": {
+    "placeholders": {
+      "downloaded": {"type": "String"}
+    }
+  },
+  "appUpdateInstalling": "Opening installer…",
+  "appUpdateInstallStarted": "Follow the system prompts to finish installing.",
+  "appUpdateSignatureMismatch": "This build was signed differently than the app on your phone. Uninstall Mira first, then download and install again.",
+  "appUpdateInstallFailed": "Could not start installation. Try again or uninstall the old app first.",
+  "appUpdateRetry": "Try again",
+  "appUpdateOpenSettings": "Open app settings to uninstall",
+  "appUpdateClose": "Close",
   "appUpdateDownload": "Download update",
   "appUpdateLater": "Later",
-  "appUpdateDownloadFailed": "Download failed. Opening browser instead."
+  "appUpdateDownloadFailed": "Download failed. Check your connection and try again."
 }

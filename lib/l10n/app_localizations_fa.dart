@@ -79,11 +79,54 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
+  String appUpdateVersionLabel(
+    String currentVersion,
+    String latestVersion,
+    int latestBuild,
+  ) {
+    return 'نسخه $currentVersion → $latestVersion (بیلد $latestBuild)';
+  }
+
+  @override
+  String appUpdateProgress(int percent) {
+    return '$percent٪ دانلود شد';
+  }
+
+  @override
+  String appUpdateProgressIndeterminate(String downloaded) {
+    return '$downloaded دانلود شد';
+  }
+
+  @override
+  String get appUpdateInstalling => 'در حال باز کردن نصب‌کننده…';
+
+  @override
+  String get appUpdateInstallStarted => 'مراحل نصب را روی گوشی تأیید کنید.';
+
+  @override
+  String get appUpdateSignatureMismatch =>
+      'امضای این نسخه با اپ قبلی روی گوشی یکی نیست. اول میرا را حذف کنید، بعد دوباره دانلود و نصب کنید.';
+
+  @override
+  String get appUpdateInstallFailed =>
+      'نصب شروع نشد. دوباره تلاش کنید یا اپ قبلی را حذف کنید.';
+
+  @override
+  String get appUpdateRetry => 'دوباره تلاش کن';
+
+  @override
+  String get appUpdateOpenSettings => 'رفتن به تنظیمات برای حذف اپ';
+
+  @override
+  String get appUpdateClose => 'بستن';
+
+  @override
   String get appUpdateDownload => 'دانلود نسخه جدید';
 
   @override
   String get appUpdateLater => 'بعداً';
 
   @override
-  String get appUpdateDownloadFailed => 'دانلود ناموفق بود. مرورگر باز می‌شود.';
+  String get appUpdateDownloadFailed =>
+      'دانلود ناموفق بود. اتصال اینترنت را بررسی کنید.';
 }

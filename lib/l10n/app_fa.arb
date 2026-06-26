@@ -20,7 +20,17 @@
   "graphRejectAssertion": "رد این ادعا",
   "appUpdateTitle": "نسخه جدید آماده است",
   "appUpdateBody": "نسخه فعلی شما {currentVersion} است. میرا {latestVersion} (بیلد {latestBuild}) برای نصب آماده است.",
+  "appUpdateVersionLabel": "نسخه {currentVersion} → {latestVersion} (بیلد {latestBuild})",
+  "appUpdateProgress": "{percent}٪ دانلود شد",
+  "appUpdateProgressIndeterminate": "{downloaded} دانلود شد",
+  "appUpdateInstalling": "در حال باز کردن نصب‌کننده…",
+  "appUpdateInstallStarted": "مراحل نصب را روی گوشی تأیید کنید.",
+  "appUpdateSignatureMismatch": "امضای این نسخه با اپ قبلی روی گوشی یکی نیست. اول میرا را حذف کنید، بعد دوباره دانلود و نصب کنید.",
+  "appUpdateInstallFailed": "نصب شروع نشد. دوباره تلاش کنید یا اپ قبلی را حذف کنید.",
+  "appUpdateRetry": "دوباره تلاش کن",
+  "appUpdateOpenSettings": "رفتن به تنظیمات برای حذف اپ",
+  "appUpdateClose": "بستن",
   "appUpdateDownload": "دانلود نسخه جدید",
   "appUpdateLater": "بعداً",
-  "appUpdateDownloadFailed": "دانلود ناموفق بود. مرورگر باز می‌شود."
+  "appUpdateDownloadFailed": "دانلود ناموفق بود. اتصال اینترنت را بررسی کنید."
 }

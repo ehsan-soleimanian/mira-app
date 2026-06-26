@@ -78,6 +78,49 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String appUpdateVersionLabel(
+    String currentVersion,
+    String latestVersion,
+    int latestBuild,
+  ) {
+    return 'v$currentVersion → v$latestVersion (build $latestBuild)';
+  }
+
+  @override
+  String appUpdateProgress(int percent) {
+    return '$percent% downloaded';
+  }
+
+  @override
+  String appUpdateProgressIndeterminate(String downloaded) {
+    return '$downloaded downloaded';
+  }
+
+  @override
+  String get appUpdateInstalling => 'Opening installer…';
+
+  @override
+  String get appUpdateInstallStarted =>
+      'Follow the system prompts to finish installing.';
+
+  @override
+  String get appUpdateSignatureMismatch =>
+      'This build was signed differently than the app on your phone. Uninstall Mira first, then download and install again.';
+
+  @override
+  String get appUpdateInstallFailed =>
+      'Could not start installation. Try again or uninstall the old app first.';
+
+  @override
+  String get appUpdateRetry => 'Try again';
+
+  @override
+  String get appUpdateOpenSettings => 'Open app settings to uninstall';
+
+  @override
+  String get appUpdateClose => 'Close';
+
+  @override
   String get appUpdateDownload => 'Download update';
 
   @override
@@ -85,5 +128,5 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appUpdateDownloadFailed =>
-      'Download failed. Opening browser instead.';
+      'Download failed. Check your connection and try again.';
 }
