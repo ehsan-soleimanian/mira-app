@@ -82,4 +82,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appUpdateLater => 'Later';
+
+  @override
+  String get appUpdateDownloadFailed =>
+      'Download failed. Opening browser instead.';
 }

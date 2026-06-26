@@ -12,6 +12,10 @@ concurrency:
   group: mobile-release-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  MOBILE_APK_URL: https://miramind.io/downloads/mira-latest.apk
+  MOBILE_MANIFEST_URL: https://miramind.io/downloads/version.json
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -85,22 +89,37 @@ jobs:
             --dart-define=API_BASE_URL=https://api.miramind.io
 
       - name: Create version manifest
-        env:
-          MOBILE_APK_DOWNLOAD_URL: ${{ secrets.MOBILE_APK_DOWNLOAD_URL }}
         run: |
-          DOWNLOAD_URL="${MOBILE_APK_DOWNLOAD_URL}"
-          if [ -z "$DOWNLOAD_URL" ]; then
-            DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.full }}/app-release.apk"
-          fi
           cat > version.json <<EOF
           {
             "versionName": "${{ steps.version.outputs.name }}",
             "buildNumber": ${{ steps.version.outputs.build }},
             "minBuildNumber": 1,
-            "downloadUrl": "${DOWNLOAD_URL}",
+            "downloadUrl": "${{ env.MOBILE_APK_URL }}",
             "optional": true
           }
           EOF
+
+      - name: Upload APK to miramind.io
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          export DEPLOY_SSH_KEY_FILE=~/.ssh/deploy_key
+          bash scripts/deploy-mobile-apk.sh \
+            build/app/outputs/flutter-apk/app-release.apk \
+            version.json
+
+      - name: Verify public manifest
+        run: |
+          curl -sf "${{ env.MOBILE_MANIFEST_URL }}" | tee /tmp/version.json
+          grep -q '"downloadUrl".*miramind.io/downloads/mira-latest.apk' /tmp/version.json
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -110,7 +129,7 @@ jobs:
           body: |
             Automated Android release for commit ${{ github.sha }}.
 
-            Install the APK, or open the app to get the in-app update prompt.
+            Production download: ${{ env.MOBILE_APK_URL }}
           files: |
             build/app/outputs/flutter-apk/app-release.apk
             version.json

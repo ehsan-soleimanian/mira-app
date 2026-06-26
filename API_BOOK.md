@@ -129,7 +129,7 @@ No auth. Pings database.
 ### Latest release metadata
 `GET /app/version`
 
-No auth. Used by the Flutter app on startup to prompt users when a newer APK is available. Proxied from the latest GitHub Release (`version.json` asset preferred).
+No auth. Used by the Flutter app on startup to prompt users when a newer APK is available. Reads `https://miramind.io/downloads/version.json` (uploaded by mobile CI), with GitHub Releases as fallback.
 
 **Response** `200`
 ```json
@@ -137,7 +137,7 @@ No auth. Used by the Flutter app on startup to prompt users when a newer APK is 
   "versionName": "1.1.0",
   "buildNumber": 42,
   "minBuildNumber": 1,
-  "downloadUrl": "https://github.com/ehsan-soleimanian/mira-app/releases/download/v1.1.0+42/app-release.apk",
+  "downloadUrl": "https://miramind.io/downloads/mira-latest.apk",
   "optional": true
 }
 ```

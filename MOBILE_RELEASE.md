@@ -1,82 +1,69 @@
 # Mobile release CI/CD
 
-Every push to `master` runs tests, builds a release APK, bumps the **build number** from `github.run_number`, and publishes a [GitHub Release](https://github.com/ehsan-soleimanian/mira-app/releases) with:
+Every push to `master` runs tests, builds a release APK, uploads it to **production**, and publishes a GitHub Release backup.
 
-- `app-release.apk`
-- `version.json` (used by the API and in-app update checker)
+## Production URLs (source of truth)
 
-The Flutter app calls `GET https://api.miramind.io/app/version` on startup (release builds only) and shows an update dialog when a newer build is available.
+| File | URL |
+|------|-----|
+| APK | https://miramind.io/downloads/mira-latest.apk |
+| Manifest | https://miramind.io/downloads/version.json |
 
-## GitHub Actions workflow
+The Flutter app checks `GET https://api.miramind.io/app/version` (API reads `version.json` from miramind.io) and downloads from `miramind.io` when the user taps update.
+
+## CI pipeline
 
 File: `.github/workflows/mobile_release.yml`
 
-| Job | Purpose |
-|-----|---------|
-| `test` | `flutter analyze` + `flutter test` |
-| `release` | build APK + publish GitHub Release |
+1. `flutter analyze` + `flutter test`
+2. `flutter build apk --release` with `build-number = github.run_number`
+3. **SCP** `mira-latest.apk` + `version.json` → `/var/www/miramind/downloads/` on showroom-germany
+4. Verify public manifest via `curl`
+5. GitHub Release (backup artifacts)
 
-Versioning:
+Deploy script: `scripts/deploy-mobile-apk.sh`
 
-- **version name** — from `pubspec.yaml` (e.g. `1.1.0`)
-- **build number** — `github.run_number` (monotonic per workflow run)
+## Required GitHub secrets (`mira-app` repo)
 
-## Required GitHub secrets (Android signing)
+Already configured:
 
-For production-signed APKs, add these repository secrets:
+| Secret | Purpose |
+|--------|---------|
+| `DEPLOY_HOST` | Production server IP |
+| `DEPLOY_USER` | SSH user (e.g. `root`) |
+| `DEPLOY_PORT` | SSH port (optional, default 22) |
+| `DEPLOY_SSH_KEY` | Private key for SCP upload |
 
-| Secret | Description |
-|--------|-------------|
-| `ANDROID_KEYSTORE_BASE64` | Base64-encoded `.jks` / `.keystore` file |
+Optional Android signing:
+
+| Secret | Purpose |
+|--------|---------|
+| `ANDROID_KEYSTORE_BASE64` | Release keystore |
 | `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
 | `ANDROID_KEY_PASSWORD` | Key password |
 | `ANDROID_KEY_ALIAS` | Key alias |
 
-Without these secrets, CI still builds an APK signed with the **debug** keystore (fine for internal testing only).
+Without keystore secrets, CI signs with the debug key (internal testing only).
 
-Generate base64 keystore:
+## Backend
 
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("release.keystore")) | Set-Clipboard
-```
+`GET /app/version` loads `https://miramind.io/downloads/version.json` first (60s cache), then falls back to GitHub Releases if CDN is unavailable.
 
-## Optional: public APK download URL
+No extra production `.env` is required when using the default CDN URL.
 
-If the GitHub repo is **private**, release asset URLs are not usable for end users. Set:
-
-| Secret | Example |
-|--------|---------|
-| `MOBILE_APK_DOWNLOAD_URL` | `https://miramind.io/downloads/mira-latest.apk` |
-
-Then upload the APK from CI to that host (custom deploy step) or manually after each release.
-
-## Backend: `/app/version`
-
-The API proxies the latest GitHub Release (cached 5 minutes).
-
-Production `.env` on the server:
-
-```env
-APP_RELEASE_GITHUB_REPO=ehsan-soleimanian/mira-app
-APP_RELEASE_GITHUB_TOKEN=ghp_...   # required for private repos
-APP_RELEASE_CACHE_SECONDS=300
-```
-
-`APP_RELEASE_GITHUB_TOKEN` needs `contents:read` on the app repo.
-
-## In-app update behaviour
-
-- Runs on app start in **release** mode only
-- Compares installed `buildNumber` with API `buildNumber`
-- **Optional** update: user can tap «بعداً» / «Later» (dismissed until next build)
-- **Forced** update when installed build `< minBuildNumber` (set in `version.json`)
-
-## Manual release
-
-Actions → **Mobile Release** → **Run workflow**
-
-## Local release build
+## Manual upload
 
 ```bash
+export DEPLOY_HOST=...
+export DEPLOY_USER=root
+export DEPLOY_SSH_KEY_FILE=~/.ssh/id_rsa
 flutter build apk --release --dart-define=API_BASE_URL=https://api.miramind.io
+# create version.json with downloadUrl https://miramind.io/downloads/mira-latest.apk
+bash scripts/deploy-mobile-apk.sh build/app/outputs/flutter-apk/app-release.apk version.json
 ```
+
+## Nginx
+
+Served by `scripts/nginx/miramind.io.conf` → `/var/www/miramind/downloads/`.
+
+Refreshed automatically on backend deploy via `install-nginx-miramind.sh`.

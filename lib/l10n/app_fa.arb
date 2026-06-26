@@ -21,5 +21,6 @@
   "appUpdateTitle": "نسخه جدید آماده است",
   "appUpdateBody": "نسخه فعلی شما {currentVersion} است. میرا {latestVersion} (بیلد {latestBuild}) برای نصب آماده است.",
   "appUpdateDownload": "دانلود نسخه جدید",
-  "appUpdateLater": "بعداً"
+  "appUpdateLater": "بعداً",
+  "appUpdateDownloadFailed": "دانلود ناموفق بود. مرورگر باز می‌شود."
 }

@@ -1,9 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/app_release_models.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -61,38 +65,81 @@ class _AppUpdateListenerState extends State<AppUpdateListener> {
       context: context,
       barrierDismissible: !forceUpdate,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(l10n.appUpdateTitle),
-          content: Text(
-            l10n.appUpdateBody(
-              currentVersionLabel,
-              release.versionName,
-              release.buildNumber,
-            ),
-          ),
-          actions: [
-            if (!forceUpdate && release.optional)
-              TextButton(
-                onPressed: () async {
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setInt(_dismissedBuildKey, release.buildNumber);
-                  if (dialogContext.mounted) {
-                    Navigator.of(dialogContext).pop();
-                  }
-                },
-                child: Text(l10n.appUpdateLater),
+        var downloading = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(l10n.appUpdateTitle),
+              content: Text(
+                l10n.appUpdateBody(
+                  currentVersionLabel,
+                  release.versionName,
+                  release.buildNumber,
+                ),
               ),
-            FilledButton(
-              onPressed: () => _openDownload(release.downloadUrl),
-              child: Text(l10n.appUpdateDownload),
-            ),
-          ],
+              actions: [
+                if (!forceUpdate && release.optional)
+                  TextButton(
+                    onPressed: downloading
+                        ? null
+                        : () async {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setInt(
+                              _dismissedBuildKey,
+                              release.buildNumber,
+                            );
+                            if (dialogContext.mounted) {
+                              Navigator.of(dialogContext).pop();
+                            }
+                          },
+                    child: Text(l10n.appUpdateLater),
+                  ),
+                FilledButton(
+                  onPressed: downloading
+                      ? null
+                      : () async {
+                          setDialogState(() => downloading = true);
+                          await _downloadUpdate(release.downloadUrl);
+                          if (dialogContext.mounted) {
+                            setDialogState(() => downloading = false);
+                          }
+                        },
+                  child: downloading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(l10n.appUpdateDownload),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  Future<void> _openDownload(String url) async {
+  Future<void> _downloadUpdate(String url) async {
+    if (Platform.isAndroid) {
+      try {
+        final dir = await getTemporaryDirectory();
+        final path = '${dir.path}/mira-update.apk';
+        final dio = AppScope.servicesOf(context).apiClient.dio;
+        await dio.download(url, path);
+        final result = await OpenFilex.open(path);
+        if (result.type == ResultType.done) return;
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.appUpdateDownloadFailed),
+          ),
+        );
+      }
+    }
+
+    if (!mounted) return;
     final uri = Uri.tryParse(url);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);

@@ -83,4 +83,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get appUpdateLater => 'بعداً';
+
+  @override
+  String get appUpdateDownloadFailed => 'دانلود ناموفق بود. مرورگر باز می‌شود.';
 }

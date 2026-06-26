@@ -233,6 +233,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Later'**
   String get appUpdateLater;
+
+  /// No description provided for @appUpdateDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed. Opening browser instead.'**
+  String get appUpdateDownloadFailed;
 }
 
 class _AppLocalizationsDelegate

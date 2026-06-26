@@ -28,5 +28,6 @@
     }
   },
   "appUpdateDownload": "Download update",
-  "appUpdateLater": "Later"
+  "appUpdateLater": "Later",
+  "appUpdateDownloadFailed": "Download failed. Opening browser instead."
 }
