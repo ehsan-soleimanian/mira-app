@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/auth/onboarding_flow_step.dart';
@@ -164,9 +165,12 @@ class _AuthScreenState extends State<AuthScreen> {
     final services = AppScope.servicesOf(context);
     if (!services.googleSignInService.isConfigured) {
       _snack(
-        'ورود با گوگل پیکربندی نشده.\n'
-        'فایل dart_defines.json را بسازید (نمونه: dart_defines.example.json) '
-        'و اپ را دوباره اجرا کنید.',
+        kDebugMode
+            ? 'ورود با گوگل پیکربندی نشده.\n'
+                'فایل dart_defines.json را بسازید (نمونه: dart_defines.example.json) '
+                'و اپ را دوباره اجرا کنید.'
+            : 'ورود با گوگل در این نسخهٔ اپ فعال نیست. لطفاً نسخهٔ جدید را نصب کنید '
+                'یا با ایمیل وارد شوید.',
       );
       return;
     }
