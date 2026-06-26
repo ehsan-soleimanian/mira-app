@@ -131,11 +131,9 @@ class _AppUpdateListenerState extends State<AppUpdateListener> {
         if (result.type == ResultType.done) return;
       } catch (_) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context)!.appUpdateDownloadFailed),
-          ),
-        );
+        final messenger = ScaffoldMessenger.of(context);
+        final failedText = AppLocalizations.of(context)!.appUpdateDownloadFailed;
+        messenger.showSnackBar(SnackBar(content: Text(failedText)));
       }
     }
 
