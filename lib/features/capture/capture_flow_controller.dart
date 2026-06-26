@@ -5,6 +5,7 @@ import 'package:mira_app/core/api/api_client.dart';
 import 'package:mira_app/core/auth/auth_repository.dart';
 import 'package:mira_app/core/auth/google_sign_in_service.dart';
 import 'package:mira_app/core/auth/token_storage.dart';
+import 'package:mira_app/core/update/app_release_repository.dart';
 import 'package:mira_app/features/auth/onboarding_repository.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
@@ -770,6 +771,7 @@ class MiraServices {
     required this.dailyBriefRepository,
     required this.graphRepository,
     required this.settingsRepository,
+    required this.appReleaseRepository,
     required this.captureFlow,
   });
 
@@ -791,6 +793,7 @@ class MiraServices {
     final dailyBriefRepository = DailyBriefRepository(apiClient: apiClient);
     final graphRepository = GraphRepository(apiClient: apiClient);
     final settingsRepository = SettingsRepository(apiClient: apiClient);
+    final appReleaseRepository = AppReleaseRepository(apiClient: apiClient);
     final captureFlow = CaptureFlowController(
       captureRepository: captureRepository,
     );
@@ -804,6 +807,7 @@ class MiraServices {
       dailyBriefRepository: dailyBriefRepository,
       graphRepository: graphRepository,
       settingsRepository: settingsRepository,
+      appReleaseRepository: appReleaseRepository,
       captureFlow: captureFlow,
     );
   }
@@ -817,5 +821,6 @@ class MiraServices {
   final DailyBriefRepository dailyBriefRepository;
   final GraphRepository graphRepository;
   final SettingsRepository settingsRepository;
+  final AppReleaseRepository appReleaseRepository;
   final CaptureFlowController captureFlow;
 }

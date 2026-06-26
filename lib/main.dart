@@ -10,6 +10,7 @@ import 'package:mira_app/core/auth/google_sign_in_config.dart';
 import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/config/api_endpoint_resolver.dart';
 import 'package:mira_app/core/figma_assets.dart';
+import 'package:mira_app/core/update/app_update_listener.dart';
 import 'package:mira_app/features/auth/auth_gate.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/theme/app_colors.dart';
@@ -95,7 +96,7 @@ class MiraApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const AuthGate(),
+            home: const AppUpdateListener(child: AuthGate()),
           );
         },
       ),

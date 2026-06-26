@@ -1,0 +1,118 @@
+name: Mobile Release
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mobile-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+  release:
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Compute release version
+        id: version
+        run: |
+          BASE=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
+          BUILD=${{ github.run_number }}
+          echo "name=${BASE}" >> "$GITHUB_OUTPUT"
+          echo "build=${BUILD}" >> "$GITHUB_OUTPUT"
+          echo "full=${BASE}+${BUILD}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Decode Android keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+
+      - name: Configure release signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=release.keystore
+          EOF
+
+      - name: Build release APK
+        run: |
+          flutter build apk --release \
+            --build-name="${{ steps.version.outputs.name }}" \
+            --build-number="${{ steps.version.outputs.build }}" \
+            --dart-define=API_BASE_URL=https://api.miramind.io
+
+      - name: Create version manifest
+        env:
+          MOBILE_APK_DOWNLOAD_URL: ${{ secrets.MOBILE_APK_DOWNLOAD_URL }}
+        run: |
+          DOWNLOAD_URL="${MOBILE_APK_DOWNLOAD_URL}"
+          if [ -z "$DOWNLOAD_URL" ]; then
+            DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.full }}/app-release.apk"
+          fi
+          cat > version.json <<EOF
+          {
+            "versionName": "${{ steps.version.outputs.name }}",
+            "buildNumber": ${{ steps.version.outputs.build }},
+            "minBuildNumber": 1,
+            "downloadUrl": "${DOWNLOAD_URL}",
+            "optional": true
+          }
+          EOF
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.full }}
+          name: Mira ${{ steps.version.outputs.full }}
+          body: |
+            Automated Android release for commit ${{ github.sha }}.
+
+            Install the APK, or open the app to get the in-app update prompt.
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+            version.json
+          draft: false
+          prerelease: false

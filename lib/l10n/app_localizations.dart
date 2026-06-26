@@ -123,12 +123,21 @@ abstract class AppLocalizations {
   String get captureIntentSaveToMemory;
 
   /// No description provided for @captureEntityEquivalenceDefaultPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Are these the same person in your memory?'**
   String get captureEntityEquivalenceDefaultPrompt;
 
   /// No description provided for @captureEntityEquivalenceSamePerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, same person'**
   String get captureEntityEquivalenceSamePerson;
 
   /// No description provided for @captureEntityEquivalenceDifferentPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'No, different people'**
   String get captureEntityEquivalenceDifferentPeople;
 
   /// No description provided for @graphMarkDone.
@@ -196,6 +205,34 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reject claim'**
   String get graphRejectAssertion;
+
+  /// No description provided for @appUpdateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available'**
+  String get appUpdateTitle;
+
+  /// No description provided for @appUpdateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You are on {currentVersion}. Mira {latestVersion} (build {latestBuild}) is ready to install.'**
+  String appUpdateBody(
+    String currentVersion,
+    String latestVersion,
+    int latestBuild,
+  );
+
+  /// No description provided for @appUpdateDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download update'**
+  String get appUpdateDownload;
+
+  /// No description provided for @appUpdateLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get appUpdateLater;
 }
 
 class _AppLocalizationsDelegate

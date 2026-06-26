@@ -17,5 +17,16 @@
   "graphCorrectMemoryHint": "Update what you want Mira to remember",
   "graphMutationSuccess": "Updated",
   "graphMutationFailed": "Could not update. Try again.",
-  "graphRejectAssertion": "Reject claim"
+  "graphRejectAssertion": "Reject claim",
+  "appUpdateTitle": "Update available",
+  "appUpdateBody": "You are on {currentVersion}. Mira {latestVersion} (build {latestBuild}) is ready to install.",
+  "@appUpdateBody": {
+    "placeholders": {
+      "currentVersion": {"type": "String"},
+      "latestVersion": {"type": "String"},
+      "latestBuild": {"type": "int"}
+    }
+  },
+  "appUpdateDownload": "Download update",
+  "appUpdateLater": "Later"
 }

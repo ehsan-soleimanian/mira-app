@@ -65,4 +65,22 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get graphRejectAssertion => 'رد این ادعا';
+
+  @override
+  String get appUpdateTitle => 'نسخه جدید آماده است';
+
+  @override
+  String appUpdateBody(
+    String currentVersion,
+    String latestVersion,
+    int latestBuild,
+  ) {
+    return 'نسخه فعلی شما $currentVersion است. میرا $latestVersion (بیلد $latestBuild) برای نصب آماده است.';
+  }
+
+  @override
+  String get appUpdateDownload => 'دانلود نسخه جدید';
+
+  @override
+  String get appUpdateLater => 'بعداً';
 }

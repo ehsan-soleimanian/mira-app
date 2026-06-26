@@ -64,4 +64,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get graphRejectAssertion => 'Reject claim';
+
+  @override
+  String get appUpdateTitle => 'Update available';
+
+  @override
+  String appUpdateBody(
+    String currentVersion,
+    String latestVersion,
+    int latestBuild,
+  ) {
+    return 'You are on $currentVersion. Mira $latestVersion (build $latestBuild) is ready to install.';
+  }
+
+  @override
+  String get appUpdateDownload => 'Download update';
+
+  @override
+  String get appUpdateLater => 'Later';
 }

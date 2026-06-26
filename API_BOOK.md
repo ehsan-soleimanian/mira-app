@@ -42,6 +42,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | Method | Path | Flutter consumer | Purpose |
 |--------|------|------------------|---------|
 | `GET` | `/health/ready` | `settings_repository.dart` | Dev connectivity check |
+| `GET` | `/app/version` | `app_release_repository.dart` | Latest mobile build (no auth) |
 | `GET` | `/auth/config` | `auth_repository.dart` | Onboarding flags (referral, Google) |
 | `POST` | `/auth/email/start` | `auth_repository.dart` | Start passwordless flow |
 | `POST` | `/auth/invite/verify` | `auth_repository.dart` | Verify invite code |
@@ -120,6 +121,36 @@ No auth. Pings database.
 ```json
 { "status": "not_ready", "detail": "database unavailable" }
 ```
+
+---
+
+## Mobile app version
+
+### Latest release metadata
+`GET /app/version`
+
+No auth. Used by the Flutter app on startup to prompt users when a newer APK is available. Proxied from the latest GitHub Release (`version.json` asset preferred).
+
+**Response** `200`
+```json
+{
+  "versionName": "1.1.0",
+  "buildNumber": 42,
+  "minBuildNumber": 1,
+  "downloadUrl": "https://github.com/ehsan-soleimanian/mira-app/releases/download/v1.1.0+42/app-release.apk",
+  "optional": true
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `versionName` | string | Semantic version shown to users |
+| `buildNumber` | int | Monotonic build id — compare with `package_info.buildNumber` |
+| `minBuildNumber` | int | Installs below this must update (non-dismissible dialog) |
+| `downloadUrl` | string | APK download link opened in browser |
+| `optional` | boolean | When `true`, user may dismiss until next build |
+
+**Errors**: `503` when release metadata cannot be loaded
 
 ---
 

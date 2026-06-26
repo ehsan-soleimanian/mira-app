@@ -17,5 +17,9 @@
   "graphCorrectMemoryHint": "متن جدیدی که می‌خواهید میرا به خاطر بسپارد",
   "graphMutationSuccess": "به‌روزرسانی شد",
   "graphMutationFailed": "به‌روزرسانی نشد. دوباره تلاش کنید.",
-  "graphRejectAssertion": "رد این ادعا"
+  "graphRejectAssertion": "رد این ادعا",
+  "appUpdateTitle": "نسخه جدید آماده است",
+  "appUpdateBody": "نسخه فعلی شما {currentVersion} است. میرا {latestVersion} (بیلد {latestBuild}) برای نصب آماده است.",
+  "appUpdateDownload": "دانلود نسخه جدید",
+  "appUpdateLater": "بعداً"
 }
