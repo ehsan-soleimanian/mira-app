@@ -1158,7 +1158,24 @@ Public signup for **miramind.io** landing. No auth. CORS enabled for origins in 
 ### Join waitlist
 `POST /waitlist`
 
-**Request Body**
+**Landing signup (miramind.io)**
+
+```json
+{
+  "email": "you@email.com",
+  "role": "engineering",
+  "reason": "I want Mira to remember my meetings and follow-ups."
+}
+```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `email` | string | yes | unique per signup |
+| `role` | string | yes | one of `founder`, `product`, `engineering`, `research`, `creative`, `student`, `other` |
+| `reason` | string | yes | min 8 chars |
+
+**Legacy mobile signup** (still accepted)
+
 ```json
 {
   "mobile": "09123456789",
@@ -1168,28 +1185,23 @@ Public signup for **miramind.io** landing. No auth. CORS enabled for origins in 
 }
 ```
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `mobile` | string | yes | Iranian mobile; normalized to `09XXXXXXXXX` |
-| `first_name` | string | yes | max 128 |
-| `last_name` | string | yes | max 128 |
-| `email` | string | no | valid email when provided |
-
 **Response** `201`
 ```json
 {
   "id": "uuid",
-  "mobile": "09123456789",
-  "first_name": "علی",
-  "last_name": "احمدی",
-  "email": "ali@example.com",
+  "email": "you@email.com",
+  "role": "engineering",
+  "reason": "I want Mira to remember my meetings and follow-ups.",
+  "mobile": null,
+  "first_name": null,
+  "last_name": null,
   "created_at": "2026-06-26T12:00:00+00:00"
 }
 ```
 
 **Errors**
-- `409` — mobile already registered
-- `422` — invalid mobile or validation error
+- `409` — email or mobile already registered
+- `422` — validation error
 
 ### Admin — list waitlist
 `GET /admin/api/waitlist`
@@ -1203,10 +1215,12 @@ Admin Bearer. Query: `limit` (default 100, max 500), `offset` (default 0).
   "items": [
     {
       "id": "uuid",
-      "mobile": "09123456789",
-      "first_name": "علی",
-      "last_name": "احمدی",
-      "email": "ali@example.com",
+      "email": "you@email.com",
+      "role": "engineering",
+      "reason": "I want Mira to remember my meetings.",
+      "mobile": null,
+      "first_name": null,
+      "last_name": null,
       "created_at": "2026-06-26T12:00:00+00:00"
     }
   ]
