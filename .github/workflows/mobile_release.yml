@@ -80,6 +80,8 @@ jobs:
           keyAlias=${ANDROID_KEY_ALIAS}
           storeFile=release.keystore
           EOF
+            echo "Release keystore SHA-1 (add to Google Cloud Android OAuth client):"
+            keytool -list -v -keystore android/app/release.keystore -alias "${ANDROID_KEY_ALIAS}" -storepass "${ANDROID_KEYSTORE_PASSWORD}" | grep "SHA1:"
           fi
 
       - name: Build release APK

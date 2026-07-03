@@ -1,8 +1,20 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:mira_app/core/config/api_config.dart';
 
 /// Maps API auth errors to user-facing strings.
 String formatAuthError(Object error) {
+  if (error is PlatformException) {
+    final blob =
+        '${error.code} ${error.message ?? ''} ${error.details ?? ''}'.toLowerCase();
+    if (blob.contains('apiexception: 10') ||
+        blob.contains('apiexception:10') ||
+        (blob.contains('sign_in_failed') && blob.contains('10'))) {
+      return 'ورود با گوگل روی این نسخهٔ اپ تأیید نشده است.\n'
+          'امضای APK در بیلد جدید عوض شده — SHA-1 کلید release را در Google Cloud Console '
+          'برای com.mira.mira_app اضافه کنید، چند دقیقه صبر کنید و دوباره امتحان کنید.';
+    }
+  }
   if (error is DioException) {
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||

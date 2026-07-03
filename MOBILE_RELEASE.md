@@ -45,7 +45,13 @@ Optional Android signing:
 
 Without keystore secrets, CI signs with the debug key (internal testing only). **All production APKs must use the same release keystore** or Android will refuse in-place updates (signature mismatch).
 
-Release keystore SHA-1 (register in Google Cloud Console for Sign-In): ask ops or run `keytool -list -v -keystore release.keystore -alias mira`.
+Release keystore SHA-1 (must be in Google Cloud → Credentials → Android OAuth client for `com.mira.mira_app`):
+
+```
+DA:63:1B:D7:84:1E:A9:81:65:D0:06:34:37:09:3E:FF:97:34:37:C5
+```
+
+CI prints this in the **Print release signing SHA-1** step on each build. After changing the keystore, add the new fingerprint in Console and wait ~5 minutes.
 
 | Secret | Value |
 |--------|-------|
