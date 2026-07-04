@@ -12,6 +12,85 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Mira';
 
   @override
+  String get homeGreeting => 'Your second memory is ready';
+
+  @override
+  String get homeSubtitle =>
+      'Drop a thought, voice, photo, screenshot or reminder. Mira will connect it to your graph.';
+
+  @override
+  String get homeProcessingTitle => 'Mira is understanding this';
+
+  @override
+  String get homeProcessingSubtitle =>
+      'Extracting meaning, tasks and graph links.';
+
+  @override
+  String get homeQuickCaptureTitle => 'Capture anything';
+
+  @override
+  String get homeQuickCapturePrompt => 'Type a memory, question or reminder';
+
+  @override
+  String get homeTextActionTitle => 'Text';
+
+  @override
+  String get homeTextActionSubtitle => 'Write or ask';
+
+  @override
+  String get homeVoiceActionTitle => 'Voice';
+
+  @override
+  String get homeVoiceActionSubtitle => 'Speak naturally';
+
+  @override
+  String get homePhotoActionTitle => 'Photo';
+
+  @override
+  String get homePhotoActionSubtitle => 'Camera to graph';
+
+  @override
+  String get homeScreenshotActionTitle => 'Screenshot';
+
+  @override
+  String get homeScreenshotActionSubtitle => 'Import fast';
+
+  @override
+  String get homeReminderActionTitle => 'Reminder';
+
+  @override
+  String get homeReminderActionSubtitle => 'Say the time';
+
+  @override
+  String get homeGraphActionTitle => 'Graph';
+
+  @override
+  String get homeGraphActionSubtitle => 'See links';
+
+  @override
+  String get homeRemindersTitle => 'Reminders';
+
+  @override
+  String get homeRemindersEmptyTitle => 'No open reminders yet';
+
+  @override
+  String get homeRemindersEmptyBody =>
+      'Tell Mira what you need to do and it will appear here after approval.';
+
+  @override
+  String get homeOpenDailyBrief => 'Daily Brief';
+
+  @override
+  String get homeMemoryGraphTitle => 'Memory graph';
+
+  @override
+  String get homeMemoryGraphBody =>
+      'Approved captures become entities, assertions and tasks connected in your graph.';
+
+  @override
+  String get homeOpenGraph => 'Open graph';
+
+  @override
   String get captureIntentClarificationPrompt =>
       'Could you clarify - is this a question or something to save?';
 

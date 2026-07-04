@@ -74,10 +74,14 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       switch (action) {
         case CaptureWorkflowInitialAction.attachMenu:
           setState(() => _showAttachMenu = true);
+        case CaptureWorkflowInitialAction.camera:
+          unawaited(_submitAttachment(_AttachmentKind.camera));
         case CaptureWorkflowInitialAction.link:
           unawaited(_submitLink());
         case CaptureWorkflowInitialAction.gallery:
           unawaited(_submitAttachment(_AttachmentKind.picture));
+        case CaptureWorkflowInitialAction.file:
+          unawaited(_submitAttachment(_AttachmentKind.file));
       }
     });
   }
@@ -221,10 +225,8 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
     final prompt = input.note?.isNotEmpty == true ? input.note! : input.url;
     await _submitCapture(
       prompt: prompt,
-      create: (repo) => repo.createLinkCapture(
-        url: input.url,
-        note: input.note,
-      ),
+      create: (repo) =>
+          repo.createLinkCapture(url: input.url, note: input.note),
     );
   }
 
@@ -293,12 +295,14 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
           setState(() {
             _entityClarificationPrompt =
                 event.data['prompt']?.toString() ??
-                AppLocalizations.of(context)!.captureEntityEquivalenceDefaultPrompt;
+                AppLocalizations.of(
+                  context,
+                )!.captureEntityEquivalenceDefaultPrompt;
             _intentClarificationPrompt = null;
             final equivalence = event.data['entityEquivalence'];
             if (equivalence is Map) {
-              _suggestedTargetEntityId =
-                  equivalence['suggestedTargetEntityId']?.toString();
+              _suggestedTargetEntityId = equivalence['suggestedTargetEntityId']
+                  ?.toString();
             }
             _statusText = null;
           });
@@ -349,12 +353,13 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
             created.answer ??
             AppLocalizations.of(context)!.captureEntityEquivalenceDefaultPrompt;
         _intentClarificationPrompt = null;
-        _suggestedTargetEntityId =
-            created.proposal!['entityEquivalence']['suggestedTargetEntityId']
-                ?.toString();
+        _suggestedTargetEntityId = created
+            .proposal!['entityEquivalence']['suggestedTargetEntityId']
+            ?.toString();
         _statusText = null;
       });
-    } else if (created.state == 'clarification_needed' && created.answer != null) {
+    } else if (created.state == 'clarification_needed' &&
+        created.answer != null) {
       setState(() {
         _intentClarificationPrompt = created.answer;
         _statusText = null;
@@ -483,7 +488,8 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       if (!mounted) return;
       if (updated.state == 'awaiting_approval' && updated.proposal != null) {
         _applyProposal(updated.proposal!, captureId);
-      } else if (updated.state == 'question_answered' && updated.answer != null) {
+      } else if (updated.state == 'question_answered' &&
+          updated.answer != null) {
         _applyAnswer(updated.answer!);
       } else if (updated.state == 'clarification_needed') {
         setState(() {
@@ -511,9 +517,9 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   }
 
   void _openMemoryGraph({String? highlightNodeId}) {
-    Navigator.of(context).pushMira(
-      (_) => MemoryGraphScreen(highlightNodeId: highlightNodeId),
-    );
+    Navigator.of(
+      context,
+    ).pushMira((_) => MemoryGraphScreen(highlightNodeId: highlightNodeId));
   }
 
   void _showSnack(String message) {
@@ -562,8 +568,10 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                             proposal: _proposal,
                             answer: _answer,
                             statusText: _statusText,
-                            intentClarificationPrompt: _intentClarificationPrompt,
-                            entityClarificationPrompt: _entityClarificationPrompt,
+                            intentClarificationPrompt:
+                                _intentClarificationPrompt,
+                            entityClarificationPrompt:
+                                _entityClarificationPrompt,
                             memorySaved: _memorySaved,
                             pendingApproval: _pendingApproval,
                             busy: _busy,
@@ -631,10 +639,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
 }
 
 class _WorkflowHeader extends StatelessWidget {
-  const _WorkflowHeader({
-    required this.memoryActive,
-    required this.onGraphTap,
-  });
+  const _WorkflowHeader({required this.memoryActive, required this.onGraphTap});
 
   final bool memoryActive;
   final VoidCallback onGraphTap;
@@ -940,11 +945,7 @@ class _ConversationView extends StatelessWidget {
               "Saved to your memory. If this is wrong, tell me. I'll change it.",
         ),
         SizedBox(height: 10 * s),
-        CaptureMemoryToggle(
-          scale: s,
-          saved: true,
-          onTap: onMemoryToggle,
-        ),
+        CaptureMemoryToggle(scale: s, saved: true, onTap: onMemoryToggle),
         SizedBox(height: 30 * s),
         CaptureUserBubble(
           scale: s,
@@ -959,11 +960,7 @@ class _ConversationView extends StatelessWidget {
               'Got it. I updated it\n"Call John about the contract — tomorrow"',
         ),
         SizedBox(height: 10 * s),
-        CaptureMemoryToggle(
-          scale: s,
-          saved: true,
-          onTap: onMemoryToggle,
-        ),
+        CaptureMemoryToggle(scale: s, saved: true, onTap: onMemoryToggle),
       ],
     );
   }
@@ -1044,11 +1041,7 @@ class _DynamicConversationBody extends StatelessWidget {
             ),
           ] else if (memorySaved) ...[
             SizedBox(height: 10 * s),
-            CaptureMemoryToggle(
-              scale: s,
-              saved: true,
-              onTap: onMemoryToggle,
-            ),
+            CaptureMemoryToggle(scale: s, saved: true, onTap: onMemoryToggle),
           ],
         ] else if (answer != null) ...[
           CaptureMiraMessage(scale: s, text: answer!),
@@ -1063,7 +1056,9 @@ class _DynamicConversationBody extends StatelessWidget {
         ] else if (intentClarificationPrompt != null) ...[
           CaptureMiraMessage(
             scale: s,
-            text: intentClarificationPrompt ?? localization.captureIntentClarificationPrompt,
+            text:
+                intentClarificationPrompt ??
+                localization.captureIntentClarificationPrompt,
           ),
           SizedBox(height: 28 * s),
           Row(
@@ -1180,10 +1175,7 @@ class _InsetTip extends StatelessWidget {
       painter: MiraInnerShadowPainter(
         shape: (size) => Path()
           ..addRRect(
-            RRect.fromRectAndRadius(
-              Offset.zero & size,
-              Radius.circular(4 * s),
-            ),
+            RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(4 * s)),
           ),
         baseColor: const Color(0xFFF4F4F5),
         darkShadow: const Color(0xFFD0D0D4).withValues(alpha: 0.58),

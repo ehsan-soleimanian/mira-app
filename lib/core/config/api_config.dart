@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/foundation.dart';
 import 'package:mira_app/core/config/dev_machine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,8 +8,10 @@ class ApiConfig {
 
   static const String _productionBase = 'https://api.miramind.io';
   static const String _prefsKey = 'dev_api_base_url';
-  static const String _defineBase =
-      String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  static const String _defineBase = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
 
   static String _devOverride = '';
 
@@ -28,7 +28,9 @@ class ApiConfig {
     if (kReleaseMode) return _normalize(_productionBase);
     if (_defineBase.isNotEmpty) return _normalize(_defineBase);
     if (_devOverride.isNotEmpty) return _normalize(_devOverride);
-    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8000';
+    }
     return 'http://localhost:8000';
   }
 

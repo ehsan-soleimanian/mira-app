@@ -1,6 +1,6 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-06-25 (graph mutations UX + ontology.2026_06_25 predicate catalog)
+> Last updated: 2026-07-05 (contextual Graph V2 extraction + resync/playground verification)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md) (graph pipeline) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html) (styled doc) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
 
@@ -407,6 +407,47 @@ Same composer as capture → intent `question` → vector search over approved n
 ## Graph V2 contract (admin-first, Flutter aware)
 
 Graph V2 ontology/predicate/assertion logic is backend-owned (`mira-backend`). Flutter should treat it as a read-only contract and must not re-implement inference/materialization rules.
+
+### Current extraction path (V2+Context)
+
+Production save-intent extraction uses **Graph V2** as the writer path. Miramind Lab / Graph Lab PATCH stays an optional playground compare/dry-run path and must not write production graph data.
+
+Backend `ContextualGraphExtractor` wraps `LlmGraphExtractorV2` when `contextual_graph_extraction_enabled` is on. `CaptureProcessor` passes `user_id` so extraction can cheaply prepare:
+
+- sentence/segment context for multi-sentence captures;
+- NER mention candidates before the LLM;
+- small graph context from existing entities/assertions/captures/tasks;
+- a final Graph V2 schema proposal from the LLM and validator.
+
+NER is only a candidate layer. It can help context packing and entity reuse, but Graph V2 LLM output + schema/ontology validation remain the source of truth.
+
+Long captures are segmented in backend, but still produce one approval proposal. Assertions/tasks should keep segment-local `evidenceText` so debugging and resync stay precise.
+
+Context packing is intentionally small for latency/cost: max 12 entities, 8 assertions, 6 captures, 6 tasks. Vector context retrieval is guarded by `contextual_graph_extraction_vector_enabled`; default production path should prefer fulltext/alias plus mention fallback.
+
+Feature flags currently relevant to this path:
+
+| Flag | Meaning |
+|------|---------|
+| `contextual_graph_extraction_enabled` | Enables Graph V2 extraction with segmentation/NER/context wrapper |
+| `long_capture_segmentation_enabled` | Enables sentence/segment context for longer captures |
+| `graph_extraction_embedding_cache_enabled` | Caches embeddings by provider/model/dimensions/text hash |
+| `contextual_graph_extraction_vector_enabled` | Enables vector retrieval during context build; keep off unless needed |
+| `mention_extraction_enabled` | Enables NER candidate extraction before LLM |
+
+### Resync and playground QA
+
+Super Admin exposes backend-only resync: `POST /admin/api/users/{user_id}/resync-graph-v2` with `dry_run: true` by default. Resync re-extracts approved captures safely for diff/preview; Flutter does not call this endpoint.
+
+Playground QA path:
+
+1. Create/select a user in Super Admin.
+2. Use `POST /admin/api/playground/run` with `forced_intent: "save"`.
+3. Seed a prior memory and approve it.
+4. Run a related multi-sentence capture.
+5. Inspect proposal `_extractionDiagnostics`.
+
+Expected diagnostics for V2+Context: `extractorVersion: contextual_graph_v1`, `contextStrategy: graph_v2_context_v1`, non-zero `segmentCount`, and graph context stats showing reused prior context when matching data exists.
 
 ### Graph views in Super Admin
 

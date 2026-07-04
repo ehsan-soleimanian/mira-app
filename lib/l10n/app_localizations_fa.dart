@@ -12,6 +12,85 @@ class AppLocalizationsFa extends AppLocalizations {
   String get appTitle => 'میرا';
 
   @override
+  String get homeGreeting => 'حافظه دوم تو آماده است';
+
+  @override
+  String get homeSubtitle =>
+      'فکر، صدا، عکس، اسکرین‌شات یا یادآوری را بده. میرا آن را به گراف حافظه‌ات وصل می‌کند.';
+
+  @override
+  String get homeProcessingTitle => 'میرا دارد این را می‌فهمد';
+
+  @override
+  String get homeProcessingSubtitle =>
+      'در حال استخراج معنا، کارها و ارتباط‌های گراف.';
+
+  @override
+  String get homeQuickCaptureTitle => 'هر چیزی را ثبت کن';
+
+  @override
+  String get homeQuickCapturePrompt => 'یک خاطره، سوال یا یادآوری بنویس';
+
+  @override
+  String get homeTextActionTitle => 'متن';
+
+  @override
+  String get homeTextActionSubtitle => 'بنویس یا بپرس';
+
+  @override
+  String get homeVoiceActionTitle => 'صدا';
+
+  @override
+  String get homeVoiceActionSubtitle => 'طبیعی حرف بزن';
+
+  @override
+  String get homePhotoActionTitle => 'عکس';
+
+  @override
+  String get homePhotoActionSubtitle => 'از دوربین تا گراف';
+
+  @override
+  String get homeScreenshotActionTitle => 'اسکرین‌شات';
+
+  @override
+  String get homeScreenshotActionSubtitle => 'سریع وارد کن';
+
+  @override
+  String get homeReminderActionTitle => 'یادآوری';
+
+  @override
+  String get homeReminderActionSubtitle => 'زمانش را بگو';
+
+  @override
+  String get homeGraphActionTitle => 'گراف';
+
+  @override
+  String get homeGraphActionSubtitle => 'ارتباط‌ها را ببین';
+
+  @override
+  String get homeRemindersTitle => 'یادآوری‌ها';
+
+  @override
+  String get homeRemindersEmptyTitle => 'هنوز یادآوری بازی نداری';
+
+  @override
+  String get homeRemindersEmptyBody =>
+      'به میرا بگو چه کاری باید انجام بدهی؛ بعد از تایید اینجا دیده می‌شود.';
+
+  @override
+  String get homeOpenDailyBrief => 'Daily Brief';
+
+  @override
+  String get homeMemoryGraphTitle => 'گراف حافظه';
+
+  @override
+  String get homeMemoryGraphBody =>
+      'ورودی‌های تاییدشده به entity، assertion و task تبدیل می‌شوند و در گراف وصل می‌شوند.';
+
+  @override
+  String get homeOpenGraph => 'باز کردن گراف';
+
+  @override
   String get captureIntentClarificationPrompt =>
       'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟';
 

@@ -104,6 +104,156 @@ abstract class AppLocalizations {
   /// **'Mira'**
   String get appTitle;
 
+  /// No description provided for @homeGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Your second memory is ready'**
+  String get homeGreeting;
+
+  /// No description provided for @homeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop a thought, voice, photo, screenshot or reminder. Mira will connect it to your graph.'**
+  String get homeSubtitle;
+
+  /// No description provided for @homeProcessingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira is understanding this'**
+  String get homeProcessingTitle;
+
+  /// No description provided for @homeProcessingSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracting meaning, tasks and graph links.'**
+  String get homeProcessingSubtitle;
+
+  /// No description provided for @homeQuickCaptureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture anything'**
+  String get homeQuickCaptureTitle;
+
+  /// No description provided for @homeQuickCapturePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a memory, question or reminder'**
+  String get homeQuickCapturePrompt;
+
+  /// No description provided for @homeTextActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get homeTextActionTitle;
+
+  /// No description provided for @homeTextActionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Write or ask'**
+  String get homeTextActionSubtitle;
+
+  /// No description provided for @homeVoiceActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get homeVoiceActionTitle;
+
+  /// No description provided for @homeVoiceActionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak naturally'**
+  String get homeVoiceActionSubtitle;
+
+  /// No description provided for @homePhotoActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get homePhotoActionTitle;
+
+  /// No description provided for @homePhotoActionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera to graph'**
+  String get homePhotoActionSubtitle;
+
+  /// No description provided for @homeScreenshotActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshot'**
+  String get homeScreenshotActionTitle;
+
+  /// No description provided for @homeScreenshotActionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import fast'**
+  String get homeScreenshotActionSubtitle;
+
+  /// No description provided for @homeReminderActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get homeReminderActionTitle;
+
+  /// No description provided for @homeReminderActionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Say the time'**
+  String get homeReminderActionSubtitle;
+
+  /// No description provided for @homeGraphActionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Graph'**
+  String get homeGraphActionTitle;
+
+  /// No description provided for @homeGraphActionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See links'**
+  String get homeGraphActionSubtitle;
+
+  /// No description provided for @homeRemindersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get homeRemindersTitle;
+
+  /// No description provided for @homeRemindersEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No open reminders yet'**
+  String get homeRemindersEmptyTitle;
+
+  /// No description provided for @homeRemindersEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell Mira what you need to do and it will appear here after approval.'**
+  String get homeRemindersEmptyBody;
+
+  /// No description provided for @homeOpenDailyBrief.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Brief'**
+  String get homeOpenDailyBrief;
+
+  /// No description provided for @homeMemoryGraphTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory graph'**
+  String get homeMemoryGraphTitle;
+
+  /// No description provided for @homeMemoryGraphBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved captures become entities, assertions and tasks connected in your graph.'**
+  String get homeMemoryGraphBody;
+
+  /// No description provided for @homeOpenGraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Open graph'**
+  String get homeOpenGraph;
+
   /// No description provided for @captureIntentClarificationPrompt.
   ///
   /// In en, this message translates to:
