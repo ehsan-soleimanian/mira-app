@@ -554,6 +554,48 @@ abstract class AppLocalizations {
   /// **'Reject claim'**
   String get graphRejectAssertion;
 
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get settingsRetry;
+
+  /// No description provided for @settingsLoginAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Login again'**
+  String get settingsLoginAgain;
+
+  /// No description provided for @settingsSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again.'**
+  String get settingsSessionExpired;
+
+  /// No description provided for @settingsLoadHttpError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load settings (HTTP {code}).'**
+  String settingsLoadHttpError(int code);
+
+  /// No description provided for @settingsLoadConnectionError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach Mira. Check your connection and try again.'**
+  String get settingsLoadConnectionError;
+
+  /// No description provided for @settingsLoadGenericError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load settings. Please try again.'**
+  String get settingsLoadGenericError;
+
   /// No description provided for @connectorsTitle.
   ///
   /// In en, this message translates to:

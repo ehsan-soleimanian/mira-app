@@ -254,6 +254,32 @@ class AppLocalizationsFa extends AppLocalizations {
   String get graphRejectAssertion => 'رد این ادعا';
 
   @override
+  String get settingsTitle => 'تنظیمات';
+
+  @override
+  String get settingsRetry => 'دوباره تلاش کن';
+
+  @override
+  String get settingsLoginAgain => 'ورود دوباره';
+
+  @override
+  String get settingsSessionExpired =>
+      'نشست شما منقضی شده است. لطفا دوباره وارد شوید.';
+
+  @override
+  String settingsLoadHttpError(int code) {
+    return 'تنظیمات بارگذاری نشد (HTTP $code).';
+  }
+
+  @override
+  String get settingsLoadConnectionError =>
+      'اتصال به میرا برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.';
+
+  @override
+  String get settingsLoadGenericError =>
+      'تنظیمات بارگذاری نشد. لطفا دوباره تلاش کنید.';
+
+  @override
   String get connectorsTitle => 'کانکتورها';
 
   @override

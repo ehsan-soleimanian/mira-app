@@ -1,11 +1,13 @@
 import 'dart:ui';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/features/auth/auth_gate.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 import 'package:mira_app/models/api/settings_models.dart';
 import 'package:mira_app/screens/settings/account_settings_screen.dart';
@@ -31,6 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   UserSettings? _settings;
   bool _loading = true;
   String? _error;
+  bool _unauthorized = false;
 
   @override
   void didChangeDependencies() {
@@ -54,12 +57,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settings = settings;
         _loading = false;
         _error = null;
+        _unauthorized = false;
       });
     } catch (error) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _loading = false;
-        _error = error.toString();
+        _error = _formatLoadError(error, l10n);
+        _unauthorized = _isUnauthorized(error);
       });
     }
   }
@@ -68,8 +74,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _unauthorized = false;
     });
     await _load();
+  }
+
+  Future<void> _loginAgain() async {
+    await AppScope.servicesOf(context).authRepository.logout();
+    if (!mounted) return;
+    Navigator.of(
+      context,
+    ).pushAndRemoveUntil(miraRoute((_) => const AuthGate()), (_) => false);
   }
 
   Future<void> _logout() async {
@@ -165,6 +180,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  bool _isUnauthorized(Object error) =>
+      error is DioException && error.response?.statusCode == 401;
+
+  String _formatLoadError(Object error, AppLocalizations l10n) {
+    if (error is DioException) {
+      final code = error.response?.statusCode;
+      if (code == 401) {
+        return l10n.settingsSessionExpired;
+      }
+      final detail = error.response?.data;
+      if (detail is Map && detail['detail'] != null) {
+        return detail['detail'].toString();
+      }
+      if (code != null) {
+        return l10n.settingsLoadHttpError(code);
+      }
+      if (error.type == DioExceptionType.connectionError ||
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout) {
+        return l10n.settingsLoadConnectionError;
+      }
+    }
+    return l10n.settingsLoadGenericError;
+  }
+
   Future<void> _openNotifications() async {
     final current = _settings;
     if (current == null) return;
@@ -177,6 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     Widget body;
     if (_loading) {
       body = const Center(child: CircularProgressIndicator());
@@ -193,7 +234,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: GoogleFonts.inter(fontSize: 14),
               ),
               const SizedBox(height: 12),
-              TextButton(onPressed: _refresh, child: const Text('Retry')),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    onPressed: _refresh,
+                    child: Text(l10n.settingsRetry),
+                  ),
+                  if (_unauthorized) ...[
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: _loginAgain,
+                      child: Text(l10n.settingsLoginAgain),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),
@@ -229,7 +285,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           children: [
             FigmaSettingsHeader(
-              title: 'Setting',
+              title: l10n.settingsTitle,
               onBack: () => Navigator.of(context).maybePop(),
             ),
             Expanded(child: body),

@@ -252,6 +252,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get graphRejectAssertion => 'Reject claim';
 
   @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsRetry => 'Retry';
+
+  @override
+  String get settingsLoginAgain => 'Login again';
+
+  @override
+  String get settingsSessionExpired =>
+      'Your session has expired. Please sign in again.';
+
+  @override
+  String settingsLoadHttpError(int code) {
+    return 'Could not load settings (HTTP $code).';
+  }
+
+  @override
+  String get settingsLoadConnectionError =>
+      'Could not reach Mira. Check your connection and try again.';
+
+  @override
+  String get settingsLoadGenericError =>
+      'Could not load settings. Please try again.';
+
+  @override
   String get connectorsTitle => 'Connectors';
 
   @override

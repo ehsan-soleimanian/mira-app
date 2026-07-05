@@ -76,6 +76,18 @@
   "graphMutationSuccess": "Updated",
   "graphMutationFailed": "Could not update. Try again.",
   "graphRejectAssertion": "Reject claim",
+  "settingsTitle": "Settings",
+  "settingsRetry": "Retry",
+  "settingsLoginAgain": "Login again",
+  "settingsSessionExpired": "Your session has expired. Please sign in again.",
+  "settingsLoadHttpError": "Could not load settings (HTTP {code}).",
+  "@settingsLoadHttpError": {
+    "placeholders": {
+      "code": {"type": "int"}
+    }
+  },
+  "settingsLoadConnectionError": "Could not reach Mira. Check your connection and try again.",
+  "settingsLoadGenericError": "Could not load settings. Please try again.",
   "connectorsTitle": "Connectors",
   "connectorsSubtitle": "Bring work, files, messages, reading, and design context into Mira.",
   "connectorsAvailableMetric": "available",
