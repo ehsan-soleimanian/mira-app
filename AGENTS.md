@@ -1,6 +1,6 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-07-05 (contextual Graph V2 extraction + resync/playground verification)
+> Last updated: 2026-07-05 (Fabric-style Library Import Hub + connector cleanup)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md) (graph pipeline) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html) (styled doc) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
 
@@ -66,12 +66,13 @@ lib/
 │   │   ├── onboarding_repository.dart
 │   │   ├── screens/               # welcome, auth, your details, first capture, processing
 │   │   └── widgets/               # auth_step_widgets, onboarding_flow_scaffold
-│   ├── capture/                   # CaptureRepository, flow controller, sheets
-│   └── graph/                     # GraphRepository, radial layout, MemoryGraphScreen
+│   ├── capture/                   # CaptureRepository, flow controller, sheets, Android shared import
+│   ├── graph/                     # GraphRepository, radial layout, MemoryGraphScreen
+│   └── workspace/                 # Library/Assistant/Plugin/Canvas/Publish repositories
 ├── models/
 │   ├── api/                       # auth_models, capture_models
 │   └── daily_brief_models.dart    # UI models (daily brief still mock)
-├── screens/                       # home, daily_brief, settings, catalog
+├── screens/                       # home, daily_brief, settings, catalog, workspace surfaces
 ├── components/                    # atoms / molecules / organisms (Figma)
 └── theme/                         # colors, typography, tokens
 test/
@@ -89,6 +90,10 @@ test/
 | **Settings** | UI shell |
 | **Graph screen** | `MemoryGraphScreen` — radial graph from `GET /v2/graph`; node tap → blurred bottom sheet with mutations |
 | **Daily Brief tasks** | Checkbox calls `PATCH /v2/tasks/{id}` via `GraphRepository.updateTaskStatus` |
+| **Library/Search** | `LibraryScreen` lists library objects, asks assistant across them, opens item detail, and shows Fabric-style **Add anything** import hub |
+| **Import Hub** | `GET /library/import-sources`; sources include PDFs, links, Markdown, text, HTML, JSON, CSV, EPUB, DOCX, PPTX, notes, meeting notes, media files, local files, YouTube/TikTok/Reels, WhatsApp/Telegram/Bale exports |
+| **Connectors** | `ConnectorMarketplaceScreen`; only real provider connectors live here. WhatsApp/Telegram/Bale are not plugins; manual exports live in Import Hub |
+| **Canvas** | `CanvasWorkspaceScreen`; pan/zoom board with sticky notes, text boxes, library references, shapes, arrows, auto-save to `/canvas/{id}` |
 
 ### Commands
 
@@ -165,6 +170,68 @@ Home composer → CaptureFlowController.submitText()
              → ApprovalSheet / TimeClarificationSheet
              → approve / confirm-time / dismiss
 ```
+
+### Workspace Library, Import Hub, and Connectors
+
+Mira now separates **content import sources** from **provider connectors**.
+
+**User mental model**
+
+- **Library → Add anything** is for files, links, pasted text, notes, meeting notes, media, local files, and manual exports.
+- **Connectors** is only for real provider/API sync such as Gmail, Google Drive, Google Calendar, Notion, Slack, Dropbox, GitHub, Figma, Linear/Jira, Readwise/Zotero, RSS, Zapier, Web Clipper, and Email-to-Mira.
+- WhatsApp, Telegram, and Bale are **not plugins** in v1 because personal chat OAuth/scheduled sync is not available. They appear as manual export/share flows in Import Hub.
+
+**Flutter files**
+
+| File | Role |
+|------|------|
+| `screens/workspace/library_screen.dart` | Library list/search/assistant, Add anything hub, import sheets, item detail, summarize/publish/open canvas actions |
+| `features/workspace/library_repository.dart` | `/library/items`, `/library/uploads`, `/library/import-sources`, `/library/imports/link`, `/library/imports/text` |
+| `features/workspace/plugin_repository.dart` | `/plugins`, `/plugins/{id}/connect`, `/plugins/{id}/sync`; only native-sync connectors should call connect/sync |
+| `screens/workspace/connector_marketplace_screen.dart` | Light/simple connector list; native Google connectors can connect/sync, adapter-ready providers show details only |
+| `features/capture/shared_import/*` | Android share-sheet bridge and review screen for shared text/link/file/image into Library |
+| `screens/workspace/canvas_workspace_screen.dart` | Visual board; can place Library objects via the board's Library picker |
+| `models/api/workspace_models.dart` | `LibraryItem`, `ImportSourceDto`, plugin/canvas/publish DTOs |
+
+**Backend contract** (see `API_BOOK.md` and `../mira-backend/src/mira/library`)
+
+| API | Purpose |
+|-----|---------|
+| `GET /library/import-sources` | Fabric-style manifest for supported source types and actions |
+| `POST /library/uploads` | Secure file upload, type detection, extraction status, provenance |
+| `POST /library/imports/link` | URL/social/video link import; YouTube/TikTok/Reels may be `metadata_ready` until transcripts exist |
+| `POST /library/imports/text` | Pasted/shared text, meeting notes, HTML, JSON, Markdown, message exports |
+| `GET /plugins` | Provider connector registry only; no WhatsApp/Telegram/Bale |
+| `POST /plugins/{id}/connect` / `sync` | v1 direct action only for `implementationStatus == native_sync`; adapter-ready returns `409` |
+
+**Import source actions**
+
+| Action | Flutter behavior |
+|--------|------------------|
+| `upload_file` | Opens file picker and sends bytes to `/library/uploads` |
+| `paste_link` | Opens URL sheet and sends to `/library/imports/link` |
+| `upload_or_paste_text` | Opens text sheet; file upload is also available for matching extensions |
+| `share_or_upload_export` | Shows guide for WhatsApp/Telegram/Bale-style exports, then upload or paste |
+| `connect_provider` | Tells user provider sync lives in Connectors |
+| `create_note` | Opens/pastes note content into Library |
+
+**WhatsApp UX**
+
+1. User exports a WhatsApp chat as `.txt` or shares selected messages/files to Mira.
+2. Android share-sheet opens `SharedImportReviewScreen`.
+3. Text/link/file/image is imported into Library, not capture approval.
+4. Backend stores provenance such as `source: import:whatsapp_export`, `metadata.import_source: whatsapp_export`, and extraction status.
+5. The imported item is searchable, askable through Assistant, publishable, and placeable on Canvas.
+
+**Extraction status expectations**
+
+- `ready`: text was extracted immediately and can be searched/asked.
+- `metadata_ready`: link/social metadata was saved, but transcript/content extraction is not complete.
+- `pending_ai`: image/PDF or visual extraction is deferred.
+- `pending_transcript`: audio/video stored; transcript extraction is deferred.
+- `failed`: file stored but immediate extraction failed.
+
+Do not label manual-only sources as "connected", "ready to connect", or "plugins". If a provider has no real sync implementation, keep it honest with planned/details UI and route manual files/links/exports through Import Hub.
 
 ### Voice capture architecture
 
@@ -335,6 +402,36 @@ Pass `highlightNodeId` to mark a newly saved memory.
 
 ---
 
+## Canvas workspace (mobile UI)
+
+Canvas v1 is a usable visual thinking board, not a placeholder.
+
+| File | Role |
+|------|------|
+| `screens/workspace/canvas_workspace_screen.dart` | Board UI, toolbar, node editing, pan/zoom, library picker, auto-save |
+| `features/workspace/canvas_repository.dart` | `POST /canvas`, `GET /canvas`, `GET /canvas/{id}`, `PATCH /canvas/{id}` |
+| `models/api/workspace_models.dart` | `CanvasDto` JSON nodes/edges/viewport model |
+
+**User actions**
+
+- Create/open a canvas from the Canvas tab.
+- Pan/zoom the board.
+- Add sticky notes, text boxes, shapes, arrows, and Library object references.
+- Tap/edit/delete canvas nodes.
+- Use the Library picker from Canvas to place imported files, notes, links, WhatsApp exports, and other Library objects.
+- Board changes auto-save through `PATCH /canvas/{id}`.
+- The graph remains one tap away from the Canvas tab.
+
+**Backend contract**
+
+- `GET /canvas` lists boards by `updatedAt`.
+- `POST /canvas` creates a board.
+- `GET /canvas/{id}` fetches one board.
+- `PATCH /canvas/{id}` persists JSON `nodes`, `edges`, and `viewport`.
+- Real-time multiplayer, export PNG, and deep graph inference on canvas layout are out of v1.
+
+---
+
 ## Graph memory & embeddings (backend contract)
 
 Approved captures become **Neo4j graph nodes** with **768-dimensional** vectors (GraphRAG). Flutter consumes results via `GET /graph` and question answers from the capture SSE pipeline — **no graph logic in the client**.
@@ -497,6 +594,10 @@ Admin endpoints are backend-only (`/admin/api/users/{user_id}/graph?view=...`) a
 - Do **not** duplicate backend business logic in Flutter — consume API only
 - After backend endpoint changes, sync [`API_BOOK.md`](API_BOOK.md) from `mira-backend` routers; backend deploys via GitHub Actions on push to `main`
 - Component catalog: `ComponentCatalogScreen` for design-system previews
+- Do **not** add backend code inside this Flutter repo; backend Library/Import/Plugin logic belongs in `../mira-backend/src/mira/library`
+- Do **not** put manual-only sources (WhatsApp/Telegram/Bale exports, local files, PDFs, media files, social links) in the plugin/connector list. Add them to Import Hub via `/library/import-sources`
+- For provider sync UI, only native-sync connectors should show Connect/Sync. Adapter-ready providers show details/planned status until real auth/sync exists
+- New Library/Import UI should keep the Mira visual system, avoid dark marketplace screens, and make the next action explicit: upload, paste link, paste text, share/export guide, or connector details
 
 ---
 
