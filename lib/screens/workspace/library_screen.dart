@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/mira_navigation.dart';
+import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
+import 'package:mira_app/features/workspace/library_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
-import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
 import 'package:mira_app/screens/workspace/canvas_workspace_screen.dart';
 import 'package:mira_app/screens/workspace/meeting_recorder_screen.dart';
 import 'package:mira_app/screens/workspace/note_editor_screen.dart';
@@ -967,7 +968,13 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _detailError = 'Could not load extracted chunks.');
+    } finally {
+      if (mounted) setState(() => _loadingChunks = false);
     }
+    unawaited(_loadAnnotations(repository));
+  }
+
+  Future<void> _loadAnnotations(LibraryRepository repository) async {
     try {
       final annotations = await repository.annotations(_item.id);
       if (!mounted) return;
@@ -976,9 +983,11 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
       });
     } catch (error) {
       // Annotations are optional; keep the extracted chunks visible.
-    } finally {
-      if (mounted) setState(() => _loadingChunks = false);
     }
+  }
+
+  Future<void> _refreshAnnotations() async {
+    await _loadAnnotations(AppScope.servicesOf(context).libraryRepository);
   }
 
   Future<void> _summarize() async {
@@ -1094,14 +1103,14 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
       startMs: chunk.startMs,
       endMs: chunk.endMs,
     );
-    await _loadChunks();
+    await _refreshAnnotations();
   }
 
   Future<void> _deleteAnnotation(LibraryAnnotation annotation) async {
     await AppScope.servicesOf(
       context,
     ).libraryRepository.deleteAnnotation(annotation.id);
-    await _loadChunks();
+    await _refreshAnnotations();
   }
 
   @override
