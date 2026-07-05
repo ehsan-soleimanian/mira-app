@@ -160,7 +160,14 @@ class PluginManifestDto {
     required this.enabled,
     required this.configured,
     required this.connected,
+    required this.authType,
+    required this.category,
+    required this.description,
+    required this.implementationStatus,
     this.capabilities = const [],
+    this.syncModes = const [],
+    this.scopes = const [],
+    this.lastSyncAt,
   });
 
   factory PluginManifestDto.fromJson(Map<String, dynamic> json) =>
@@ -170,9 +177,23 @@ class PluginManifestDto {
         enabled: json['enabled'] as bool? ?? false,
         configured: json['configured'] as bool? ?? false,
         connected: json['connected'] as bool? ?? false,
+        authType: json['authType'] as String? ?? 'oauth2',
+        category: json['category'] as String? ?? 'Connectors',
+        description: json['description'] as String? ?? '',
+        implementationStatus:
+            json['implementationStatus'] as String? ?? 'manifest_ready',
         capabilities: (json['capabilities'] as List<dynamic>? ?? const [])
             .map((e) => e.toString())
             .toList(),
+        syncModes: (json['syncModes'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        scopes: (json['scopes'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        lastSyncAt: json['lastSyncAt'] == null
+            ? null
+            : DateTime.parse(json['lastSyncAt'] as String).toLocal(),
       );
 
   final String id;
@@ -180,5 +201,15 @@ class PluginManifestDto {
   final bool enabled;
   final bool configured;
   final bool connected;
+  final String authType;
+  final String category;
+  final String description;
+  final String implementationStatus;
   final List<String> capabilities;
+  final List<String> syncModes;
+  final List<String> scopes;
+  final DateTime? lastSyncAt;
+
+  bool get isNativeSync => implementationStatus == 'native_sync';
+  bool get canRun => enabled;
 }

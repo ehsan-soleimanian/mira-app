@@ -74,6 +74,9 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/v2/search` | — | Hybrid entity + capture search |
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
+| `GET` | `/plugins` | `plugin_repository.dart` | Connector registry and status |
+| `POST` | `/plugins/{id}/connect` | `plugin_repository.dart` | Configure connector adapter |
+| `POST` | `/plugins/{id}/sync` | `plugin_repository.dart` | Manual connector sync into Library |
 | `POST` | `/waitlist` | Landing (Next.js) | Waitlist signup — public, no auth |
 
 ---
@@ -84,10 +87,11 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 2. [Auth](#auth)
 3. [Captures](#captures)
 4. [Graph & Daily Update](#graph--daily-update)
-5. [Waitlist (Landing)](#waitlist-landing)
-6. [Super Admin](#super-admin)
-7. [Flutter integration notes](#flutter-integration-notes)
-8. [Planned — Phase 4+](#planned--phase-4)
+5. [Workspace Library & Connectors](#workspace-library--connectors)
+6. [Waitlist (Landing)](#waitlist-landing)
+7. [Super Admin](#super-admin)
+8. [Flutter integration notes](#flutter-integration-notes)
+9. [Planned — Phase 4+](#planned--phase-4)
 
 App-facing routes summary: [App endpoints (quick reference)](#app-endpoints-quick-reference).
 
@@ -1157,6 +1161,72 @@ No query parameters.
 - otherwise → expandable note card
 
 **Errors**: `401`
+
+---
+
+## Workspace Library & Connectors
+
+All routes below require Bearer auth except `GET /.well-known/mira-mcp.json`.
+
+### List connectors
+`GET /plugins`
+
+Returns every connector Mira can surface in the Flutter marketplace. All v1 connectors are enabled for manual adapter sync; Google connectors report `implementationStatus: "native_sync"` and the rest report `implementationStatus: "adapter_ready"`.
+
+**Response** `200`
+```json
+[
+  {
+    "id": "notion",
+    "kind": "connector",
+    "name": "Notion",
+    "description": "Pages, databases, and project knowledge.",
+    "category": "Knowledge",
+    "implementationStatus": "adapter_ready",
+    "authType": "oauth2",
+    "scopes": ["pages.read", "databases.read"],
+    "capabilities": ["import", "search", "link_objects"],
+    "syncModes": ["manual", "scheduled"],
+    "enabled": true,
+    "configured": false,
+    "connected": false,
+    "lastSyncAt": null
+  }
+]
+```
+
+### Connect connector
+`POST /plugins/{id}/connect`
+
+Creates or updates the user's connector configuration. OAuth/API-token exchange remains provider-specific; v1 accepts an optional token and stores connector state for sync.
+
+**Request**
+```json
+{ "token": "<optional-provider-token>" }
+```
+
+**Response** `200`
+```json
+{ "pluginId": "notion", "configured": true }
+```
+
+### Sync connector
+`POST /plugins/{id}/sync`
+
+Runs a manual connector sync and creates a provenance-tagged `LibraryItem` with `source: "plugin:{id}"`.
+
+**Response** `200`
+```json
+{
+  "status": "ok",
+  "pluginId": "notion",
+  "adapter": "adapter_ready",
+  "imported": 1,
+  "item_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Errors**: `404` unknown connector.
 
 ---
 

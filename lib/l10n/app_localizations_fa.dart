@@ -231,6 +231,65 @@ class AppLocalizationsFa extends AppLocalizations {
   String get graphRejectAssertion => 'رد این ادعا';
 
   @override
+  String get connectorsTitle => 'کانکتورها';
+
+  @override
+  String get connectorsSubtitle =>
+      'کار، فایل‌ها، پیام‌ها، خواندنی‌ها و طراحی‌هایت را وارد حافظه میرا کن.';
+
+  @override
+  String get connectorsAvailableMetric => 'آماده';
+
+  @override
+  String get connectorsConnectedMetric => 'وصل';
+
+  @override
+  String get connectorsNativeMetric => 'بومی';
+
+  @override
+  String get connectorsLoadFailed => 'کانکتورها بارگذاری نشدند';
+
+  @override
+  String get connectorsPullToRetry => 'برای تلاش دوباره صفحه را به پایین بکش.';
+
+  @override
+  String get connectorsAllFilter => 'همه';
+
+  @override
+  String get connectorsConnectAction => 'وصل';
+
+  @override
+  String get connectorsSyncAction => 'همگام';
+
+  @override
+  String get connectorsConnectedStatus => 'وصل';
+
+  @override
+  String get connectorsNativeStatus => 'بومی';
+
+  @override
+  String get connectorsAdapterReadyStatus => 'آماده';
+
+  @override
+  String get connectorsDefaultDescription =>
+      'برای همگام‌سازی پلاگین میرا آماده است.';
+
+  @override
+  String connectorsSyncSuccess(String name) {
+    return '$name وارد کتابخانه شد.';
+  }
+
+  @override
+  String connectorsSyncFailed(String name) {
+    return 'همگام‌سازی $name انجام نشد. دوباره تلاش کن.';
+  }
+
+  @override
+  String connectorsLastSync(String time) {
+    return 'آخرین همگام‌سازی $time';
+  }
+
+  @override
   String get appUpdateTitle => 'نسخه جدید آماده است';
 
   @override

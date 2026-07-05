@@ -69,6 +69,38 @@
   "graphMutationSuccess": "Updated",
   "graphMutationFailed": "Could not update. Try again.",
   "graphRejectAssertion": "Reject claim",
+  "connectorsTitle": "Connectors",
+  "connectorsSubtitle": "Bring work, files, messages, reading, and design context into Mira.",
+  "connectorsAvailableMetric": "available",
+  "connectorsConnectedMetric": "connected",
+  "connectorsNativeMetric": "native",
+  "connectorsLoadFailed": "Could not load connectors",
+  "connectorsPullToRetry": "Pull down to refresh and try again.",
+  "connectorsAllFilter": "All",
+  "connectorsConnectAction": "Connect",
+  "connectorsSyncAction": "Sync",
+  "connectorsConnectedStatus": "Connected",
+  "connectorsNativeStatus": "Native",
+  "connectorsAdapterReadyStatus": "Adapter",
+  "connectorsDefaultDescription": "Ready for Mira plugin sync.",
+  "connectorsSyncSuccess": "{name} synced into your library.",
+  "@connectorsSyncSuccess": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "connectorsSyncFailed": "{name} could not sync. Try again.",
+  "@connectorsSyncFailed": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "connectorsLastSync": "Last sync {time}",
+  "@connectorsLastSync": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
   "appUpdateTitle": "Update available",
   "appUpdateBody": "You are on {currentVersion}. Mira {latestVersion} (build {latestBuild}) is ready to install.",
   "appUpdateVersionLabel": "v{currentVersion} → v{latestVersion} (build {latestBuild})",

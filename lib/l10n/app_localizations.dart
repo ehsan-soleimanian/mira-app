@@ -512,6 +512,108 @@ abstract class AppLocalizations {
   /// **'Reject claim'**
   String get graphRejectAssertion;
 
+  /// No description provided for @connectorsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connectors'**
+  String get connectorsTitle;
+
+  /// No description provided for @connectorsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring work, files, messages, reading, and design context into Mira.'**
+  String get connectorsSubtitle;
+
+  /// No description provided for @connectorsAvailableMetric.
+  ///
+  /// In en, this message translates to:
+  /// **'available'**
+  String get connectorsAvailableMetric;
+
+  /// No description provided for @connectorsConnectedMetric.
+  ///
+  /// In en, this message translates to:
+  /// **'connected'**
+  String get connectorsConnectedMetric;
+
+  /// No description provided for @connectorsNativeMetric.
+  ///
+  /// In en, this message translates to:
+  /// **'native'**
+  String get connectorsNativeMetric;
+
+  /// No description provided for @connectorsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load connectors'**
+  String get connectorsLoadFailed;
+
+  /// No description provided for @connectorsPullToRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull down to refresh and try again.'**
+  String get connectorsPullToRetry;
+
+  /// No description provided for @connectorsAllFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get connectorsAllFilter;
+
+  /// No description provided for @connectorsConnectAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get connectorsConnectAction;
+
+  /// No description provided for @connectorsSyncAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get connectorsSyncAction;
+
+  /// No description provided for @connectorsConnectedStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get connectorsConnectedStatus;
+
+  /// No description provided for @connectorsNativeStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Native'**
+  String get connectorsNativeStatus;
+
+  /// No description provided for @connectorsAdapterReadyStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Adapter'**
+  String get connectorsAdapterReadyStatus;
+
+  /// No description provided for @connectorsDefaultDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready for Mira plugin sync.'**
+  String get connectorsDefaultDescription;
+
+  /// No description provided for @connectorsSyncSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} synced into your library.'**
+  String connectorsSyncSuccess(String name);
+
+  /// No description provided for @connectorsSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} could not sync. Try again.'**
+  String connectorsSyncFailed(String name);
+
+  /// No description provided for @connectorsLastSync.
+  ///
+  /// In en, this message translates to:
+  /// **'Last sync {time}'**
+  String connectorsLastSync(String time);
+
   /// No description provided for @appUpdateTitle.
   ///
   /// In en, this message translates to:

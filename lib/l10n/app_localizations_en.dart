@@ -229,6 +229,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get graphRejectAssertion => 'Reject claim';
 
   @override
+  String get connectorsTitle => 'Connectors';
+
+  @override
+  String get connectorsSubtitle =>
+      'Bring work, files, messages, reading, and design context into Mira.';
+
+  @override
+  String get connectorsAvailableMetric => 'available';
+
+  @override
+  String get connectorsConnectedMetric => 'connected';
+
+  @override
+  String get connectorsNativeMetric => 'native';
+
+  @override
+  String get connectorsLoadFailed => 'Could not load connectors';
+
+  @override
+  String get connectorsPullToRetry => 'Pull down to refresh and try again.';
+
+  @override
+  String get connectorsAllFilter => 'All';
+
+  @override
+  String get connectorsConnectAction => 'Connect';
+
+  @override
+  String get connectorsSyncAction => 'Sync';
+
+  @override
+  String get connectorsConnectedStatus => 'Connected';
+
+  @override
+  String get connectorsNativeStatus => 'Native';
+
+  @override
+  String get connectorsAdapterReadyStatus => 'Adapter';
+
+  @override
+  String get connectorsDefaultDescription => 'Ready for Mira plugin sync.';
+
+  @override
+  String connectorsSyncSuccess(String name) {
+    return '$name synced into your library.';
+  }
+
+  @override
+  String connectorsSyncFailed(String name) {
+    return '$name could not sync. Try again.';
+  }
+
+  @override
+  String connectorsLastSync(String time) {
+    return 'Last sync $time';
+  }
+
+  @override
   String get appUpdateTitle => 'Update available';
 
   @override
