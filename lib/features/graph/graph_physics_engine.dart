@@ -6,16 +6,11 @@ class GraphPhysicsEngine {
   GraphPhysicsEngine({
     required Map<String, Offset> initialPositions,
     required List<({String from, String to})> edges,
-    required Offset center,
-    required Size bounds,
-  })  : _center = center,
-        _bounds = bounds,
-        _edges = List.of(edges) {
+    required this.center,
+    required this.bounds,
+  }) : _edges = List.of(edges) {
     for (final entry in initialPositions.entries) {
-      _nodes[entry.key] = _PhysicsNode(
-        id: entry.key,
-        position: entry.value,
-      );
+      _nodes[entry.key] = _PhysicsNode(id: entry.key, position: entry.value);
     }
     _restLengths = _computeRestLengths();
   }
@@ -27,8 +22,8 @@ class GraphPhysicsEngine {
   static const double _maxVelocity = 14;
   static const double _settleThreshold = 0.08;
 
-  final Offset _center;
-  final Size _bounds;
+  final Offset center;
+  final Size bounds;
   final List<({String from, String to})> _edges;
   final Map<String, _PhysicsNode> _nodes = {};
   late final Map<String, double> _restLengths;
@@ -36,8 +31,8 @@ class GraphPhysicsEngine {
   String? draggingId;
 
   Map<String, Offset> get positions => {
-        for (final entry in _nodes.entries) entry.key: entry.value.position,
-      };
+    for (final entry in _nodes.entries) entry.key: entry.value.position,
+  };
 
   bool get isSettled {
     if (draggingId != null) return false;
@@ -72,7 +67,7 @@ class GraphPhysicsEngine {
       if (node.pinned) continue;
       var force = Offset.zero;
 
-      final toCenter = _center - node.position;
+      final toCenter = center - node.position;
       force += toCenter * _centerPull;
 
       for (final other in _nodes.values) {
@@ -87,8 +82,8 @@ class GraphPhysicsEngine {
         final peerId = edge.from == node.id
             ? edge.to
             : edge.to == node.id
-                ? edge.from
-                : null;
+            ? edge.from
+            : null;
         if (peerId == null) continue;
         final peer = _nodes[peerId];
         if (peer == null) continue;
@@ -97,7 +92,9 @@ class GraphPhysicsEngine {
         final delta = peer.position - node.position;
         final dist = math.max(delta.distance, 1.0);
         final displacement = dist - rest;
-        force += Offset(delta.dx / dist, delta.dy / dist) * (displacement * _springK);
+        force +=
+            Offset(delta.dx / dist, delta.dy / dist) *
+            (displacement * _springK);
       }
 
       node.velocity = (node.velocity + force * scaledDt) * _damping;
@@ -117,7 +114,10 @@ class GraphPhysicsEngine {
       final from = _nodes[edge.from]?.position;
       final to = _nodes[edge.to]?.position;
       if (from == null || to == null) continue;
-      lengths[_edgeKey(edge.from, edge.to)] = (from - to).distance.clamp(80.0, 220.0);
+      lengths[_edgeKey(edge.from, edge.to)] = (from - to).distance.clamp(
+        80.0,
+        220.0,
+      );
     }
     return lengths;
   }
@@ -127,8 +127,8 @@ class GraphPhysicsEngine {
   Offset _clampToBounds(Offset position) {
     const margin = 36.0;
     return Offset(
-      position.dx.clamp(margin, _bounds.width - margin),
-      position.dy.clamp(margin, _bounds.height - margin),
+      position.dx.clamp(margin, bounds.width - margin),
+      position.dy.clamp(margin, bounds.height - margin),
     );
   }
 }

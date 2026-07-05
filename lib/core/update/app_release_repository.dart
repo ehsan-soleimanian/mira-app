@@ -4,15 +4,13 @@ import 'package:mira_app/models/api/app_release_models.dart';
 
 /// Fetches latest mobile build metadata from the public API.
 class AppReleaseRepository {
-  AppReleaseRepository({required ApiClient apiClient}) : _apiClient = apiClient;
+  AppReleaseRepository({required ApiClient apiClient}) : _dio = apiClient.dio;
 
-  final ApiClient _apiClient;
+  final Dio _dio;
 
   Future<AppReleaseInfo?> fetchLatest() async {
     try {
-      final response = await _apiClient.dio.get<Map<String, dynamic>>(
-        '/app/version',
-      );
+      final response = await _dio.get<Map<String, dynamic>>('/app/version');
       final data = response.data;
       if (data == null) return null;
       return AppReleaseInfo.fromJson(data);

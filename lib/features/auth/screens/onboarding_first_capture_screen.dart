@@ -7,6 +7,7 @@ import 'package:mira_app/components/molecules/mira_back_button.dart';
 import 'package:mira_app/components/molecules/mira_page_header.dart';
 import 'package:mira_app/components/molecules/mira_button.dart';
 import 'package:mira_app/components/molecules/mira_input_field.dart';
+import 'package:mira_app/features/auth/models/onboarding_data.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
 import 'package:mira_app/features/capture/utils/capture_errors.dart';
 import 'package:mira_app/features/capture/widgets/voice_capture_failure_panel.dart';
@@ -23,11 +24,13 @@ class OnboardingFirstCaptureScreen extends StatefulWidget {
     super.key,
     required this.onContinue,
     required this.onSkip,
+    required this.onboardingData,
     this.onBack,
   });
 
-  final VoidCallback onContinue;
+  final ValueChanged<String> onContinue;
   final VoidCallback onSkip;
+  final OnboardingData onboardingData;
   final VoidCallback? onBack;
 
   @override
@@ -51,7 +54,9 @@ class _OnboardingFirstCaptureScreenState
   @override
   void initState() {
     super.initState();
-    _textController = TextEditingController();
+    _textController = TextEditingController(
+      text: widget.onboardingData.seedCaptureText,
+    );
     _focusNode = FocusNode();
     _recorder = createVoiceRecorder();
   }
@@ -100,8 +105,7 @@ class _OnboardingFirstCaptureScreenState
       if (!mounted) return;
       _recordingDuration = result.duration;
 
-      final transcript = await AppScope.servicesOf(context)
-          .captureRepository
+      final transcript = await AppScope.servicesOf(context).captureRepository
           .transcribeVoice(
             durationMs: result.duration.inMilliseconds,
             audioPath: result.filePath,
@@ -156,7 +160,16 @@ class _OnboardingFirstCaptureScreenState
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
-    if (mounted) widget.onContinue();
+    if (mounted) widget.onContinue(text);
+  }
+
+  void _appendStarter(String text) {
+    final current = _textController.text.trim();
+    final next = current.isEmpty ? text : '$current\n$text';
+    _textController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: next.length),
+    );
   }
 
   void _focusTextFallback() {
@@ -208,10 +221,11 @@ class _OnboardingFirstCaptureScreenState
                                 ),
                               ),
                               const SizedBox(
-                                height: OnboardingFirstCaptureTokens.sphereToTitle,
+                                height:
+                                    OnboardingFirstCaptureTokens.sphereToTitle,
                               ),
                               const Text(
-                                'What do you want Mira to remember?',
+                                'Review your first memory seed',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 22,
@@ -222,11 +236,12 @@ class _OnboardingFirstCaptureScreenState
                                 ),
                               ),
                               const SizedBox(
-                                height: OnboardingFirstCaptureTokens.titleToSubtitle,
+                                height: OnboardingFirstCaptureTokens
+                                    .titleToSubtitle,
                               ),
                               const Text(
-                                "Anything you don't want to forget. An idea. "
-                                'A decision. A task. A link. Even a feeling.',
+                                'Mira prepared a starter capture from your answers. '
+                                'Edit it, add one more thing, then send it into memory.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 15,
@@ -235,12 +250,14 @@ class _OnboardingFirstCaptureScreenState
                                 ),
                               ),
                               const SizedBox(
-                                height:
-                                    OnboardingFirstCaptureTokens.subtitleToField,
+                                height: OnboardingFirstCaptureTokens
+                                    .subtitleToField,
                               ),
+                              _StarterPromptRail(onSelected: _appendStarter),
+                              const SizedBox(height: 18),
                               SizedBox(
-                                height:
-                                    OnboardingFirstCaptureTokens.captureFieldHeight,
+                                height: OnboardingFirstCaptureTokens
+                                    .captureFieldHeight,
                                 child: Stack(
                                   children: [
                                     MiraInputField(
@@ -248,7 +265,7 @@ class _OnboardingFirstCaptureScreenState
                                       focusNode: _focusNode,
                                       hintText: _recording
                                           ? 'Listening…'
-                                          : 'Press the button and speak or type',
+                                          : 'Edit your memory seed',
                                       showMic: false,
                                       variant: MiraInputVariant.flat,
                                       flatFillColor: Colors.white,
@@ -300,9 +317,7 @@ class _OnboardingFirstCaptureScreenState
                           const SizedBox(
                             height: OnboardingCaptureMicTokens.diameter,
                           ),
-                        SizedBox(
-                          height: OnboardingFirstCaptureTokens.micToCta,
-                        ),
+                        SizedBox(height: OnboardingFirstCaptureTokens.micToCta),
                       ],
                     ),
                   ),
@@ -317,16 +332,19 @@ class _OnboardingFirstCaptureScreenState
                         isReady: (text) => text.trim().isNotEmpty,
                         loading: _submitting,
                         enabled:
-                            !_recording && !_transcribing && _voiceFailureMessage == null,
+                            !_recording &&
+                            !_transcribing &&
+                            _voiceFailureMessage == null,
                         onPressed: _submitCapture,
                       ),
                       const SizedBox(height: 12),
                       MiraButton(
-                        label: "I'll do it later",
+                        label: 'Skip seed capture',
                         variant: MiraButtonVariant.outlined,
                         size: MiraButtonSize.large,
                         expand: true,
-                        onPressed: _recording || _busy || _voiceFailureMessage != null
+                        onPressed:
+                            _recording || _busy || _voiceFailureMessage != null
                             ? null
                             : widget.onSkip,
                       ),
@@ -338,6 +356,41 @@ class _OnboardingFirstCaptureScreenState
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StarterPromptRail extends StatelessWidget {
+  const _StarterPromptRail({required this.onSelected});
+
+  final ValueChanged<String> onSelected;
+
+  static const _starters = [
+    ('Person', 'A person Mira should remember: '),
+    ('Decision', 'A decision I am still thinking about: '),
+    ('Reminder', 'Something I want Mira to remind me about: '),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      alignment: WrapAlignment.center,
+      children: [
+        for (final starter in _starters)
+          ActionChip(
+            label: Text(starter.$1),
+            avatar: const Icon(Icons.add_rounded, size: 18),
+            backgroundColor: Colors.white,
+            side: const BorderSide(color: OnboardingTokens.chipBorder),
+            labelStyle: const TextStyle(
+              color: OnboardingTokens.headlineColor,
+              fontWeight: FontWeight.w700,
+            ),
+            onPressed: () => onSelected(starter.$2),
+          ),
+      ],
     );
   }
 }

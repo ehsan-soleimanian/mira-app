@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/components.dart';
+import 'package:mira_app/core/notifications/notification_service.dart';
 import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
@@ -14,6 +15,10 @@ import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/daily_brief_models.dart';
 import 'package:mira_app/screens/daily_brief/daily_brief_screen.dart';
+import 'package:mira_app/screens/workspace/canvas_workspace_screen.dart';
+import 'package:mira_app/screens/workspace/connector_marketplace_screen.dart';
+import 'package:mira_app/screens/workspace/library_screen.dart';
+import 'package:mira_app/screens/workspace/tasks_brief_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/daily_brief_theme.dart';
@@ -31,10 +36,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   CaptureFlowController? _flow;
   DailyBriefRepository? _dailyBriefRepository;
+  NotificationService? _notificationService;
   CaptureUiPhase? _lastCapturePhase;
   var _briefItems = const <BriefItem>[];
   var _briefLoading = true;
   Object? _briefError;
+  var _activeTab = NavTab.home;
 
   @override
   void initState() {
@@ -47,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.didChangeDependencies();
     final services = AppScope.servicesOf(context);
     _dailyBriefRepository = services.dailyBriefRepository;
+    _notificationService = services.notificationService;
 
     final next = services.captureFlow;
     if (!identical(next, _flow)) {
@@ -93,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _briefLoading = false;
         _briefError = null;
       });
+      unawaited(_syncTaskNotifications(_briefItems));
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -102,8 +111,29 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _openTextPrompt() {
-    _flow?.openTextPrompt();
+  Future<void> _syncTaskNotifications(List<BriefItem> items) async {
+    final service = _notificationService;
+    if (service == null) return;
+    await service.syncTaskReminders(
+      items
+          .whereType<BriefTask>()
+          .where((task) {
+            final dueAt = task.dueAt;
+            return dueAt != null && !task.isCompleted;
+          })
+          .map(
+            (task) => TaskReminderRequest(
+              taskId: task.id,
+              title: task.title,
+              dueAt: task.dueAt!,
+              body: task.summary.isEmpty ? task.title : task.summary,
+            ),
+          ),
+    );
+  }
+
+  void _openTextPrompt([String? draftText]) {
+    _flow?.openTextPrompt(draftText);
   }
 
   Future<void> _startVoiceCapture() async {
@@ -128,9 +158,40 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.of(context).pushMira((_) => const MemoryGraphScreen());
   }
 
+  void _selectTab(NavTab tab) {
+    if (_activeTab == tab) return;
+    setState(() => _activeTab = tab);
+  }
+
+  Widget _buildWorkspaceTab() {
+    switch (_activeTab) {
+      case NavTab.home:
+        return const SizedBox.shrink();
+      case NavTab.library:
+        return const LibraryScreen();
+      case NavTab.canvas:
+        return const CanvasWorkspaceScreen();
+      case NavTab.dailyBrief:
+        return const TasksBriefScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    if (_activeTab != NavTab.home) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(bottom: false, child: _buildWorkspaceTab()),
+        bottomNavigationBar: AppBottomShell(
+          activeTab: _activeTab,
+          onHomeTap: () => _selectTab(NavTab.home),
+          onLibraryTap: () => _selectTab(NavTab.library),
+          onCanvasTap: () => _selectTab(NavTab.canvas),
+          onDailyBriefTap: () => _selectTab(NavTab.dailyBrief),
+        ),
+      );
+    }
     final flow = _flow!;
     final width = MediaQuery.sizeOf(context).width;
     final scale = width / HomeScreenTokens.designWidth;
@@ -149,6 +210,14 @@ class _HomeScreenState extends State<HomeScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
               const _HomeTopBar(),
+              const SizedBox(height: 12),
+              _WorkspaceAccessPanel(
+                onLibraryTap: () => _selectTab(NavTab.library),
+                onCanvasTap: () => _selectTab(NavTab.canvas),
+                onConnectorsTap: () => Navigator.of(
+                  context,
+                ).pushMira((_) => const ConnectorMarketplaceScreen()),
+              ),
               SizedBox(height: 18 * scale),
               _HomeHeroPanel(
                 processing: processing,
@@ -164,14 +233,35 @@ class _HomeScreenState extends State<HomeScreen> {
               _QuickCapturePanel(
                 title: l10n.homeQuickCaptureTitle,
                 prompt: l10n.homeQuickCapturePrompt,
-                onPromptTap: _openTextPrompt,
+                onPromptTap: () => _openTextPrompt(),
+                starters: [
+                  _PromptStarter(
+                    icon: Icons.search_rounded,
+                    label: l10n.homeAskStarterLabel,
+                    prompt: l10n.homeAskStarterPrompt,
+                    color: const Color(0xFF2F80ED),
+                  ),
+                  _PromptStarter(
+                    icon: Icons.bookmark_add_outlined,
+                    label: l10n.homeSaveStarterLabel,
+                    prompt: l10n.homeSaveStarterPrompt,
+                    color: const Color(0xFF18A58A),
+                  ),
+                  _PromptStarter(
+                    icon: Icons.alarm_add_rounded,
+                    label: l10n.homeReminderStarterLabel,
+                    prompt: l10n.homeReminderStarterPrompt,
+                    color: const Color(0xFFDA8A00),
+                  ),
+                ],
+                onStarterTap: (starter) => _openTextPrompt(starter.prompt),
                 actions: [
                   _HomeAction(
                     icon: Icons.keyboard_alt_outlined,
                     title: l10n.homeTextActionTitle,
                     subtitle: l10n.homeTextActionSubtitle,
                     color: const Color(0xFF4A6EFF),
-                    onTap: _openTextPrompt,
+                    onTap: () => _openTextPrompt(),
                   ),
                   _HomeAction(
                     icon: Icons.mic_none_rounded,
@@ -202,7 +292,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: l10n.homeReminderActionTitle,
                     subtitle: l10n.homeReminderActionSubtitle,
                     color: const Color(0xFFDA8A00),
-                    onTap: _openTextPrompt,
+                    onTap: () =>
+                        _openTextPrompt(l10n.homeReminderStarterPrompt),
                   ),
                   _HomeAction(
                     icon: Icons.account_tree_outlined,
@@ -237,6 +328,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: AppBottomShell(
         activeTab: NavTab.home,
+        onHomeTap: () => _selectTab(NavTab.home),
+        onLibraryTap: () => _selectTab(NavTab.library),
+        onCanvasTap: () => _selectTab(NavTab.canvas),
         onDailyBriefTap: _openDailyBrief,
       ),
     );
@@ -333,18 +427,105 @@ class _HomeHeroPanel extends StatelessWidget {
   }
 }
 
+class _WorkspaceAccessPanel extends StatelessWidget {
+  const _WorkspaceAccessPanel({
+    required this.onLibraryTap,
+    required this.onCanvasTap,
+    required this.onConnectorsTap,
+  });
+
+  final VoidCallback onLibraryTap;
+  final VoidCallback onCanvasTap;
+  final VoidCallback onConnectorsTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _WorkspaceAccessButton(
+            icon: Icons.manage_search_rounded,
+            label: 'Library',
+            onTap: onLibraryTap,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _WorkspaceAccessButton(
+            icon: Icons.hub_rounded,
+            label: 'Canvas',
+            onTap: onCanvasTap,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _WorkspaceAccessButton(
+            icon: Icons.extension_rounded,
+            label: 'Plugins',
+            onTap: onConnectorsTap,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WorkspaceAccessButton extends StatelessWidget {
+  const _WorkspaceAccessButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: AppColors.accent),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.dosis(size: 13, weight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _QuickCapturePanel extends StatelessWidget {
   const _QuickCapturePanel({
     required this.title,
     required this.prompt,
     required this.actions,
     required this.onPromptTap,
+    required this.starters,
+    required this.onStarterTap,
   });
 
   final String title;
   final String prompt;
   final List<_HomeAction> actions;
   final VoidCallback onPromptTap;
+  final List<_PromptStarter> starters;
+  final ValueChanged<_PromptStarter> onStarterTap;
 
   @override
   Widget build(BuildContext context) {
@@ -395,6 +576,18 @@ class _QuickCapturePanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final starter in starters)
+                _PromptStarterChip(
+                  starter: starter,
+                  onTap: () => onStarterTap(starter),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
               final tileWidth = (constraints.maxWidth - 10) / 2;
@@ -412,6 +605,56 @@ class _QuickCapturePanel extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PromptStarter {
+  const _PromptStarter({
+    required this.icon,
+    required this.label,
+    required this.prompt,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String prompt;
+  final Color color;
+}
+
+class _PromptStarterChip extends StatelessWidget {
+  const _PromptStarterChip({required this.starter, required this.onTap});
+
+  final _PromptStarter starter;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: starter.color.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(starter.icon, size: 16, color: starter.color),
+              const SizedBox(width: 6),
+              Text(
+                starter.label,
+                style: AppTypography.dosis(
+                  size: 13,
+                  weight: FontWeight.w700,
+                ).copyWith(color: starter.color),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

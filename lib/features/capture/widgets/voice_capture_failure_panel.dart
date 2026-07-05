@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/components/components.dart';
-import 'package:mira_app/components/organisms/mira_hero_orb.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
 import 'package:mira_app/theme/home_screen_tokens.dart';

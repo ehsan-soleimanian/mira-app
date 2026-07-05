@@ -58,7 +58,7 @@ class _Thumbnail extends StatelessWidget {
         height: ImageBriefCard._thumbSize,
         fit: BoxFit.cover,
         filterQuality: FilterQuality.high,
-        errorBuilder: (_, __, ___) => _placeholder(),
+        errorBuilder: (context, error, stackTrace) => _placeholder(),
       );
     }
 

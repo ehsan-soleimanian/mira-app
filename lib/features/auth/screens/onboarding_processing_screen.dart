@@ -6,9 +6,11 @@ import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/atoms/mira_sphere.dart';
 import 'package:mira_app/components/molecules/mira_page_header.dart';
 import 'package:mira_app/components/molecules/mira_button.dart';
+import 'package:mira_app/features/auth/models/onboarding_data.dart';
 import 'package:mira_app/features/auth/utils/auth_errors.dart';
 import 'package:mira_app/features/auth/widgets/auth_step_widgets.dart';
 import 'package:mira_app/features/auth/widgets/onboarding_capture_mic_button.dart';
+import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/theme/composer_tokens.dart';
 import 'package:mira_app/theme/onboarding_tokens.dart';
 
@@ -18,11 +20,11 @@ import 'package:mira_app/theme/onboarding_tokens.dart';
 class OnboardingProcessingScreen extends StatefulWidget {
   const OnboardingProcessingScreen({
     super.key,
-    required this.displayName,
+    required this.data,
     required this.onCompleted,
   });
 
-  final String displayName;
+  final OnboardingData data;
   final VoidCallback onCompleted;
 
   @override
@@ -30,7 +32,8 @@ class OnboardingProcessingScreen extends StatefulWidget {
       _OnboardingProcessingScreenState();
 }
 
-class _OnboardingProcessingScreenState extends State<OnboardingProcessingScreen> {
+class _OnboardingProcessingScreenState
+    extends State<OnboardingProcessingScreen> {
   bool _failed = false;
 
   @override
@@ -45,10 +48,11 @@ class _OnboardingProcessingScreenState extends State<OnboardingProcessingScreen>
     if (!mounted) return;
 
     try {
-      await AppScope.servicesOf(context).onboardingRepository.submitOnboarding({
-        'display_name': widget.displayName.trim(),
-        'voice_intro_completed': false,
-      });
+      final services = AppScope.servicesOf(context);
+      await services.onboardingRepository.submitOnboarding(
+        widget.data.toJson(),
+      );
+      await _syncPreferences(services);
     } catch (error) {
       if (!mounted) return;
       setState(() => _failed = true);
@@ -62,6 +66,20 @@ class _OnboardingProcessingScreenState extends State<OnboardingProcessingScreen>
     }
 
     if (mounted) widget.onCompleted();
+  }
+
+  Future<void> _syncPreferences(MiraServices services) async {
+    try {
+      final current = await services.settingsRepository.fetchSettings();
+      await services.settingsRepository.updateSettings(
+        current.copyWith(
+          dailyBriefEnabled: widget.data.dailyBriefEnabled,
+          memoryInsightsEnabled: widget.data.memoryInsightsEnabled,
+        ),
+      );
+    } catch (_) {
+      // Settings sync should not block finishing onboarding.
+    }
   }
 
   @override

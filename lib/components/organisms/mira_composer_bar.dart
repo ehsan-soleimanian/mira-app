@@ -9,6 +9,7 @@ class MiraComposerBar extends StatelessWidget {
   const MiraComposerBar({
     super.key,
     this.controller,
+    this.focusNode,
     this.onAdd,
     this.onMicTap,
     this.onSend,
@@ -18,6 +19,7 @@ class MiraComposerBar extends StatelessWidget {
   });
 
   final TextEditingController? controller;
+  final FocusNode? focusNode;
   final VoidCallback? onAdd;
   final VoidCallback? onMicTap;
   final ValueChanged<String>? onSend;
@@ -41,6 +43,7 @@ class MiraComposerBar extends StatelessWidget {
         Expanded(
           child: MiraInputField(
             controller: controller,
+            focusNode: focusNode,
             hintText: hintText,
             onMicTap: onMicTap,
             onSend: onSend,

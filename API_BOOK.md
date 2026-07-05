@@ -979,6 +979,8 @@ Returns entity metadata, assertions (with capture citations), and mention snippe
 
 Returns task nodes for the tasks graph view / daily brief integration. Optional `entityId` filters tasks linked to that project/entity via `ABOUT` or `INVOLVES` edges.
 
+Each task response includes `dueAt` when the capture contained a resolvable deadline/date/time. `duePrecision` is `datetime` for explicit times and `date` for date-only reminders.
+
 **Errors**: `401`
 
 ---
@@ -1007,6 +1009,9 @@ All fields optional; send only what changes.
   "actionType": "CALL",
   "status": "DONE",
   "createdAt": "2026-06-20T10:00:00+00:00",
+  "dueAt": "2026-06-25T18:00:00+00:00",
+  "duePrecision": "datetime",
+  "dueText": "Friday at 6 PM",
   "captureId": "cap_xyz"
 }
 ```
@@ -1102,7 +1107,7 @@ Public predicate registry, entity types, and ontology version for client renderi
 ### Daily update
 `GET /daily-update`
 
-Returns the **20 most recent** approved memory nodes for the Daily Brief screen (`DailyBriefRepository.fetchDailyUpdate()`). Ordered by `created_at` descending.
+Returns up to **20 open task items** for the Daily Brief screen (`DailyBriefRepository.fetchDailyUpdate()`). Tasks with `due_at` include timing metadata so the client can show and schedule reminders from the actual deadline instead of creation time.
 
 No query parameters.
 
@@ -1116,6 +1121,8 @@ No query parameters.
       "title": "Send deck to Sara",
       "summary": "Follow up deck delivery",
       "created_at": "2026-06-14T12:01:00+00:00",
+      "due_at": "2026-06-15T17:00:00+00:00",
+      "due_precision": "datetime",
       "capture_type": "text"
     },
     {
@@ -1138,12 +1145,14 @@ No query parameters.
 | `items[].title` | string | Display title |
 | `items[].summary` | string | Body / preview text |
 | `items[].created_at` | datetime (ISO 8601) | Approval timestamp — client groups into Today / Yesterday |
+| `items[].due_at` | datetime (ISO 8601) \| null | Actual task deadline/reminder time when known |
+| `items[].due_precision` | string \| null | `datetime` or `date` depending on source timing specificity |
 | `items[].capture_type` | string \| null | Original capture channel: `text`, `voice`, `image`, `file`, `link` — from approved payload `source.capture_type`; `null` for legacy nodes |
 | `items[].thumbnail_b64` | string \| null | JPEG display thumb (~168px) for `capture_type: image`; full upload bytes are never stored |
 
 **Flutter mapping** (`DailyBriefData.fromDailyUpdateItems`):
 
-- `node_type` `Task` / `Reminder` → task card
+- `node_type` `Task` / `Reminder` → task card; time label and notification scheduling prefer `due_at` over `created_at`
 - `capture_type` `image` → `ImageBriefCard` (`Image.memory` when `thumbnail_b64` present; placeholder otherwise)
 - otherwise → expandable note card
 

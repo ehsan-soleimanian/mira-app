@@ -5,6 +5,7 @@ import 'package:mira_app/core/api/api_client.dart';
 import 'package:mira_app/core/auth/auth_repository.dart';
 import 'package:mira_app/core/auth/google_sign_in_service.dart';
 import 'package:mira_app/core/auth/token_storage.dart';
+import 'package:mira_app/core/notifications/notification_service.dart';
 import 'package:mira_app/core/update/app_release_repository.dart';
 import 'package:mira_app/features/auth/onboarding_repository.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
@@ -18,6 +19,12 @@ import 'package:mira_app/features/capture/widgets/time_clarification_sheet.dart'
 import 'package:mira_app/features/daily_brief/daily_brief_repository.dart';
 import 'package:mira_app/features/graph/graph_repository.dart';
 import 'package:mira_app/features/settings/settings_repository.dart';
+import 'package:mira_app/features/workspace/assistant_repository.dart';
+import 'package:mira_app/features/workspace/canvas_repository.dart';
+import 'package:mira_app/features/workspace/library_repository.dart';
+import 'package:mira_app/features/workspace/plugin_repository.dart';
+import 'package:mira_app/features/workspace/publish_repository.dart';
+import 'package:mira_app/features/workspace/space_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 
@@ -37,6 +44,7 @@ class CaptureFlowController extends ChangeNotifier {
   String? lastAnswer;
   bool usedMockPipeline = false;
   bool requestTextPrompt = false;
+  String? requestedPromptText;
 
   /// Active voice long-press session (stays on [VoiceRecordingScreen] until idle).
   bool voiceSessionActive = false;
@@ -74,8 +82,9 @@ class CaptureFlowController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void openTextPrompt() {
+  void openTextPrompt([String? draftText]) {
     hideBubbleMenu();
+    requestedPromptText = draftText;
     requestTextPrompt = true;
     notifyListeners();
   }
@@ -83,6 +92,7 @@ class CaptureFlowController extends ChangeNotifier {
   void clearTextPromptRequest() {
     if (!requestTextPrompt) return;
     requestTextPrompt = false;
+    requestedPromptText = null;
     notifyListeners();
   }
 
@@ -152,6 +162,7 @@ class CaptureFlowController extends ChangeNotifier {
     voiceFailureMessage = null;
     _resetVoiceSession();
     phase = CaptureUiPhase.idle;
+    requestedPromptText = null;
     requestTextPrompt = true;
     notifyListeners();
   }
@@ -359,8 +370,7 @@ class CaptureFlowController extends ChangeNotifier {
             );
           }
         case 'error':
-          final detail =
-              event.data['detail']?.toString() ?? 'Capture failed';
+          final detail = event.data['detail']?.toString() ?? 'Capture failed';
           if (presentation == _CapturePresentation.voiceRoute) {
             _enterVoiceFailure(
               detail.length > 120
@@ -368,9 +378,9 @@ class CaptureFlowController extends ChangeNotifier {
                   : detail,
             );
           } else if (sheetContext != null && sheetContext.mounted) {
-            ScaffoldMessenger.of(sheetContext).showSnackBar(
-              SnackBar(content: Text(detail)),
-            );
+            ScaffoldMessenger.of(
+              sheetContext,
+            ).showSnackBar(SnackBar(content: Text(detail)));
           }
         case 'done':
           return;
@@ -412,22 +422,16 @@ class CaptureFlowController extends ChangeNotifier {
         phase = CaptureUiPhase.approving;
         notifyListeners();
       } else if (sheetContext != null && sheetContext.mounted) {
-        await _handleEntityClarification(
-          sheetContext,
-          created.captureId,
-          {
-            'prompt': created.answer,
-            'entityEquivalence': created.proposal!['entityEquivalence'],
-          },
-          presentation: presentation,
-        );
+        await _handleEntityClarification(sheetContext, created.captureId, {
+          'prompt': created.answer,
+          'entityEquivalence': created.proposal!['entityEquivalence'],
+        }, presentation: presentation);
       }
-    } else if (created.state == 'clarification_needed' && created.answer != null) {
+    } else if (created.state == 'clarification_needed' &&
+        created.answer != null) {
       if (presentation == _CapturePresentation.voiceRoute) {
         activeCaptureId = created.captureId;
-        pendingIntentClarification = {
-          'prompt': created.answer!,
-        };
+        pendingIntentClarification = {'prompt': created.answer!};
         phase = CaptureUiPhase.approving;
       } else if (sheetContext != null && sheetContext.mounted) {
         await _handleIntentClarification(
@@ -512,14 +516,13 @@ class CaptureFlowController extends ChangeNotifier {
       pendingIntentClarification = null;
       if (updated.state == 'awaiting_approval' && updated.proposal != null) {
         _enterVoiceApproval(captureId, updated.proposal!);
-      } else if (updated.state == 'question_answered' && updated.answer != null) {
+      } else if (updated.state == 'question_answered' &&
+          updated.answer != null) {
         lastAnswer = updated.answer;
         _resetVoiceSession();
         phase = CaptureUiPhase.idle;
       } else if (updated.state == 'clarification_needed') {
-        pendingIntentClarification = {
-          'prompt': updated.answer,
-        };
+        pendingIntentClarification = {'prompt': updated.answer};
         phase = CaptureUiPhase.approving;
       }
     } catch (error) {
@@ -592,7 +595,8 @@ class CaptureFlowController extends ChangeNotifier {
     if (!context.mounted) return;
     final l10n = AppLocalizations.of(context)!;
     final prompt =
-        data['prompt']?.toString() ?? l10n.captureEntityEquivalenceDefaultPrompt;
+        data['prompt']?.toString() ??
+        l10n.captureEntityEquivalenceDefaultPrompt;
     final same = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -637,12 +641,13 @@ class CaptureFlowController extends ChangeNotifier {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => _IntentClarificationSheet(
-        prompt: prompt,
-      ),
+      builder: (context) => _IntentClarificationSheet(prompt: prompt),
     );
     if (selectedIntent == null) return;
-    final updated = await _captures.clarifyIntent(captureId, intent: selectedIntent);
+    final updated = await _captures.clarifyIntent(
+      captureId,
+      intent: selectedIntent,
+    );
     if (updated.state == 'awaiting_approval' && updated.proposal != null) {
       if (context.mounted) {
         await _handleProposal(context, captureId, updated.proposal!);
@@ -650,9 +655,9 @@ class CaptureFlowController extends ChangeNotifier {
     } else if (updated.state == 'question_answered' && updated.answer != null) {
       lastAnswer = updated.answer;
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(updated.answer!)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(updated.answer!)));
       }
     }
   }
@@ -772,6 +777,13 @@ class MiraServices {
     required this.graphRepository,
     required this.settingsRepository,
     required this.appReleaseRepository,
+    required this.libraryRepository,
+    required this.assistantRepository,
+    required this.spaceRepository,
+    required this.canvasRepository,
+    required this.publishRepository,
+    required this.pluginRepository,
+    required this.notificationService,
     required this.captureFlow,
   });
 
@@ -794,6 +806,13 @@ class MiraServices {
     final graphRepository = GraphRepository(apiClient: apiClient);
     final settingsRepository = SettingsRepository(apiClient: apiClient);
     final appReleaseRepository = AppReleaseRepository(apiClient: apiClient);
+    final libraryRepository = LibraryRepository(apiClient: apiClient);
+    final assistantRepository = AssistantRepository(apiClient: apiClient);
+    final spaceRepository = SpaceRepository(apiClient: apiClient);
+    final canvasRepository = CanvasRepository(apiClient: apiClient);
+    final publishRepository = PublishRepository(apiClient: apiClient);
+    final pluginRepository = PluginRepository(apiClient: apiClient);
+    final notificationService = NotificationService();
     final captureFlow = CaptureFlowController(
       captureRepository: captureRepository,
     );
@@ -808,6 +827,13 @@ class MiraServices {
       graphRepository: graphRepository,
       settingsRepository: settingsRepository,
       appReleaseRepository: appReleaseRepository,
+      libraryRepository: libraryRepository,
+      assistantRepository: assistantRepository,
+      spaceRepository: spaceRepository,
+      canvasRepository: canvasRepository,
+      publishRepository: publishRepository,
+      pluginRepository: pluginRepository,
+      notificationService: notificationService,
       captureFlow: captureFlow,
     );
   }
@@ -822,5 +848,12 @@ class MiraServices {
   final GraphRepository graphRepository;
   final SettingsRepository settingsRepository;
   final AppReleaseRepository appReleaseRepository;
+  final LibraryRepository libraryRepository;
+  final AssistantRepository assistantRepository;
+  final SpaceRepository spaceRepository;
+  final CanvasRepository canvasRepository;
+  final PublishRepository publishRepository;
+  final PluginRepository pluginRepository;
+  final NotificationService notificationService;
   final CaptureFlowController captureFlow;
 }

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/components.dart';
+import 'package:mira_app/core/notifications/notification_service.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
 import 'package:mira_app/features/daily_brief/daily_brief_repository.dart';
@@ -26,6 +27,7 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
   List<BriefItem> _previewItems = DailyBriefData.placeholderPreviewItems();
   DailyBriefRepository? _repository;
   GraphRepository? _graphRepository;
+  NotificationService? _notificationService;
   CaptureFlowController? _captureFlow;
   CaptureUiPhase? _lastCapturePhase;
   bool _loading = true;
@@ -47,6 +49,7 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
     final services = AppScope.servicesOf(context);
     _repository = services.dailyBriefRepository;
     _graphRepository = services.graphRepository;
+    _notificationService = services.notificationService;
 
     final nextFlow = services.captureFlow;
     if (!identical(nextFlow, _captureFlow)) {
@@ -95,6 +98,7 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
         _loading = false;
         _error = null;
       });
+      unawaited(_syncTaskNotifications(_items));
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -118,10 +122,36 @@ class _DailyBriefScreenState extends State<DailyBriefScreen> {
     if (graphRepo == null) return;
     try {
       await graphRepo.updateTaskStatus(id, completed ? 'DONE' : 'OPEN');
+      if (completed) {
+        unawaited(_notificationService?.cancelTaskReminder(id));
+      } else {
+        unawaited(_syncTaskNotifications(_items));
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _items = previous);
     }
+  }
+
+  Future<void> _syncTaskNotifications(List<BriefItem> items) async {
+    final service = _notificationService;
+    if (service == null) return;
+    await service.syncTaskReminders(
+      items
+          .whereType<BriefTask>()
+          .where((task) {
+            final dueAt = task.dueAt;
+            return dueAt != null && !task.isCompleted;
+          })
+          .map(
+            (task) => TaskReminderRequest(
+              taskId: task.id,
+              title: task.title,
+              dueAt: task.dueAt!,
+              body: task.summary.isEmpty ? task.title : task.summary,
+            ),
+          ),
+    );
   }
 
   void _toggleNoteExpand(String id) {

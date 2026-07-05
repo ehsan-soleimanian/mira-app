@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/components/molecules/prompt_input_bar.dart';
-import 'package:mira_app/components/organisms/mira_bottom_nav.dart';
-import 'package:mira_app/components/organisms/mira_bottom_nav_bar.dart';
 import 'package:mira_app/core/mira_nav_config.dart';
 import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
@@ -18,12 +16,16 @@ class AppBottomShell extends StatefulWidget {
     required this.activeTab,
     this.variant,
     this.onHomeTap,
+    this.onLibraryTap,
+    this.onCanvasTap,
     this.onDailyBriefTap,
   });
 
   final NavTab activeTab;
   final MiraNavVariant? variant;
   final VoidCallback? onHomeTap;
+  final VoidCallback? onLibraryTap;
+  final VoidCallback? onCanvasTap;
   final VoidCallback? onDailyBriefTap;
 
   @override
@@ -33,9 +35,8 @@ class AppBottomShell extends StatefulWidget {
 class _AppBottomShellState extends State<AppBottomShell> {
   bool _showPromptInput = false;
   final _promptController = TextEditingController();
+  final _promptFocusNode = FocusNode();
   CaptureFlowController? _flow;
-
-  MiraNavVariant get _variant => widget.variant ?? MiraNavConfig.variant;
 
   @override
   void didChangeDependencies() {
@@ -51,6 +52,7 @@ class _AppBottomShellState extends State<AppBottomShell> {
   @override
   void dispose() {
     _flow?.removeListener(_onFlowChanged);
+    _promptFocusNode.dispose();
     _promptController.dispose();
     super.dispose();
   }
@@ -58,8 +60,9 @@ class _AppBottomShellState extends State<AppBottomShell> {
   void _onFlowChanged() {
     if (!mounted) return;
     if (_flow?.requestTextPrompt == true) {
+      final draftText = _flow?.requestedPromptText;
       _flow?.clearTextPromptRequest();
-      _openPromptInput();
+      _openPromptInput(draftText: draftText);
       return;
     }
     setState(() {});
@@ -77,11 +80,21 @@ class _AppBottomShellState extends State<AppBottomShell> {
     await Navigator.of(context).pushMira((_) => const VoiceRecordingScreen());
   }
 
-  void _openPromptInput() {
+  void _openPromptInput({String? draftText}) {
+    if (draftText != null) {
+      _promptController.text = draftText;
+      _promptController.selection = TextSelection.collapsed(
+        offset: _promptController.text.length,
+      );
+    }
     setState(() => _showPromptInput = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _promptFocusNode.requestFocus();
+    });
   }
 
   void _closePromptInput() {
+    _promptFocusNode.unfocus();
     setState(() {
       _showPromptInput = false;
       _promptController.clear();
@@ -95,11 +108,20 @@ class _AppBottomShellState extends State<AppBottomShell> {
     await _flow?.submitPrompt(context, text);
   }
 
-  void _onEarItemTap(NavTab tab) {
-    if (tab == NavTab.home) {
-      widget.onHomeTap?.call();
-    } else {
-      widget.onDailyBriefTap?.call();
+  void _onTabTap(NavTab tab) {
+    switch (tab) {
+      case NavTab.home:
+        widget.onHomeTap?.call();
+        return;
+      case NavTab.library:
+        widget.onLibraryTap?.call();
+        return;
+      case NavTab.canvas:
+        widget.onCanvasTap?.call();
+        return;
+      case NavTab.dailyBrief:
+        widget.onDailyBriefTap?.call();
+        return;
     }
   }
 
@@ -115,30 +137,189 @@ class _AppBottomShellState extends State<AppBottomShell> {
     if (_showPromptInput) {
       return PromptInputBar(
         controller: _promptController,
+        focusNode: _promptFocusNode,
         onMicTap: _closePromptInput,
         onSend: _submitPrompt,
         onSubmitted: _submitPrompt,
       );
     }
 
-    return switch (_variant) {
-      MiraNavVariant.cradle => MiraBottomNav(
-        activeTab: widget.activeTab,
-        onHomeTap: widget.onHomeTap,
-        onVoiceShortTap: _openCaptureWorkflow,
-        onRecordingStart: _startVoiceRecording,
-        recordingActive: _recordingActive,
-        recordingProgress: _recordingProgress,
-        onDailyBriefTap: widget.onDailyBriefTap,
+    return _WorkspaceBottomNav(
+      activeTab: widget.activeTab,
+      onTabTap: _onTabTap,
+      onMicTap: _openCaptureWorkflow,
+      onRecordingStart: _startVoiceRecording,
+      recordingActive: _recordingActive,
+      recordingProgress: _recordingProgress,
+    );
+  }
+}
+
+class _WorkspaceBottomNav extends StatelessWidget {
+  const _WorkspaceBottomNav({
+    required this.activeTab,
+    required this.onTabTap,
+    required this.onMicTap,
+    required this.onRecordingStart,
+    required this.recordingActive,
+    required this.recordingProgress,
+  });
+
+  final NavTab activeTab;
+  final ValueChanged<NavTab> onTabTap;
+  final VoidCallback onMicTap;
+  final VoidCallback onRecordingStart;
+  final bool recordingActive;
+  final double recordingProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: SizedBox(
+        height: 92,
+        child: Stack(
+          alignment: Alignment.topCenter,
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              left: 14,
+              right: 14,
+              bottom: 8,
+              height: 68,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFFE7E7EF)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    _WorkspaceNavItem(
+                      icon: Icons.home_outlined,
+                      selectedIcon: Icons.home_rounded,
+                      label: 'Home',
+                      selected: activeTab == NavTab.home,
+                      onTap: () => onTabTap(NavTab.home),
+                    ),
+                    _WorkspaceNavItem(
+                      icon: Icons.search_rounded,
+                      selectedIcon: Icons.manage_search_rounded,
+                      label: 'Library',
+                      selected: activeTab == NavTab.library,
+                      onTap: () => onTabTap(NavTab.library),
+                    ),
+                    const SizedBox(width: 70),
+                    _WorkspaceNavItem(
+                      icon: Icons.hub_outlined,
+                      selectedIcon: Icons.hub_rounded,
+                      label: 'Canvas',
+                      selected: activeTab == NavTab.canvas,
+                      onTap: () => onTabTap(NavTab.canvas),
+                    ),
+                    _WorkspaceNavItem(
+                      icon: Icons.task_alt_rounded,
+                      selectedIcon: Icons.fact_check_rounded,
+                      label: 'Brief',
+                      selected: activeTab == NavTab.dailyBrief,
+                      onTap: () => onTabTap(NavTab.dailyBrief),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              child: GestureDetector(
+                onTap: onMicTap,
+                onLongPress: onRecordingStart,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFF4A6EFF), Color(0xFF18A58A)],
+                        ),
+                      ),
+                    ),
+                    if (recordingActive)
+                      SizedBox(
+                        width: 78,
+                        height: 78,
+                        child: CircularProgressIndicator(
+                          value: recordingProgress,
+                          strokeWidth: 3,
+                          color: const Color(0xFFFF7A59),
+                        ),
+                      ),
+                    const Icon(
+                      Icons.mic_rounded,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      MiraNavVariant.earNotch => MiraBottomNavBar(
-        activeTab: widget.activeTab,
-        onItemTap: _onEarItemTap,
-        onMicShortTap: _openCaptureWorkflow,
-        onRecordingStart: _startVoiceRecording,
-        recordingActive: _recordingActive,
-        recordingProgress: _recordingProgress,
+    );
+  }
+}
+
+class _WorkspaceNavItem extends StatelessWidget {
+  const _WorkspaceNavItem({
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? const Color(0xFF4A6EFF) : Colors.black45;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(selected ? selectedIcon : icon, color: color, size: 22),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
-    };
+    );
   }
 }

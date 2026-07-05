@@ -140,6 +140,42 @@ abstract class AppLocalizations {
   /// **'Type a memory, question or reminder'**
   String get homeQuickCapturePrompt;
 
+  /// No description provided for @homeAskStarterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask'**
+  String get homeAskStarterLabel;
+
+  /// No description provided for @homeAskStarterPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'What do I know about '**
+  String get homeAskStarterPrompt;
+
+  /// No description provided for @homeSaveStarterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember'**
+  String get homeSaveStarterLabel;
+
+  /// No description provided for @homeSaveStarterPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember that '**
+  String get homeSaveStarterPrompt;
+
+  /// No description provided for @homeReminderStarterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind'**
+  String get homeReminderStarterLabel;
+
+  /// No description provided for @homeReminderStarterPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me to '**
+  String get homeReminderStarterPrompt;
+
   /// No description provided for @homeTextActionTitle.
   ///
   /// In en, this message translates to:
@@ -254,6 +290,108 @@ abstract class AppLocalizations {
   /// **'Open graph'**
   String get homeOpenGraph;
 
+  /// No description provided for @sharedImportAppBarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share to Mira'**
+  String get sharedImportAppBarTitle;
+
+  /// No description provided for @sharedImportImageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import screenshot or image'**
+  String get sharedImportImageTitle;
+
+  /// No description provided for @sharedImportTextTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import shared text'**
+  String get sharedImportTextTitle;
+
+  /// No description provided for @sharedImportImageBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira will read this, extract meaning, and connect it to your memory graph.'**
+  String get sharedImportImageBody;
+
+  /// No description provided for @sharedImportTextBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira will turn this into a memory, question, task, or reminder.'**
+  String get sharedImportTextBody;
+
+  /// No description provided for @sharedImportImageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional note for Mira'**
+  String get sharedImportImageHint;
+
+  /// No description provided for @sharedImportTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit before importing'**
+  String get sharedImportTextHint;
+
+  /// No description provided for @sharedImportSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to memory'**
+  String get sharedImportSave;
+
+  /// No description provided for @sharedImportImporting.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing...'**
+  String get sharedImportImporting;
+
+  /// No description provided for @sharedImportImportingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing into Mira...'**
+  String get sharedImportImportingStatus;
+
+  /// No description provided for @sharedImportReadingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira is reading the shared content...'**
+  String get sharedImportReadingStatus;
+
+  /// No description provided for @sharedImportAnswerReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer received'**
+  String get sharedImportAnswerReceived;
+
+  /// No description provided for @sharedImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed.'**
+  String get sharedImportFailed;
+
+  /// No description provided for @sharedImportOversize.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is larger than 10 MB.'**
+  String get sharedImportOversize;
+
+  /// No description provided for @sharedImportFallbackFileName.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared image'**
+  String get sharedImportFallbackFileName;
+
+  /// No description provided for @sharedImportGraphTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared memory added'**
+  String get sharedImportGraphTitle;
+
+  /// No description provided for @sharedImportGraphSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira connected the import to your graph.'**
+  String get sharedImportGraphSubtitle;
+
   /// No description provided for @captureIntentClarificationPrompt.
   ///
   /// In en, this message translates to:
@@ -271,6 +409,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save to memory'**
   String get captureIntentSaveToMemory;
+
+  /// No description provided for @captureWorkflowComposeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask, remember, or make a plan'**
+  String get captureWorkflowComposeTitle;
+
+  /// No description provided for @captureWorkflowComposeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira can answer from your graph, save a memory, or turn a thought into a task.'**
+  String get captureWorkflowComposeSubtitle;
+
+  /// No description provided for @captureWorkflowComposeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type naturally. Mira will ask if it needs to choose question vs memory.'**
+  String get captureWorkflowComposeHint;
 
   /// No description provided for @captureEntityEquivalenceDefaultPrompt.
   ///

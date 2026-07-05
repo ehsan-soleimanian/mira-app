@@ -13,6 +13,7 @@ import 'package:mira_app/core/figma_assets.dart';
 import 'package:mira_app/core/update/app_update_listener.dart';
 import 'package:mira_app/features/auth/auth_gate.dart';
 import 'package:mira_app/features/capture/capture_flow_controller.dart';
+import 'package:mira_app/features/capture/shared_import/shared_import_listener.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_theme.dart';
 
@@ -38,6 +39,7 @@ Future<void> main() async {
   await ApiConfig.init();
   await GoogleSignInConfig.ensureLoaded();
   final services = MiraServices.create();
+  await services.notificationService.initialize();
 
   if (kDebugMode) {
     if (ApiConfig.hasExplicitBaseUrl) {
@@ -59,10 +61,7 @@ Future<void> main() async {
     }
   }
 
-  runApp(MiraApp(
-    themeController: AppThemeController(),
-    services: services,
-  ));
+  runApp(MiraApp(themeController: AppThemeController(), services: services));
 }
 
 class MiraApp extends StatelessWidget {
@@ -84,7 +83,8 @@ class MiraApp extends StatelessWidget {
         listenable: themeController,
         builder: (context, _) {
           return MaterialApp(
-            onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+            onGenerateTitle: (context) =>
+                AppLocalizations.of(context)!.appTitle,
             debugShowCheckedModeBanner: false,
             themeMode: themeController.mode,
             theme: AppTheme.light(),
@@ -96,7 +96,9 @@ class MiraApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const AppUpdateListener(child: AuthGate()),
+            home: const AppUpdateListener(
+              child: SharedImportListener(child: AuthGate()),
+            ),
           );
         },
       ),

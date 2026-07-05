@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/features/auth/models/onboarding_data.dart';
 import 'package:mira_app/features/auth/onboarding_flow_step.dart';
 import 'package:mira_app/features/auth/screens/auth_screen.dart';
 import 'package:mira_app/features/auth/screens/onboarding_first_capture_screen.dart';
@@ -25,7 +26,7 @@ class OnboardingFlow extends StatefulWidget {
 class _OnboardingFlowState extends State<OnboardingFlow> {
   OnboardingFlowStep _step = OnboardingFlowStep.welcome;
   AuthCredentialsStep _authStep = AuthCredentialsStep.email;
-  String _displayName = '';
+  OnboardingData _onboardingData = const OnboardingData();
   bool _referralRequired = true;
   bool _authConfigLoading = false;
   final _authKey = GlobalKey<State<AuthScreen>>();
@@ -33,7 +34,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   void initState() {
     super.initState();
-    _displayName = widget.initialName;
+    _onboardingData = OnboardingData(displayName: widget.initialName.trim());
   }
 
   void _goTo(OnboardingFlowStep step) {
@@ -82,13 +83,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         final user = await services.authRepository.fetchMe();
         if (!mounted) return;
         setState(() {
-          _displayName = user.displayName;
+          _onboardingData = _onboardingData.copyWith(
+            displayName: user.displayName,
+            role: user.role ?? '',
+            gender: user.gender ?? '',
+            bio: user.bio ?? '',
+            voiceIntroCompleted: user.voiceIntroCompleted,
+          );
           _step = OnboardingFlowStep.yourDetails;
         });
       } catch (_) {
         if (!mounted) return;
         setState(() {
-          _displayName = '';
+          _onboardingData = _onboardingData.copyWith(displayName: '');
           _step = OnboardingFlowStep.yourDetails;
         });
       }
@@ -103,66 +110,77 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
         return;
       }
       setState(() {
-        _displayName = user.displayName;
+        _onboardingData = _onboardingData.copyWith(
+          displayName: user.displayName,
+          role: user.role ?? '',
+          gender: user.gender ?? '',
+          bio: user.bio ?? '',
+          voiceIntroCompleted: user.voiceIntroCompleted,
+        );
         _step = OnboardingFlowStep.yourDetails;
       });
     } catch (_) {
       setState(() {
-        _displayName = '';
+        _onboardingData = _onboardingData.copyWith(displayName: '');
         _step = OnboardingFlowStep.yourDetails;
       });
     }
   }
 
   AuthCredentialsStep get _authCredentialsStep => switch (_step) {
-        OnboardingFlowStep.authEmail => AuthCredentialsStep.email,
-        OnboardingFlowStep.authInvite => AuthCredentialsStep.invite,
-        OnboardingFlowStep.authEmailCode => AuthCredentialsStep.emailCode,
-        _ => _authStep,
-      };
+    OnboardingFlowStep.authEmail => AuthCredentialsStep.email,
+    OnboardingFlowStep.authInvite => AuthCredentialsStep.invite,
+    OnboardingFlowStep.authEmailCode => AuthCredentialsStep.emailCode,
+    _ => _authStep,
+  };
 
   @override
   Widget build(BuildContext context) {
     if (_authConfigLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return switch (_step) {
       OnboardingFlowStep.welcome => WelcomeScreen(
-          onContinue: _onWelcomeContinue,
-        ),
+        onContinue: _onWelcomeContinue,
+      ),
       OnboardingFlowStep.authEmail ||
       OnboardingFlowStep.authInvite ||
-      OnboardingFlowStep.authEmailCode =>
-        AuthScreen(
-          key: _authKey,
-          step: _authCredentialsStep,
-          referralRequired: _referralRequired,
-          onStepChanged: _onAuthStepChanged,
-          onExit: () => _goTo(OnboardingFlowStep.welcome),
-          onSuccess: (wasExistingUser) =>
-              _afterAuth(wasExistingUser: wasExistingUser),
-        ),
+      OnboardingFlowStep.authEmailCode => AuthScreen(
+        key: _authKey,
+        step: _authCredentialsStep,
+        referralRequired: _referralRequired,
+        onStepChanged: _onAuthStepChanged,
+        onExit: () => _goTo(OnboardingFlowStep.welcome),
+        onSuccess: (wasExistingUser) =>
+            _afterAuth(wasExistingUser: wasExistingUser),
+      ),
       OnboardingFlowStep.yourDetails => OnboardingYourDetailsScreen(
-          initialName: _displayName,
-          onContinue: (name) {
-            setState(() {
-              _displayName = name;
-              _step = OnboardingFlowStep.firstCapture;
-            });
-          },
-        ),
+        initialData: _onboardingData,
+        onContinue: (data) {
+          setState(() {
+            _onboardingData = data;
+            _step = OnboardingFlowStep.firstCapture;
+          });
+        },
+      ),
       OnboardingFlowStep.firstCapture => OnboardingFirstCaptureScreen(
-          onBack: () => _goTo(OnboardingFlowStep.yourDetails),
-          onContinue: () => _goTo(OnboardingFlowStep.processing),
-          onSkip: () => _goTo(OnboardingFlowStep.processing),
-        ),
+        onboardingData: _onboardingData,
+        onBack: () => _goTo(OnboardingFlowStep.yourDetails),
+        onContinue: (captureText) {
+          setState(() {
+            _onboardingData = _onboardingData.copyWith(
+              firstCaptureText: captureText,
+            );
+            _step = OnboardingFlowStep.processing;
+          });
+        },
+        onSkip: () => _goTo(OnboardingFlowStep.processing),
+      ),
       OnboardingFlowStep.processing => OnboardingProcessingScreen(
-          displayName: _displayName,
-          onCompleted: widget.onCompleted,
-        ),
+        data: _onboardingData,
+        onCompleted: widget.onCompleted,
+      ),
     };
   }
 }
@@ -183,9 +201,6 @@ class OnboardingResumeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OnboardingFlow(
-      initialName: initialName,
-      onCompleted: onCompleted,
-    );
+    return OnboardingFlow(initialName: initialName, onCompleted: onCompleted);
   }
 }

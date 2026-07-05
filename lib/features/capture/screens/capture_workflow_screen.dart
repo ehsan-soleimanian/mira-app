@@ -44,6 +44,7 @@ class CaptureWorkflowScreen extends StatefulWidget {
 
 class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   final _controller = TextEditingController();
+  final _composerFocusNode = FocusNode();
   final VoiceRecorderPort _recorder = createVoiceRecorder();
   final CaptureMediaPickerPort _mediaPicker = createCaptureMediaPicker();
 
@@ -100,6 +101,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
     } else if (_recorder is SimulatedVoiceRecorder) {
       _recorder.dispose();
     }
+    _composerFocusNode.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -613,6 +615,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                           ],
                           MiraComposerBar(
                             controller: _controller,
+                            focusNode: _composerFocusNode,
                             scale: s,
                             onAdd: _toggleAttachMenu,
                             onMicTap: () {
@@ -746,7 +749,7 @@ class _WorkflowContent extends StatelessWidget {
           left: 0,
           right: 0,
           child: Text(
-            'How can I help you ?',
+            localization.captureWorkflowComposeTitle,
             textAlign: TextAlign.center,
             style: AppTypography.homeHeadline(s),
           ),
@@ -758,7 +761,7 @@ class _WorkflowContent extends StatelessWidget {
           left: 0,
           right: 0,
           child: Text(
-            'Speak,ask or share anythings',
+            localization.captureWorkflowComposeSubtitle,
             textAlign: TextAlign.center,
             style: AppTypography.homeSubtitle(s),
           ),
@@ -1150,7 +1153,7 @@ class _WorkflowHint extends StatelessWidget {
   Widget build(BuildContext context) {
     return _InsetTip(
       scale: scale,
-      text: 'You can send or ask in memory photo link',
+      text: AppLocalizations.of(context)!.captureWorkflowComposeHint,
       color: const Color(0xFF1F3C82),
     );
   }

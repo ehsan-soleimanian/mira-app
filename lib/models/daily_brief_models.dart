@@ -20,6 +20,8 @@ class BriefTask extends BriefItem {
     this.summary = '',
     this.nodeType = 'Task',
     this.createdAt,
+    this.dueAt,
+    this.duePrecision,
     this.isCompleted = false,
   });
 
@@ -28,6 +30,8 @@ class BriefTask extends BriefItem {
   final String summary;
   final String nodeType;
   final DateTime? createdAt;
+  final DateTime? dueAt;
+  final String? duePrecision;
   final bool isCompleted;
 
   @override
@@ -41,6 +45,8 @@ class BriefTask extends BriefItem {
     summary: summary,
     nodeType: nodeType,
     createdAt: createdAt,
+    dueAt: dueAt,
+    duePrecision: duePrecision,
     isCompleted: isCompleted ?? this.isCompleted,
   );
 }
@@ -126,10 +132,12 @@ abstract final class DailyBriefData {
         id: item.id,
         section: section,
         title: title,
-        timeLabel: timeLabelFor(item.createdAt),
+        timeLabel: timeLabelFor(item.dueAt ?? item.createdAt),
         summary: summary,
         nodeType: nodeType,
         createdAt: item.createdAt,
+        dueAt: item.dueAt,
+        duePrecision: item.duePrecision,
       );
     }
 

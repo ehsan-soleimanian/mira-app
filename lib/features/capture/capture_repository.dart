@@ -84,10 +84,7 @@ class CaptureRepository {
     final formData = FormData.fromMap({
       'duration_ms': durationMs,
       if (audioPath != null)
-        'file': await MultipartFile.fromFile(
-          audioPath,
-          filename: 'voice.m4a',
-        ),
+        'file': await MultipartFile.fromFile(audioPath, filename: 'voice.m4a'),
     });
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/transcribe',
@@ -148,10 +145,7 @@ class CaptureRepository {
       'duration_ms': durationMs,
       'channel': 'mobile',
       if (audioPath != null)
-        'file': await MultipartFile.fromFile(
-          audioPath,
-          filename: 'voice.m4a',
-        ),
+        'file': await MultipartFile.fromFile(audioPath, filename: 'voice.m4a'),
     });
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/voice',
@@ -314,12 +308,13 @@ class CaptureRepository {
     required bool same,
     String? targetEntityId,
   }) async {
+    final data = <String, dynamic>{'same': same};
+    if (targetEntityId != null) {
+      data['targetEntityId'] = targetEntityId;
+    }
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/$captureId/confirm-entity-equivalence',
-      data: {
-        'same': same,
-        if (targetEntityId != null) 'targetEntityId': targetEntityId,
-      },
+      data: data,
     );
     return CaptureResponse.fromJson(response.data!);
   }

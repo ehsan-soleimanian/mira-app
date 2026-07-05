@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/theme/app_colors.dart';
 
-enum NavTab { home, dailyBrief }
+enum NavTab { home, library, canvas, dailyBrief }
 
 class DailyBriefColors {
   static const cardBorder = Color(0xFFEBEBED);
@@ -22,43 +22,43 @@ class DailyBriefColors {
 
 abstract final class DailyBriefTypography {
   static TextStyle headerTitle(double s) => GoogleFonts.inter(
-        fontSize: 18 * s,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
-        height: 1.2,
-      );
+    fontSize: 18 * s,
+    fontWeight: FontWeight.w700,
+    color: AppColors.textPrimary,
+    height: 1.2,
+  );
 
   static TextStyle headerSubtitle(double s) => GoogleFonts.inter(
-        fontSize: 13 * s,
-        fontWeight: FontWeight.w400,
-        color: DailyBriefColors.metaGrey,
-        height: 1.3,
-      );
+    fontSize: 13 * s,
+    fontWeight: FontWeight.w400,
+    color: DailyBriefColors.metaGrey,
+    height: 1.3,
+  );
 
   static TextStyle cardTitle(double s) => GoogleFonts.inter(
-        fontSize: 15 * s,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textPrimary,
-        height: 1.35,
-        letterSpacing: -0.2,
-      );
+    fontSize: 15 * s,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+    height: 1.35,
+    letterSpacing: -0.2,
+  );
 
   static TextStyle cardBody(double s) => GoogleFonts.inter(
-        fontSize: 13 * s,
-        fontWeight: FontWeight.w400,
-        color: DailyBriefColors.metaGrey,
-        height: 1.4,
-      );
+    fontSize: 13 * s,
+    fontWeight: FontWeight.w400,
+    color: DailyBriefColors.metaGrey,
+    height: 1.4,
+  );
 
   static TextStyle sectionLabel(double s) => GoogleFonts.inter(
-        fontSize: 13 * s,
-        fontWeight: FontWeight.w500,
-        color: DailyBriefColors.sectionLabel,
-      );
+    fontSize: 13 * s,
+    fontWeight: FontWeight.w500,
+    color: DailyBriefColors.sectionLabel,
+  );
 
   static TextStyle badge(double s, Color color) => GoogleFonts.inter(
-        fontSize: 11 * s,
-        fontWeight: FontWeight.w500,
-        color: color,
-      );
+    fontSize: 11 * s,
+    fontWeight: FontWeight.w500,
+    color: color,
+  );
 }

@@ -32,6 +32,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeQuickCapturePrompt => 'Type a memory, question or reminder';
 
   @override
+  String get homeAskStarterLabel => 'Ask';
+
+  @override
+  String get homeAskStarterPrompt => 'What do I know about ';
+
+  @override
+  String get homeSaveStarterLabel => 'Remember';
+
+  @override
+  String get homeSaveStarterPrompt => 'Remember that ';
+
+  @override
+  String get homeReminderStarterLabel => 'Remind';
+
+  @override
+  String get homeReminderStarterPrompt => 'Remind me to ';
+
+  @override
   String get homeTextActionTitle => 'Text';
 
   @override
@@ -91,6 +109,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeOpenGraph => 'Open graph';
 
   @override
+  String get sharedImportAppBarTitle => 'Share to Mira';
+
+  @override
+  String get sharedImportImageTitle => 'Import screenshot or image';
+
+  @override
+  String get sharedImportTextTitle => 'Import shared text';
+
+  @override
+  String get sharedImportImageBody =>
+      'Mira will read this, extract meaning, and connect it to your memory graph.';
+
+  @override
+  String get sharedImportTextBody =>
+      'Mira will turn this into a memory, question, task, or reminder.';
+
+  @override
+  String get sharedImportImageHint => 'Optional note for Mira';
+
+  @override
+  String get sharedImportTextHint => 'Edit before importing';
+
+  @override
+  String get sharedImportSave => 'Save to memory';
+
+  @override
+  String get sharedImportImporting => 'Importing...';
+
+  @override
+  String get sharedImportImportingStatus => 'Importing into Mira...';
+
+  @override
+  String get sharedImportReadingStatus =>
+      'Mira is reading the shared content...';
+
+  @override
+  String get sharedImportAnswerReceived => 'Answer received';
+
+  @override
+  String get sharedImportFailed => 'Import failed.';
+
+  @override
+  String get sharedImportOversize => 'This file is larger than 10 MB.';
+
+  @override
+  String get sharedImportFallbackFileName => 'Shared image';
+
+  @override
+  String get sharedImportGraphTitle => 'Shared memory added';
+
+  @override
+  String get sharedImportGraphSubtitle =>
+      'Mira connected the import to your graph.';
+
+  @override
   String get captureIntentClarificationPrompt =>
       'Could you clarify - is this a question or something to save?';
 
@@ -99,6 +172,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get captureIntentSaveToMemory => 'Save to memory';
+
+  @override
+  String get captureWorkflowComposeTitle => 'Ask, remember, or make a plan';
+
+  @override
+  String get captureWorkflowComposeSubtitle =>
+      'Mira can answer from your graph, save a memory, or turn a thought into a task.';
+
+  @override
+  String get captureWorkflowComposeHint =>
+      'Type naturally. Mira will ask if it needs to choose question vs memory.';
 
   @override
   String get captureEntityEquivalenceDefaultPrompt =>

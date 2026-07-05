@@ -32,6 +32,24 @@ class AppLocalizationsFa extends AppLocalizations {
   String get homeQuickCapturePrompt => 'یک خاطره، سوال یا یادآوری بنویس';
 
   @override
+  String get homeAskStarterLabel => 'بپرس';
+
+  @override
+  String get homeAskStarterPrompt => 'درباره‌ی ';
+
+  @override
+  String get homeSaveStarterLabel => 'به یاد بسپار';
+
+  @override
+  String get homeSaveStarterPrompt => 'به یاد بسپار که ';
+
+  @override
+  String get homeReminderStarterLabel => 'یادآور';
+
+  @override
+  String get homeReminderStarterPrompt => 'یادم بنداز که ';
+
+  @override
   String get homeTextActionTitle => 'متن';
 
   @override
@@ -91,6 +109,61 @@ class AppLocalizationsFa extends AppLocalizations {
   String get homeOpenGraph => 'باز کردن گراف';
 
   @override
+  String get sharedImportAppBarTitle => 'ارسال به میرا';
+
+  @override
+  String get sharedImportImageTitle => 'وارد کردن اسکرین‌شات یا عکس';
+
+  @override
+  String get sharedImportTextTitle => 'وارد کردن متن ارسال‌شده';
+
+  @override
+  String get sharedImportImageBody =>
+      'میرا این تصویر را می‌خواند، معنا را استخراج می‌کند و به گراف حافظه‌ات وصل می‌کند.';
+
+  @override
+  String get sharedImportTextBody =>
+      'میرا این متن را به خاطره، سوال، کار یا یادآوری تبدیل می‌کند.';
+
+  @override
+  String get sharedImportImageHint => 'یادداشت اختیاری برای میرا';
+
+  @override
+  String get sharedImportTextHint => 'قبل از وارد کردن ویرایش کن';
+
+  @override
+  String get sharedImportSave => 'ذخیره در حافظه';
+
+  @override
+  String get sharedImportImporting => 'در حال وارد کردن...';
+
+  @override
+  String get sharedImportImportingStatus => 'در حال وارد کردن به میرا...';
+
+  @override
+  String get sharedImportReadingStatus =>
+      'میرا دارد محتوای ارسال‌شده را می‌خواند...';
+
+  @override
+  String get sharedImportAnswerReceived => 'پاسخ دریافت شد';
+
+  @override
+  String get sharedImportFailed => 'وارد کردن ناموفق بود.';
+
+  @override
+  String get sharedImportOversize => 'این فایل بزرگ‌تر از ۱۰ مگابایت است.';
+
+  @override
+  String get sharedImportFallbackFileName => 'تصویر ارسال‌شده';
+
+  @override
+  String get sharedImportGraphTitle => 'خاطره ارسال‌شده اضافه شد';
+
+  @override
+  String get sharedImportGraphSubtitle =>
+      'میرا این import را به گراف حافظه‌ات وصل کرد.';
+
+  @override
   String get captureIntentClarificationPrompt =>
       'لطفا مشخص کنید: این یک سوال است یا باید به حافظه ذخیره شود؟';
 
@@ -99,6 +172,18 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get captureIntentSaveToMemory => 'به حافظه ذخیره کن';
+
+  @override
+  String get captureWorkflowComposeTitle =>
+      'بپرس، به یاد بسپار، یا برنامه بساز';
+
+  @override
+  String get captureWorkflowComposeSubtitle =>
+      'میرا می‌تواند از گراف حافظه جواب بدهد، یک خاطره را ذخیره کند، یا فکر تو را به کار تبدیل کند.';
+
+  @override
+  String get captureWorkflowComposeHint =>
+      'طبیعی بنویس. اگر بین سوال و خاطره مردد باشد، از تو می‌پرسد.';
 
   @override
   String get captureEntityEquivalenceDefaultPrompt =>
