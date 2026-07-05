@@ -57,6 +57,70 @@ class LibraryItem {
   final String extractionStatus;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  String? get sourceUrl {
+    final url = metadata['url'] ?? metadata['canonical_url'];
+    return url is String && url.trim().isNotEmpty ? url.trim() : null;
+  }
+
+  Map<String, dynamic> get mediaMetadata {
+    final media = metadata['media'];
+    return media is Map<String, dynamic> ? media : const {};
+  }
+
+  String? get thumbnailUrl {
+    final raw = mediaMetadata['thumbnail_url'] ?? metadata['thumbnail_url'];
+    return raw is String && raw.trim().isNotEmpty ? raw.trim() : null;
+  }
+
+  bool get isMedia =>
+      type == 'audio' ||
+      type == 'video' ||
+      type == 'image' ||
+      source == 'import:youtube' ||
+      source == 'import:tiktoks' ||
+      source == 'import:reels';
+}
+
+class LibraryChunk {
+  const LibraryChunk({
+    required this.id,
+    required this.itemId,
+    required this.chunkType,
+    required this.chunkIndex,
+    required this.text,
+    required this.createdAt,
+    this.startMs,
+    this.endMs,
+    this.locator,
+    this.metadata = const {},
+  });
+
+  factory LibraryChunk.fromJson(Map<String, dynamic> json) => LibraryChunk(
+    id: json['id'] as String,
+    itemId: json['itemId'] as String? ?? '',
+    chunkType: json['chunkType'] as String? ?? 'text',
+    chunkIndex: json['chunkIndex'] as int? ?? 0,
+    text: json['text'] as String? ?? '',
+    startMs: json['startMs'] as int?,
+    endMs: json['endMs'] as int?,
+    locator: json['locator'] as String?,
+    metadata: (json['metadata'] as Map<String, dynamic>?) ?? const {},
+    createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+  );
+
+  final String id;
+  final String itemId;
+  final String chunkType;
+  final int chunkIndex;
+  final String text;
+  final int? startMs;
+  final int? endMs;
+  final String? locator;
+  final Map<String, dynamic> metadata;
+  final DateTime createdAt;
+
+  bool get hasTimestamp => startMs != null || locator != null;
 }
 
 class ImportSourceDto {
@@ -93,7 +157,8 @@ class ImportSourceDto {
 
   bool get isConnector => action == 'connect_provider';
   bool get isLink => action == 'paste_link';
-  bool get isText => action == 'upload_or_paste_text' || action == 'create_note';
+  bool get isText =>
+      action == 'upload_or_paste_text' || action == 'create_note';
   bool get isGuide => action == 'share_or_upload_export';
 }
 

@@ -1,6 +1,6 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-07-05 (Fabric-style Library Import Hub + connector cleanup)
+> Last updated: 2026-07-05 (media-to-text Library pipeline + Fabric-style imports)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md) (graph pipeline) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html) (styled doc) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
 
@@ -94,6 +94,7 @@ test/
 | **Import Hub** | `GET /library/import-sources`; sources include PDFs, links, Markdown, text, HTML, JSON, CSV, EPUB, DOCX, PPTX, notes, meeting notes, media files, local files, YouTube/TikTok/Reels, WhatsApp/Telegram/Bale exports |
 | **Connectors** | `ConnectorMarketplaceScreen`; only real provider connectors live here. WhatsApp/Telegram/Bale are not plugins; manual exports live in Import Hub |
 | **Canvas** | `CanvasWorkspaceScreen`; pan/zoom board with sticky notes, text boxes, library references, shapes, arrows, auto-save to `/canvas/{id}` |
+| **Media-to-text** | Library media items show thumbnail, extraction state, retry, timestamp transcript chunks, source action, and Canvas-ready media metadata |
 
 ### Commands
 
@@ -186,12 +187,34 @@ Mira now separates **content import sources** from **provider connectors**.
 | File | Role |
 |------|------|
 | `screens/workspace/library_screen.dart` | Library list/search/assistant, Add anything hub, import sheets, item detail, summarize/publish/open canvas actions |
-| `features/workspace/library_repository.dart` | `/library/items`, `/library/uploads`, `/library/import-sources`, `/library/imports/link`, `/library/imports/text` |
+| `features/workspace/library_repository.dart` | `/library/items`, `/library/uploads`, `/library/import-sources`, `/library/imports/link`, `/library/imports/text`, chunks, extraction retry |
 | `features/workspace/plugin_repository.dart` | `/plugins`, `/plugins/{id}/connect`, `/plugins/{id}/sync`; only native-sync connectors should call connect/sync |
 | `screens/workspace/connector_marketplace_screen.dart` | Light/simple connector list; native Google connectors can connect/sync, adapter-ready providers show details only |
 | `features/capture/shared_import/*` | Android share-sheet bridge and review screen for shared text/link/file/image into Library |
 | `screens/workspace/canvas_workspace_screen.dart` | Visual board; can place Library objects via the board's Library picker |
 | `models/api/workspace_models.dart` | `LibraryItem`, `ImportSourceDto`, plugin/canvas/publish DTOs |
+
+**Media-to-text UX**
+
+Mira follows the Fabric-style product contract: every supported media item should become searchable text/chunks when possible.
+
+| Source | Expected UX |
+|--------|-------------|
+| YouTube links | Import from Add anything -> item becomes `queued`; worker tries provider transcript first, then subtitles/metadata, then admin-selected media transcription if media can be fetched |
+| Instagram Reels / TikTok | Import from Add anything -> no login/private scraping; public metadata/transcript attempts are best-effort; blocked/private sources become `needs_upload` |
+| Uploaded audio/video | Original file remains stored securely; worker transcribes through the admin-selected `media_transcribe` route and creates timestamp chunks |
+| Images/screenshots | Image item shows deferred/vision extraction status and can later receive OCR/description chunks |
+| Generic links | Stored as link/readable metadata; downloadable media can be queued by backend when detected |
+
+`LibraryItemDetailScreen` must make status explicit:
+
+- `queued`, `extracting_metadata`, `downloading`, `transcribing`: show progress and explain the media worker is processing.
+- `ready`: show transcript timeline from `GET /library/items/{id}/chunks`.
+- `metadata_ready`: show metadata and explain full transcript is not available yet.
+- `needs_upload` / `blocked_auth`: explain Mira does not bypass private/login walls; user should upload the file or paste a transcript.
+- `failed`: show retry action via `POST /library/items/{id}/extract`.
+
+Canvas library nodes should carry media metadata when available (`thumbnailUrl`, `extractionStatus`, duration) so boards can visually distinguish media references from plain notes/files.
 
 **Backend contract** (see `API_BOOK.md` and `../mira-backend/src/mira/library`)
 
@@ -201,6 +224,8 @@ Mira now separates **content import sources** from **provider connectors**.
 | `POST /library/uploads` | Secure file upload, type detection, extraction status, provenance |
 | `POST /library/imports/link` | URL/social/video link import; YouTube/TikTok/Reels may be `metadata_ready` until transcripts exist |
 | `POST /library/imports/text` | Pasted/shared text, meeting notes, HTML, JSON, Markdown, message exports |
+| `GET /library/items/{id}/chunks` | Transcript/OCR/text chunks; media chunks may include `startMs`, `endMs`, and `locator` timestamps |
+| `POST /library/items/{id}/extract` | Retry/requeue media extraction for failed/blocked/deferred media items |
 | `GET /plugins` | Provider connector registry only; no WhatsApp/Telegram/Bale |
 | `POST /plugins/{id}/connect` / `sync` | v1 direct action only for `implementationStatus == native_sync`; adapter-ready returns `409` |
 
@@ -229,6 +254,9 @@ Mira now separates **content import sources** from **provider connectors**.
 - `metadata_ready`: link/social metadata was saved, but transcript/content extraction is not complete.
 - `pending_ai`: image/PDF or visual extraction is deferred.
 - `pending_transcript`: audio/video stored; transcript extraction is deferred.
+- `queued`, `extracting_metadata`, `downloading`, `transcribing`: media-worker lifecycle states.
+- `needs_upload`: public source did not expose usable captions/media or source is private/blocked; user must upload/paste transcript.
+- `blocked_auth`: do not bypass auth/private walls.
 - `failed`: file stored but immediate extraction failed.
 
 Do not label manual-only sources as "connected", "ready to connect", or "plugins". If a provider has no real sync implementation, keep it honest with planned/details UI and route manual files/links/exports through Import Hub.

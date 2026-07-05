@@ -33,6 +33,23 @@ class LibraryRepository {
         .toList();
   }
 
+  Future<List<LibraryChunk>> chunks(String itemId) async {
+    final response = await _dio.get<List<dynamic>>(
+      '/library/items/$itemId/chunks',
+    );
+    return (response.data ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(LibraryChunk.fromJson)
+        .toList();
+  }
+
+  Future<LibraryItem> retryExtraction(String itemId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/library/items/$itemId/extract',
+    );
+    return LibraryItem.fromJson(response.data!);
+  }
+
   Future<LibraryItem> createNote({
     required String title,
     required String content,

@@ -267,6 +267,11 @@ class _CanvasWorkspaceScreenState extends State<CanvasWorkspaceScreen> {
           'itemType': selected.type,
           'summary': selected.summary,
           'source': selected.source,
+          'extractionStatus': selected.extractionStatus,
+          if (selected.thumbnailUrl != null)
+            'thumbnailUrl': selected.thumbnailUrl,
+          if (selected.mediaMetadata['duration_seconds'] != null)
+            'durationSeconds': selected.mediaMetadata['duration_seconds'],
         },
       ),
     );
@@ -656,6 +661,8 @@ class _NodeCard extends StatelessWidget {
     final isLibrary = node.type == _CanvasNodeType.library;
     final isShape = node.type == _CanvasNodeType.shape;
     final summary = node.metadata['summary']?.toString() ?? '';
+    final thumbnailUrl = node.metadata['thumbnailUrl']?.toString();
+    final status = node.metadata['extractionStatus']?.toString();
     return Container(
       padding: EdgeInsets.all(isShape ? 14 : 12),
       decoration: BoxDecoration(
@@ -676,7 +683,25 @@ class _NodeCard extends StatelessWidget {
           ? Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.inventory_2_outlined, color: AppColors.accent),
+                if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      thumbnailUrl,
+                      width: 42,
+                      height: 42,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.play_circle_outline_rounded,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.inventory_2_outlined,
+                    color: AppColors.accent,
+                  ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -691,6 +716,18 @@ class _NodeCard extends StatelessWidget {
                           weight: FontWeight.w700,
                         ),
                       ),
+                      if (status != null && status.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          status,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.dosis(size: 11).copyWith(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 6),
                       Text(
                         summary,

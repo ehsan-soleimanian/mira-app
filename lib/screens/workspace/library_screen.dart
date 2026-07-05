@@ -9,6 +9,7 @@ import 'package:mira_app/screens/workspace/canvas_workspace_screen.dart';
 import 'package:mira_app/screens/workspace/note_editor_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -682,16 +683,47 @@ class LibraryItemDetailScreen extends StatefulWidget {
 }
 
 class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
+  late LibraryItem _item;
+  var _chunks = const <LibraryChunk>[];
   String? _assistantAnswer;
   String? _publishUrl;
+  String? _detailError;
   var _busy = false;
+  var _loadingChunks = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _item = widget.item;
+    unawaited(_loadChunks());
+  }
+
+  Future<void> _loadChunks() async {
+    setState(() => _loadingChunks = true);
+    try {
+      final chunks = await AppScope.servicesOf(
+        context,
+      ).libraryRepository.chunks(_item.id);
+      if (!mounted) return;
+      setState(() {
+        _chunks = chunks;
+        _detailError = null;
+        _loadingChunks = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _detailError = 'Could not load transcript chunks.';
+        _loadingChunks = false;
+      });
+    }
+  }
 
   Future<void> _summarize() async {
     setState(() => _busy = true);
-    final response = await AppScope.servicesOf(context).assistantRepository.run(
-      'Summarize ${widget.item.title}',
-      action: 'summarize',
-    );
+    final response = await AppScope.servicesOf(
+      context,
+    ).assistantRepository.run('Summarize ${_item.title}', action: 'summarize');
     if (!mounted) return;
     setState(() {
       _assistantAnswer = response.answer;
@@ -703,7 +735,7 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
     setState(() => _busy = true);
     final link = await AppScope.servicesOf(
       context,
-    ).publishRepository.create(targetType: 'item', targetId: widget.item.id);
+    ).publishRepository.create(targetType: 'item', targetId: _item.id);
     if (!mounted) return;
     setState(() {
       _publishUrl = link.url;
@@ -711,9 +743,40 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
     });
   }
 
+  Future<void> _retryExtraction() async {
+    setState(() {
+      _busy = true;
+      _detailError = null;
+    });
+    try {
+      final updated = await AppScope.servicesOf(
+        context,
+      ).libraryRepository.retryExtraction(_item.id);
+      if (!mounted) return;
+      setState(() {
+        _item = updated;
+        _chunks = const [];
+      });
+      await _loadChunks();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _detailError = 'Could not retry extraction.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _openSource() async {
+    final sourceUrl = _item.sourceUrl;
+    if (sourceUrl == null) return;
+    final uri = Uri.tryParse(sourceUrl);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final item = widget.item;
+    final item = _item;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -729,6 +792,28 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (item.thumbnailUrl != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      item.thumbnailUrl!,
+                      height: 176,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        height: 120,
+                        alignment: Alignment.center,
+                        color: const Color(0xFFEAF0FF),
+                        child: const Icon(
+                          Icons.play_circle_outline_rounded,
+                          color: AppColors.accent,
+                          size: 42,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -746,6 +831,13 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
               ],
             ),
           ),
+          if (item.isMedia) ...[
+            const SizedBox(height: 12),
+            _MediaStatusPanel(
+              status: item.extractionStatus,
+              onRetry: _busy ? null : _retryExtraction,
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -767,13 +859,42 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () => Navigator.of(
-              context,
-            ).pushMira((_) => const CanvasWorkspaceScreen()),
-            icon: const Icon(Icons.dashboard_customize_outlined),
-            label: const Text('Open in canvas'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(
+                  context,
+                ).pushMira((_) => const CanvasWorkspaceScreen()),
+                icon: const Icon(Icons.dashboard_customize_outlined),
+                label: const Text('Open in canvas'),
+              ),
+              if (item.sourceUrl != null)
+                OutlinedButton.icon(
+                  onPressed: _openSource,
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: const Text('Source'),
+                ),
+              if (item.isMedia)
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _retryExtraction,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Retry extraction'),
+                ),
+            ],
           ),
+          if (_detailError != null) ...[
+            const SizedBox(height: 12),
+            _WorkspaceCard(
+              child: Text(
+                _detailError!,
+                style: AppTypography.dosis(
+                  size: 14,
+                ).copyWith(color: Colors.red.shade700),
+              ),
+            ),
+          ],
           if (_assistantAnswer != null) ...[
             const SizedBox(height: 12),
             _WorkspaceCard(child: Text(_assistantAnswer!)),
@@ -783,6 +904,19 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
             _WorkspaceCard(child: Text('Private link: $_publishUrl')),
           ],
           const SizedBox(height: 16),
+          if (item.isMedia) ...[
+            Text(
+              'Transcript timeline',
+              style: AppTypography.dosis(size: 18, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            _TranscriptTimeline(
+              chunks: _chunks,
+              loading: _loadingChunks,
+              status: item.extractionStatus,
+            ),
+            const SizedBox(height: 16),
+          ],
           Text(
             'Preview',
             style: AppTypography.dosis(size: 18, weight: FontWeight.w700),
@@ -800,6 +934,166 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MediaStatusPanel extends StatelessWidget {
+  const _MediaStatusPanel({required this.status, required this.onRetry});
+
+  final String status;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = {
+      'queued',
+      'extracting_metadata',
+      'downloading',
+      'transcribing',
+    }.contains(status);
+    final needsUpload = status == 'needs_upload' || status == 'blocked_auth';
+    return _WorkspaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                needsUpload
+                    ? Icons.upload_file_rounded
+                    : Icons.graphic_eq_rounded,
+                color: AppColors.accent,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _statusTitle(status),
+                  style: AppTypography.dosis(size: 16, weight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          if (active) ...[
+            const SizedBox(height: 12),
+            const LinearProgressIndicator(minHeight: 3),
+          ],
+          const SizedBox(height: 10),
+          Text(
+            _statusBody(status),
+            style: AppTypography.dosis(
+              size: 14,
+            ).copyWith(color: AppColors.textSecondary, height: 1.3),
+          ),
+          if (needsUpload || status == 'failed') ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Try again'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  static String _statusTitle(String status) => switch (status) {
+    'queued' => 'Queued for media extraction',
+    'extracting_metadata' => 'Reading media metadata',
+    'downloading' => 'Preparing temporary media',
+    'transcribing' => 'Transcribing media',
+    'ready' => 'Transcript ready',
+    'metadata_ready' => 'Metadata ready',
+    'needs_upload' => 'Upload needed',
+    'blocked_auth' => 'Source is private or blocked',
+    'failed' => 'Extraction failed',
+    _ => status,
+  };
+
+  static String _statusBody(String status) => switch (status) {
+    'queued' =>
+      'Mira will extract metadata, captions, transcript chunks, and timestamps in the media worker.',
+    'extracting_metadata' =>
+      'Mira is checking title, duration, thumbnail, captions, and public transcript availability.',
+    'downloading' =>
+      'External media is temporary during processing. Uploaded originals remain stored securely.',
+    'transcribing' =>
+      'The admin-selected media transcription route is converting audio into searchable text.',
+    'ready' =>
+      'This item can now be searched, cited by the assistant, and placed on Canvas.',
+    'metadata_ready' => 'Mira has useful metadata, but no full transcript yet.',
+    'needs_upload' =>
+      'The public source did not expose usable media or captions. Upload the file or paste a transcript from Add anything.',
+    'blocked_auth' =>
+      'Mira does not bypass private sources or login walls. Export/upload the media or transcript manually.',
+    'failed' =>
+      'The worker could not finish extraction. You can retry after checking the source or upload.',
+    _ => 'Mira is tracking extraction state for this item.',
+  };
+}
+
+class _TranscriptTimeline extends StatelessWidget {
+  const _TranscriptTimeline({
+    required this.chunks,
+    required this.loading,
+    required this.status,
+  });
+
+  final List<LibraryChunk> chunks;
+  final bool loading;
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const _WorkspaceCard(child: LinearProgressIndicator(minHeight: 3));
+    }
+    if (chunks.isEmpty) {
+      return _WorkspaceCard(
+        child: Text(
+          status == 'ready'
+              ? 'No timestamp chunks were returned for this item.'
+              : 'Transcript chunks will appear here after extraction.',
+          style: AppTypography.dosis(
+            size: 14,
+          ).copyWith(color: AppColors.textSecondary),
+        ),
+      );
+    }
+    return Column(
+      children: [
+        for (final chunk in chunks)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _WorkspaceCard(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 58,
+                    child: Text(
+                      chunk.locator ?? '#${chunk.chunkIndex + 1}',
+                      style: AppTypography.dosis(
+                        size: 12,
+                        weight: FontWeight.w700,
+                      ).copyWith(color: AppColors.accent),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      chunk.text,
+                      style: AppTypography.dosis(
+                        size: 14,
+                      ).copyWith(color: AppColors.textSecondary, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
