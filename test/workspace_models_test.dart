@@ -39,4 +39,44 @@ void main() {
     expect(link.isLink, isTrue);
     expect(connector.isConnector, isTrue);
   });
+
+  test('Library media item exposes source url and thumbnail metadata', () {
+    final item = LibraryItem.fromJson({
+      'id': 'item-1',
+      'type': 'video',
+      'title': 'Reel',
+      'summary': 'Queued',
+      'source': 'import:reels',
+      'extractionStatus': 'queued',
+      'metadata': {
+        'url': 'https://www.instagram.com/reel/abc/',
+        'media': {'thumbnail_url': 'https://cdn.example/thumb.jpg'},
+      },
+      'createdAt': '2026-07-05T12:00:00Z',
+      'updatedAt': '2026-07-05T12:00:00Z',
+    });
+
+    expect(item.isMedia, isTrue);
+    expect(item.sourceUrl, 'https://www.instagram.com/reel/abc/');
+    expect(item.thumbnailUrl, 'https://cdn.example/thumb.jpg');
+  });
+
+  test('LibraryChunk parses timestamp metadata', () {
+    final chunk = LibraryChunk.fromJson({
+      'id': 'chunk-1',
+      'itemId': 'item-1',
+      'chunkType': 'transcript',
+      'chunkIndex': 0,
+      'text': 'timestamped transcript',
+      'startMs': 1000,
+      'endMs': 4000,
+      'locator': '0:01-0:04',
+      'metadata': {'source': 'youtube_transcript_api'},
+      'createdAt': '2026-07-05T12:00:00Z',
+    });
+
+    expect(chunk.hasTimestamp, isTrue);
+    expect(chunk.locator, '0:01-0:04');
+    expect(chunk.text, contains('timestamped'));
+  });
 }
