@@ -303,6 +303,17 @@ class CaptureRepository {
     return CaptureResponse.fromJson(response.data!);
   }
 
+  Future<CaptureResponse> followUpPendingCapture(
+    String captureId, {
+    required String message,
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/$captureId/follow-up',
+      data: {'message': message},
+    );
+    return CaptureResponse.fromJson(response.data!);
+  }
+
   Future<CaptureResponse> confirmEntityEquivalence(
     String captureId, {
     required bool same,

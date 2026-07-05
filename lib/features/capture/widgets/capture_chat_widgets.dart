@@ -88,6 +88,117 @@ class CaptureMiraMessage extends StatelessWidget {
   }
 }
 
+/// Inline review surface for the memory draft before it is approved.
+class CaptureDraftReview extends StatelessWidget {
+  const CaptureDraftReview({
+    super.key,
+    required this.scale,
+    required this.title,
+    required this.summary,
+    required this.nodeType,
+    required this.label,
+  });
+
+  final double scale;
+  final String title;
+  final String summary;
+  final String nodeType;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = scale;
+    final accent = AppColors.micBlueNav;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 292 * s),
+        padding: EdgeInsets.fromLTRB(14 * s, 12 * s, 14 * s, 14 * s),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14 * s),
+          border: Border.all(color: const Color(0xFFE1E6F5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 16 * s,
+              offset: Offset(0, 6 * s),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 24 * s,
+                  height: 24 * s,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.auto_awesome, size: 14 * s, color: accent),
+                ),
+                SizedBox(width: 8 * s),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.dosis(
+                      size: 12 * s,
+                      weight: FontWeight.w700,
+                      color: accent,
+                    ),
+                  ),
+                ),
+                if (nodeType.trim().isNotEmpty) ...[
+                  SizedBox(width: 8 * s),
+                  Flexible(
+                    child: Text(
+                      nodeType,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: AppTypography.dosis(
+                        size: 12 * s,
+                        weight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (title.trim().isNotEmpty) ...[
+              SizedBox(height: 12 * s),
+              MiraMarkdownText(
+                data: title,
+                scale: s,
+                fontSize: 17,
+                color: AppColors.textPrimary,
+              ),
+            ],
+            if (summary.trim().isNotEmpty &&
+                summary.trim() != title.trim()) ...[
+              SizedBox(height: 8 * s),
+              MiraMarkdownText(
+                data: summary,
+                scale: s,
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Memory saved badge — blue verified icon + label.
 class CaptureMemoryToggle extends StatelessWidget {
   const CaptureMemoryToggle({
@@ -116,11 +227,7 @@ class CaptureMemoryToggle extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.verified,
-              size: 22 * s,
-              color: color,
-            ),
+            Icon(Icons.verified, size: 22 * s, color: color),
             SizedBox(width: 8 * s),
             Text(
               'save to memory',
@@ -145,12 +252,16 @@ class CaptureApprovalActions extends StatelessWidget {
     required this.busy,
     required this.onSave,
     required this.onCancel,
+    this.saveLabel = 'Save memory',
+    this.cancelLabel = 'Discard',
   });
 
   final double scale;
   final bool busy;
   final VoidCallback onSave;
   final VoidCallback onCancel;
+  final String saveLabel;
+  final String cancelLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -172,7 +283,7 @@ class CaptureApprovalActions extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Save',
+                saveLabel,
                 style: AppTypography.dosis(
                   size: 14 * s,
                   weight: FontWeight.w600,
@@ -196,7 +307,7 @@ class CaptureApprovalActions extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'cancel',
+                cancelLabel,
                 style: AppTypography.dosis(
                   size: 14 * s,
                   weight: FontWeight.w600,
@@ -327,10 +438,7 @@ class _AttachRow extends StatelessWidget {
 
 /// Scrollable LTR conversation column for capture chat.
 class CaptureConversationColumn extends StatelessWidget {
-  const CaptureConversationColumn({
-    super.key,
-    required this.children,
-  });
+  const CaptureConversationColumn({super.key, required this.children});
 
   final List<Widget> children;
 

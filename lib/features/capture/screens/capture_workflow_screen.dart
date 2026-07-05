@@ -64,6 +64,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
   String? _intentClarificationPrompt;
   String? _entityClarificationPrompt;
   String? _suggestedTargetEntityId;
+  List<String> _conversationPrompts = <String>[];
 
   @override
   void initState() {
@@ -151,10 +152,54 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
     if (text.isEmpty || _busy) return;
     FocusManager.instance.primaryFocus?.unfocus();
     _controller.clear();
+    if (_pendingApproval && _proposal != null && _captureId != null) {
+      await _submitApprovalFollowUp(text);
+      return;
+    }
     await _submitCapture(
       prompt: text,
       create: (repo) => repo.createTextCapture(text),
     );
+  }
+
+  Future<void> _submitApprovalFollowUp(String text) async {
+    final repo = _captures;
+    final captureId = _captureId;
+    if (repo == null || captureId == null || _proposal == null) return;
+    final updatingStatus = AppLocalizations.of(
+      context,
+    )!.captureApprovalUpdatingStatus;
+
+    setState(() {
+      _busy = true;
+      _conversationPrompts = <String>[..._conversationPrompts, text];
+      _proposal = null;
+      _answer = null;
+      _pendingApproval = false;
+      _memorySaved = false;
+      _statusText = updatingStatus;
+      _intentClarificationPrompt = null;
+      _entityClarificationPrompt = null;
+      _suggestedTargetEntityId = null;
+    });
+
+    try {
+      final updated = await repo.followUpPendingCapture(
+        captureId,
+        message: text,
+      );
+      if (!mounted) return;
+      await _applyCaptureResponse(repo, updated);
+    } catch (error) {
+      _showSnack(formatCaptureError(error));
+      if (mounted) {
+        setState(() => _statusText = 'Capture failed. Try again.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
   }
 
   Future<void> _submitAttachment(_AttachmentKind kind) async {
@@ -243,6 +288,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       _mode = _CaptureWorkflowMode.conversation;
       _showAttachMenu = false;
       _lastPrompt = prompt;
+      _conversationPrompts = <String>[prompt];
       _captureId = null;
       _proposal = null;
       _answer = null;
@@ -328,42 +374,49 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
       }
     }
 
+    await _applyCaptureResponse(repo, created);
+  }
+
+  Future<void> _applyCaptureResponse(
+    CaptureRepository repo,
+    CaptureResponse response,
+  ) async {
     if (!mounted) return;
-    if (created.state == 'awaiting_approval' && created.proposal != null) {
-      _applyProposal(created.proposal!, created.captureId);
-    } else if (created.state == 'question_answered' && created.answer != null) {
-      _applyAnswer(created.answer!);
-    } else if (created.state == 'clarification_needed' &&
-        created.proposal != null) {
-      final time = created.proposal!['time'];
-      if (time is Map) {
-        final suggestion = time['suggestion']?.toString();
-        final updated = await repo.confirmTime(
-          created.captureId,
-          accepted: true,
-          resolvedTime: suggestion,
-        );
-        if (updated.proposal != null) {
-          _applyProposal(updated.proposal!, created.captureId);
-        }
-      }
-    } else if (created.state == 'clarification_needed' &&
-        created.proposal?['entityEquivalence'] is Map &&
-        created.proposal!['entityEquivalence']['status'] == 'pending') {
+    if (response.state == 'awaiting_approval' && response.proposal != null) {
+      _applyProposal(response.proposal!, response.captureId);
+    } else if (response.state == 'question_answered' &&
+        response.answer != null) {
+      _applyAnswer(response.answer!);
+    } else if (response.state == 'clarification_needed' &&
+        response.proposal?['entityEquivalence'] is Map &&
+        response.proposal!['entityEquivalence']['status'] == 'pending') {
       setState(() {
         _entityClarificationPrompt =
-            created.answer ??
+            response.answer ??
             AppLocalizations.of(context)!.captureEntityEquivalenceDefaultPrompt;
         _intentClarificationPrompt = null;
-        _suggestedTargetEntityId = created
+        _suggestedTargetEntityId = response
             .proposal!['entityEquivalence']['suggestedTargetEntityId']
             ?.toString();
         _statusText = null;
       });
-    } else if (created.state == 'clarification_needed' &&
-        created.answer != null) {
+    } else if (response.state == 'clarification_needed' &&
+        response.proposal != null &&
+        response.proposal!['time'] is Map) {
+      final time = response.proposal!['time'] as Map;
+      final suggestion = time['suggestion']?.toString();
+      final updated = await repo.confirmTime(
+        response.captureId,
+        accepted: true,
+        resolvedTime: suggestion,
+      );
+      if (updated.proposal != null) {
+        _applyProposal(updated.proposal!, response.captureId);
+      }
+    } else if (response.state == 'clarification_needed' &&
+        response.answer != null) {
       setState(() {
-        _intentClarificationPrompt = created.answer;
+        _intentClarificationPrompt = response.answer;
         _statusText = null;
       });
     }
@@ -567,6 +620,7 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                             scale: s,
                             mode: _mode,
                             prompt: _lastPrompt,
+                            prompts: _conversationPrompts,
                             proposal: _proposal,
                             answer: _answer,
                             statusText: _statusText,
@@ -617,7 +671,10 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
                             controller: _controller,
                             focusNode: _composerFocusNode,
                             scale: s,
-                            onAdd: _toggleAttachMenu,
+                            hintText: _pendingApproval
+                                ? l10n.captureApprovalCorrectionHint
+                                : 'Type Here',
+                            onAdd: _pendingApproval ? null : _toggleAttachMenu,
                             onMicTap: () {
                               _startListening();
                             },
@@ -664,6 +721,7 @@ class _WorkflowContent extends StatelessWidget {
     required this.scale,
     required this.mode,
     required this.prompt,
+    required this.prompts,
     required this.proposal,
     required this.answer,
     required this.statusText,
@@ -686,6 +744,7 @@ class _WorkflowContent extends StatelessWidget {
   final double scale;
   final _CaptureWorkflowMode mode;
   final String? prompt;
+  final List<String> prompts;
   final Map<String, dynamic>? proposal;
   final String? answer;
   final String? statusText;
@@ -719,6 +778,7 @@ class _WorkflowContent extends StatelessWidget {
         child: _ConversationView(
           scale: s,
           prompt: prompt ?? 'Call John about the contract',
+          prompts: prompts,
           proposal: proposal,
           answer: answer,
           statusText: statusText,
@@ -868,6 +928,7 @@ class _ConversationView extends StatelessWidget {
   const _ConversationView({
     required this.scale,
     required this.prompt,
+    required this.prompts,
     required this.proposal,
     required this.answer,
     required this.statusText,
@@ -888,6 +949,7 @@ class _ConversationView extends StatelessWidget {
 
   final double scale;
   final String prompt;
+  final List<String> prompts;
   final Map<String, dynamic>? proposal;
   final String? answer;
   final String? statusText;
@@ -919,6 +981,7 @@ class _ConversationView extends StatelessWidget {
       return _DynamicConversationBody(
         scale: s,
         prompt: prompt,
+        prompts: prompts,
         proposal: proposal,
         answer: answer,
         statusText: statusText,
@@ -973,6 +1036,7 @@ class _DynamicConversationBody extends StatelessWidget {
   const _DynamicConversationBody({
     required this.scale,
     required this.prompt,
+    required this.prompts,
     required this.proposal,
     required this.answer,
     required this.statusText,
@@ -993,6 +1057,7 @@ class _DynamicConversationBody extends StatelessWidget {
 
   final double scale;
   final String prompt;
+  final List<String> prompts;
   final Map<String, dynamic>? proposal;
   final String? answer;
   final String? statusText;
@@ -1015,24 +1080,30 @@ class _DynamicConversationBody extends StatelessWidget {
     final s = scale;
     final display = proposal != null ? resolveProposalDisplay(proposal!) : null;
     final hasProposal = display?.hasContent ?? false;
+    final visiblePrompts = prompts.isNotEmpty ? prompts : <String>[prompt];
 
     return CaptureConversationColumn(
       children: [
-        CaptureUserBubble(scale: s, text: prompt),
-        SizedBox(height: 22 * s),
+        for (var index = 0; index < visiblePrompts.length; index++) ...[
+          CaptureUserBubble(scale: s, text: visiblePrompts[index]),
+          SizedBox(
+            height: index == visiblePrompts.length - 1 ? 22 * s : 14 * s,
+          ),
+        ],
         if (hasProposal && display != null) ...[
-          if (display.title.isNotEmpty)
-            CaptureMiraMessage(scale: s, text: display.title),
-          if (display.title.isNotEmpty && display.summary.isNotEmpty)
-            SizedBox(height: 16 * s),
-          if (display.summary.isNotEmpty)
-            CaptureMiraMessage(scale: s, text: display.summary),
-          SizedBox(height: 20 * s),
+          CaptureDraftReview(
+            scale: s,
+            title: display.title,
+            summary: display.summary,
+            nodeType: display.nodeType,
+            label: localization.captureApprovalDraftLabel,
+          ),
+          SizedBox(height: 18 * s),
           CaptureMiraMessage(
             scale: s,
             text: memorySaved
-                ? "Saved to your memory. If this is wrong, tell me. I'll change it."
-                : "Save this to your memory. If this is wrong, tell me. I'll change it.",
+                ? localization.captureApprovalSavedPrompt
+                : localization.captureApprovalSavePrompt,
           ),
           if (pendingApproval) ...[
             SizedBox(height: 28 * s),
@@ -1041,6 +1112,8 @@ class _DynamicConversationBody extends StatelessWidget {
               busy: busy,
               onSave: onSave,
               onCancel: onCancel,
+              saveLabel: localization.captureApprovalSaveAction,
+              cancelLabel: localization.captureApprovalDismissAction,
             ),
           ] else if (memorySaved) ...[
             SizedBox(height: 10 * s),

@@ -185,6 +185,29 @@ class AppLocalizationsEn extends AppLocalizations {
       'Type naturally. Mira will ask if it needs to choose question vs memory.';
 
   @override
+  String get captureApprovalDraftLabel => 'Mira understood';
+
+  @override
+  String get captureApprovalSavePrompt =>
+      'I drafted this memory. Want me to adjust anything before I save it?';
+
+  @override
+  String get captureApprovalSavedPrompt =>
+      'Saved to memory. Keep chatting if something needs changing.';
+
+  @override
+  String get captureApprovalCorrectionHint => 'Correct or ask about this';
+
+  @override
+  String get captureApprovalSaveAction => 'Save memory';
+
+  @override
+  String get captureApprovalDismissAction => 'Discard';
+
+  @override
+  String get captureApprovalUpdatingStatus => 'Updating the draft...';
+
+  @override
   String get captureEntityEquivalenceDefaultPrompt =>
       'Are these the same person in your memory?';
 

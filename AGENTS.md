@@ -1,6 +1,6 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-07-05 (media-to-text Library pipeline + Fabric-style imports)
+> Last updated: 2026-07-05 (Fabric-style Library intelligence, annotations, MCP/API/clipper)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md) (graph pipeline) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html) (styled doc) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
 
@@ -91,9 +91,12 @@ test/
 | **Graph screen** | `MemoryGraphScreen` — radial graph from `GET /v2/graph`; node tap → blurred bottom sheet with mutations |
 | **Daily Brief tasks** | Checkbox calls `PATCH /v2/tasks/{id}` via `GraphRepository.updateTaskStatus` |
 | **Library/Search** | `LibraryScreen` lists library objects, asks assistant across them, opens item detail, and shows Fabric-style **Add anything** import hub |
+| **Semantic Library** | `POST /library/search-v2` returns chunk-level matches/snippets; assistant responses include `sourceCitations` while keeping legacy `citations` |
+| **Reader/Annotations** | Item detail loads chunks + annotations; users can annotate transcript/text chunks via `/library/items/{id}/annotations` |
+| **Meeting Notes** | Library screen can import pasted meeting transcripts through `POST /library/meetings`; media meeting uploads are backend-supported |
 | **Import Hub** | `GET /library/import-sources`; sources include PDFs, links, Markdown, text, HTML, JSON, CSV, EPUB, DOCX, PPTX, notes, meeting notes, media files, local files, YouTube/TikTok/Reels, WhatsApp/Telegram/Bale exports |
 | **Connectors** | `ConnectorMarketplaceScreen`; only real provider connectors live here. WhatsApp/Telegram/Bale are not plugins; manual exports live in Import Hub |
-| **Canvas** | `CanvasWorkspaceScreen`; pan/zoom board with sticky notes, text boxes, library references, shapes, arrows, auto-save to `/canvas/{id}` |
+| **Canvas** | `CanvasWorkspaceScreen`; pan/zoom board with sticky notes, text boxes, versioned library/item/chunk/embed references, shapes, arrows, auto-save to `/canvas/{id}` |
 | **Media-to-text** | Library media items show thumbnail, extraction state, retry, timestamp transcript chunks, source action, and Canvas-ready media metadata |
 
 ### Commands
@@ -188,11 +191,13 @@ Mira now separates **content import sources** from **provider connectors**.
 |------|------|
 | `screens/workspace/library_screen.dart` | Library list/search/assistant, Add anything hub, import sheets, item detail, summarize/publish/open canvas actions |
 | `features/workspace/library_repository.dart` | `/library/items`, `/library/uploads`, `/library/import-sources`, `/library/imports/link`, `/library/imports/text`, chunks, extraction retry |
+| `features/workspace/library_repository.dart` | Also exposes `searchV2`, annotations, and meeting transcript import |
 | `features/workspace/plugin_repository.dart` | `/plugins`, `/plugins/{id}/connect`, `/plugins/{id}/sync`; only native-sync connectors should call connect/sync |
 | `screens/workspace/connector_marketplace_screen.dart` | Light/simple connector list; native Google connectors can connect/sync, adapter-ready providers show details only |
 | `features/capture/shared_import/*` | Android share-sheet bridge and review screen for shared text/link/file/image into Library |
 | `screens/workspace/canvas_workspace_screen.dart` | Visual board; can place Library objects via the board's Library picker |
 | `models/api/workspace_models.dart` | `LibraryItem`, `ImportSourceDto`, plugin/canvas/publish DTOs |
+| `models/api/workspace_models.dart` | Also models `LibrarySearchMatch`, `LibrarySearchResponse`, `LibraryAnnotation`, and assistant `sourceCitations` |
 
 **Media-to-text UX**
 
@@ -224,10 +229,23 @@ Canvas library nodes should carry media metadata when available (`thumbnailUrl`,
 | `POST /library/uploads` | Secure file upload, type detection, extraction status, provenance |
 | `POST /library/imports/link` | URL/social/video link import; YouTube/TikTok/Reels may be `metadata_ready` until transcripts exist |
 | `POST /library/imports/text` | Pasted/shared text, meeting notes, HTML, JSON, Markdown, message exports |
+| `POST /library/search-v2` | Semantic/lexical chunk search with snippets, score, locator, source item |
+| `POST /assistant/run` | Library assistant; returns legacy item citations plus chunk-level `sourceCitations` |
+| `POST /library/meetings` | Import pasted meeting transcript or upload meeting media for transcription |
 | `GET /library/items/{id}/chunks` | Transcript/OCR/text chunks; media chunks may include `startMs`, `endMs`, and `locator` timestamps |
+| `GET/POST /library/items/{id}/annotations` | Reader annotations anchored to item/chunk/page/timestamp |
+| `PATCH/DELETE /library/annotations/{id}` | Update/delete a reader annotation |
 | `POST /library/items/{id}/extract` | Retry/requeue media extraction for failed/blocked/deferred media items |
 | `GET /plugins` | Provider connector registry only; no WhatsApp/Telegram/Bale |
 | `POST /plugins/{id}/connect` / `sync` | v1 direct action only for `implementationStatus == native_sync`; adapter-ready returns `409` |
+| `GET/POST/DELETE /developer/api-keys` | Scoped API keys for CLI, MCP, and Web Clipper |
+| `POST /mcp/tools/{tool_name}` | Authenticated MCP tool execution for search, ask, create item, list spaces |
+
+**External tools**
+
+- Backend CLI entrypoint: `mira` (`mira ask`, `mira search`, `mira note`, `mira link`, `mira upload`, `mira sync-folder`). It reads `MIRA_API_BASE` and `MIRA_API_TOKEN`.
+- Web Clipper extension lives in `../mira-backend/tools/web-clipper-extension/` and uses a developer API key as Bearer token.
+- Publish remains private-link v1 only. Full public publish polish, password UX, and analytics expansion are intentionally out of the current Fabric-parity phase.
 
 **Import source actions**
 

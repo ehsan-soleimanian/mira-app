@@ -428,6 +428,48 @@ abstract class AppLocalizations {
   /// **'Type naturally. Mira will ask if it needs to choose question vs memory.'**
   String get captureWorkflowComposeHint;
 
+  /// No description provided for @captureApprovalDraftLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira understood'**
+  String get captureApprovalDraftLabel;
+
+  /// No description provided for @captureApprovalSavePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'I drafted this memory. Want me to adjust anything before I save it?'**
+  String get captureApprovalSavePrompt;
+
+  /// No description provided for @captureApprovalSavedPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to memory. Keep chatting if something needs changing.'**
+  String get captureApprovalSavedPrompt;
+
+  /// No description provided for @captureApprovalCorrectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct or ask about this'**
+  String get captureApprovalCorrectionHint;
+
+  /// No description provided for @captureApprovalSaveAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Save memory'**
+  String get captureApprovalSaveAction;
+
+  /// No description provided for @captureApprovalDismissAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get captureApprovalDismissAction;
+
+  /// No description provided for @captureApprovalUpdatingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating the draft...'**
+  String get captureApprovalUpdatingStatus;
+
   /// No description provided for @captureEntityEquivalenceDefaultPrompt.
   ///
   /// In en, this message translates to:
