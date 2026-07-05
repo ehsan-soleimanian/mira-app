@@ -165,6 +165,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _openNotifications() async {
+    final current = _settings;
+    if (current == null) return;
+    final updated = await Navigator.of(context).pushMira<UserSettings>(
+      (_) => NotificationSettingsScreen(initialSettings: current),
+    );
+    if (!mounted || updated == null) return;
+    setState(() => _settings = updated);
+  }
+
   @override
   Widget build(BuildContext context) {
     Widget body;
@@ -198,9 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onAccount: () => Navigator.of(
           context,
         ).pushMira((_) => AccountSettingsScreen(initialUser: _user)),
-        onNotifications: () => Navigator.of(context).pushMira(
-          (_) => NotificationSettingsScreen(initialSettings: _settings!),
-        ),
+        onNotifications: _openNotifications,
         onConnectors: () => Navigator.of(
           context,
         ).pushMira((_) => const ConnectorMarketplaceScreen()),
@@ -306,7 +314,7 @@ class _SettingsContent extends StatelessWidget {
               icon: Icons.notifications_none_rounded,
               title: 'Notifications',
               subtitle: settings.notificationsEnabled
-                  ? 'Lorem ipsum dolor sit amet,'
+                  ? 'Task reminders are active on this device'
                   : 'Notifications are turned off',
               showBadge: settings.notificationsEnabled,
             ),

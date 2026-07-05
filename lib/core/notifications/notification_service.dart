@@ -20,6 +20,22 @@ class TaskReminderRequest {
   final String? body;
 }
 
+class NotificationScheduleSnapshot {
+  const NotificationScheduleSnapshot({
+    required this.notificationsEnabled,
+    required this.permissionGranted,
+    required this.scheduledTaskIds,
+    required this.leadTime,
+  });
+
+  final bool notificationsEnabled;
+  final bool permissionGranted;
+  final List<String> scheduledTaskIds;
+  final Duration leadTime;
+
+  int get scheduledCount => scheduledTaskIds.length;
+}
+
 class NotificationService {
   NotificationService({FlutterLocalNotificationsPlugin? plugin})
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
@@ -30,6 +46,10 @@ class NotificationService {
   static const _channelId = 'mira_task_reminders';
   static const _channelName = 'Task reminders';
   static const _scheduledIdsKey = 'mira_notification_scheduled_task_ids';
+  static const _notificationsEnabledKey = 'mira_settings_notifications';
+  static const _permissionGrantedKey = 'mira_notification_permission_granted';
+  static const _leadMinutesKey = 'mira_notification_lead_minutes';
+  static const defaultLeadTime = Duration(minutes: 10);
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -56,14 +76,21 @@ class NotificationService {
 
   Future<bool> requestPermissions() async {
     await initialize();
-    if (kIsWeb) return false;
+    final prefs = await SharedPreferences.getInstance();
+    if (kIsWeb) {
+      await prefs.setBool(_permissionGrantedKey, false);
+      return false;
+    }
 
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
     final androidGranted = await android?.requestNotificationsPermission();
-    if (androidGranted != null) return androidGranted;
+    if (androidGranted != null) {
+      await prefs.setBool(_permissionGrantedKey, androidGranted);
+      return androidGranted;
+    }
 
     final ios = _plugin
         .resolvePlatformSpecificImplementation<
@@ -74,28 +101,71 @@ class NotificationService {
       badge: true,
       sound: true,
     );
-    if (iosGranted != null) return iosGranted;
+    if (iosGranted != null) {
+      await prefs.setBool(_permissionGrantedKey, iosGranted);
+      return iosGranted;
+    }
 
     final mac = _plugin
         .resolvePlatformSpecificImplementation<
           MacOSFlutterLocalNotificationsPlugin
         >();
-    return await mac?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        ) ??
+    final granted =
+        await mac?.requestPermissions(alert: true, badge: true, sound: true) ??
         true;
+    await prefs.setBool(_permissionGrantedKey, granted);
+    return granted;
+  }
+
+  Future<NotificationScheduleSnapshot> snapshot() async {
+    await initialize();
+    final prefs = await SharedPreferences.getInstance();
+    return NotificationScheduleSnapshot(
+      notificationsEnabled: prefs.getBool(_notificationsEnabledKey) ?? true,
+      permissionGranted: prefs.getBool(_permissionGrantedKey) ?? false,
+      scheduledTaskIds: List<String>.unmodifiable(
+        prefs.getStringList(_scheduledIdsKey) ?? const <String>[],
+      ),
+      leadTime: Duration(
+        minutes: prefs.getInt(_leadMinutesKey) ?? defaultLeadTime.inMinutes,
+      ),
+    );
+  }
+
+  Future<void> setNotificationsEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notificationsEnabledKey, enabled);
+    if (!enabled) await cancelAllTaskReminders();
+  }
+
+  Future<void> setReminderLeadTime(Duration leadTime) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_leadMinutesKey, leadTime.inMinutes);
+  }
+
+  Future<void> cancelAllTaskReminders() async {
+    await initialize();
+    final prefs = await SharedPreferences.getInstance();
+    for (final id
+        in prefs.getStringList(_scheduledIdsKey) ?? const <String>[]) {
+      await _plugin.cancel(id: _notificationId(id));
+    }
+    await prefs.setStringList(_scheduledIdsKey, const <String>[]);
   }
 
   Future<void> syncTaskReminders(
     Iterable<TaskReminderRequest> reminders,
   ) async {
     await initialize();
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_notificationsEnabledKey) == false) {
+      await cancelAllTaskReminders();
+      return;
+    }
+
     final granted = await requestPermissions();
     if (!granted) return;
 
-    final prefs = await SharedPreferences.getInstance();
     for (final id
         in prefs.getStringList(_scheduledIdsKey) ?? const <String>[]) {
       await _plugin.cancel(id: _notificationId(id));
@@ -103,11 +173,14 @@ class NotificationService {
 
     final scheduled = <String>[];
     final now = DateTime.now();
+    final leadTime = Duration(
+      minutes: prefs.getInt(_leadMinutesKey) ?? defaultLeadTime.inMinutes,
+    );
     for (final reminder in reminders) {
       if (reminder.dueAt.isBefore(now.add(const Duration(minutes: 1)))) {
         continue;
       }
-      await _scheduleTaskReminder(reminder);
+      await _scheduleTaskReminder(reminder, leadTime: leadTime);
       scheduled.add(reminder.taskId);
     }
     await prefs.setStringList(_scheduledIdsKey, scheduled);
@@ -124,8 +197,16 @@ class NotificationService {
     );
   }
 
-  Future<void> _scheduleTaskReminder(TaskReminderRequest reminder) async {
-    final scheduledDate = tz.TZDateTime.from(reminder.dueAt, tz.local);
+  Future<void> _scheduleTaskReminder(
+    TaskReminderRequest reminder, {
+    required Duration leadTime,
+  }) async {
+    final now = DateTime.now();
+    var fireAt = reminder.dueAt.subtract(leadTime);
+    if (fireAt.isBefore(now.add(const Duration(minutes: 1)))) {
+      fireAt = reminder.dueAt;
+    }
+    final scheduledDate = tz.TZDateTime.from(fireAt, tz.local);
     await _plugin.zonedSchedule(
       id: _notificationId(reminder.taskId),
       scheduledDate: scheduledDate,
