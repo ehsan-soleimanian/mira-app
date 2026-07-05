@@ -23,6 +23,10 @@ void main() {
     expect(task, isA<BriefTask>());
     final briefTask = task as BriefTask;
     expect(briefTask.dueAt, isNotNull);
-    expect(briefTask.timeLabel, contains('5:00 P.M'));
+    expect(briefTask.timeLabel, DailyBriefData.timeLabelFor(briefTask.dueAt!));
+    expect(
+      briefTask.timeLabel,
+      isNot(DailyBriefData.timeLabelFor(briefTask.createdAt!)),
+    );
   });
 }
