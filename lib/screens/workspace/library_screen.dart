@@ -1453,7 +1453,7 @@ class _TranscriptTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
+    if (loading && chunks.isEmpty) {
       return const _WorkspaceCard(child: LinearProgressIndicator(minHeight: 3));
     }
     if (chunks.isEmpty) {
