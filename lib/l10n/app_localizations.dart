@@ -614,6 +614,174 @@ abstract class AppLocalizations {
   /// **'Last sync {time}'**
   String connectorsLastSync(String time);
 
+  /// No description provided for @canvasTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get canvasTitle;
+
+  /// No description provided for @canvasDefaultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira canvas'**
+  String get canvasDefaultTitle;
+
+  /// No description provided for @canvasStarterSticky.
+  ///
+  /// In en, this message translates to:
+  /// **'Map the main idea'**
+  String get canvasStarterSticky;
+
+  /// No description provided for @canvasStarterText.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin notes, files, and links from Library beside your own thoughts.'**
+  String get canvasStarterText;
+
+  /// No description provided for @canvasStarterShape.
+  ///
+  /// In en, this message translates to:
+  /// **'Cluster'**
+  String get canvasStarterShape;
+
+  /// No description provided for @canvasNewSticky.
+  ///
+  /// In en, this message translates to:
+  /// **'New sticky'**
+  String get canvasNewSticky;
+
+  /// No description provided for @canvasNewText.
+  ///
+  /// In en, this message translates to:
+  /// **'Write here'**
+  String get canvasNewText;
+
+  /// No description provided for @canvasNewShape.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get canvasNewShape;
+
+  /// No description provided for @canvasLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load canvas'**
+  String get canvasLoadFailed;
+
+  /// No description provided for @canvasSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas could not save. Try again.'**
+  String get canvasSaveFailed;
+
+  /// No description provided for @canvasLibraryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Library is empty.'**
+  String get canvasLibraryEmpty;
+
+  /// No description provided for @canvasRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get canvasRetry;
+
+  /// No description provided for @canvasNewBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'New board'**
+  String get canvasNewBoard;
+
+  /// No description provided for @canvasOpenGraph.
+  ///
+  /// In en, this message translates to:
+  /// **'Open graph'**
+  String get canvasOpenGraph;
+
+  /// No description provided for @canvasSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving...'**
+  String get canvasSaving;
+
+  /// No description provided for @canvasUnsaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Unsaved changes'**
+  String get canvasUnsaved;
+
+  /// No description provided for @canvasSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get canvasSaved;
+
+  /// No description provided for @canvasToolSticky.
+  ///
+  /// In en, this message translates to:
+  /// **'Sticky'**
+  String get canvasToolSticky;
+
+  /// No description provided for @canvasToolText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get canvasToolText;
+
+  /// No description provided for @canvasToolLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get canvasToolLibrary;
+
+  /// No description provided for @canvasToolShape.
+  ///
+  /// In en, this message translates to:
+  /// **'Shape'**
+  String get canvasToolShape;
+
+  /// No description provided for @canvasToolArrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrow'**
+  String get canvasToolArrow;
+
+  /// No description provided for @canvasToolSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get canvasToolSave;
+
+  /// No description provided for @canvasEditNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit item'**
+  String get canvasEditNode;
+
+  /// No description provided for @canvasNodeTextHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write on the canvas'**
+  String get canvasNodeTextHint;
+
+  /// No description provided for @canvasDeleteNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get canvasDeleteNode;
+
+  /// No description provided for @canvasApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get canvasApply;
+
+  /// No description provided for @canvasLibraryPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add from Library'**
+  String get canvasLibraryPickerTitle;
+
   /// No description provided for @appUpdateTitle.
   ///
   /// In en, this message translates to:

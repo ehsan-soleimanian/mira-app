@@ -74,6 +74,10 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/v2/search` | — | Hybrid entity + capture search |
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
+| `POST` | `/canvas` | `canvas_repository.dart` | Create a visual workspace board |
+| `GET` | `/canvas` | `canvas_repository.dart` | List user's visual workspace boards |
+| `GET` | `/canvas/{id}` | `canvas_repository.dart` | Fetch a visual board |
+| `PATCH` | `/canvas/{id}` | `canvas_repository.dart` | Persist nodes, edges, and viewport |
 | `GET` | `/plugins` | `plugin_repository.dart` | Connector registry and status |
 | `POST` | `/plugins/{id}/connect` | `plugin_repository.dart` | Configure connector adapter |
 | `POST` | `/plugins/{id}/sync` | `plugin_repository.dart` | Manual connector sync into Library |
@@ -1167,6 +1171,58 @@ No query parameters.
 ## Workspace Library & Connectors
 
 All routes below require Bearer auth except `GET /.well-known/mira-mcp.json`.
+
+### Canvas boards
+
+Canvas v1 stores an infinite-ish visual board as JSON nodes, edges, and viewport. Flutter renders sticky notes, text boxes, library reference cards, shapes, and arrows, then persists changes through `PATCH /canvas/{id}`.
+
+`POST /canvas`
+```json
+{ "title": "Mira canvas", "spaceId": null }
+```
+
+`GET /canvas`
+
+Returns the user's boards ordered by `updatedAt` descending.
+
+`GET /canvas/{id}`
+
+Fetches one board owned by the current user.
+
+`PATCH /canvas/{id}`
+```json
+{
+  "nodes": [
+    {
+      "id": "local-1",
+      "type": "sticky",
+      "x": 260,
+      "y": 210,
+      "width": 210,
+      "height": 150,
+      "text": "Map the main idea",
+      "color": 4294906280,
+      "metadata": {}
+    }
+  ],
+  "edges": [],
+  "viewport": { "x": -80, "y": -60, "scale": 0.86 }
+}
+```
+
+**Response** `200`
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "title": "Mira canvas",
+  "spaceId": null,
+  "nodes": [],
+  "edges": [],
+  "viewport": {},
+  "createdAt": "2026-07-05T12:00:00Z",
+  "updatedAt": "2026-07-05T12:00:00Z"
+}
+```
 
 ### List connectors
 `GET /plugins`

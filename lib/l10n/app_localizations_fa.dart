@@ -290,6 +290,91 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
+  String get canvasTitle => 'بوم';
+
+  @override
+  String get canvasDefaultTitle => 'بوم میرا';
+
+  @override
+  String get canvasStarterSticky => 'ایده اصلی را بچین';
+
+  @override
+  String get canvasStarterText =>
+      'یادداشت، فایل و لینک‌های کتابخانه را کنار فکرهایت قرار بده.';
+
+  @override
+  String get canvasStarterShape => 'خوشه';
+
+  @override
+  String get canvasNewSticky => 'یادداشت جدید';
+
+  @override
+  String get canvasNewText => 'اینجا بنویس';
+
+  @override
+  String get canvasNewShape => 'گروه';
+
+  @override
+  String get canvasLoadFailed => 'بوم بارگذاری نشد';
+
+  @override
+  String get canvasSaveFailed => 'بوم ذخیره نشد. دوباره تلاش کن.';
+
+  @override
+  String get canvasLibraryEmpty => 'کتابخانه‌ات خالی است.';
+
+  @override
+  String get canvasRetry => 'تلاش دوباره';
+
+  @override
+  String get canvasNewBoard => 'بوم جدید';
+
+  @override
+  String get canvasOpenGraph => 'باز کردن گراف';
+
+  @override
+  String get canvasSaving => 'در حال ذخیره...';
+
+  @override
+  String get canvasUnsaved => 'تغییرات ذخیره‌نشده';
+
+  @override
+  String get canvasSaved => 'ذخیره شد';
+
+  @override
+  String get canvasToolSticky => 'استیکی';
+
+  @override
+  String get canvasToolText => 'متن';
+
+  @override
+  String get canvasToolLibrary => 'کتابخانه';
+
+  @override
+  String get canvasToolShape => 'شکل';
+
+  @override
+  String get canvasToolArrow => 'فلش';
+
+  @override
+  String get canvasToolSave => 'ذخیره';
+
+  @override
+  String get canvasEditNode => 'ویرایش آیتم';
+
+  @override
+  String get canvasNodeTextHint => 'روی بوم بنویس';
+
+  @override
+  String get canvasDeleteNode => 'حذف';
+
+  @override
+  String get canvasApply => 'اعمال';
+
+  @override
+  String get canvasLibraryPickerTitle => 'افزودن از کتابخانه';
+
+  @override
   String get appUpdateTitle => 'نسخه جدید آماده است';
 
   @override

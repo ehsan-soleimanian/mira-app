@@ -287,6 +287,91 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get canvasTitle => 'Canvas';
+
+  @override
+  String get canvasDefaultTitle => 'Mira canvas';
+
+  @override
+  String get canvasStarterSticky => 'Map the main idea';
+
+  @override
+  String get canvasStarterText =>
+      'Pin notes, files, and links from Library beside your own thoughts.';
+
+  @override
+  String get canvasStarterShape => 'Cluster';
+
+  @override
+  String get canvasNewSticky => 'New sticky';
+
+  @override
+  String get canvasNewText => 'Write here';
+
+  @override
+  String get canvasNewShape => 'Group';
+
+  @override
+  String get canvasLoadFailed => 'Could not load canvas';
+
+  @override
+  String get canvasSaveFailed => 'Canvas could not save. Try again.';
+
+  @override
+  String get canvasLibraryEmpty => 'Your Library is empty.';
+
+  @override
+  String get canvasRetry => 'Retry';
+
+  @override
+  String get canvasNewBoard => 'New board';
+
+  @override
+  String get canvasOpenGraph => 'Open graph';
+
+  @override
+  String get canvasSaving => 'Saving...';
+
+  @override
+  String get canvasUnsaved => 'Unsaved changes';
+
+  @override
+  String get canvasSaved => 'Saved';
+
+  @override
+  String get canvasToolSticky => 'Sticky';
+
+  @override
+  String get canvasToolText => 'Text';
+
+  @override
+  String get canvasToolLibrary => 'Library';
+
+  @override
+  String get canvasToolShape => 'Shape';
+
+  @override
+  String get canvasToolArrow => 'Arrow';
+
+  @override
+  String get canvasToolSave => 'Save';
+
+  @override
+  String get canvasEditNode => 'Edit item';
+
+  @override
+  String get canvasNodeTextHint => 'Write on the canvas';
+
+  @override
+  String get canvasDeleteNode => 'Delete';
+
+  @override
+  String get canvasApply => 'Apply';
+
+  @override
+  String get canvasLibraryPickerTitle => 'Add from Library';
+
+  @override
   String get appUpdateTitle => 'Update available';
 
   @override

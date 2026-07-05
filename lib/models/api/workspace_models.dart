@@ -87,6 +87,8 @@ class CanvasDto {
     this.nodes = const [],
     this.edges = const [],
     this.viewport = const {},
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory CanvasDto.fromJson(Map<String, dynamic> json) => CanvasDto(
@@ -99,6 +101,12 @@ class CanvasDto {
         .whereType<Map<String, dynamic>>()
         .toList(),
     viewport: (json['viewport'] as Map<String, dynamic>?) ?? const {},
+    createdAt: json['createdAt'] == null
+        ? null
+        : DateTime.parse(json['createdAt'] as String).toLocal(),
+    updatedAt: json['updatedAt'] == null
+        ? null
+        : DateTime.parse(json['updatedAt'] as String).toLocal(),
   );
 
   final String id;
@@ -106,6 +114,8 @@ class CanvasDto {
   final List<Map<String, dynamic>> nodes;
   final List<Map<String, dynamic>> edges;
   final Map<String, dynamic> viewport;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 }
 
 class AssistantResponse {
