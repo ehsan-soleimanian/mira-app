@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/mira_navigation.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
+import 'package:mira_app/features/graph/screens/memory_graph_screen.dart';
 import 'package:mira_app/screens/workspace/canvas_workspace_screen.dart';
 import 'package:mira_app/screens/workspace/meeting_recorder_screen.dart';
 import 'package:mira_app/screens/workspace/note_editor_screen.dart';
@@ -940,6 +942,7 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
   var _annotations = const <LibraryAnnotation>[];
   String? _assistantAnswer;
   String? _publishUrl;
+  String? _graphSaveMessage;
   String? _detailError;
   var _busy = false;
   var _loadingChunks = false;
@@ -953,31 +956,38 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
 
   Future<void> _loadChunks() async {
     setState(() => _loadingChunks = true);
+    final repository = AppScope.servicesOf(context).libraryRepository;
     try {
-      final repository = AppScope.servicesOf(context).libraryRepository;
       final chunks = await repository.chunks(_item.id);
-      final annotations = await repository.annotations(_item.id);
       if (!mounted) return;
       setState(() {
         _chunks = chunks;
-        _annotations = annotations;
         _detailError = null;
-        _loadingChunks = false;
       });
     } catch (error) {
       if (!mounted) return;
+      setState(() => _detailError = 'Could not load extracted chunks.');
+    }
+    try {
+      final annotations = await repository.annotations(_item.id);
+      if (!mounted) return;
       setState(() {
-        _detailError = 'Could not load extracted chunks.';
-        _loadingChunks = false;
+        _annotations = annotations;
       });
+    } catch (error) {
+      // Annotations are optional; keep the extracted chunks visible.
+    } finally {
+      if (mounted) setState(() => _loadingChunks = false);
     }
   }
 
   Future<void> _summarize() async {
     setState(() => _busy = true);
-    final response = await AppScope.servicesOf(
-      context,
-    ).assistantRepository.run('Summarize ${_item.title}', action: 'summarize');
+    final response = await AppScope.servicesOf(context).assistantRepository.run(
+      'Summarize ${_item.title}',
+      action: 'summarize',
+      contextItemIds: [_item.id],
+    );
     if (!mounted) return;
     setState(() {
       _assistantAnswer = response.answer;
@@ -992,9 +1002,42 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
     ).publishRepository.create(targetType: 'item', targetId: _item.id);
     if (!mounted) return;
     setState(() {
-      _publishUrl = link.url;
+      _publishUrl = _absolutePublishUrl(link.url);
       _busy = false;
     });
+  }
+
+  Future<void> _saveToGraph() async {
+    setState(() {
+      _busy = true;
+      _graphSaveMessage = null;
+    });
+    try {
+      final result = await AppScope.servicesOf(
+        context,
+      ).libraryRepository.saveToGraph(_item.id);
+      if (!mounted) return;
+      setState(() {
+        _graphSaveMessage = result.message;
+      });
+      if (result.state == 'saved' || result.state == 'already_saved') {
+        await Navigator.of(context).pushMira((_) => const MemoryGraphScreen());
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _graphSaveMessage = 'Could not save this item to the memory graph.';
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String _absolutePublishUrl(String url) {
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    final base = ApiConfig.baseUrl;
+    if (url.startsWith('/')) return '$base$url';
+    return '$base/$url';
   }
 
   Future<void> _retryExtraction() async {
@@ -1163,6 +1206,13 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
                   icon: const Icon(Icons.open_in_new_rounded),
                   label: const Text('Source'),
                 ),
+              OutlinedButton.icon(
+                onPressed: _busy || item.extractionStatus != 'ready'
+                    ? null
+                    : _saveToGraph,
+                icon: const Icon(Icons.psychology_alt_outlined),
+                label: const Text('Save to graph'),
+              ),
               if (item.isMedia)
                 OutlinedButton.icon(
                   onPressed: _busy ? null : _retryExtraction,
@@ -1189,6 +1239,10 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
           if (_publishUrl != null) ...[
             const SizedBox(height: 12),
             _WorkspaceCard(child: Text('Private link: $_publishUrl')),
+          ],
+          if (_graphSaveMessage != null) ...[
+            const SizedBox(height: 12),
+            _WorkspaceCard(child: Text(_graphSaveMessage!)),
           ],
           const SizedBox(height: 16),
           if (item.isMedia || _chunks.isNotEmpty || _loadingChunks) ...[

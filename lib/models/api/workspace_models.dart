@@ -330,11 +330,10 @@ class AssistantResponse {
             .whereType<Map<String, dynamic>>()
             .map(LibraryItem.fromJson)
             .toList(),
-        sourceCitations:
-            (json['sourceCitations'] as List<dynamic>? ?? const [])
-                .whereType<Map<String, dynamic>>()
-                .map(LibrarySearchMatch.fromJson)
-                .toList(),
+        sourceCitations: (json['sourceCitations'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(LibrarySearchMatch.fromJson)
+            .toList(),
         createdItem: json['createdItem'] is Map<String, dynamic>
             ? LibraryItem.fromJson(json['createdItem'] as Map<String, dynamic>)
             : null,
@@ -365,6 +364,31 @@ class PublishLinkDto {
   final String token;
   final String url;
   final int viewCount;
+}
+
+class LibraryGraphSaveResult {
+  const LibraryGraphSaveResult({
+    required this.itemId,
+    required this.state,
+    required this.message,
+    this.captureId,
+    this.graphIngest = const {},
+  });
+
+  factory LibraryGraphSaveResult.fromJson(Map<String, dynamic> json) =>
+      LibraryGraphSaveResult(
+        itemId: json['itemId'] as String? ?? '',
+        captureId: json['captureId'] as String?,
+        state: json['state'] as String? ?? '',
+        message: json['message'] as String? ?? '',
+        graphIngest: (json['graphIngest'] as Map<String, dynamic>?) ?? const {},
+      );
+
+  final String itemId;
+  final String? captureId;
+  final String state;
+  final String message;
+  final Map<String, dynamic> graphIngest;
 }
 
 class PluginManifestDto {

@@ -7,10 +7,18 @@ class AssistantRepository {
 
   final Dio _dio;
 
-  Future<AssistantResponse> run(String prompt, {String action = 'ask'}) async {
+  Future<AssistantResponse> run(
+    String prompt, {
+    String action = 'ask',
+    List<String> contextItemIds = const [],
+  }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/assistant/run',
-      data: {'prompt': prompt, 'action': action},
+      data: {
+        'prompt': prompt,
+        'action': action,
+        if (contextItemIds.isNotEmpty) 'contextItemIds': contextItemIds,
+      },
     );
     return AssistantResponse.fromJson(response.data!);
   }

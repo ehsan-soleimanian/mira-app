@@ -103,6 +103,13 @@ class LibraryRepository {
     return LibraryItem.fromJson(response.data!);
   }
 
+  Future<LibraryGraphSaveResult> saveToGraph(String itemId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/library/items/$itemId/save-to-graph',
+    );
+    return LibraryGraphSaveResult.fromJson(response.data!);
+  }
+
   Future<LibraryItem> createNote({
     required String title,
     required String content,
@@ -124,11 +131,14 @@ class LibraryRepository {
     required String filename,
     String? mimeType,
   }) async {
+    final resolvedMimeType = mimeType ?? _mimeTypeFromFilename(filename);
     final formData = FormData.fromMap({
       'file': MultipartFile.fromBytes(
         bytes,
         filename: filename,
-        contentType: mimeType == null ? null : DioMediaType.parse(mimeType),
+        contentType: resolvedMimeType == null
+            ? null
+            : DioMediaType.parse(resolvedMimeType),
       ),
     });
     final response = await _dio.post<Map<String, dynamic>>(
@@ -211,4 +221,39 @@ class LibraryRepository {
     );
     return LibraryItem.fromJson(response.data!);
   }
+}
+
+String? _mimeTypeFromFilename(String filename) {
+  final dot = filename.lastIndexOf('.');
+  if (dot <= 0 || dot == filename.length - 1) return null;
+  final extension = filename.substring(dot + 1).toLowerCase();
+  return switch (extension) {
+    'pdf' => 'application/pdf',
+    'txt' => 'text/plain',
+    'md' || 'markdown' => 'text/markdown',
+    'html' || 'htm' => 'text/html',
+    'json' => 'application/json',
+    'csv' => 'text/csv',
+    'docx' =>
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'pptx' =>
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'epub' => 'application/epub+zip',
+    'jpg' || 'jpeg' => 'image/jpeg',
+    'png' => 'image/png',
+    'gif' => 'image/gif',
+    'webp' => 'image/webp',
+    'heic' => 'image/heic',
+    'mp3' => 'audio/mpeg',
+    'm4a' => 'audio/mp4',
+    'wav' => 'audio/wav',
+    'ogg' => 'audio/ogg',
+    'aac' => 'audio/aac',
+    'mp4' => 'video/mp4',
+    'mov' => 'video/quicktime',
+    'webm' => 'video/webm',
+    'mkv' => 'video/x-matroska',
+    'avi' => 'video/x-msvideo',
+    _ => null,
+  };
 }

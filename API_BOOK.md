@@ -84,10 +84,14 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/library/imports/text` | `library_repository.dart` | Import pasted text, exports, HTML, notes |
 | `POST` | `/library/search-v2` | `library_repository.dart` | Chunk-level Library search with snippets/citations |
 | `POST` | `/library/meetings` | `library_repository.dart` | Import meeting transcript or meeting media |
+| `GET` | `/library/items/{id}/chunks` | `library_repository.dart` | Extracted text/transcript/OCR chunks |
+| `POST` | `/library/items/{id}/save-to-graph` | `library_repository.dart` | Send extracted Library text into Graph V2 via save capture |
 | `GET` | `/library/items/{id}/annotations` | `library_repository.dart` | Reader annotations for an item |
 | `POST` | `/library/items/{id}/annotations` | `library_repository.dart` | Create a chunk/page/timestamp annotation |
 | `PATCH` | `/library/annotations/{id}` | `library_repository.dart` | Update annotation |
 | `DELETE` | `/library/annotations/{id}` | `library_repository.dart` | Delete annotation |
+| `POST` | `/publish` | `publish_repository.dart` | Create private publish link |
+| `GET` | `/p/{token}` | Browser / API clients | Resolve private publish link as HTML or JSON |
 | `GET` | `/plugins` | `plugin_repository.dart` | Connector registry and status |
 | `POST` | `/plugins/{id}/connect` | `plugin_repository.dart` | Configure connector adapter |
 | `POST` | `/plugins/{id}/sync` | `plugin_repository.dart` | Manual connector sync into Library |
@@ -1457,6 +1461,37 @@ transcript=Decision: ship annotations.
 
 Text transcript imports return a ready `LibraryItem`; audio/video files are stored securely and queued for media-worker transcription.
 
+### Library chunks
+`GET /library/items/{id}/chunks`
+
+Returns extracted text chunks for ready documents, transcripts, OCR, or imported text. Chunk load failures should not hide already available item metadata.
+
+### Save Library item to Graph
+`POST /library/items/{id}/save-to-graph`
+
+Requires auth. Converts the item's extracted chunks/content into a save-intent capture, runs the normal capture processor, and auto-approves into Graph V2 when a proposal is ready. This is the explicit bridge from Library to the memory graph; importing a PDF into Library alone does not add graph nodes.
+
+**Response** `200`
+```json
+{
+  "itemId": "550e8400-e29b-41d4-a716-446655440000",
+  "captureId": "660e8400-e29b-41d4-a716-446655440000",
+  "state": "saved",
+  "message": "Saved extracted Library insights to the memory graph.",
+  "graphIngest": {
+    "captureId": "660e8400-e29b-41d4-a716-446655440000",
+    "createdEntities": [],
+    "createdAssertions": [],
+    "materializedEdges": [],
+    "tasks": [],
+    "preferences": [],
+    "correctsCaptureId": null
+  }
+}
+```
+
+If the item was already sent to Graph, `state` is `already_saved`. If there is no extracted text/content yet, the API returns `409`.
+
 ### Annotations
 `GET /library/items/{id}/annotations`
 
@@ -1475,6 +1510,32 @@ Lists reader annotations for an item.
 ```
 
 `PATCH /library/annotations/{id}` accepts the same body shape. `DELETE /library/annotations/{id}` returns `204`.
+
+### Publish
+`POST /publish`
+
+Creates a private link for a Library item or workspace target.
+
+```json
+{
+  "targetType": "item",
+  "targetId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+**Response** `201`
+```json
+{
+  "id": "770e8400-e29b-41d4-a716-446655440000",
+  "targetType": "item",
+  "targetId": "550e8400-e29b-41d4-a716-446655440000",
+  "token": "private-token",
+  "url": "/p/private-token",
+  "viewCount": 0
+}
+```
+
+`GET /p/{token}` returns JSON for API clients (`Accept: application/json`) and a readable HTML page for browsers (`Accept: text/html`). HTML item pages render the Library title, metadata, summary, and extracted chunks.
 
 ### Developer API keys, MCP, CLI, Web Clipper
 
