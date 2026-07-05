@@ -513,14 +513,14 @@ Backend `ContextualGraphExtractor` wraps `LlmGraphExtractorV2` when `contextual_
 
 - sentence/segment context for multi-sentence captures;
 - NER mention candidates before the LLM;
-- small graph context from existing entities/assertions/captures/tasks;
+- retrieval-aware graph context from existing entities/assertions/captures/tasks/neighborhood;
 - a final Graph V2 schema proposal from the LLM and validator.
 
 NER is only a candidate layer. It can help context packing and entity reuse, but Graph V2 LLM output + schema/ontology validation remain the source of truth.
 
 Long captures are segmented in backend, but still produce one approval proposal. Assertions/tasks should keep segment-local `evidenceText` so debugging and resync stay precise.
 
-Context packing is intentionally small for latency/cost: max 12 entities, 8 assertions, 6 captures, 6 tasks. Vector context retrieval is guarded by `contextual_graph_extraction_vector_enabled`; default production path should prefer fulltext/alias plus mention fallback.
+Context packing is intentionally small for latency/cost: max 12 entities, 8 assertions, 6 captures, 6 tasks, and 12 neighborhood edges. Backend retrieval order is cheap alias/fulltext/mention first, vector only on low confidence when enabled, then capped 1-hop neighborhood by default. Flutter must not implement or tune this retrieval path.
 
 Feature flags currently relevant to this path:
 
@@ -530,11 +530,16 @@ Feature flags currently relevant to this path:
 | `long_capture_segmentation_enabled` | Enables sentence/segment context for longer captures |
 | `graph_extraction_embedding_cache_enabled` | Caches embeddings by provider/model/dimensions/text hash |
 | `contextual_graph_extraction_vector_enabled` | Enables vector retrieval during context build; keep off unless needed |
+| `contextual_graph_extraction_retrieval_aware_enabled` | Enables staged cheap retrieval before vector fallback |
+| `contextual_graph_extraction_two_hop_enabled` | Enables optional 2-hop backend context; default false |
+| `graph_v2_evaluation_enabled` | Enables admin-only backend scenario evaluation dry-runs |
 | `mention_extraction_enabled` | Enables NER candidate extraction before LLM |
 
 ### Resync and playground QA
 
-Super Admin exposes backend-only resync: `POST /admin/api/users/{user_id}/resync-graph-v2` with `dry_run: true` by default. Resync re-extracts approved captures safely for diff/preview; Flutter does not call this endpoint.
+Super Admin exposes backend-only resync: `POST /admin/api/users/{user_id}/resync-graph-v2` with `dry_run: true` by default. Resync re-extracts approved captures safely for diff/preview and reports changed categories. Flutter does not call this endpoint.
+
+Super Admin also exposes backend-only evaluation: `POST /admin/api/graph-v2/evaluate`. It runs the shared daily scenario catalog as dry-run, reports pass/fail, and feeds prompt/ontology/guard improvements. Flutter does not call this endpoint and should not duplicate those checks.
 
 Playground QA path:
 
@@ -544,7 +549,7 @@ Playground QA path:
 4. Run a related multi-sentence capture.
 5. Inspect proposal `_extractionDiagnostics`.
 
-Expected diagnostics for V2+Context: `extractorVersion: contextual_graph_v1`, `contextStrategy: graph_v2_context_v1`, non-zero `segmentCount`, and graph context stats showing reused prior context when matching data exists.
+Expected diagnostics for V2+Context: `extractorVersion: contextual_graph_v1`, `contextStrategy: graph_v2_context_v1`, non-zero `segmentCount`, `graphContextStats.strategy: retrieval_aware_v1`, retrieval confidence/vector reason, and graph context stats showing reused prior context when matching data exists.
 
 ### Graph views in Super Admin
 
@@ -571,6 +576,7 @@ Admin endpoints are backend-only (`/admin/api/users/{user_id}/graph?view=...`) a
 ### Client invariants for Graph V2
 
 - Keep app logic transport-only: consume API responses, do not infer `predicate_family`/`materialization` in Dart.
+- Do not duplicate graph retrieval, ontology validation, scenario evaluation, or resync logic in Dart; those are backend-owned.
 - Do not treat missing knowledge edges as failure; evidence may still be valid and persisted.
 - If backend ontology expands (new predicates), app should remain forward-compatible by rendering unknown edge labels as-is where applicable.
 
