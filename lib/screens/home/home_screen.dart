@@ -16,7 +16,6 @@ import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/daily_brief_models.dart';
 import 'package:mira_app/screens/daily_brief/daily_brief_screen.dart';
 import 'package:mira_app/screens/workspace/canvas_workspace_screen.dart';
-import 'package:mira_app/screens/workspace/connector_marketplace_screen.dart';
 import 'package:mira_app/screens/workspace/library_screen.dart';
 import 'package:mira_app/screens/workspace/tasks_brief_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
@@ -214,9 +213,6 @@ class _HomeScreenState extends State<HomeScreen> {
               _WorkspaceAccessPanel(
                 onLibraryTap: () => _selectTab(NavTab.library),
                 onCanvasTap: () => _selectTab(NavTab.canvas),
-                onConnectorsTap: () => Navigator.of(
-                  context,
-                ).pushMira((_) => const ConnectorMarketplaceScreen()),
               ),
               SizedBox(height: 18 * scale),
               _HomeHeroPanel(
@@ -431,12 +427,10 @@ class _WorkspaceAccessPanel extends StatelessWidget {
   const _WorkspaceAccessPanel({
     required this.onLibraryTap,
     required this.onCanvasTap,
-    required this.onConnectorsTap,
   });
 
   final VoidCallback onLibraryTap;
   final VoidCallback onCanvasTap;
-  final VoidCallback onConnectorsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -455,14 +449,6 @@ class _WorkspaceAccessPanel extends StatelessWidget {
             icon: Icons.hub_rounded,
             label: 'Canvas',
             onTap: onCanvasTap,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _WorkspaceAccessButton(
-            icon: Icons.extension_rounded,
-            label: 'Plugins',
-            onTap: onConnectorsTap,
           ),
         ),
       ],

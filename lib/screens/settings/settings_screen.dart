@@ -9,11 +9,11 @@ import 'package:mira_app/features/auth/auth_gate.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 import 'package:mira_app/models/api/settings_models.dart';
 import 'package:mira_app/screens/settings/account_settings_screen.dart';
-import 'package:mira_app/screens/settings/connector_settings_screen.dart';
 import 'package:mira_app/screens/settings/help_support_screen.dart';
 import 'package:mira_app/screens/settings/notification_settings_screen.dart';
 import 'package:mira_app/screens/settings/privacy_settings_screen.dart';
 import 'package:mira_app/screens/settings/settings_widgets.dart';
+import 'package:mira_app/screens/workspace/connector_marketplace_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -195,21 +195,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         inviteCode: _inviteCode,
         miraLink: _miraLink,
         onRefresh: _refresh,
-        onAccount: () => Navigator.of(context).pushMira(
-          (_) => AccountSettingsScreen(initialUser: _user),
-        ),
+        onAccount: () => Navigator.of(
+          context,
+        ).pushMira((_) => AccountSettingsScreen(initialUser: _user)),
         onNotifications: () => Navigator.of(context).pushMira(
           (_) => NotificationSettingsScreen(initialSettings: _settings!),
         ),
-        onConnectors: () => Navigator.of(context).pushMira(
-          (_) => const ConnectorSettingsScreen(),
-        ),
-        onPrivacy: () => Navigator.of(context).pushMira(
-          (_) => PrivacySettingsScreen(initialSettings: _settings!),
-        ),
-        onAbout: () => Navigator.of(context).pushMira(
-          (_) => HelpSupportScreen(user: _user),
-        ),
+        onConnectors: () => Navigator.of(
+          context,
+        ).pushMira((_) => const ConnectorMarketplaceScreen()),
+        onPrivacy: () => Navigator.of(
+          context,
+        ).pushMira((_) => PrivacySettingsScreen(initialSettings: _settings!)),
+        onAbout: () => Navigator.of(
+          context,
+        ).pushMira((_) => HelpSupportScreen(user: _user)),
         onLogout: _logout,
       );
     }
@@ -316,9 +316,9 @@ class _SettingsContent extends StatelessWidget {
             padding: figmaInsets(context, 16, 31, 28, 31),
             onTap: onConnectors,
             child: const _PrimaryTile(
-              icon: Icons.hub_outlined,
-              title: 'Connector Settings',
-              subtitle: 'Gmail, Calendar, Drive and more',
+              icon: Icons.sync_alt_rounded,
+              title: 'Connectors',
+              subtitle: 'Provider sync, OAuth, and automation',
             ),
           ),
           const FigmaSettingsSectionLabel('Invite'),
