@@ -4,8 +4,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/core/mira_navigation.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 import 'package:mira_app/screens/workspace/canvas_workspace_screen.dart';
+import 'package:mira_app/screens/workspace/meeting_recorder_screen.dart';
 import 'package:mira_app/screens/workspace/note_editor_screen.dart';
 import 'package:mira_app/theme/app_colors.dart';
 import 'package:mira_app/theme/app_typography.dart';
@@ -83,21 +85,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (context) => _MeetingTranscriptSheet(
-        title: title,
-        transcript: transcript,
-      ),
+      builder: (context) =>
+          _MeetingTranscriptSheet(title: title, transcript: transcript),
     );
     final nextTitle = title.text.trim();
     final nextTranscript = transcript.text.trim();
     title.dispose();
     transcript.dispose();
     if (result != true || nextTranscript.isEmpty || !mounted) return;
-    await AppScope.servicesOf(context).libraryRepository.importMeetingTranscript(
+    await AppScope.servicesOf(
+      context,
+    ).libraryRepository.importMeetingTranscript(
       title: nextTitle.isEmpty ? 'Meeting notes' : nextTitle,
       transcript: nextTranscript,
     );
     if (mounted) unawaited(_load());
+  }
+
+  Future<void> _recordMeeting() async {
+    final saved = await Navigator.of(
+      context,
+    ).pushMira<bool>((_) => const MeetingRecorderScreen());
+    if (saved == true && mounted) unawaited(_load());
   }
 
   Future<void> _uploadForSource(ImportSourceDto source) async {
@@ -166,6 +175,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
       isScrollControlled: true,
       builder: (context) => _ImportHubSheet(
         sources: _sources,
+        onPasteMeeting: () {
+          Navigator.of(context).pop();
+          unawaited(_createMeetingTranscript());
+        },
+        onRecordMeeting: () {
+          Navigator.of(context).pop();
+          unawaited(_recordMeeting());
+        },
         onSelect: (source) {
           Navigator.of(context).pop();
           _handleImportSource(source);
@@ -226,6 +243,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               Expanded(
                 child: Text(
                   'Library',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTypography.dosis(size: 28, weight: FontWeight.w700),
                 ),
               ),
@@ -240,9 +259,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 icon: const Icon(Icons.note_add_outlined),
               ),
               IconButton(
-                tooltip: 'Meeting notes',
+                tooltip: AppLocalizations.of(
+                  context,
+                )!.libraryMeetingPasteAction,
                 onPressed: () => unawaited(_createMeetingTranscript()),
                 icon: const Icon(Icons.record_voice_over_outlined),
+              ),
+              IconButton(
+                tooltip: AppLocalizations.of(context)!.meetingRecorderTitle,
+                onPressed: () => unawaited(_recordMeeting()),
+                icon: const Icon(Icons.mic_external_on_outlined),
               ),
             ],
           ),
@@ -477,13 +503,21 @@ class _AddAnythingBand extends StatelessWidget {
 }
 
 class _ImportHubSheet extends StatelessWidget {
-  const _ImportHubSheet({required this.sources, required this.onSelect});
+  const _ImportHubSheet({
+    required this.sources,
+    required this.onPasteMeeting,
+    required this.onRecordMeeting,
+    required this.onSelect,
+  });
 
   final List<ImportSourceDto> sources;
+  final VoidCallback onPasteMeeting;
+  final VoidCallback onRecordMeeting;
   final ValueChanged<ImportSourceDto> onSelect;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final grouped = <String, List<ImportSourceDto>>{};
     for (final source in sources) {
       grouped.putIfAbsent(source.category, () => []).add(source);
@@ -508,6 +542,15 @@ class _ImportHubSheet extends StatelessWidget {
               style: AppTypography.dosis(
                 size: 14,
               ).copyWith(color: AppColors.textSecondary, height: 1.35),
+            ),
+            const SizedBox(height: 18),
+            _MeetingImportActions(
+              title: l10n.libraryMeetingImportTitle,
+              body: l10n.libraryMeetingImportBody,
+              pasteLabel: l10n.libraryMeetingPasteAction,
+              recordLabel: l10n.meetingRecorderTitle,
+              onPaste: onPasteMeeting,
+              onRecord: onRecordMeeting,
             ),
             const SizedBox(height: 18),
             for (final entry in grouped.entries) ...[
@@ -616,6 +659,89 @@ class _ImportSourceChip extends StatelessWidget {
       default:
         return 'Upload';
     }
+  }
+}
+
+class _MeetingImportActions extends StatelessWidget {
+  const _MeetingImportActions({
+    required this.title,
+    required this.body,
+    required this.pasteLabel,
+    required this.recordLabel,
+    required this.onPaste,
+    required this.onRecord,
+  });
+
+  final String title;
+  final String body;
+  final String pasteLabel;
+  final String recordLabel;
+  final VoidCallback onPaste;
+  final VoidCallback onRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF0FF),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.groups_rounded, color: AppColors.accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.dosis(size: 18, weight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            body,
+            style: AppTypography.dosis(
+              size: 13,
+            ).copyWith(color: AppColors.textSecondary, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onRecord,
+                  icon: const Icon(Icons.mic_external_on_outlined),
+                  label: Text(
+                    recordLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onPaste,
+                  icon: const Icon(Icons.notes_rounded),
+                  label: Text(
+                    pasteLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1123,9 +1249,8 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
                       ),
                       IconButton(
                         tooltip: 'Delete annotation',
-                        onPressed: () => unawaited(
-                          _deleteAnnotation(annotation),
-                        ),
+                        onPressed: () =>
+                            unawaited(_deleteAnnotation(annotation)),
                         icon: const Icon(Icons.delete_outline_rounded),
                       ),
                     ],

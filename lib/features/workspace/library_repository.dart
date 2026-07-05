@@ -190,4 +190,25 @@ class LibraryRepository {
     );
     return LibraryItem.fromJson(response.data!);
   }
+
+  Future<LibraryItem> importMeetingAudio({
+    required String title,
+    required String audioPath,
+    String filename = 'meeting.m4a',
+    String? mimeType,
+  }) async {
+    final formData = FormData.fromMap({
+      'title': title,
+      'file': await MultipartFile.fromFile(
+        audioPath,
+        filename: filename,
+        contentType: mimeType == null ? null : DioMediaType.parse(mimeType),
+      ),
+    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/library/meetings',
+      data: formData,
+    );
+    return LibraryItem.fromJson(response.data!);
+  }
 }

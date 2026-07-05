@@ -194,5 +194,33 @@
   "appUpdateClose": "Close",
   "appUpdateDownload": "Download update",
   "appUpdateLater": "Later",
-  "appUpdateDownloadFailed": "Download failed. Check your connection and try again."
+  "appUpdateDownloadFailed": "Download failed. Check your connection and try again.",
+  "meetingRecorderTitle": "Record meeting",
+  "meetingRecorderDefaultTitle": "Meeting",
+  "meetingRecorderTitleHint": "Meeting title",
+  "meetingRecorderStarting": "Starting recorder...",
+  "meetingRecorderRecording": "Recording",
+  "meetingRecorderReady": "Ready to save",
+  "meetingRecorderInterrupted": "Recording stopped because Mira was interrupted.",
+  "meetingRecorderInterruptedBody": "The recorded part is still here. Save it, or discard it and start again.",
+  "meetingRecorderBody": "Mira saves this as a Library item, then transcribes it for search, summaries, decisions, and follow-ups.",
+  "meetingRecorderStop": "Stop",
+  "meetingRecorderCancel": "Cancel",
+  "meetingRecorderDiscard": "Discard",
+  "meetingRecorderSave": "Save meeting",
+  "meetingRecorderSaving": "Saving meeting...",
+  "meetingRecorderSaved": "Meeting saved to Library.",
+  "meetingRecorderStartFailed": "Could not start recording. Check microphone permission.",
+  "meetingRecorderSaveFailed": "Could not save this recording. Try again.",
+  "meetingRecorderNoAudio": "No audio file was created. Paste a transcript or try recording on your phone.",
+  "meetingRecorderPhoneCallNote": "If a phone call or app switch interrupts recording, Mira keeps the recorded part before the interruption.",
+  "meetingRecorderDurationLabel": "Duration {duration}",
+  "@meetingRecorderDurationLabel": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "libraryMeetingImportTitle": "Meetings",
+  "libraryMeetingImportBody": "Record a live meeting or paste the transcript, decisions, and notes into Library.",
+  "libraryMeetingPasteAction": "Paste meeting notes"
 }

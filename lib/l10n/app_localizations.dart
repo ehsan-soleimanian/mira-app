@@ -1011,6 +1011,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Download failed. Check your connection and try again.'**
   String get appUpdateDownloadFailed;
+
+  /// No description provided for @meetingRecorderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Record meeting'**
+  String get meetingRecorderTitle;
+
+  /// No description provided for @meetingRecorderDefaultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting'**
+  String get meetingRecorderDefaultTitle;
+
+  /// No description provided for @meetingRecorderTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting title'**
+  String get meetingRecorderTitleHint;
+
+  /// No description provided for @meetingRecorderStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting recorder...'**
+  String get meetingRecorderStarting;
+
+  /// No description provided for @meetingRecorderRecording.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording'**
+  String get meetingRecorderRecording;
+
+  /// No description provided for @meetingRecorderReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to save'**
+  String get meetingRecorderReady;
+
+  /// No description provided for @meetingRecorderInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording stopped because Mira was interrupted.'**
+  String get meetingRecorderInterrupted;
+
+  /// No description provided for @meetingRecorderInterruptedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The recorded part is still here. Save it, or discard it and start again.'**
+  String get meetingRecorderInterruptedBody;
+
+  /// No description provided for @meetingRecorderBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira saves this as a Library item, then transcribes it for search, summaries, decisions, and follow-ups.'**
+  String get meetingRecorderBody;
+
+  /// No description provided for @meetingRecorderStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get meetingRecorderStop;
+
+  /// No description provided for @meetingRecorderCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get meetingRecorderCancel;
+
+  /// No description provided for @meetingRecorderDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get meetingRecorderDiscard;
+
+  /// No description provided for @meetingRecorderSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save meeting'**
+  String get meetingRecorderSave;
+
+  /// No description provided for @meetingRecorderSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving meeting...'**
+  String get meetingRecorderSaving;
+
+  /// No description provided for @meetingRecorderSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting saved to Library.'**
+  String get meetingRecorderSaved;
+
+  /// No description provided for @meetingRecorderStartFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start recording. Check microphone permission.'**
+  String get meetingRecorderStartFailed;
+
+  /// No description provided for @meetingRecorderSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save this recording. Try again.'**
+  String get meetingRecorderSaveFailed;
+
+  /// No description provided for @meetingRecorderNoAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'No audio file was created. Paste a transcript or try recording on your phone.'**
+  String get meetingRecorderNoAudio;
+
+  /// No description provided for @meetingRecorderPhoneCallNote.
+  ///
+  /// In en, this message translates to:
+  /// **'If a phone call or app switch interrupts recording, Mira keeps the recorded part before the interruption.'**
+  String get meetingRecorderPhoneCallNote;
+
+  /// No description provided for @meetingRecorderDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration {duration}'**
+  String meetingRecorderDurationLabel(String duration);
+
+  /// No description provided for @libraryMeetingImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Meetings'**
+  String get libraryMeetingImportTitle;
+
+  /// No description provided for @libraryMeetingImportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a live meeting or paste the transcript, decisions, and notes into Library.'**
+  String get libraryMeetingImportBody;
+
+  /// No description provided for @libraryMeetingPasteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste meeting notes'**
+  String get libraryMeetingPasteAction;
 }
 
 class _AppLocalizationsDelegate

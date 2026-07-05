@@ -517,4 +517,82 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get appUpdateDownloadFailed =>
       'دانلود ناموفق بود. اتصال اینترنت را بررسی کنید.';
+
+  @override
+  String get meetingRecorderTitle => 'ضبط جلسه';
+
+  @override
+  String get meetingRecorderDefaultTitle => 'جلسه';
+
+  @override
+  String get meetingRecorderTitleHint => 'نام جلسه';
+
+  @override
+  String get meetingRecorderStarting => 'در حال آماده‌سازی ضبط...';
+
+  @override
+  String get meetingRecorderRecording => 'در حال ضبط';
+
+  @override
+  String get meetingRecorderReady => 'آماده ذخیره';
+
+  @override
+  String get meetingRecorderInterrupted => 'ضبط به خاطر وقفه متوقف شد.';
+
+  @override
+  String get meetingRecorderInterruptedBody =>
+      'بخش ضبط‌شده هنوز اینجاست. می‌توانید آن را ذخیره کنید یا حذف کنید و دوباره شروع کنید.';
+
+  @override
+  String get meetingRecorderBody =>
+      'میرا این را به عنوان یک آیتم کتابخانه ذخیره می‌کند و بعد برای جست‌وجو، خلاصه، تصمیم‌ها و پیگیری‌ها متن‌سازی می‌کند.';
+
+  @override
+  String get meetingRecorderStop => 'توقف';
+
+  @override
+  String get meetingRecorderCancel => 'لغو';
+
+  @override
+  String get meetingRecorderDiscard => 'حذف';
+
+  @override
+  String get meetingRecorderSave => 'ذخیره جلسه';
+
+  @override
+  String get meetingRecorderSaving => 'در حال ذخیره جلسه...';
+
+  @override
+  String get meetingRecorderSaved => 'جلسه در کتابخانه ذخیره شد.';
+
+  @override
+  String get meetingRecorderStartFailed =>
+      'ضبط شروع نشد. دسترسی میکروفون را بررسی کنید.';
+
+  @override
+  String get meetingRecorderSaveFailed =>
+      'این ضبط ذخیره نشد. دوباره تلاش کنید.';
+
+  @override
+  String get meetingRecorderNoAudio =>
+      'فایل صوتی ساخته نشد. متن جلسه را وارد کنید یا روی گوشی دوباره ضبط کنید.';
+
+  @override
+  String get meetingRecorderPhoneCallNote =>
+      'اگر تماس تلفنی یا جابه‌جایی اپ ضبط را قطع کند، میرا بخش ضبط‌شده تا قبل از وقفه را نگه می‌دارد.';
+
+  @override
+  String meetingRecorderDurationLabel(String duration) {
+    return 'مدت $duration';
+  }
+
+  @override
+  String get libraryMeetingImportTitle => 'جلسه‌ها';
+
+  @override
+  String get libraryMeetingImportBody =>
+      'جلسه را زنده ضبط کنید یا متن، تصمیم‌ها و یادداشت‌های آن را وارد کتابخانه کنید.';
+
+  @override
+  String get libraryMeetingPasteAction => 'وارد کردن یادداشت جلسه';
 }

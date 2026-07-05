@@ -150,5 +150,33 @@
   "appUpdateClose": "بستن",
   "appUpdateDownload": "دانلود نسخه جدید",
   "appUpdateLater": "بعداً",
-  "appUpdateDownloadFailed": "دانلود ناموفق بود. اتصال اینترنت را بررسی کنید."
+  "appUpdateDownloadFailed": "دانلود ناموفق بود. اتصال اینترنت را بررسی کنید.",
+  "meetingRecorderTitle": "ضبط جلسه",
+  "meetingRecorderDefaultTitle": "جلسه",
+  "meetingRecorderTitleHint": "نام جلسه",
+  "meetingRecorderStarting": "در حال آماده‌سازی ضبط...",
+  "meetingRecorderRecording": "در حال ضبط",
+  "meetingRecorderReady": "آماده ذخیره",
+  "meetingRecorderInterrupted": "ضبط به خاطر وقفه متوقف شد.",
+  "meetingRecorderInterruptedBody": "بخش ضبط‌شده هنوز اینجاست. می‌توانید آن را ذخیره کنید یا حذف کنید و دوباره شروع کنید.",
+  "meetingRecorderBody": "میرا این را به عنوان یک آیتم کتابخانه ذخیره می‌کند و بعد برای جست‌وجو، خلاصه، تصمیم‌ها و پیگیری‌ها متن‌سازی می‌کند.",
+  "meetingRecorderStop": "توقف",
+  "meetingRecorderCancel": "لغو",
+  "meetingRecorderDiscard": "حذف",
+  "meetingRecorderSave": "ذخیره جلسه",
+  "meetingRecorderSaving": "در حال ذخیره جلسه...",
+  "meetingRecorderSaved": "جلسه در کتابخانه ذخیره شد.",
+  "meetingRecorderStartFailed": "ضبط شروع نشد. دسترسی میکروفون را بررسی کنید.",
+  "meetingRecorderSaveFailed": "این ضبط ذخیره نشد. دوباره تلاش کنید.",
+  "meetingRecorderNoAudio": "فایل صوتی ساخته نشد. متن جلسه را وارد کنید یا روی گوشی دوباره ضبط کنید.",
+  "meetingRecorderPhoneCallNote": "اگر تماس تلفنی یا جابه‌جایی اپ ضبط را قطع کند، میرا بخش ضبط‌شده تا قبل از وقفه را نگه می‌دارد.",
+  "meetingRecorderDurationLabel": "مدت {duration}",
+  "@meetingRecorderDurationLabel": {
+    "placeholders": {
+      "duration": {"type": "String"}
+    }
+  },
+  "libraryMeetingImportTitle": "جلسه‌ها",
+  "libraryMeetingImportBody": "جلسه را زنده ضبط کنید یا متن، تصمیم‌ها و یادداشت‌های آن را وارد کتابخانه کنید.",
+  "libraryMeetingPasteAction": "وارد کردن یادداشت جلسه"
 }

@@ -515,4 +515,83 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appUpdateDownloadFailed =>
       'Download failed. Check your connection and try again.';
+
+  @override
+  String get meetingRecorderTitle => 'Record meeting';
+
+  @override
+  String get meetingRecorderDefaultTitle => 'Meeting';
+
+  @override
+  String get meetingRecorderTitleHint => 'Meeting title';
+
+  @override
+  String get meetingRecorderStarting => 'Starting recorder...';
+
+  @override
+  String get meetingRecorderRecording => 'Recording';
+
+  @override
+  String get meetingRecorderReady => 'Ready to save';
+
+  @override
+  String get meetingRecorderInterrupted =>
+      'Recording stopped because Mira was interrupted.';
+
+  @override
+  String get meetingRecorderInterruptedBody =>
+      'The recorded part is still here. Save it, or discard it and start again.';
+
+  @override
+  String get meetingRecorderBody =>
+      'Mira saves this as a Library item, then transcribes it for search, summaries, decisions, and follow-ups.';
+
+  @override
+  String get meetingRecorderStop => 'Stop';
+
+  @override
+  String get meetingRecorderCancel => 'Cancel';
+
+  @override
+  String get meetingRecorderDiscard => 'Discard';
+
+  @override
+  String get meetingRecorderSave => 'Save meeting';
+
+  @override
+  String get meetingRecorderSaving => 'Saving meeting...';
+
+  @override
+  String get meetingRecorderSaved => 'Meeting saved to Library.';
+
+  @override
+  String get meetingRecorderStartFailed =>
+      'Could not start recording. Check microphone permission.';
+
+  @override
+  String get meetingRecorderSaveFailed =>
+      'Could not save this recording. Try again.';
+
+  @override
+  String get meetingRecorderNoAudio =>
+      'No audio file was created. Paste a transcript or try recording on your phone.';
+
+  @override
+  String get meetingRecorderPhoneCallNote =>
+      'If a phone call or app switch interrupts recording, Mira keeps the recorded part before the interruption.';
+
+  @override
+  String meetingRecorderDurationLabel(String duration) {
+    return 'Duration $duration';
+  }
+
+  @override
+  String get libraryMeetingImportTitle => 'Meetings';
+
+  @override
+  String get libraryMeetingImportBody =>
+      'Record a live meeting or paste the transcript, decisions, and notes into Library.';
+
+  @override
+  String get libraryMeetingPasteAction => 'Paste meeting notes';
 }
