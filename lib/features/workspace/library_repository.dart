@@ -25,6 +25,20 @@ class LibraryRepository {
         .toList();
   }
 
+  Future<LibrarySearchResponse> searchV2({
+    String query = '',
+    String? type,
+    int limit = 20,
+  }) async {
+    final data = <String, dynamic>{'q': query.trim(), 'limit': limit};
+    if (type != null) data['type'] = type;
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/library/search-v2',
+      data: data,
+    );
+    return LibrarySearchResponse.fromJson(response.data!);
+  }
+
   Future<List<ImportSourceDto>> importSources() async {
     final response = await _dio.get<List<dynamic>>('/library/import-sources');
     return (response.data ?? const [])
@@ -41,6 +55,45 @@ class LibraryRepository {
         .whereType<Map<String, dynamic>>()
         .map(LibraryChunk.fromJson)
         .toList();
+  }
+
+  Future<List<LibraryAnnotation>> annotations(String itemId) async {
+    final response = await _dio.get<List<dynamic>>(
+      '/library/items/$itemId/annotations',
+    );
+    return (response.data ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(LibraryAnnotation.fromJson)
+        .toList();
+  }
+
+  Future<LibraryAnnotation> createAnnotation({
+    required String itemId,
+    String? chunkId,
+    required String quote,
+    required String note,
+    String color = 'yellow',
+    int? startMs,
+    int? endMs,
+  }) async {
+    final data = <String, dynamic>{
+      'anchorType': chunkId == null ? 'item' : 'chunk',
+      'quote': quote,
+      'note': note,
+      'color': color,
+    };
+    if (chunkId != null) data['chunkId'] = chunkId;
+    if (startMs != null) data['startMs'] = startMs;
+    if (endMs != null) data['endMs'] = endMs;
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/library/items/$itemId/annotations',
+      data: data,
+    );
+    return LibraryAnnotation.fromJson(response.data!);
+  }
+
+  Future<void> deleteAnnotation(String id) async {
+    await _dio.delete<void>('/library/annotations/$id');
   }
 
   Future<LibraryItem> retryExtraction(String itemId) async {
@@ -119,6 +172,21 @@ class LibraryRepository {
         if (mimeType != null && mimeType.trim().isNotEmpty)
           'mimeType': mimeType.trim(),
       },
+    );
+    return LibraryItem.fromJson(response.data!);
+  }
+
+  Future<LibraryItem> importMeetingTranscript({
+    required String title,
+    required String transcript,
+  }) async {
+    final formData = FormData.fromMap({
+      'title': title,
+      'transcript': transcript,
+    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/library/meetings',
+      data: formData,
     );
     return LibraryItem.fromJson(response.data!);
   }

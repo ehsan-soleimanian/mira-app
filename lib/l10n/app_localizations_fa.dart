@@ -186,6 +186,29 @@ class AppLocalizationsFa extends AppLocalizations {
       'طبیعی بنویس. اگر بین سوال و خاطره مردد باشد، از تو می‌پرسد.';
 
   @override
+  String get captureApprovalDraftLabel => 'برداشت میرا';
+
+  @override
+  String get captureApprovalSavePrompt =>
+      'این پیش‌نویس حافظه را ساختم. قبل از ذخیره، چیزی را تغییر بدهم؟';
+
+  @override
+  String get captureApprovalSavedPrompt =>
+      'در حافظه ذخیره شد. اگر چیزی نیاز به تغییر دارد، ادامه بده.';
+
+  @override
+  String get captureApprovalCorrectionHint => 'اصلاح کن یا درباره همین بپرس';
+
+  @override
+  String get captureApprovalSaveAction => 'ذخیره در حافظه';
+
+  @override
+  String get captureApprovalDismissAction => 'رد کردن';
+
+  @override
+  String get captureApprovalUpdatingStatus => 'در حال به‌روزرسانی پیش‌نویس...';
+
+  @override
   String get captureEntityEquivalenceDefaultPrompt =>
       'آیا این‌ها در حافظه‌ات یک نفر هستند؟';
 

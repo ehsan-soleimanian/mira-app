@@ -59,6 +59,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/captures/{id}/stream` | `capture_repository.dart` | SSE pipeline events |
 | `POST` | `/captures/{id}/confirm-time` | `capture_repository.dart` | Resolve ambiguous time |
 | `POST` | `/captures/{id}/clarify-intent` | `capture_repository.dart` | Resolve ambiguous question-vs-save intent |
+| `POST` | `/captures/{id}/follow-up` | `capture_repository.dart` | Continue or revise a pending approval draft |
 | `POST` | `/captures/{id}/confirm-entity-equivalence` | `capture_repository.dart` | Confirm cross-language same person |
 | `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Ingest approved capture into graph v2 |
 | `POST` | `/captures/{id}/dismiss` | `capture_repository.dart` | Discard capture |
@@ -81,6 +82,12 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/library/import-sources` | `library_repository.dart` | Fabric-style import source manifest |
 | `POST` | `/library/imports/link` | `library_repository.dart` | Import web/video/social URL metadata |
 | `POST` | `/library/imports/text` | `library_repository.dart` | Import pasted text, exports, HTML, notes |
+| `POST` | `/library/search-v2` | `library_repository.dart` | Chunk-level Library search with snippets/citations |
+| `POST` | `/library/meetings` | `library_repository.dart` | Import meeting transcript or meeting media |
+| `GET` | `/library/items/{id}/annotations` | `library_repository.dart` | Reader annotations for an item |
+| `POST` | `/library/items/{id}/annotations` | `library_repository.dart` | Create a chunk/page/timestamp annotation |
+| `PATCH` | `/library/annotations/{id}` | `library_repository.dart` | Update annotation |
+| `DELETE` | `/library/annotations/{id}` | `library_repository.dart` | Delete annotation |
 | `GET` | `/plugins` | `plugin_repository.dart` | Connector registry and status |
 | `POST` | `/plugins/{id}/connect` | `plugin_repository.dart` | Configure connector adapter |
 | `POST` | `/plugins/{id}/sync` | `plugin_repository.dart` | Manual connector sync into Library |
@@ -779,6 +786,33 @@ Use when capture state is `clarification_needed` and backend asks:
 
 ---
 
+### Follow up on pending approval
+`POST /captures/{capture_id}/follow-up`
+
+Use when a capture is already awaiting approval and the user keeps chatting before saving, e.g. `not tomorrow, Friday` or `why did you make this a task?`.
+
+**Request Body**
+```json
+{
+  "message": "Actually make it Friday"
+}
+```
+
+| Field | Type | Rules |
+|-------|------|-------|
+| `message` | string | required, 1-4000 chars |
+
+**Response** `200` — same `capture_id`, capture response in one of:
+- `awaiting_approval` + updated `proposal`
+- `question_answered` + `answer`
+- `clarification_needed` if more input is required
+
+Backend rebuilds transient `raw_text` from the original user input plus the follow-up, clears the old proposal, and re-runs capture processing. Nothing enters Graph V2 until `POST /captures/{capture_id}/approve`.
+
+**Errors**: `409` wrong state · `404` · `403` · `422` invalid message
+
+---
+
 ### Confirm entity equivalence (cross-language same person)
 `POST /captures/{capture_id}/confirm-entity-equivalence`
 
@@ -1174,6 +1208,7 @@ No query parameters.
 ## Workspace Library & Connectors
 
 All routes below require Bearer auth except `GET /.well-known/mira-mcp.json`.
+Bearer auth may be either an app JWT access token or a scoped developer API key for workspace/MCP/clipper tooling.
 
 ### Canvas boards
 
@@ -1226,6 +1261,8 @@ Fetches one board owned by the current user.
   "updatedAt": "2026-07-05T12:00:00Z"
 }
 ```
+
+Canvas node `type` values include `sticky`, `text`, `shape`, `arrow`, `library_item`, `chunk_reference`, `annotation`, and `embed`. The backend normalizes legacy `library` nodes to `library_item` and keeps `viewport.schemaVersion = "canvas.v1"`.
 
 ### List connectors
 `GET /plugins`
@@ -1344,6 +1381,110 @@ Creates a Library item from pasted/shared text, message exports, HTML, Markdown,
 ```
 
 **Response**: `LibraryItem` with `extractionStatus: "ready"`.
+
+### Search Library v2
+`POST /library/search-v2`
+
+Runs chunk-level semantic search when the admin `embed` route is configured; otherwise uses lexical scoring. Response is citation-ready and does not replace the legacy `/library/search` list endpoint.
+
+```json
+{
+  "q": "founder pricing",
+  "type": "note",
+  "source": "import:meeting_notes",
+  "tags": ["meeting"],
+  "status": "ready",
+  "limit": 20
+}
+```
+
+**Response** `200`
+```json
+{
+  "query": "founder pricing",
+  "matches": [
+    {
+      "item": { "id": "550e8400-e29b-41d4-a716-446655440000" },
+      "chunk": {
+        "id": "660e8400-e29b-41d4-a716-446655440000",
+        "itemId": "550e8400-e29b-41d4-a716-446655440000",
+        "chunkType": "text",
+        "chunkIndex": 0,
+        "text": "Atlas should use invited onboarding and founder pricing.",
+        "startMs": null,
+        "endMs": null,
+        "locator": null,
+        "metadata": {},
+        "createdAt": "2026-07-05T12:00:00Z"
+      },
+      "score": 1.25,
+      "snippet": "Atlas should use invited onboarding and founder pricing.",
+      "matchType": "lexical"
+    }
+  ]
+}
+```
+
+### Assistant over Library
+`POST /assistant/run`
+
+Uses `/library/search-v2` context. The legacy `citations` array remains item-level for compatibility; new UI should prefer `sourceCitations`.
+
+```json
+{ "prompt": "What did I save about founder pricing?", "action": "ask" }
+```
+
+**Response** `200`
+```json
+{
+  "answer": "Answer from your Mira Library...",
+  "citations": [],
+  "sourceCitations": [],
+  "createdItem": null,
+  "createdSpace": null
+}
+```
+
+### Meeting notes
+`POST /library/meetings`
+
+Multipart form. Send `title` plus either `transcript` or `file`.
+
+```text
+title=Weekly sync
+transcript=Decision: ship annotations.
+```
+
+Text transcript imports return a ready `LibraryItem`; audio/video files are stored securely and queued for media-worker transcription.
+
+### Annotations
+`GET /library/items/{id}/annotations`
+
+Lists reader annotations for an item.
+
+`POST /library/items/{id}/annotations`
+```json
+{
+  "chunkId": "660e8400-e29b-41d4-a716-446655440000",
+  "anchorType": "chunk",
+  "quote": "founder pricing",
+  "note": "Important launch line",
+  "color": "yellow",
+  "tags": []
+}
+```
+
+`PATCH /library/annotations/{id}` accepts the same body shape. `DELETE /library/annotations/{id}` returns `204`.
+
+### Developer API keys, MCP, CLI, Web Clipper
+
+`GET /developer/api-keys`, `POST /developer/api-keys`, `DELETE /developer/api-keys/{id}` manage scoped tokens. Create returns the raw `token` once.
+
+`POST /mcp/tools/{tool_name}` executes authenticated tools such as `library.search`, `assistant.ask`, `library.create_item`, and `spaces.list`.
+
+CLI: backend package exposes `mira`; set `MIRA_API_BASE` and `MIRA_API_TOKEN`, then run `mira ask`, `mira search`, `mira note`, `mira link`, `mira upload`, or `mira sync-folder`.
+
+Web Clipper: Chrome MV3 extension is in `../mira-backend/tools/web-clipper-extension/` and sends clipped links/text to the Library endpoints using a developer API key.
 
 ---
 

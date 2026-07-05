@@ -109,6 +109,7 @@ class _CanvasWorkspaceScreenState extends State<CanvasWorkspaceScreen> {
   Map<String, dynamic> _viewportJson() {
     final matrix = _transform.value;
     return {
+      'schemaVersion': 'canvas.v1',
       'x': matrix.storage[12],
       'y': matrix.storage[13],
       'scale': matrix.getMaxScaleOnAxis(),
@@ -272,6 +273,7 @@ class _CanvasWorkspaceScreenState extends State<CanvasWorkspaceScreen> {
             'thumbnailUrl': selected.thumbnailUrl,
           if (selected.mediaMetadata['duration_seconds'] != null)
             'durationSeconds': selected.mediaMetadata['duration_seconds'],
+          if (selected.sourceUrl != null) 'sourceUrl': selected.sourceUrl,
         },
       ),
     );
@@ -658,7 +660,11 @@ class _NodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLibrary = node.type == _CanvasNodeType.library;
+    final isLibrary = node.type == _CanvasNodeType.library ||
+        node.type == _CanvasNodeType.libraryItem ||
+        node.type == _CanvasNodeType.chunkReference ||
+        node.type == _CanvasNodeType.annotation ||
+        node.type == _CanvasNodeType.embed;
     final isShape = node.type == _CanvasNodeType.shape;
     final summary = node.metadata['summary']?.toString() ?? '';
     final thumbnailUrl = node.metadata['thumbnailUrl']?.toString();
@@ -720,6 +726,18 @@ class _NodeCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           status,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.dosis(size: 11).copyWith(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                      if (node.metadata['locator'] != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          node.metadata['locator'].toString(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.dosis(size: 11).copyWith(
@@ -1009,7 +1027,17 @@ class _ArrowNodePainter extends CustomPainter {
       oldDelegate.color != color;
 }
 
-enum _CanvasNodeType { sticky, text, library, shape, arrow }
+enum _CanvasNodeType {
+  sticky,
+  text,
+  library,
+  libraryItem,
+  chunkReference,
+  annotation,
+  embed,
+  shape,
+  arrow,
+}
 
 class _CanvasNode {
   const _CanvasNode({
@@ -1025,12 +1053,10 @@ class _CanvasNode {
   });
 
   factory _CanvasNode.fromJson(Map<String, dynamic> json) {
+    final rawType = json['type']?.toString();
     return _CanvasNode(
       id: json['id']?.toString() ?? 'local-0',
-      type: _CanvasNodeType.values.firstWhere(
-        (type) => type.name == json['type'],
-        orElse: () => _CanvasNodeType.sticky,
-      ),
+      type: _nodeTypeFromWire(rawType),
       x: (json['x'] as num?)?.toDouble() ?? 120,
       y: (json['y'] as num?)?.toDouble() ?? 120,
       width: (json['width'] as num?)?.toDouble() ?? 210,
@@ -1053,7 +1079,7 @@ class _CanvasNode {
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'type': type.name,
+    'type': _nodeTypeToWire(type),
     'x': x,
     'y': y,
     'width': width,
@@ -1114,4 +1140,38 @@ Color _colorFromInt(int value) {
     (value >> 8) & 0xFF,
     value & 0xFF,
   );
+}
+
+_CanvasNodeType _nodeTypeFromWire(String? value) {
+  switch (value) {
+    case 'library_item':
+      return _CanvasNodeType.libraryItem;
+    case 'chunk_reference':
+      return _CanvasNodeType.chunkReference;
+    case 'annotation':
+      return _CanvasNodeType.annotation;
+    case 'embed':
+      return _CanvasNodeType.embed;
+    default:
+      return _CanvasNodeType.values.firstWhere(
+        (type) => type.name == value,
+        orElse: () => _CanvasNodeType.sticky,
+      );
+  }
+}
+
+String _nodeTypeToWire(_CanvasNodeType type) {
+  switch (type) {
+    case _CanvasNodeType.library:
+    case _CanvasNodeType.libraryItem:
+      return 'library_item';
+    case _CanvasNodeType.chunkReference:
+      return 'chunk_reference';
+    case _CanvasNodeType.annotation:
+      return 'annotation';
+    case _CanvasNodeType.embed:
+      return 'embed';
+    default:
+      return type.name;
+  }
 }

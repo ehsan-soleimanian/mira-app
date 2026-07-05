@@ -22,6 +22,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final _search = TextEditingController();
   final _assistant = TextEditingController();
   var _items = const <LibraryItem>[];
+  var _matches = const <LibrarySearchMatch>[];
   var _sources = const <ImportSourceDto>[];
   var _loading = true;
   String? _answer;
@@ -44,12 +45,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
     try {
       final repo = AppScope.servicesOf(context).libraryRepository;
       final results = await Future.wait([
-        repo.list(query: query),
+        repo.searchV2(query: query ?? ''),
         repo.importSources(),
       ]);
       if (!mounted) return;
+      final search = results[0] as LibrarySearchResponse;
       setState(() {
-        _items = results[0] as List<LibraryItem>;
+        _matches = search.matches;
+        _items = search.matches.map((match) => match.item).toList();
         _sources = results[1] as List<ImportSourceDto>;
         _loading = false;
       });
@@ -66,8 +69,35 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (!mounted) return;
     setState(() {
       _answer = response.answer;
-      _items = response.citations;
+      _matches = response.sourceCitations;
+      _items = response.sourceCitations.isNotEmpty
+          ? response.sourceCitations.map((match) => match.item).toList()
+          : response.citations;
     });
+  }
+
+  Future<void> _createMeetingTranscript() async {
+    final title = TextEditingController(text: 'Meeting notes');
+    final transcript = TextEditingController();
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => _MeetingTranscriptSheet(
+        title: title,
+        transcript: transcript,
+      ),
+    );
+    final nextTitle = title.text.trim();
+    final nextTranscript = transcript.text.trim();
+    title.dispose();
+    transcript.dispose();
+    if (result != true || nextTranscript.isEmpty || !mounted) return;
+    await AppScope.servicesOf(context).libraryRepository.importMeetingTranscript(
+      title: nextTitle.isEmpty ? 'Meeting notes' : nextTitle,
+      transcript: nextTranscript,
+    );
+    if (mounted) unawaited(_load());
   }
 
   Future<void> _uploadForSource(ImportSourceDto source) async {
@@ -209,6 +239,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 onPressed: _createNote,
                 icon: const Icon(Icons.note_add_outlined),
               ),
+              IconButton(
+                tooltip: 'Meeting notes',
+                onPressed: () => unawaited(_createMeetingTranscript()),
+                icon: const Icon(Icons.record_voice_over_outlined),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -282,6 +317,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
             for (final item in _items)
               _LibraryItemTile(
                 item: item,
+                match: _matches
+                    .where((match) => match.item.id == item.id)
+                    .firstOrNull,
                 onTap: () => Navigator.of(
                   context,
                 ).pushMira((_) => LibraryItemDetailScreen(item: item)),
@@ -293,9 +331,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
 }
 
 class _LibraryItemTile extends StatelessWidget {
-  const _LibraryItemTile({required this.item, required this.onTap});
+  const _LibraryItemTile({required this.item, required this.onTap, this.match});
 
   final LibraryItem item;
+  final LibrarySearchMatch? match;
   final VoidCallback onTap;
 
   @override
@@ -334,7 +373,9 @@ class _LibraryItemTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      item.summary.isNotEmpty
+                      match?.snippet.isNotEmpty == true
+                          ? match!.snippet
+                          : item.summary.isNotEmpty
                           ? item.summary
                           : item.contentText ?? item.source,
                       maxLines: 3,
@@ -343,6 +384,18 @@ class _LibraryItemTile extends StatelessWidget {
                         size: 13,
                       ).copyWith(color: AppColors.textSecondary, height: 1.3),
                     ),
+                    if (match != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '${match!.matchType} · ${match!.chunk?.locator ?? 'item'}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.dosis(
+                          size: 11,
+                          weight: FontWeight.w700,
+                        ).copyWith(color: AppColors.accent),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -365,6 +418,10 @@ class _LibraryItemTile extends StatelessWidget {
         return Icons.notes_rounded;
     }
   }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }
 
 class _AddAnythingBand extends StatelessWidget {
@@ -622,6 +679,75 @@ class _ImportTextSheet extends StatelessWidget {
   }
 }
 
+class _MeetingTranscriptSheet extends StatelessWidget {
+  const _MeetingTranscriptSheet({
+    required this.title,
+    required this.transcript,
+  });
+
+  final TextEditingController title;
+  final TextEditingController transcript;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Meeting notes',
+              style: AppTypography.dosis(size: 22, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: title,
+              decoration: InputDecoration(
+                hintText: 'Title',
+                filled: true,
+                fillColor: AppColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: transcript,
+              autofocus: true,
+              minLines: 7,
+              maxLines: 12,
+              decoration: InputDecoration(
+                hintText: 'Paste transcript, decisions, or meeting notes',
+                filled: true,
+                fillColor: AppColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppColors.border),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Import meeting'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ImportGuideSheet extends StatelessWidget {
   const _ImportGuideSheet({
     required this.source,
@@ -685,6 +811,7 @@ class LibraryItemDetailScreen extends StatefulWidget {
 class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
   late LibraryItem _item;
   var _chunks = const <LibraryChunk>[];
+  var _annotations = const <LibraryAnnotation>[];
   String? _assistantAnswer;
   String? _publishUrl;
   String? _detailError;
@@ -701,12 +828,13 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
   Future<void> _loadChunks() async {
     setState(() => _loadingChunks = true);
     try {
-      final chunks = await AppScope.servicesOf(
-        context,
-      ).libraryRepository.chunks(_item.id);
+      final repository = AppScope.servicesOf(context).libraryRepository;
+      final chunks = await repository.chunks(_item.id);
+      final annotations = await repository.annotations(_item.id);
       if (!mounted) return;
       setState(() {
         _chunks = chunks;
+        _annotations = annotations;
         _detailError = null;
         _loadingChunks = false;
       });
@@ -772,6 +900,39 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
     final uri = Uri.tryParse(sourceUrl);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _annotateChunk(LibraryChunk chunk) async {
+    final controller = TextEditingController();
+    final note = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => _ImportTextSheet(
+        title: 'Annotate chunk',
+        hint: 'What should Mira remember about this passage?',
+        controller: controller,
+        minLines: 4,
+      ),
+    );
+    controller.dispose();
+    if (note == null || note.trim().isEmpty || !mounted) return;
+    await AppScope.servicesOf(context).libraryRepository.createAnnotation(
+      itemId: _item.id,
+      chunkId: chunk.id,
+      quote: chunk.text,
+      note: note.trim(),
+      startMs: chunk.startMs,
+      endMs: chunk.endMs,
+    );
+    await _loadChunks();
+  }
+
+  Future<void> _deleteAnnotation(LibraryAnnotation annotation) async {
+    await AppScope.servicesOf(
+      context,
+    ).libraryRepository.deleteAnnotation(annotation.id);
+    await _loadChunks();
   }
 
   @override
@@ -914,7 +1075,63 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
               chunks: _chunks,
               loading: _loadingChunks,
               status: item.extractionStatus,
+              onAnnotate: _annotateChunk,
             ),
+            const SizedBox(height: 16),
+          ],
+          if (_annotations.isNotEmpty) ...[
+            Text(
+              'Annotations',
+              style: AppTypography.dosis(size: 18, weight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            for (final annotation in _annotations)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _WorkspaceCard(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.format_quote_rounded,
+                        color: AppColors.accent,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              annotation.note,
+                              style: AppTypography.dosis(
+                                size: 14,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              annotation.quote,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.dosis(size: 12).copyWith(
+                                color: AppColors.textSecondary,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete annotation',
+                        onPressed: () => unawaited(
+                          _deleteAnnotation(annotation),
+                        ),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
           ],
           Text(
@@ -1038,11 +1255,13 @@ class _TranscriptTimeline extends StatelessWidget {
     required this.chunks,
     required this.loading,
     required this.status,
+    required this.onAnnotate,
   });
 
   final List<LibraryChunk> chunks;
   final bool loading;
   final String status;
+  final ValueChanged<LibraryChunk> onAnnotate;
 
   @override
   Widget build(BuildContext context) {
@@ -1088,6 +1307,11 @@ class _TranscriptTimeline extends StatelessWidget {
                         size: 14,
                       ).copyWith(color: AppColors.textSecondary, height: 1.35),
                     ),
+                  ),
+                  IconButton(
+                    tooltip: 'Annotate',
+                    onPressed: () => onAnnotate(chunk),
+                    icon: const Icon(Icons.edit_note_rounded),
                   ),
                 ],
               ),

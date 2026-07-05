@@ -123,6 +123,100 @@ class LibraryChunk {
   bool get hasTimestamp => startMs != null || locator != null;
 }
 
+class LibrarySearchMatch {
+  const LibrarySearchMatch({
+    required this.item,
+    required this.score,
+    required this.snippet,
+    required this.matchType,
+    this.chunk,
+  });
+
+  factory LibrarySearchMatch.fromJson(Map<String, dynamic> json) =>
+      LibrarySearchMatch(
+        item: LibraryItem.fromJson(json['item'] as Map<String, dynamic>),
+        chunk: json['chunk'] is Map<String, dynamic>
+            ? LibraryChunk.fromJson(json['chunk'] as Map<String, dynamic>)
+            : null,
+        score: (json['score'] as num?)?.toDouble() ?? 0,
+        snippet: json['snippet'] as String? ?? '',
+        matchType: json['matchType'] as String? ?? 'lexical',
+      );
+
+  final LibraryItem item;
+  final LibraryChunk? chunk;
+  final double score;
+  final String snippet;
+  final String matchType;
+}
+
+class LibrarySearchResponse {
+  const LibrarySearchResponse({required this.query, required this.matches});
+
+  factory LibrarySearchResponse.fromJson(Map<String, dynamic> json) =>
+      LibrarySearchResponse(
+        query: json['query'] as String? ?? '',
+        matches: (json['matches'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(LibrarySearchMatch.fromJson)
+            .toList(),
+      );
+
+  final String query;
+  final List<LibrarySearchMatch> matches;
+}
+
+class LibraryAnnotation {
+  const LibraryAnnotation({
+    required this.id,
+    required this.itemId,
+    required this.anchorType,
+    required this.quote,
+    required this.note,
+    required this.color,
+    required this.tags,
+    required this.createdAt,
+    required this.updatedAt,
+    this.chunkId,
+    this.page,
+    this.startMs,
+    this.endMs,
+  });
+
+  factory LibraryAnnotation.fromJson(Map<String, dynamic> json) =>
+      LibraryAnnotation(
+        id: json['id'] as String,
+        itemId: json['itemId'] as String? ?? '',
+        chunkId: json['chunkId'] as String?,
+        anchorType: json['anchorType'] as String? ?? 'chunk',
+        page: json['page'] as int?,
+        startMs: json['startMs'] as int?,
+        endMs: json['endMs'] as int?,
+        quote: json['quote'] as String? ?? '',
+        note: json['note'] as String? ?? '',
+        color: json['color'] as String? ?? 'yellow',
+        tags: (json['tags'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+        updatedAt: DateTime.parse(json['updatedAt'] as String).toLocal(),
+      );
+
+  final String id;
+  final String itemId;
+  final String? chunkId;
+  final String anchorType;
+  final int? page;
+  final int? startMs;
+  final int? endMs;
+  final String quote;
+  final String note;
+  final String color;
+  final List<String> tags;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
 class ImportSourceDto {
   const ImportSourceDto({
     required this.id,
@@ -225,6 +319,7 @@ class AssistantResponse {
   const AssistantResponse({
     required this.answer,
     this.citations = const [],
+    this.sourceCitations = const [],
     this.createdItem,
   });
 
@@ -235,6 +330,11 @@ class AssistantResponse {
             .whereType<Map<String, dynamic>>()
             .map(LibraryItem.fromJson)
             .toList(),
+        sourceCitations:
+            (json['sourceCitations'] as List<dynamic>? ?? const [])
+                .whereType<Map<String, dynamic>>()
+                .map(LibrarySearchMatch.fromJson)
+                .toList(),
         createdItem: json['createdItem'] is Map<String, dynamic>
             ? LibraryItem.fromJson(json['createdItem'] as Map<String, dynamic>)
             : null,
@@ -242,6 +342,7 @@ class AssistantResponse {
 
   final String answer;
   final List<LibraryItem> citations;
+  final List<LibrarySearchMatch> sourceCitations;
   final LibraryItem? createdItem;
 }
 
