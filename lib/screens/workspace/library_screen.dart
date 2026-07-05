@@ -713,7 +713,7 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _detailError = 'Could not load transcript chunks.';
+        _detailError = 'Could not load extracted chunks.';
         _loadingChunks = false;
       });
     }
@@ -904,9 +904,9 @@ class _LibraryItemDetailScreenState extends State<LibraryItemDetailScreen> {
             _WorkspaceCard(child: Text('Private link: $_publishUrl')),
           ],
           const SizedBox(height: 16),
-          if (item.isMedia) ...[
+          if (item.isMedia || _chunks.isNotEmpty || _loadingChunks) ...[
             Text(
-              'Transcript timeline',
+              item.isMedia ? 'Transcript timeline' : 'Extracted chunks',
               style: AppTypography.dosis(size: 18, weight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
