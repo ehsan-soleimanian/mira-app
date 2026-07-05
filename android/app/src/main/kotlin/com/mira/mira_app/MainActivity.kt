@@ -45,29 +45,28 @@ class MainActivity : FlutterActivity() {
         return when (intent.action) {
             Intent.ACTION_SEND -> {
                 val type = intent.type.orEmpty()
-                if (type.startsWith("image/")) {
-                    uriFromSendIntent(intent)?.let { imageItem(it, type) }
-                } else if (type == "text/plain") {
+                val stream = uriFromSendIntent(intent)
+                if (type == "text/plain" && stream == null) {
                     textItem(intent.getStringExtra(Intent.EXTRA_TEXT))
                 } else {
-                    null
+                    stream?.let { fileItem(it, type) }
                 }
             }
             Intent.ACTION_SEND_MULTIPLE -> {
                 val type = intent.type.orEmpty()
-                if (!type.startsWith("image/")) return null
-                firstUriFromSendMultipleIntent(intent)?.let { imageItem(it, type) }
+                firstUriFromSendMultipleIntent(intent)?.let { fileItem(it, type) }
             }
             else -> null
         }
     }
 
-    private fun imageItem(uri: Uri, fallbackMime: String): Map<String, Any?>? {
+    private fun fileItem(uri: Uri, fallbackMime: String): Map<String, Any?>? {
         val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        val mimeType = contentResolver.getType(uri) ?: fallbackMime
         return mapOf(
-            "type" to "image",
+            "type" to if (mimeType.startsWith("image/")) "image" else "file",
             "filename" to displayName(uri),
-            "mimeType" to (contentResolver.getType(uri) ?: fallbackMime),
+            "mimeType" to mimeType,
             "bytes" to bytes,
         )
     }

@@ -78,6 +78,9 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/canvas` | `canvas_repository.dart` | List user's visual workspace boards |
 | `GET` | `/canvas/{id}` | `canvas_repository.dart` | Fetch a visual board |
 | `PATCH` | `/canvas/{id}` | `canvas_repository.dart` | Persist nodes, edges, and viewport |
+| `GET` | `/library/import-sources` | `library_repository.dart` | Fabric-style import source manifest |
+| `POST` | `/library/imports/link` | `library_repository.dart` | Import web/video/social URL metadata |
+| `POST` | `/library/imports/text` | `library_repository.dart` | Import pasted text, exports, HTML, notes |
 | `GET` | `/plugins` | `plugin_repository.dart` | Connector registry and status |
 | `POST` | `/plugins/{id}/connect` | `plugin_repository.dart` | Configure connector adapter |
 | `POST` | `/plugins/{id}/sync` | `plugin_repository.dart` | Manual connector sync into Library |
@@ -1227,7 +1230,9 @@ Fetches one board owned by the current user.
 ### List connectors
 `GET /plugins`
 
-Returns every connector Mira can surface in the Flutter marketplace. All v1 connectors are enabled for manual adapter sync; Google connectors report `implementationStatus: "native_sync"` and the rest report `implementationStatus: "adapter_ready"`.
+Returns provider connectors only. Manual-only sources such as WhatsApp, Telegram, Bale, PDFs, local files, and social video links are not plugins; they appear in `GET /library/import-sources`.
+
+Google connectors report `implementationStatus: "native_sync"` and can connect/sync in v1. Other provider manifests may report `implementationStatus: "adapter_ready"` for future rollout, but direct connect/sync returns `409` until provider auth is enabled.
 
 **Response** `200`
 ```json
@@ -1254,7 +1259,7 @@ Returns every connector Mira can surface in the Flutter marketplace. All v1 conn
 ### Connect connector
 `POST /plugins/{id}/connect`
 
-Creates or updates the user's connector configuration. OAuth/API-token exchange remains provider-specific; v1 accepts an optional token and stores connector state for sync.
+Creates or updates the user's connector configuration for enabled native-sync connectors. OAuth/API-token exchange remains provider-specific; v1 accepts an optional token and stores connector state for sync.
 
 **Request**
 ```json
@@ -1263,26 +1268,82 @@ Creates or updates the user's connector configuration. OAuth/API-token exchange 
 
 **Response** `200`
 ```json
-{ "pluginId": "notion", "configured": true }
+{ "pluginId": "gmail", "configured": true }
 ```
+
+**Errors**: `404` unknown connector, `409` connector manifest exists but direct sync is not enabled.
 
 ### Sync connector
 `POST /plugins/{id}/sync`
 
-Runs a manual connector sync and creates a provenance-tagged `LibraryItem` with `source: "plugin:{id}"`.
+Runs a manual native connector sync and creates a provenance-tagged `LibraryItem` with `source: "plugin:{id}"`.
 
 **Response** `200`
 ```json
 {
   "status": "ok",
-  "pluginId": "notion",
-  "adapter": "adapter_ready",
+  "pluginId": "gmail",
+  "adapter": "native_sync",
   "imported": 1,
   "item_id": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
-**Errors**: `404` unknown connector.
+**Errors**: `404` unknown connector, `409` connector manifest exists but direct sync is not enabled.
+
+### Import sources
+`GET /library/import-sources`
+
+Returns the Library Import Hub manifest for Fabric-style content sources and manual exports.
+
+**Response** `200`
+```json
+[
+  {
+    "id": "whatsapp_export",
+    "name": "WhatsApp exports",
+    "category": "Messaging",
+    "action": "share_or_upload_export",
+    "status": "ready",
+    "extensions": [".txt", ".zip"],
+    "description": "Export a chat as .txt or share selected messages/files to Mira."
+  }
+]
+```
+
+Actions: `upload_file`, `paste_link`, `upload_or_paste_text`, `share_or_upload_export`, `connect_provider`, `create_note`.
+
+### Import link
+`POST /library/imports/link`
+
+Creates a Library item from a URL. YouTube, TikTok, and Instagram/Reels links use honest `metadata_ready` status unless transcript extraction is available.
+
+```json
+{
+  "url": "https://www.youtube.com/watch?v=abc",
+  "sourceId": "youtube",
+  "title": "Optional title",
+  "note": "Optional user note"
+}
+```
+
+**Response**: `LibraryItem` with `source: "import:{sourceId}"`.
+
+### Import text
+`POST /library/imports/text`
+
+Creates a Library item from pasted/shared text, message exports, HTML, Markdown, meeting notes, JSON, or CSV-like text.
+
+```json
+{
+  "sourceId": "meeting_notes",
+  "title": "Weekly sync",
+  "text": "Decision: ship import hub.",
+  "mimeType": "text/plain"
+}
+```
+
+**Response**: `LibraryItem` with `extractionStatus: "ready"`.
 
 ---
 

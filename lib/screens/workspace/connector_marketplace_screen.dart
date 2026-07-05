@@ -83,7 +83,7 @@ class _ConnectorMarketplaceScreenState
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (context) => _ConnectorUsageSheet(plugin: plugin),
+      builder: (context) => _ConnectorPlannedSheet(plugin: plugin),
     );
   }
 
@@ -243,12 +243,12 @@ class _ConnectorRow extends StatelessWidget {
         ? plugin.connected
               ? l10n.connectorsSyncAction
               : l10n.connectorsConnectAction
-        : l10n.connectorsHowToUseAction;
+        : 'Details';
     final statusLabel = plugin.isNativeSync
         ? plugin.connected
               ? l10n.connectorsConnectedStatus
               : l10n.connectorsNativeStatus
-        : l10n.connectorsManualImportStatus;
+        : 'Planned';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -348,37 +348,24 @@ class _ConnectorRow extends StatelessWidget {
 
   String _subtitleFor(BuildContext context, PluginManifestDto plugin) {
     final l10n = AppLocalizations.of(context)!;
-    if (plugin.id == 'whatsapp') return l10n.connectorsWhatsappSubtitle;
     if (plugin.isNativeSync) {
       return plugin.description.isEmpty
           ? l10n.connectorsDefaultDescription
           : plugin.description;
     }
-    return l10n.connectorsManualImportSubtitle;
+    return plugin.description.isEmpty
+        ? 'Provider sync manifest is ready; direct connection is not enabled yet.'
+        : plugin.description;
   }
 }
 
-class _ConnectorUsageSheet extends StatelessWidget {
-  const _ConnectorUsageSheet({required this.plugin});
+class _ConnectorPlannedSheet extends StatelessWidget {
+  const _ConnectorPlannedSheet({required this.plugin});
 
   final PluginManifestDto plugin;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final isWhatsapp = plugin.id == 'whatsapp';
-    final steps = isWhatsapp
-        ? [
-            l10n.connectorsWhatsappStepExport,
-            l10n.connectorsWhatsappStepShare,
-            l10n.connectorsWhatsappStepUse,
-          ]
-        : [
-            l10n.connectorsAdapterStepImport,
-            l10n.connectorsAdapterStepLibrary,
-            l10n.connectorsAdapterStepAsk,
-          ];
-
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 22),
@@ -405,52 +392,23 @@ class _ConnectorUsageSheet extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              isWhatsapp
-                  ? l10n.connectorsWhatsappUsageBody
-                  : l10n.connectorsAdapterUsageBody(plugin.name),
+              '${plugin.name} has a connector manifest, scopes, and sync capabilities defined, but direct provider connection is not enabled in v1 yet. Manual files, links, and exports now live in Library > Add anything.',
               style: AppTypography.dosis(
                 size: 15,
               ).copyWith(color: AppColors.textSecondary, height: 1.35),
             ),
             const SizedBox(height: 16),
-            for (var i = 0; i < steps.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEAF0FF),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        '${i + 1}',
-                        style: AppTypography.dosis(
-                          size: 12,
-                          weight: FontWeight.w700,
-                          color: AppColors.accent,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        steps[i],
-                        style: AppTypography.dosis(
-                          size: 14,
-                        ).copyWith(color: AppColors.textPrimary, height: 1.25),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final capability in plugin.capabilities)
+                  Chip(label: Text(capability)),
+              ],
+            ),
+            const SizedBox(height: 12),
             Text(
-              l10n.connectorsAdapterNote,
+              'Auth: ${plugin.authType} · Sync: ${plugin.syncModes.join(', ')}',
               style: AppTypography.dosis(
                 size: 13,
               ).copyWith(color: AppColors.textSecondary, height: 1.3),

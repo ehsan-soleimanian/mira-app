@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 
-enum SharedImportType { image, text }
+enum SharedImportType { image, text, file }
 
 class SharedImportItem {
   const SharedImportItem._({
@@ -25,17 +25,37 @@ class SharedImportItem {
     );
   }
 
+  factory SharedImportItem.file({
+    required Uint8List bytes,
+    required String filename,
+    String? mimeType,
+  }) {
+    return SharedImportItem._(
+      type: SharedImportType.file,
+      bytes: bytes,
+      filename: filename,
+      mimeType: mimeType,
+    );
+  }
+
   factory SharedImportItem.text(String text) {
     return SharedImportItem._(type: SharedImportType.text, text: text);
   }
 
   factory SharedImportItem.fromMap(Map<Object?, Object?> map) {
     final type = map['type']?.toString();
-    if (type == 'image') {
+    if (type == 'image' || type == 'file') {
       final rawBytes = map['bytes'];
       final bytes = rawBytes is Uint8List
           ? rawBytes
           : Uint8List.fromList((rawBytes as List<Object?>).cast<int>());
+      if (type == 'file') {
+        return SharedImportItem.file(
+          bytes: bytes,
+          filename: map['filename']?.toString() ?? 'mira-shared-file',
+          mimeType: map['mimeType']?.toString(),
+        );
+      }
       return SharedImportItem.image(
         bytes: bytes,
         filename: map['filename']?.toString() ?? 'mira-shared-image.jpg',
@@ -54,6 +74,7 @@ class SharedImportItem {
   bool get isValid {
     return switch (type) {
       SharedImportType.image => bytes != null && bytes!.isNotEmpty,
+      SharedImportType.file => bytes != null && bytes!.isNotEmpty,
       SharedImportType.text => text != null && text!.trim().isNotEmpty,
     };
   }

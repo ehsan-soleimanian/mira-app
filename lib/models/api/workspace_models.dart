@@ -59,6 +59,44 @@ class LibraryItem {
   final DateTime updatedAt;
 }
 
+class ImportSourceDto {
+  const ImportSourceDto({
+    required this.id,
+    required this.name,
+    required this.category,
+    required this.action,
+    required this.status,
+    required this.description,
+    this.extensions = const [],
+  });
+
+  factory ImportSourceDto.fromJson(Map<String, dynamic> json) =>
+      ImportSourceDto(
+        id: json['id'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        category: json['category'] as String? ?? '',
+        action: json['action'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+        extensions: (json['extensions'] as List<dynamic>? ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+      );
+
+  final String id;
+  final String name;
+  final String category;
+  final String action;
+  final String status;
+  final String description;
+  final List<String> extensions;
+
+  bool get isConnector => action == 'connect_provider';
+  bool get isLink => action == 'paste_link';
+  bool get isText => action == 'upload_or_paste_text' || action == 'create_note';
+  bool get isGuide => action == 'share_or_upload_export';
+}
+
 class SpaceDto {
   const SpaceDto({
     required this.id,
