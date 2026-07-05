@@ -542,6 +542,18 @@ abstract class AppLocalizations {
   /// **'native'**
   String get connectorsNativeMetric;
 
+  /// No description provided for @connectorsNativeGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Native sync'**
+  String get connectorsNativeGroup;
+
+  /// No description provided for @connectorsAdapterGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual import adapters'**
+  String get connectorsAdapterGroup;
+
   /// No description provided for @connectorsLoadFailed.
   ///
   /// In en, this message translates to:
@@ -572,6 +584,12 @@ abstract class AppLocalizations {
   /// **'Sync'**
   String get connectorsSyncAction;
 
+  /// No description provided for @connectorsHowToUseAction.
+  ///
+  /// In en, this message translates to:
+  /// **'How to use'**
+  String get connectorsHowToUseAction;
+
   /// No description provided for @connectorsConnectedStatus.
   ///
   /// In en, this message translates to:
@@ -590,11 +608,83 @@ abstract class AppLocalizations {
   /// **'Adapter'**
   String get connectorsAdapterReadyStatus;
 
+  /// No description provided for @connectorsManualImportStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get connectorsManualImportStatus;
+
   /// No description provided for @connectorsDefaultDescription.
   ///
   /// In en, this message translates to:
   /// **'Ready for Mira plugin sync.'**
   String get connectorsDefaultDescription;
+
+  /// No description provided for @connectorsManualImportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import or share content into Mira, then search and ask from Library.'**
+  String get connectorsManualImportSubtitle;
+
+  /// No description provided for @connectorsWhatsappSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export a chat or share messages into Mira; direct personal-chat OAuth is not available.'**
+  String get connectorsWhatsappSubtitle;
+
+  /// No description provided for @connectorsWhatsappUsageBody.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp does not expose personal chats through a normal OAuth connector. In v1, Mira uses manual import so the chat becomes searchable memory.'**
+  String get connectorsWhatsappUsageBody;
+
+  /// No description provided for @connectorsWhatsappStepExport.
+  ///
+  /// In en, this message translates to:
+  /// **'In WhatsApp, open a chat, choose Export chat, and export without media for the fastest import.'**
+  String get connectorsWhatsappStepExport;
+
+  /// No description provided for @connectorsWhatsappStepShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share the exported .txt file to Mira or upload it from Library.'**
+  String get connectorsWhatsappStepShare;
+
+  /// No description provided for @connectorsWhatsappStepUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira stores the transcript as a Library item, extracts text, and then you can search or ask questions across it.'**
+  String get connectorsWhatsappStepUse;
+
+  /// No description provided for @connectorsAdapterUsageBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is adapter-ready. Use manual import/share first; provider OAuth sync can be enabled later from the same manifest.'**
+  String connectorsAdapterUsageBody(String name);
+
+  /// No description provided for @connectorsAdapterStepImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a file, export, link, or shared text from the provider into Mira.'**
+  String get connectorsAdapterStepImport;
+
+  /// No description provided for @connectorsAdapterStepLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'The imported content appears in Library with source provenance.'**
+  String get connectorsAdapterStepLibrary;
+
+  /// No description provided for @connectorsAdapterStepAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Use Library search, Assistant, Canvas, or Graph to work with the imported context.'**
+  String get connectorsAdapterStepAsk;
+
+  /// No description provided for @connectorsAdapterNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting an adapter does not mean Mira can read that app automatically yet; it means the manifest and Mira-side workflow are ready.'**
+  String get connectorsAdapterNote;
 
   /// No description provided for @connectorsSyncSuccess.
   ///

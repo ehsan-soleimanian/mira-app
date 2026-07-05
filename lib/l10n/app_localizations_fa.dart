@@ -247,6 +247,12 @@ class AppLocalizationsFa extends AppLocalizations {
   String get connectorsNativeMetric => 'بومی';
 
   @override
+  String get connectorsNativeGroup => 'همگام‌سازی بومی';
+
+  @override
+  String get connectorsAdapterGroup => 'ورود دستی محتوا';
+
+  @override
   String get connectorsLoadFailed => 'کانکتورها بارگذاری نشدند';
 
   @override
@@ -262,6 +268,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get connectorsSyncAction => 'همگام';
 
   @override
+  String get connectorsHowToUseAction => 'روش استفاده';
+
+  @override
   String get connectorsConnectedStatus => 'وصل';
 
   @override
@@ -271,8 +280,56 @@ class AppLocalizationsFa extends AppLocalizations {
   String get connectorsAdapterReadyStatus => 'آماده';
 
   @override
+  String get connectorsManualImportStatus => 'دستی';
+
+  @override
   String get connectorsDefaultDescription =>
       'برای همگام‌سازی پلاگین میرا آماده است.';
+
+  @override
+  String get connectorsManualImportSubtitle =>
+      'محتوا را وارد یا share کن؛ بعد در کتابخانه جست‌وجو و سوال کن.';
+
+  @override
+  String get connectorsWhatsappSubtitle =>
+      'چت را export کن یا پیام‌ها را به میرا share کن؛ OAuth مستقیم چت شخصی وجود ندارد.';
+
+  @override
+  String get connectorsWhatsappUsageBody =>
+      'واتساپ چت‌های شخصی را با OAuth معمولی در اختیار اپ‌ها نمی‌گذارد. در v1 مسیر درست میرا، ورود دستی است تا چت به حافظه قابل جست‌وجو تبدیل شود.';
+
+  @override
+  String get connectorsWhatsappStepExport =>
+      'در واتساپ، چت را باز کن و Export chat را بزن؛ برای ورود سریع‌تر without media را انتخاب کن.';
+
+  @override
+  String get connectorsWhatsappStepShare =>
+      'فایل .txt خروجی را به میرا share کن یا از Library آپلود کن.';
+
+  @override
+  String get connectorsWhatsappStepUse =>
+      'میرا transcript را به عنوان آیتم Library ذخیره می‌کند؛ بعد می‌توانی جست‌وجو کنی یا از Assistant بپرسی.';
+
+  @override
+  String connectorsAdapterUsageBody(String name) {
+    return '$name آماده‌ی adapter است. فعلا محتوا را دستی import/share کن؛ sync مستقیم provider بعدا از همین manifest فعال می‌شود.';
+  }
+
+  @override
+  String get connectorsAdapterStepImport =>
+      'فایل، export، لینک یا متن share‌شده را از provider وارد میرا کن.';
+
+  @override
+  String get connectorsAdapterStepLibrary =>
+      'محتوا با source مشخص در Library دیده می‌شود.';
+
+  @override
+  String get connectorsAdapterStepAsk =>
+      'بعد از Library search، Assistant، Canvas یا Graph از همان محتوا استفاده کن.';
+
+  @override
+  String get connectorsAdapterNote =>
+      'Adapter-ready یعنی مسیر سمت میرا آماده است؛ نه اینکه میرا همین حالا خودکار داخل آن اپ را بخواند.';
 
   @override
   String connectorsSyncSuccess(String name) {

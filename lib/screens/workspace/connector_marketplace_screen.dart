@@ -20,7 +20,6 @@ class _ConnectorMarketplaceScreenState
   var _plugins = const <PluginManifestDto>[];
   var _loading = true;
   var _syncingIds = <String>{};
-  String? _selectedCategory;
   String? _error;
 
   @override
@@ -80,432 +79,403 @@ class _ConnectorMarketplaceScreenState
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final categories = _categoriesFor(_plugins);
-    final visiblePlugins = _selectedCategory == null
-        ? _plugins
-        : _plugins
-              .where((plugin) => plugin.category == _selectedCategory)
-              .toList();
-
-    return RefreshIndicator(
-      onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 136),
-        children: [
-          _ConnectorHeader(
-            total: _plugins.length,
-            connected: _plugins.where((plugin) => plugin.connected).length,
-            nativeSync: _plugins.where((plugin) => plugin.isNativeSync).length,
-          ),
-          const SizedBox(height: 16),
-          if (_loading)
-            const Padding(
-              padding: EdgeInsets.only(top: 80),
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_error != null)
-            _ConnectorMessage(
-              icon: Icons.cloud_off_rounded,
-              title: l10n.connectorsLoadFailed,
-              body: l10n.connectorsPullToRetry,
-            )
-          else ...[
-            _CategoryFilter(
-              categories: categories,
-              selectedCategory: _selectedCategory,
-              onChanged: (category) =>
-                  setState(() => _selectedCategory = category),
-            ),
-            const SizedBox(height: 14),
-            for (final plugin in visiblePlugins)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _ConnectorTile(
-                  plugin: plugin,
-                  syncing: _syncingIds.contains(plugin.id),
-                  onPressed: () => _connectAndSync(plugin),
-                ),
-              ),
-          ],
-        ],
-      ),
+  void _showUsage(PluginManifestDto plugin) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => _ConnectorUsageSheet(plugin: plugin),
     );
   }
 
-  List<String> _categoriesFor(List<PluginManifestDto> plugins) {
-    final categories =
-        plugins
-            .map((plugin) => plugin.category.trim())
-            .where((category) => category.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
-    return categories;
-  }
-}
-
-class _ConnectorHeader extends StatelessWidget {
-  const _ConnectorHeader({
-    required this.total,
-    required this.connected,
-    required this.nativeSync,
-  });
-
-  final int total;
-  final int connected;
-  final int nativeSync;
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE7E7EF)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 136),
             children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF0FF),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.extension_rounded,
-                  color: AppColors.accent,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+              Row(
+                children: [
+                  if (Navigator.of(context).canPop()) ...[
+                    IconButton(
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).backButtonTooltip,
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Expanded(
+                    child: Text(
                       l10n.connectorsTitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTypography.dosis(
-                        size: 27,
+                        size: 30,
                         weight: FontWeight.w700,
                       ),
                     ),
-                    Text(
-                      l10n.connectorsSubtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.dosis(
-                        size: 14,
-                      ).copyWith(color: AppColors.textSecondary, height: 1.25),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _MetricPill(
-                  label: l10n.connectorsAvailableMetric,
-                  value: total.toString(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MetricPill(
-                  label: l10n.connectorsConnectedMetric,
-                  value: connected.toString(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MetricPill(
-                  label: l10n.connectorsNativeMetric,
-                  value: nativeSync.toString(),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricPill extends StatelessWidget {
-  const _MetricPill({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FC),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.dosis(size: 18, weight: FontWeight.w700),
-          ),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTypography.dosis(
-              size: 11,
-            ).copyWith(color: AppColors.textSecondary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryFilter extends StatelessWidget {
-  const _CategoryFilter({
-    required this.categories,
-    required this.selectedCategory,
-    required this.onChanged,
-  });
-
-  final List<String> categories;
-  final String? selectedCategory;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return SizedBox(
-      height: 40,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length + 1,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final category = index == 0 ? null : categories[index - 1];
-          final selected = selectedCategory == category;
-          return ChoiceChip(
-            label: Text(category ?? l10n.connectorsAllFilter),
-            selected: selected,
-            onSelected: (_) => onChanged(category),
-            showCheckmark: false,
-            labelStyle: AppTypography.dosis(
-              size: 13,
-              weight: selected ? FontWeight.w700 : FontWeight.w500,
-            ).copyWith(color: selected ? Colors.white : AppColors.textPrimary),
-            selectedColor: AppColors.accent,
-            backgroundColor: AppColors.surface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: BorderSide(
-                color: selected ? AppColors.accent : const Color(0xFFE1E4EE),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ConnectorTile extends StatelessWidget {
-  const _ConnectorTile({
-    required this.plugin,
-    required this.syncing,
-    required this.onPressed,
-  });
-
-  final PluginManifestDto plugin;
-  final bool syncing;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final status = _statusText(l10n);
-    final statusColor = plugin.connected
-        ? const Color(0xFF12805C)
-        : plugin.isNativeSync
-        ? AppColors.accent
-        : const Color(0xFF8A5A00);
-    final actionLabel = plugin.connected
-        ? l10n.connectorsSyncAction
-        : l10n.connectorsConnectAction;
-
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: syncing ? null : onPressed,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE7E7EF)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ConnectorIcon(pluginId: plugin.id, active: plugin.enabled),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            plugin.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.dosis(
-                              size: 18,
-                              weight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        _StatusBadge(label: status, color: statusColor),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      plugin.description.isEmpty
-                          ? l10n.connectorsDefaultDescription
-                          : plugin.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.dosis(
-                        size: 13,
-                      ).copyWith(color: AppColors.textSecondary, height: 1.25),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        _TinyChip(
-                          icon: Icons.lock_open_rounded,
-                          label: plugin.authType.toUpperCase(),
-                        ),
-                        if (plugin.syncModes.isNotEmpty)
-                          _TinyChip(
-                            icon: Icons.sync_rounded,
-                            label: plugin.syncModes.join('/'),
-                          ),
-                        for (final capability
-                            in plugin.capabilities.take(2).toList())
-                          _TinyChip(
-                            icon: Icons.check_circle_outline_rounded,
-                            label: capability.replaceAll('_', ' '),
-                          ),
-                      ],
-                    ),
-                    if (plugin.lastSyncAt != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        l10n.connectorsLastSync(
-                          TimeOfDay.fromDateTime(
-                            plugin.lastSyncAt!,
-                          ).format(context),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.dosis(
-                          size: 12,
-                        ).copyWith(color: AppColors.textHint),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: 88,
-                child: FilledButton(
-                  onPressed: syncing ? null : onPressed,
-                  style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    minimumSize: const Size(0, 38),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
                   ),
-                  child: syncing
-                      ? const SizedBox(
-                          width: 17,
-                          height: 17,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          actionLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.dosis(
-                            size: 13,
-                            weight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
+                ],
               ),
+              const SizedBox(height: 6),
+              Text(
+                l10n.connectorsSubtitle,
+                style: AppTypography.dosis(
+                  size: 15,
+                ).copyWith(color: AppColors.textSecondary, height: 1.35),
+              ),
+              const SizedBox(height: 18),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.only(top: 80),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_error != null)
+                _ConnectorMessage(
+                  icon: Icons.cloud_off_rounded,
+                  title: l10n.connectorsLoadFailed,
+                  body: l10n.connectorsPullToRetry,
+                )
+              else
+                _ConnectorList(
+                  plugins: _plugins,
+                  syncingIds: _syncingIds,
+                  onNativeSync: (plugin) => unawaited(_connectAndSync(plugin)),
+                  onUsage: _showUsage,
+                ),
             ],
           ),
         ),
       ),
     );
   }
+}
 
-  String _statusText(AppLocalizations l10n) {
-    if (plugin.connected) return l10n.connectorsConnectedStatus;
-    if (plugin.isNativeSync) return l10n.connectorsNativeStatus;
-    return l10n.connectorsAdapterReadyStatus;
+class _ConnectorList extends StatelessWidget {
+  const _ConnectorList({
+    required this.plugins,
+    required this.syncingIds,
+    required this.onNativeSync,
+    required this.onUsage,
+  });
+
+  final List<PluginManifestDto> plugins;
+  final Set<String> syncingIds;
+  final ValueChanged<PluginManifestDto> onNativeSync;
+  final ValueChanged<PluginManifestDto> onUsage;
+
+  @override
+  Widget build(BuildContext context) {
+    final google = plugins.where((plugin) => plugin.isNativeSync).toList();
+    final adapters = plugins.where((plugin) => !plugin.isNativeSync).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (google.isNotEmpty) ...[
+          _SectionLabel(
+            label: AppLocalizations.of(context)!.connectorsNativeGroup,
+          ),
+          for (final plugin in google)
+            _ConnectorRow(
+              plugin: plugin,
+              syncing: syncingIds.contains(plugin.id),
+              onTap: () => onNativeSync(plugin),
+            ),
+        ],
+        if (adapters.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _SectionLabel(
+            label: AppLocalizations.of(context)!.connectorsAdapterGroup,
+          ),
+          for (final plugin in adapters)
+            _ConnectorRow(
+              plugin: plugin,
+              syncing: false,
+              onTap: () => onUsage(plugin),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        label,
+        style: AppTypography.dosis(
+          size: 13,
+          weight: FontWeight.w700,
+        ).copyWith(color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
+class _ConnectorRow extends StatelessWidget {
+  const _ConnectorRow({
+    required this.plugin,
+    required this.syncing,
+    required this.onTap,
+  });
+
+  final PluginManifestDto plugin;
+  final bool syncing;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final actionLabel = plugin.isNativeSync
+        ? plugin.connected
+              ? l10n.connectorsSyncAction
+              : l10n.connectorsConnectAction
+        : l10n.connectorsHowToUseAction;
+    final statusLabel = plugin.isNativeSync
+        ? plugin.connected
+              ? l10n.connectorsConnectedStatus
+              : l10n.connectorsNativeStatus
+        : l10n.connectorsManualImportStatus;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: syncing ? null : onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 76),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE7E7EF)),
+            ),
+            child: Row(
+              children: [
+                _ConnectorIcon(pluginId: plugin.id),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              plugin.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.dosis(
+                                size: 18,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            statusLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style:
+                                AppTypography.dosis(
+                                  size: 12,
+                                  weight: FontWeight.w700,
+                                ).copyWith(
+                                  color: plugin.isNativeSync
+                                      ? AppColors.accent
+                                      : AppColors.textSecondary,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _subtitleFor(context, plugin),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.dosis(
+                          size: 13,
+                        ).copyWith(color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: plugin.isNativeSync ? 86 : 96,
+                  child: syncing
+                      ? const Center(
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : Text(
+                          actionLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: AppTypography.dosis(
+                            size: 13,
+                            weight: FontWeight.w700,
+                          ).copyWith(color: AppColors.accent),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _subtitleFor(BuildContext context, PluginManifestDto plugin) {
+    final l10n = AppLocalizations.of(context)!;
+    if (plugin.id == 'whatsapp') return l10n.connectorsWhatsappSubtitle;
+    if (plugin.isNativeSync) {
+      return plugin.description.isEmpty
+          ? l10n.connectorsDefaultDescription
+          : plugin.description;
+    }
+    return l10n.connectorsManualImportSubtitle;
+  }
+}
+
+class _ConnectorUsageSheet extends StatelessWidget {
+  const _ConnectorUsageSheet({required this.plugin});
+
+  final PluginManifestDto plugin;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final isWhatsapp = plugin.id == 'whatsapp';
+    final steps = isWhatsapp
+        ? [
+            l10n.connectorsWhatsappStepExport,
+            l10n.connectorsWhatsappStepShare,
+            l10n.connectorsWhatsappStepUse,
+          ]
+        : [
+            l10n.connectorsAdapterStepImport,
+            l10n.connectorsAdapterStepLibrary,
+            l10n.connectorsAdapterStepAsk,
+          ];
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _ConnectorIcon(pluginId: plugin.id),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    plugin.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.dosis(
+                      size: 24,
+                      weight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              isWhatsapp
+                  ? l10n.connectorsWhatsappUsageBody
+                  : l10n.connectorsAdapterUsageBody(plugin.name),
+              style: AppTypography.dosis(
+                size: 15,
+              ).copyWith(color: AppColors.textSecondary, height: 1.35),
+            ),
+            const SizedBox(height: 16),
+            for (var i = 0; i < steps.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEAF0FF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${i + 1}',
+                        style: AppTypography.dosis(
+                          size: 12,
+                          weight: FontWeight.w700,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        steps[i],
+                        style: AppTypography.dosis(
+                          size: 14,
+                        ).copyWith(color: AppColors.textPrimary, height: 1.25),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.connectorsAdapterNote,
+              style: AppTypography.dosis(
+                size: 13,
+              ).copyWith(color: AppColors.textSecondary, height: 1.3),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
 class _ConnectorIcon extends StatelessWidget {
-  const _ConnectorIcon({required this.pluginId, required this.active});
+  const _ConnectorIcon({required this.pluginId});
 
   final String pluginId;
-  final bool active;
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? _colorFor(pluginId) : Colors.grey;
+    final color = _colorFor(pluginId);
     return Container(
-      width: 42,
-      height: 42,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(13),
+        color: color.withValues(alpha: 0.11),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(_iconFor(pluginId), color: color, size: 22),
     );
@@ -575,71 +545,6 @@ class _ConnectorIcon extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 92),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: TextAlign.center,
-        style: AppTypography.dosis(
-          size: 11,
-          weight: FontWeight.w700,
-        ).copyWith(color: color),
-      ),
-    );
-  }
-}
-
-class _TinyChip extends StatelessWidget {
-  const _TinyChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FC),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: AppColors.textSecondary),
-          const SizedBox(width: 4),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 104),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.dosis(
-                size: 11,
-              ).copyWith(color: AppColors.textSecondary, height: 1),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _ConnectorMessage extends StatelessWidget {
   const _ConnectorMessage({
     required this.icon,
@@ -657,7 +562,7 @@ class _ConnectorMessage extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE7E7EF)),
       ),
       child: Row(

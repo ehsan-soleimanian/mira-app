@@ -74,15 +74,35 @@
   "connectorsAvailableMetric": "available",
   "connectorsConnectedMetric": "connected",
   "connectorsNativeMetric": "native",
+  "connectorsNativeGroup": "Native sync",
+  "connectorsAdapterGroup": "Manual import adapters",
   "connectorsLoadFailed": "Could not load connectors",
   "connectorsPullToRetry": "Pull down to refresh and try again.",
   "connectorsAllFilter": "All",
   "connectorsConnectAction": "Connect",
   "connectorsSyncAction": "Sync",
+  "connectorsHowToUseAction": "How to use",
   "connectorsConnectedStatus": "Connected",
   "connectorsNativeStatus": "Native",
   "connectorsAdapterReadyStatus": "Adapter",
+  "connectorsManualImportStatus": "Manual",
   "connectorsDefaultDescription": "Ready for Mira plugin sync.",
+  "connectorsManualImportSubtitle": "Import or share content into Mira, then search and ask from Library.",
+  "connectorsWhatsappSubtitle": "Export a chat or share messages into Mira; direct personal-chat OAuth is not available.",
+  "connectorsWhatsappUsageBody": "WhatsApp does not expose personal chats through a normal OAuth connector. In v1, Mira uses manual import so the chat becomes searchable memory.",
+  "connectorsWhatsappStepExport": "In WhatsApp, open a chat, choose Export chat, and export without media for the fastest import.",
+  "connectorsWhatsappStepShare": "Share the exported .txt file to Mira or upload it from Library.",
+  "connectorsWhatsappStepUse": "Mira stores the transcript as a Library item, extracts text, and then you can search or ask questions across it.",
+  "connectorsAdapterUsageBody": "{name} is adapter-ready. Use manual import/share first; provider OAuth sync can be enabled later from the same manifest.",
+  "@connectorsAdapterUsageBody": {
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+  "connectorsAdapterStepImport": "Import a file, export, link, or shared text from the provider into Mira.",
+  "connectorsAdapterStepLibrary": "The imported content appears in Library with source provenance.",
+  "connectorsAdapterStepAsk": "Use Library search, Assistant, Canvas, or Graph to work with the imported context.",
+  "connectorsAdapterNote": "Connecting an adapter does not mean Mira can read that app automatically yet; it means the manifest and Mira-side workflow are ready.",
   "connectorsSyncSuccess": "{name} synced into your library.",
   "@connectorsSyncSuccess": {
     "placeholders": {

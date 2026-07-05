@@ -245,6 +245,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectorsNativeMetric => 'native';
 
   @override
+  String get connectorsNativeGroup => 'Native sync';
+
+  @override
+  String get connectorsAdapterGroup => 'Manual import adapters';
+
+  @override
   String get connectorsLoadFailed => 'Could not load connectors';
 
   @override
@@ -260,6 +266,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectorsSyncAction => 'Sync';
 
   @override
+  String get connectorsHowToUseAction => 'How to use';
+
+  @override
   String get connectorsConnectedStatus => 'Connected';
 
   @override
@@ -269,7 +278,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectorsAdapterReadyStatus => 'Adapter';
 
   @override
+  String get connectorsManualImportStatus => 'Manual';
+
+  @override
   String get connectorsDefaultDescription => 'Ready for Mira plugin sync.';
+
+  @override
+  String get connectorsManualImportSubtitle =>
+      'Import or share content into Mira, then search and ask from Library.';
+
+  @override
+  String get connectorsWhatsappSubtitle =>
+      'Export a chat or share messages into Mira; direct personal-chat OAuth is not available.';
+
+  @override
+  String get connectorsWhatsappUsageBody =>
+      'WhatsApp does not expose personal chats through a normal OAuth connector. In v1, Mira uses manual import so the chat becomes searchable memory.';
+
+  @override
+  String get connectorsWhatsappStepExport =>
+      'In WhatsApp, open a chat, choose Export chat, and export without media for the fastest import.';
+
+  @override
+  String get connectorsWhatsappStepShare =>
+      'Share the exported .txt file to Mira or upload it from Library.';
+
+  @override
+  String get connectorsWhatsappStepUse =>
+      'Mira stores the transcript as a Library item, extracts text, and then you can search or ask questions across it.';
+
+  @override
+  String connectorsAdapterUsageBody(String name) {
+    return '$name is adapter-ready. Use manual import/share first; provider OAuth sync can be enabled later from the same manifest.';
+  }
+
+  @override
+  String get connectorsAdapterStepImport =>
+      'Import a file, export, link, or shared text from the provider into Mira.';
+
+  @override
+  String get connectorsAdapterStepLibrary =>
+      'The imported content appears in Library with source provenance.';
+
+  @override
+  String get connectorsAdapterStepAsk =>
+      'Use Library search, Assistant, Canvas, or Graph to work with the imported context.';
+
+  @override
+  String get connectorsAdapterNote =>
+      'Connecting an adapter does not mean Mira can read that app automatically yet; it means the manifest and Mira-side workflow are ready.';
 
   @override
   String connectorsSyncSuccess(String name) {
