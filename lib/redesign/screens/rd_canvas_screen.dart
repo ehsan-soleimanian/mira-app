@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/features/workspace/canvas_repository.dart';
 import 'package:mira_app/models/api/graph_models.dart';
+import 'package:mira_app/models/api/workspace_models.dart';
 
 import '../theme/rd_colors.dart';
 import '../theme/rd_theme.dart';
@@ -25,6 +29,10 @@ class RdCanvasScreen extends StatefulWidget {
   State<RdCanvasScreen> createState() => _RdCanvasScreenState();
 }
 
+/// SharedPreferences key holding the id of the last-active board, so the
+/// board a user was on is restored on the next launch.
+const _kActiveBoardKey = 'mira-board-active';
+
 class _RdCanvasScreenState extends State<RdCanvasScreen> {
   String _mode = 'board';
 
@@ -35,12 +43,38 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   String _mapContext = 'Your memory · 34 memories · 61 connections';
   bool _loaded = false;
 
+  // ── Board (persisted, multi-board) ──────────────────────────────────────
+  /// All the user's boards from `canvasRepository.list()`. Empty until loaded.
+  List<CanvasDto> _boards = const [];
+
+  /// The active board id (persisted in `_kActiveBoardKey`); null before boards
+  /// load or if the user has none yet.
+  String? _activeBoardId;
+
+  /// Bumped whenever the active board changes so the `_BoardView` key flips and
+  /// its interaction state re-reads the freshly selected board.
+  int _boardEpoch = 0;
+
+  /// Board-level context label (title · N cards), reported up from the live
+  /// `_BoardView` so the top pill mirrors what's on screen.
+  String _boardContext = 'Coast trip · 8 memories';
+
+  bool _boardsLoading = true;
+
+  CanvasDto? get _activeBoard {
+    for (final b in _boards) {
+      if (b.id == _activeBoardId) return b;
+    }
+    return null;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_loaded) {
       _loaded = true;
       _loadGraph();
+      _loadBoards();
     }
   }
 
@@ -61,12 +95,121 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     }
   }
 
+  CanvasRepository get _canvasRepo =>
+      AppScope.servicesOf(context).canvasRepository;
+
+  /// Loads the board list, creating a first board if the user has none, then
+  /// restores the last-active board (or defaults to the most recent). All
+  /// best-effort: on any failure the Board view falls back to the designed
+  /// sample cards so it still reads well offline.
+  Future<void> _loadBoards() async {
+    try {
+      final repo = _canvasRepo;
+      var boards = await repo.list();
+      if (boards.isEmpty) {
+        final created = await repo.create(title: 'My board');
+        boards = [created];
+      }
+
+      String? stored;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        stored = prefs.getString(_kActiveBoardKey);
+      } catch (_) {
+        stored = null;
+      }
+      final hasStored = stored != null && boards.any((b) => b.id == stored);
+      final activeId = hasStored ? stored : boards.first.id;
+
+      if (!mounted) return;
+      setState(() {
+        _boards = boards;
+        _activeBoardId = activeId;
+        _boardsLoading = false;
+        _boardEpoch++;
+      });
+    } catch (_) {
+      // Backend unreachable — leave `_boards` empty; `_BoardView` shows the
+      // designed sample cards.
+      if (!mounted) return;
+      setState(() => _boardsLoading = false);
+    }
+  }
+
+  Future<void> _persistActiveBoard(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kActiveBoardKey, id);
+    } catch (_) {
+      // Non-blocking: losing the pointer only affects which board opens next.
+    }
+  }
+
+  void _switchBoard(String id) {
+    if (id == _activeBoardId) return;
+    // The re-keyed `_BoardView` reports the authoritative label via onContext.
+    setState(() {
+      _activeBoardId = id;
+      _boardEpoch++;
+    });
+    _persistActiveBoard(id);
+  }
+
+  /// Creates a new empty board, appends it, and switches to it.
+  Future<void> _createBoard() async {
+    try {
+      final created = await _canvasRepo.create(title: 'New board');
+      if (!mounted) return;
+      setState(() {
+        _boards = [..._boards, created];
+        _activeBoardId = created.id;
+        _boardEpoch++;
+      });
+      _persistActiveBoard(created.id);
+    } catch (_) {
+      // Best-effort; if creation fails we stay on the current board.
+    }
+  }
+
+  /// Reports a board's title + live card count back up so the top context pill
+  /// stays in sync with what `_BoardView` is showing.
+  void _onBoardContext(String title, int cardCount) {
+    final label = _boardLabel(title, cardCount);
+    if (label == _boardContext) return;
+    setState(() => _boardContext = label);
+  }
+
+  static String _boardLabel(String title, int count) {
+    final name = title.trim().isEmpty ? 'Board' : title.trim();
+    return '$name · $count ${count == 1 ? 'card' : 'cards'}';
+  }
+
+  /// Opens the compact board switcher popover: the board list (check on the
+  /// active one), plus a "New board" action. Selecting switches the active
+  /// board; creating spins up a fresh one and switches to it.
+  Future<void> _openBoardSwitcher() async {
+    if (_boards.isEmpty) return;
+    final result = await showDialog<_SwitcherResult>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.28),
+      builder: (_) => _BoardSwitcherSheet(
+        boards: _boards,
+        activeId: _activeBoardId,
+      ),
+    );
+    if (result == null || !mounted) return;
+    if (result.createNew) {
+      await _createBoard();
+    } else if (result.boardId != null) {
+      _switchBoard(result.boardId!);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
     final live = _mapNodes != null;
-    final context_ =
-        _mode == 'board' ? 'Coast trip · 8 memories' : _mapContext;
+    final context_ = _mode == 'board' ? _boardContext : _mapContext;
 
     return Scaffold(
       backgroundColor: rd.bg,
@@ -74,7 +217,14 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
         children: [
           Positioned.fill(
             child: _mode == 'board'
-                ? const _BoardView()
+                ? _BoardView(
+                    // Re-key on epoch so switching boards rebuilds fresh
+                    // interaction state that re-reads the selected board.
+                    key: ValueKey('board-$_boardEpoch-${_activeBoardId ?? ''}'),
+                    board: _activeBoard,
+                    repository: _boards.isEmpty ? null : _canvasRepo,
+                    onContext: _onBoardContext,
+                  )
                 : _MapView(
                     key: ValueKey(live ? 'map-live' : 'map-sample'),
                     nodes: _mapNodes ?? _graphNodes,
@@ -92,9 +242,22 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
                 padding: const EdgeInsets.only(top: 6),
                 child: Column(
                   children: [
-                    _ModeToggle(
-                      mode: _mode,
-                      onChanged: (m) => setState(() => _mode = m),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _ModeToggle(
+                          mode: _mode,
+                          onChanged: (m) => setState(() => _mode = m),
+                        ),
+                        if (_mode == 'board') ...[
+                          const SizedBox(width: 8),
+                          _BoardSwitcherButton(
+                            title: _activeBoard?.title,
+                            loading: _boardsLoading,
+                            onTap: _openBoardSwitcher,
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 7),
                     Container(
@@ -197,6 +360,237 @@ class _ModeToggle extends StatelessWidget {
                 color: on ? Colors.white : rd.muted,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Board switcher (button + popover) ─────────────────────────────────────
+
+/// Small board-name pill that sits beside the Board/Map toggle. Tapping it
+/// opens the board switcher popover.
+class _BoardSwitcherButton extends StatelessWidget {
+  const _BoardSwitcherButton({
+    required this.title,
+    required this.loading,
+    required this.onTap,
+  });
+
+  final String? title;
+  final bool loading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    final label = (title == null || title!.trim().isEmpty)
+        ? (loading ? 'Loading…' : 'Board')
+        : title!.trim();
+    return GestureDetector(
+      onTap: loading ? null : onTap,
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: rd.card.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: rd.line, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RdIcon(RdIcons.grid4, size: 14, color: rd.peri, strokeWidth: 1.9),
+            const SizedBox(width: 7),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 96),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: rd.ink,
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
+            // A small down-caret drawn from the chevron-left glyph, rotated.
+            Transform.rotate(
+              angle: -math.pi / 2,
+              child: RdIcon(
+                RdIcons.chevronLeft,
+                size: 13,
+                color: rd.faint,
+                strokeWidth: 2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// What the switcher popover returns: either a board to switch to, or the
+/// intent to create a new board.
+class _SwitcherResult {
+  const _SwitcherResult.select(this.boardId) : createNew = false;
+  const _SwitcherResult.create()
+      : boardId = null,
+        createNew = true;
+
+  final String? boardId;
+  final bool createNew;
+}
+
+/// Compact popover listing the user's boards (check on the active one) with a
+/// "New board" action. Intentionally small — a switcher, not a gallery.
+class _BoardSwitcherSheet extends StatelessWidget {
+  const _BoardSwitcherSheet({required this.boards, required this.activeId});
+
+  final List<CanvasDto> boards;
+  final String? activeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    final media = MediaQuery.of(context);
+    // Anchor near the top, under the mode bar, matching where the button lives.
+    return Padding(
+      padding: EdgeInsets.only(top: media.padding.top + 52, left: 14, right: 14),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 320),
+            decoration: BoxDecoration(
+              color: rd.card,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: rd.line, width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF141628).withValues(alpha: 0.3),
+                  blurRadius: 48,
+                  spreadRadius: -18,
+                  offset: const Offset(0, 22),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                  child: Text(
+                    'BOARDS',
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                      color: rd.faint,
+                    ),
+                  ),
+                ),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    itemCount: boards.length,
+                    itemBuilder: (context, i) {
+                      final b = boards[i];
+                      final active = b.id == activeId;
+                      return _row(context, rd, b, active);
+                    },
+                  ),
+                ),
+                Divider(height: 1, thickness: 1, color: rd.line),
+                GestureDetector(
+                  onTap: () =>
+                      Navigator.of(context).pop(const _SwitcherResult.create()),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        RdIcon(RdIcons.plusCircle,
+                            size: 18, color: rd.peri, strokeWidth: 2),
+                        const SizedBox(width: 11),
+                        Text(
+                          'New board',
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: rd.peri,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _row(BuildContext context, RdTheme rd, CanvasDto b, bool active) {
+    final title = b.title.trim().isEmpty ? 'Untitled board' : b.title.trim();
+    final count = b.nodes.length;
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(_SwitcherResult.select(b.id)),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        color: active ? rd.periSoft.withValues(alpha: 0.5) : Colors.transparent,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 13.5,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                      color: rd.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    '$count ${count == 1 ? 'card' : 'cards'}',
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 11.5,
+                      color: rd.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (active)
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: rd.peri,
+                ),
+                child: const Center(
+                  child: RdIcon(RdIcons.checkThick,
+                      size: 11, stroke: '#FFFFFF', strokeWidth: 3),
+                ),
+              ),
           ],
         ),
       ),
@@ -920,11 +1314,29 @@ class _BoardEdge {
   final String label;
 }
 
-/// Connect tool lives at toolbar index 3.
+/// Add-card tool lives at toolbar index 1; Connect tool at index 3.
+const _addTool = 1;
 const _connectTool = 3;
 
 class _BoardView extends StatefulWidget {
-  const _BoardView();
+  const _BoardView({
+    super.key,
+    this.board,
+    this.repository,
+    required this.onContext,
+  });
+
+  /// The active board to load cards/edges from. Null (or an empty board, or a
+  /// failed load) falls back to the designed sample cards.
+  final CanvasDto? board;
+
+  /// Repository used to persist edits. Null when the backend is unreachable —
+  /// the board still works locally, it just won't save.
+  final CanvasRepository? repository;
+
+  /// Reports the board title + live card count up so the top context pill
+  /// mirrors what's on screen.
+  final void Function(String title, int cardCount) onContext;
 
   @override
   State<_BoardView> createState() => _BoardViewState();
@@ -941,11 +1353,18 @@ class _BoardViewState extends State<_BoardView> {
   int _tool = 0;
   bool _suggestVisible = true;
 
+  /// The board's cards. Seeded from the active board's persisted nodes, or from
+  /// the designed sample when the board is empty / unavailable. Mutable so we
+  /// can add cards.
+  late List<_CardSpec> _cards;
+
+  /// Whether these cards are the offline designed sample (true) or came from a
+  /// real board (false). Sample cards are never persisted.
+  late bool _isSample;
+
   /// Card positions (top-left, board coordinates), seeded from the specs.
   /// Dragging mutates these so cards keep their positions after drop.
-  late final Map<String, Offset> _positions = {
-    for (final c in _boardCards) c.id: Offset(c.left, c.top),
-  };
+  late Map<String, Offset> _positions;
 
   /// The card currently under the finger — lifted (bigger shadow, slight
   /// scale) and raised above its siblings.
@@ -955,10 +1374,66 @@ class _BoardViewState extends State<_BoardView> {
   /// edge and clears this.
   String? _connectSource;
 
-  /// User-created connections (persist for the session).
-  final List<_BoardEdge> _edges = [];
+  /// User-created connections. Seeded from the board's persisted edges.
+  late List<_BoardEdge> _edges;
+
+  /// Debounce for persistence — coalesces a burst of edits into one write.
+  Timer? _saveDebounce;
+
+  /// Monotonic counter for locally-created card ids so they don't collide.
+  int _newCardSeq = 0;
 
   bool get _connectMode => _tool == _connectTool;
+  bool get _addMode => _tool == _addTool;
+
+  @override
+  void initState() {
+    super.initState();
+    _hydrateFromBoard();
+  }
+
+  @override
+  void dispose() {
+    _saveDebounce?.cancel();
+    super.dispose();
+  }
+
+  /// Builds the initial card/edge state from `widget.board`.
+  ///
+  /// Fallback policy: when there is **no** active board DTO at all (the boards
+  /// list failed to load, or the backend is unreachable) we show the designed
+  /// sample cards so the board still reads well offline. A real board that
+  /// simply has no nodes yet (e.g. a freshly created board) shows a clean,
+  /// empty canvas rather than the sample. Sample cards are never persisted.
+  void _hydrateFromBoard() {
+    final board = widget.board;
+
+    if (board == null) {
+      // Offline / no board — designed sample, display-only.
+      _isSample = true;
+      _cards = List<_CardSpec>.from(_boardCards);
+      _edges = [];
+    } else {
+      _isSample = false;
+      _cards = board.nodes.map(_cardFromNode).whereType<_CardSpec>().toList();
+      _edges = board.edges
+          .map(_edgeFromJson)
+          .whereType<_BoardEdge>()
+          // Drop edges whose endpoints no longer exist.
+          .where((e) =>
+              _cards.any((c) => c.id == e.from) &&
+              _cards.any((c) => c.id == e.to))
+          .toList();
+    }
+
+    _positions = {for (final c in _cards) c.id: Offset(c.left, c.top)};
+
+    // Report context after the first frame so we don't setState during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.onContext(_boardTitle, _cards.length);
+    });
+  }
 
   void _onScaleStart(ScaleStartDetails d) {
     _startScale = _scale;
@@ -996,10 +1471,13 @@ class _BoardViewState extends State<_BoardView> {
 
   void _onCardDragEnd() {
     setState(() => _draggingId = null);
+    // Position changed → persist the new layout.
+    _scheduleSave();
   }
 
   void _onCardTap(String id) {
     if (!_connectMode) return;
+    var created = false;
     setState(() {
       if (_connectSource == null) {
         _connectSource = id;
@@ -1013,8 +1491,10 @@ class _BoardViewState extends State<_BoardView> {
           label: _relationLabel(_connectSource!, id),
         ));
         _connectSource = null;
+        created = true;
       }
     });
+    if (created) _scheduleSave();
   }
 
   void _exitConnect() {
@@ -1023,6 +1503,74 @@ class _BoardViewState extends State<_BoardView> {
       _connectSource = null;
     });
   }
+
+  /// Drops a fresh note card at [scenePoint] (board coordinates) while the
+  /// add-card tool is active, then persists.
+  void _addCardAt(Offset scenePoint) {
+    final id = 'n${DateTime.now().millisecondsSinceEpoch}_${_newCardSeq++}';
+    final spec = _CardSpec(
+      id: id,
+      kind: _CardKind.note,
+      // Centre the ~158-wide card under the tap.
+      left: scenePoint.dx - 79,
+      top: scenePoint.dy - 40,
+      rotation: 0,
+      tag: 'Note',
+      title: 'New note',
+      sub: 'Tap to edit later.',
+    );
+    setState(() {
+      _cards = [..._cards, spec];
+      _positions[id] = Offset(spec.left, spec.top);
+      // Leave add-mode after placing, matching a one-shot "drop" gesture.
+      _tool = 0;
+    });
+    widget.onContext(_boardTitle, _cards.length);
+    _scheduleSave();
+  }
+
+  String get _boardTitle =>
+      _isSample ? 'Coast trip' : (widget.board?.title ?? 'Board');
+
+  // ── Persistence ──────────────────────────────────────────────────────────
+
+  /// Debounced, best-effort save of the current cards + edges to the active
+  /// board. Never persists the offline sample (there's no board to write to)
+  /// and never blocks the UI — failures are swallowed.
+  void _scheduleSave() {
+    if (_isSample) return;
+    final repo = widget.repository;
+    final board = widget.board;
+    if (repo == null || board == null) return;
+
+    _saveDebounce?.cancel();
+    _saveDebounce = Timer(const Duration(milliseconds: 600), () {
+      final nodes = _cards.map(_nodeFromCard).toList();
+      final edges = _edges.map(_jsonFromEdge).toList();
+      repo.update(board.id, nodes: nodes, edges: edges).ignore();
+    });
+  }
+
+  /// Serializes a card to its persisted node JSON. Shape:
+  /// `{id, kind, left, top, rotation, title, sub?, tag?, memId?}`.
+  Map<String, dynamic> _nodeFromCard(_CardSpec c) {
+    final pos = _positions[c.id] ?? Offset(c.left, c.top);
+    return {
+      'id': c.id,
+      'kind': c.kind.name,
+      'left': pos.dx,
+      'top': pos.dy,
+      'rotation': c.rotation,
+      'title': c.title,
+      if (c.sub != null) 'sub': c.sub,
+      if (c.tag != null) 'tag': c.tag,
+      if (c.memId != null) 'memId': c.memId,
+    };
+  }
+
+  /// Serializes a user connection to its persisted edge JSON `{a, b, label}`.
+  Map<String, dynamic> _jsonFromEdge(_BoardEdge e) =>
+      {'a': e.from, 'b': e.to, 'label': e.label};
 
   /// Suggested relation text for a new edge, biased by card content so the
   /// midpoint pill reads sensibly (e.g. "with Maya", "reminder").
@@ -1042,8 +1590,10 @@ class _BoardViewState extends State<_BoardView> {
     return 'related';
   }
 
-  _CardSpec _specById(String id) =>
-      _boardCards.firstWhere((c) => c.id == id);
+  _CardSpec _specById(String id) => _cards.firstWhere(
+        (c) => c.id == id,
+        orElse: () => _boardCards.first,
+      );
 
   /// Centre of a card in board coordinates, from its live position + size.
   Offset _centerOf(String id) {
@@ -1059,7 +1609,7 @@ class _BoardViewState extends State<_BoardView> {
       builder: (context, constraints) {
         final viewport = Size(constraints.maxWidth, constraints.maxHeight);
         // Draw the dragging card last so it floats above its siblings.
-        final ordered = [..._boardCards]..sort((a, b) {
+        final ordered = [..._cards]..sort((a, b) {
             if (a.id == _draggingId) return 1;
             if (b.id == _draggingId) return -1;
             return 0;
@@ -1075,6 +1625,10 @@ class _BoardViewState extends State<_BoardView> {
               behavior: HitTestBehavior.opaque,
               onScaleStart: _onScaleStart,
               onScaleUpdate: _onScaleUpdate,
+              // In add-mode, a tap on empty canvas drops a new card there.
+              onTapUp: _addMode
+                  ? (d) => _addCardAt((d.localPosition - _offset) / _scale)
+                  : null,
               child: ClipRect(
                 child: Transform.translate(
                   offset: _offset,
@@ -1100,11 +1654,14 @@ class _BoardViewState extends State<_BoardView> {
                           // midpoint relation-label pills for user edges
                           for (final e in _edges)
                             _relationPill(rd, e),
-                          Positioned(
-                            left: 150,
-                            top: 250,
-                            child: _Frame(),
-                          ),
+                          // The designed "Spring · the coast" frame belongs to
+                          // the sample scene only.
+                          if (_isSample)
+                            Positioned(
+                              left: 150,
+                              top: 250,
+                              child: _Frame(),
+                            ),
                           for (final c in ordered)
                             Positioned(
                               left: _positions[c.id]!.dx,
@@ -1161,6 +1718,14 @@ class _BoardViewState extends State<_BoardView> {
                   hasSource: _connectSource != null,
                   onDone: _exitConnect,
                 ),
+              ),
+            // add-mode hint (top) — tap the canvas to drop a card
+            if (_addMode)
+              Positioned(
+                left: 14,
+                right: 14,
+                top: 118,
+                child: _AddBanner(onDone: () => setState(() => _tool = 0)),
               ),
             // Mira suggestion (hidden while connecting to keep the flow clear)
             if (_suggestVisible && !_connectMode)
@@ -1306,6 +1871,73 @@ class _ConnectBanner extends StatelessWidget {
               hasSource
                   ? 'Now tap another card to connect them'
                   : 'Connect mode · tap two cards to link them',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: onDone,
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                'Done',
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: rd.navy,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Add-mode hint shown at the top of the board — tells the user to tap the
+/// canvas to drop a card, with a Done affordance to exit add-mode.
+class _AddBanner extends StatelessWidget {
+  const _AddBanner({required this.onDone});
+
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: rd.navy,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: rd.navy.withValues(alpha: 0.35),
+            blurRadius: 30,
+            spreadRadius: -12,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const RdIcon(RdIcons.addCard,
+              size: 18, stroke: '#FFFFFF', strokeWidth: 2),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              'Add mode · tap anywhere to drop a card',
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
@@ -1534,6 +2166,7 @@ class _CardSpec {
     this.title = '',
     this.sub,
     this.tag,
+    this.memId,
   });
 
   final String id;
@@ -1544,6 +2177,9 @@ class _CardSpec {
   final String title;
   final String? sub;
   final String? tag;
+
+  /// Optional memory reference — set when this card mirrors a memory node.
+  final String? memId;
 
   /// Approximate rendered size per card kind — used to derive card centres for
   /// connect-mode edges. Widths mirror the layout constants in `_BoardCard`;
@@ -1576,6 +2212,58 @@ const _boardCards = <_CardSpec>[
   _CardSpec(id: 'book', kind: _CardKind.book, left: 470, top: 560, rotation: 2, tag: 'Book', title: '“The Overstory”', sub: 'Maya’s rec — a weekend read.'),
   _CardSpec(id: 'maya', kind: _CardKind.person, left: 560, top: 452, rotation: -1.5, title: 'Maya', sub: 'joining · maybe'),
 ];
+
+double _asDouble(Object? v, double fallback) {
+  if (v is num) return v.toDouble();
+  if (v is String) return double.tryParse(v) ?? fallback;
+  return fallback;
+}
+
+_CardKind _cardKindFromName(String? name) {
+  for (final k in _CardKind.values) {
+    if (k.name == name) return k;
+  }
+  return _CardKind.note;
+}
+
+/// Deserializes a persisted board node into a `_CardSpec`. Tolerant of missing
+/// keys so a partially-formed node still renders. Returns null only if there's
+/// no usable id.
+_CardSpec? _cardFromNode(Map<String, dynamic> n) {
+  final id = n['id'];
+  if (id is! String || id.isEmpty) return null;
+  final kind = _cardKindFromName(n['kind'] as String?);
+  final title = (n['title'] as String?) ?? '';
+  final sub = n['sub'] as String?;
+  // Person/photo/sticky cards render sub differently; the person card asserts a
+  // non-null sub, so guarantee one when the kind needs it.
+  final safeSub = (kind == _CardKind.person && (sub == null || sub.isEmpty))
+      ? ' '
+      : sub;
+  return _CardSpec(
+    id: id,
+    kind: kind,
+    left: _asDouble(n['left'], 0),
+    top: _asDouble(n['top'], 0),
+    rotation: _asDouble(n['rotation'], 0),
+    title: title,
+    sub: safeSub,
+    tag: n['tag'] as String?,
+    memId: n['memId'] as String?,
+  );
+}
+
+/// Deserializes a persisted edge `{a, b, label}` into a `_BoardEdge`.
+_BoardEdge? _edgeFromJson(Map<String, dynamic> e) {
+  final a = e['a'];
+  final b = e['b'];
+  if (a is! String || b is! String || a.isEmpty || b.isEmpty) return null;
+  return _BoardEdge(
+    from: a,
+    to: b,
+    label: (e['label'] as String?) ?? 'related',
+  );
+}
 
 ({Color bg, String stroke}) _tagStyle(String tag) {
   switch (tag) {
