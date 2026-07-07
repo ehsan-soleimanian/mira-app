@@ -48,5 +48,9 @@ app.*.map.json
 # Local tooling / extracted design assets
 node_modules/
 fig-extracted/
+design2/
 gradle-thread-dump.txt
 Microsoft/
+.claude/
+.cursor/
+.design/
