@@ -40,6 +40,10 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   Set<String>? _colFilterIds;
   String? _colFilterName;
 
+  /// Archived view: shows only archived memories with a Restore action.
+  bool _archivedView = false;
+  List<_LibMem>? _archivedItems;
+
   /// Live items from the backend; null until the first load. Falls back to the
   /// sample set when the backend is unreachable.
   List<_LibMem>? _items;
@@ -309,9 +313,207 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     _toast('Archived ${ids.length} ${ids.length == 1 ? "memory" : "memories"}');
   }
 
+  /// Open the Archived view — loads archived items (`?includeArchived`) and
+  /// filters to the ones flagged `archived` in their metadata.
+  Future<void> _openArchived() async {
+    setState(() {
+      _archivedView = true;
+      _archivedItems = null;
+    });
+    try {
+      final services = AppScope.servicesOf(context);
+      final items =
+          await services.libraryRepository.list(includeArchived: true);
+      final archived = items
+          .where((i) => (i.metadata['archived'] as bool?) ?? false)
+          .map(_toLibMem)
+          .toList();
+      if (mounted) setState(() => _archivedItems = archived);
+    } catch (_) {
+      if (mounted) setState(() => _archivedItems = const []);
+    }
+  }
+
+  Future<void> _unarchive(_LibMem m) async {
+    final services = AppScope.servicesOf(context);
+    setState(() => _archivedItems =
+        (_archivedItems ?? const []).where((x) => x.id != m.id).toList());
+    try {
+      await services.libraryRepository.bulkAction([m.id], 'restore');
+    } catch (_) {}
+    _toast('Restored “${m.title}”');
+  }
+
+  Widget _archivedEntry() {
+    final rd = context.rd;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _openArchived,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(26, 16, 26, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: rd.line, width: 1),
+        ),
+        child: Row(
+          children: [
+            RdIcon(RdIcons.archive, size: 17, color: rd.muted, strokeWidth: 1.8),
+            const SizedBox(width: 12),
+            Text(
+              'Archived',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: rd.ink,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              'View',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: rd.peri,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _archivedScaffold() {
+    final rd = context.rd;
+    final items = _archivedItems;
+    return Scaffold(
+      backgroundColor: rd.bg,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 26, 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _archivedView = false),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: RdIcon(RdIcons.chevronLeft,
+                          size: 22, color: rd.ink, strokeWidth: 1.8),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Archived',
+                    style: GoogleFonts.dosis(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: rd.ink,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: items == null
+                  ? Center(child: CircularProgressIndicator(color: rd.peri))
+                  : items.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(40),
+                            child: Text(
+                              'Nothing archived.\nArchived memories rest here, out of the way.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.vazirmatn(
+                                fontSize: 13.5,
+                                color: rd.faint,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 4, bottom: 24),
+                          itemCount: items.length,
+                          itemBuilder: (context, i) => _archivedTile(items[i]),
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _archivedTile(_LibMem m) {
+    final rd = context.rd;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: rd.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: rd.line, width: 1),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  m.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: rd.ink,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  m.sub,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _unarchive(m),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+              decoration: BoxDecoration(
+                color: rd.periSoft,
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Text(
+                'Restore',
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: rd.peri,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    if (_archivedView) return _archivedScaffold();
     final visible = _visible;
     final days = <String>[];
     for (final m in visible) {
@@ -341,6 +543,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                       else ...[
                         _collectionsLabel(),
                         _collections(),
+                        _archivedEntry(),
                       ],
                     ],
                     if (visible.isEmpty)
