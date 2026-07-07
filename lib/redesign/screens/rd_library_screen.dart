@@ -279,23 +279,33 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         : 'Deleted ${ids.length - failed} of ${ids.length}');
   }
 
-  // Pin / Archive are optimistic (client-side) for now — their backend flags
-  // land in a follow-up; Collection + Delete above are fully wired.
-  void _pinSelected() {
-    final n = _selected.length;
-    if (n == 0) return;
+  /// "Pin" action — flag the selected memories via bulk-actions (best-effort).
+  Future<void> _pinSelected() async {
+    final ids = _selected.toList();
+    if (ids.isEmpty) return;
+    final services = AppScope.servicesOf(context);
+    final n = ids.length;
     _exitSelect();
+    try {
+      await services.libraryRepository.bulkAction(ids, 'pin');
+    } catch (_) {}
     _toast('Pinned $n ${n == 1 ? "memory" : "memories"}');
   }
 
-  void _archiveSelected() {
+  /// "Archive" action — archive via bulk-actions and drop from the browse list
+  /// (archived items move to the Archived view).
+  Future<void> _archiveSelected() async {
     final ids = _selected.toList();
     if (ids.isEmpty) return;
+    final services = AppScope.servicesOf(context);
     setState(() {
       _items =
           (_items ?? _mems).where((m) => !_selected.contains(m.id)).toList();
     });
     _exitSelect();
+    try {
+      await services.libraryRepository.bulkAction(ids, 'archive');
+    } catch (_) {}
     _toast('Archived ${ids.length} ${ids.length == 1 ? "memory" : "memories"}');
   }
 

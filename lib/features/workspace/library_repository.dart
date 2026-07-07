@@ -7,7 +7,11 @@ class LibraryRepository {
 
   final Dio _dio;
 
-  Future<List<LibraryItem>> list({String? query, String? type}) async {
+  Future<List<LibraryItem>> list({
+    String? query,
+    String? type,
+    bool includeArchived = false,
+  }) async {
     final params = <String, dynamic>{};
     if (query != null && query.trim().isNotEmpty) {
       params['q'] = query.trim();
@@ -15,6 +19,7 @@ class LibraryRepository {
     if (type != null) {
       params['type'] = type;
     }
+    if (includeArchived) params['includeArchived'] = true;
     final response = await _dio.get<List<dynamic>>(
       '/library/items',
       queryParameters: params,
@@ -28,6 +33,22 @@ class LibraryRepository {
   /// Delete a library item (memory). Backend: `DELETE /library/items/{id}`.
   Future<void> delete(String itemId) async {
     await _dio.delete<void>('/library/items/$itemId');
+  }
+
+  /// Apply a Library selection-bar action to many items in one request.
+  /// Backend: `POST /library/items/bulk-actions`. [action] ∈
+  /// pin / unpin / archive / restore / delete / add_to_space / remove_from_space.
+  Future<void> bulkAction(
+    List<String> itemIds,
+    String action, {
+    String? spaceId,
+  }) async {
+    final data = <String, dynamic>{'itemIds': itemIds, 'action': action};
+    if (spaceId != null) data['spaceId'] = spaceId;
+    await _dio.post<Map<String, dynamic>>(
+      '/library/items/bulk-actions',
+      data: data,
+    );
   }
 
   Future<LibrarySearchResponse> searchV2({
