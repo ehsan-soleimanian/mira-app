@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../theme/rd_typography.dart';
 import 'rd_icon.dart';
 
@@ -104,7 +104,8 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? RdColors.navy : RdColors.faint;
+    final rd = context.rd;
+    final color = active ? rd.navy : rd.faint;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -116,7 +117,7 @@ class _NavItem extends StatelessWidget {
             RdIcon(
               icon,
               size: 22,
-              stroke: active ? '#14328C' : '#B7B8BE',
+              color: color,
               strokeWidth: 1.8,
             ),
             const SizedBox(height: 5),

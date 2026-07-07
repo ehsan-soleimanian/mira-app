@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/models/api/daily_update_models.dart';
 
-import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../theme/rd_typography.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
@@ -90,7 +90,7 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: RdColors.bg,
+      backgroundColor: context.rd.bg,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -110,6 +110,7 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
   }
 
   Widget _header() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 10, 26, 0),
       child: Row(
@@ -118,19 +119,19 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_greeting, style: RdText.eyebrow),
+              Text(_greeting, style: RdText.eyebrow.copyWith(color: rd.muted)),
               const SizedBox(height: 2),
-              Text(_name, style: RdText.name),
+              Text(_name, style: RdText.name.copyWith(color: rd.ink)),
             ],
           ),
           const Spacer(),
           _CircleButton(
             size: 42,
             onTap: () => widget.go('account'),
-            child: const RdIcon(
+            child: RdIcon(
               RdIcons.gear,
               size: 19,
-              stroke: '#6B6C73',
+              color: rd.gearIcon,
               strokeWidth: 1.7,
             ),
           ),
@@ -147,13 +148,14 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
         Text(
           'Your memory is\nquiet and ready',
           textAlign: TextAlign.center,
-          style: RdText.title,
+          style: RdText.title.copyWith(color: context.rd.ink),
         ),
       ],
     );
   }
 
   Widget _captureField() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 26),
       child: GestureDetector(
@@ -162,9 +164,9 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
           height: 62,
           padding: const EdgeInsets.only(left: 20, right: 8),
           decoration: BoxDecoration(
-            color: RdColors.card,
+            color: rd.card,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: RdColors.line, width: 1),
+            border: Border.all(color: rd.line, width: 1),
             boxShadow: [
               BoxShadow(
                 color: const Color.fromRGBO(30, 34, 70, 0.30),
@@ -176,15 +178,18 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
           ),
           child: Row(
             children: [
-              const RdIcon(
+              RdIcon(
                 RdIcons.pencil,
                 size: 20,
-                stroke: '#B7B8BE',
+                color: rd.faint,
                 strokeWidth: 1.7,
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Type or say anything…', style: RdText.placeholder),
+                child: Text(
+                  'Type or say anything…',
+                  style: RdText.placeholder.copyWith(color: rd.faint),
+                ),
               ),
               _MicButton(size: 46, onTap: () => widget.go('capture')),
             ],
@@ -195,6 +200,7 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
   }
 
   Widget _recentsSection() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 0, 26, 0),
       child: Column(
@@ -208,18 +214,24 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: RdColors.peri,
+                      color: rd.peri,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text('RECENTLY CAPTURED', style: RdText.sectionLabel),
+                  Text(
+                    'RECENTLY CAPTURED',
+                    style: RdText.sectionLabel.copyWith(color: rd.faint),
+                  ),
                 ],
               ),
               GestureDetector(
                 onTap: () => widget.go('daily'),
-                child: Text('See all', style: RdText.seeAll),
+                child: Text(
+                  'See all',
+                  style: RdText.seeAll.copyWith(color: rd.peri),
+                ),
               ),
             ],
           ),
@@ -233,17 +245,17 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
                   bottom: 22,
                   child: Container(
                     width: 1.5,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          RdColors.periSoft,
-                          RdColors.peri,
-                          RdColors.peri,
-                          RdColors.periSoft,
+                          rd.periSoft,
+                          rd.peri,
+                          rd.peri,
+                          rd.periSoft,
                         ],
-                        stops: [0.0, 0.3, 0.7, 1.0],
+                        stops: const [0.0, 0.3, 0.7, 1.0],
                       ),
                     ),
                   ),
@@ -320,6 +332,7 @@ class _RecentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final isNote = item.kind == RdRecentKind.note;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -328,7 +341,7 @@ class _RecentTile extends StatelessWidget {
         decoration: BoxDecoration(
           border: isLast
               ? null
-              : const Border(bottom: BorderSide(color: RdColors.line, width: 1)),
+              : Border(bottom: BorderSide(color: rd.line, width: 1)),
         ),
         padding: const EdgeInsets.symmetric(vertical: 13),
         child: Row(
@@ -347,7 +360,7 @@ class _RecentTile extends StatelessWidget {
                     item.title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: RdText.itemTitle,
+                    style: RdText.itemTitle.copyWith(color: rd.ink),
                   ),
                   const SizedBox(height: 5),
                   _MetaRow(
@@ -374,26 +387,27 @@ class _MetaRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Row(
       children: [
         RdIcon(
           isNote ? RdIcons.pencil : RdIcons.micSimple,
           size: 12,
-          stroke: '#7E8BC9',
+          color: rd.peri,
           strokeWidth: 2,
         ),
         const SizedBox(width: 6),
-        Text(isNote ? 'Note' : 'Voice', style: RdText.meta),
+        Text(isNote ? 'Note' : 'Voice', style: RdText.meta.copyWith(color: rd.faint)),
         const _MetaSep(),
-        Text(time, style: RdText.meta),
+        Text(time, style: RdText.meta.copyWith(color: rd.faint)),
         if (links > 0) ...[
           const _MetaSep(),
-          const RdIcon(RdIcons.link, size: 12, stroke: '#7E8BC9', strokeWidth: 2),
+          RdIcon(RdIcons.link, size: 12, color: rd.peri, strokeWidth: 2),
           const SizedBox(width: 5),
           Text(
             '$links links',
             style: RdText.meta.copyWith(
-              color: RdColors.peri,
+              color: rd.peri,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -412,9 +426,9 @@ class _MetaSep extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 7),
       width: 3,
       height: 3,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: RdColors.faint,
+        color: context.rd.faint,
       ),
     );
   }
@@ -425,23 +439,24 @@ class _TimelineNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       width: 13,
       height: 13,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: RdColors.peri,
+        color: rd.peri,
         boxShadow: [
-          BoxShadow(color: RdColors.periSoft, spreadRadius: 3),
+          BoxShadow(color: rd.periSoft, spreadRadius: 3),
         ],
       ),
       child: Center(
         child: Container(
           width: 7,
           height: 7,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: RdColors.card,
+            color: rd.card,
           ),
         ),
       ),
@@ -458,6 +473,7 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -465,8 +481,8 @@ class _CircleButton extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: RdColors.card,
-          border: Border.all(color: RdColors.line, width: 1),
+          color: rd.card,
+          border: Border.all(color: rd.line, width: 1),
         ),
         child: Center(child: child),
       ),

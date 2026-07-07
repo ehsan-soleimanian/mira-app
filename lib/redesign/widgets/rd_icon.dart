@@ -4,6 +4,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 /// Renders the design's exact line icons (24×24 viewBox) via SVG so they stay
 /// pixel-faithful to the Figma paths. [body] is the inner SVG markup; [stroke]
 /// is a CSS hex string (matching how the design specifies colours).
+///
+/// For theme-aware (text-tone) icons, pass [color] — a Flutter [Color] such as
+/// `context.rd.ink` — and it overrides [stroke] so the icon flips with the
+/// light/dark palette. Leave [color] null to keep the fixed hex [stroke] (used
+/// for on-brand icons that stay constant across themes: white on navy
+/// gradients, brand fills, colored type-badges).
 class RdIcon extends StatelessWidget {
   const RdIcon(
     this.body, {
@@ -12,6 +18,7 @@ class RdIcon extends StatelessWidget {
     this.stroke = '#1B1C24',
     this.strokeWidth = 1.5,
     this.fill = 'none',
+    this.color,
   });
 
   final String body;
@@ -20,13 +27,30 @@ class RdIcon extends StatelessWidget {
   final double strokeWidth;
   final String fill;
 
+  /// When non-null, overrides [stroke] with this theme colour so the icon
+  /// adapts to light/dark. When null, the hex [stroke] is used verbatim.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
+    final resolvedStroke = color != null ? _hex(color!) : stroke;
     final svg =
         '<svg xmlns="http://www.w3.org/2000/svg" width="$size" height="$size" '
-        'viewBox="0 0 24 24" fill="$fill" stroke="$stroke" stroke-width="$strokeWidth" '
+        'viewBox="0 0 24 24" fill="$fill" stroke="$resolvedStroke" stroke-width="$strokeWidth" '
         'stroke-linecap="round" stroke-linejoin="round">$body</svg>';
     return SvgPicture.string(svg, width: size, height: size);
+  }
+
+  /// Formats a [Color] as an `#RRGGBB` hex string for the SVG `stroke`
+  /// attribute (the alpha channel is dropped — icons are fully opaque).
+  static String _hex(Color c) {
+    final r = (c.r * 255.0).round() & 0xff;
+    final g = (c.g * 255.0).round() & 0xff;
+    final b = (c.b * 255.0).round() & 0xff;
+    return '#'
+        '${r.toRadixString(16).padLeft(2, '0')}'
+        '${g.toRadixString(16).padLeft(2, '0')}'
+        '${b.toRadixString(16).padLeft(2, '0')}';
   }
 }
 
