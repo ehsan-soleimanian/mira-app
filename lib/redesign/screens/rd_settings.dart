@@ -110,9 +110,11 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
     try {
       await AppScope.servicesOf(context).authRepository.logout();
     } catch (_) {
-      // Best-effort — clear whatever we can and let the user know.
+      // Best-effort — clear whatever we can and still return to the login flow.
     }
+    if (!mounted) return;
     _toast('Signed out');
+    widget.go('splash'); // reset the whole authed stack back to first-run
   }
 
   @override

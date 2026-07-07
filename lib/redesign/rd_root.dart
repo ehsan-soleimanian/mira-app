@@ -44,7 +44,9 @@ class _RdRootState extends State<RdRoot> {
 
   void _go(String screen, {Object? arg}) {
     setState(() {
-      if (_tabs.contains(screen)) {
+      // Tabs reset the stack; 'splash' is the app root too (used by sign-out to
+      // drop the whole authed stack and return to the first-run flow).
+      if (_tabs.contains(screen) || screen == 'splash') {
         _stack
           ..clear()
           ..add((id: screen, arg: null));
@@ -78,11 +80,11 @@ class _RdRootState extends State<RdRoot> {
       case 'login':
         return RdLoginScreen(go: _go);
       case 'invite':
-        return RdInviteScreen(go: _go);
+        return RdInviteScreen(go: _go, email: arg is String ? arg : null);
       case 'email':
-        return RdEmailCodeScreen(go: _go);
+        return RdEmailCodeScreen(go: _go, email: arg is String ? arg : null);
       case 'details':
-        return RdDetailsScreen(go: _go);
+        return RdDetailsScreen(go: _go, email: arg is String ? arg : null);
       case 'remember':
         return RdRememberScreen(go: _go);
       case 'understood':

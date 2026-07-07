@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mira_app/app/app_scope.dart';
+
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
@@ -11,7 +13,16 @@ import '../widgets/rd_orb.dart';
 
 /// First-run onboarding — splash → login → invite → email code → details →
 /// remember → understood, then into the app. Faithful to `onboarding.jsx`
-/// (`.ob-*`). Inputs are local-only; wiring to auth happens when promoted.
+/// (`.ob-*`). Login/invite/email are wired to the real auth backend
+/// (`AuthRepository`): the email flow obtains and stores session tokens, and
+/// the [main] auth gate boots returning users straight past this flow.
+
+/// Shows a transient error toast for a failed auth step.
+void _authError(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+  );
+}
 
 /// The peri CTA fill (`_ObVariant.peri`) is a fixed brand accent — white text
 /// rides on it in both themes, matching `RdColors.peri` / `context.rd.peri`.
@@ -91,10 +102,71 @@ class RdSplashScreen extends StatelessWidget {
 }
 
 // ── 2. Login ───────────────────────────────────────────────────────────
-class RdLoginScreen extends StatelessWidget {
+class RdLoginScreen extends StatefulWidget {
   const RdLoginScreen({super.key, required this.go});
 
   final RdGo go;
+
+  @override
+  State<RdLoginScreen> createState() => _RdLoginScreenState();
+}
+
+class _RdLoginScreenState extends State<RdLoginScreen> {
+  final _email = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _email.dispose();
+    super.dispose();
+  }
+
+  /// Start the email flow: the backend sends a code and tells us whether an
+  /// invite gate is required, so we branch to 'invite' or straight to 'email'.
+  Future<void> _continue() async {
+    if (_busy) return;
+    final email = _email.text.trim();
+    if (!email.contains('@') || email.length < 5) {
+      _authError(context, 'Enter a valid email address.');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final res = await AppScope.servicesOf(context)
+          .authRepository
+          .startEmailFlow(email);
+      if (!mounted) return;
+      widget.go(res.inviteRequired ? 'invite' : 'email', arg: email);
+    } catch (_) {
+      if (mounted) _authError(context, 'Could not send a code. Try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Exchange a Google ID token for a MIRA session, then enter the app.
+  Future<void> _google() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final services = AppScope.servicesOf(context);
+      final idToken = await services.googleSignInService.signInAndGetIdToken();
+      if (idToken == null) {
+        if (mounted) setState(() => _busy = false);
+        return; // cancelled, or Google isn't configured on this build
+      }
+      final session =
+          await services.authRepository.signInWithGoogle(idToken: idToken);
+      if (mounted) {
+        // New Google users still run first-run setup; returning users go home.
+        widget.go(session.user.onboardingCompleted ? 'home' : 'details');
+      }
+    } catch (_) {
+      if (mounted) _authError(context, 'Google sign-in failed.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,28 +178,39 @@ class RdLoginScreen extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              _ObHeader(title: 'Login or sign up', onBack: () => go('splash')),
+              _ObHeader(
+                title: 'Login or sign up',
+                onBack: () => widget.go('splash'),
+              ),
               const SizedBox(height: 24),
-              const _ObInput(hint: 'Enter Your Email'),
+              _ObInput(
+                hint: 'Enter Your Email',
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.go,
+                onSubmitted: (_) => _continue(),
+                autofocus: true,
+              ),
               const SizedBox(height: 14),
               _ObButton(
                 label: 'Continue',
                 variant: _ObVariant.navy,
-                onTap: () => go('invite'),
+                loading: _busy,
+                onTap: _continue,
               ),
               const _OrDivider(),
               _ObButton(
                 label: 'Continue with Google',
                 variant: _ObVariant.social,
                 leading: const _GoogleIcon(),
-                onTap: () => go('invite'),
+                onTap: _google,
               ),
               const SizedBox(height: 12),
               _ObButton(
                 label: 'Continue with Apple',
                 variant: _ObVariant.social,
                 leading: const _AppleIcon(),
-                onTap: () => go('invite'),
+                onTap: () => _authError(context, 'Apple sign-in is coming soon.'),
               ),
               const Spacer(),
               Text(
@@ -149,31 +232,135 @@ class RdLoginScreen extends StatelessWidget {
 }
 
 // ── 3. Invite code ─────────────────────────────────────────────────────
-class RdInviteScreen extends StatelessWidget {
-  const RdInviteScreen({super.key, required this.go});
+class RdInviteScreen extends StatefulWidget {
+  const RdInviteScreen({super.key, required this.go, this.email});
 
   final RdGo go;
+
+  /// Email carried forward from the login step (needed to verify the invite).
+  final String? email;
+
+  @override
+  State<RdInviteScreen> createState() => _RdInviteScreenState();
+}
+
+class _RdInviteScreenState extends State<RdInviteScreen> {
+  final _code = TextEditingController();
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_busy) return;
+    final email = widget.email;
+    if (email == null) {
+      widget.go('login'); // lost the flow state — restart cleanly
+      return;
+    }
+    final code = _code.text.trim();
+    if (code.isEmpty) {
+      _authError(context, 'Enter your invite code.');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final res = await AppScope.servicesOf(context)
+          .authRepository
+          .verifyInviteCode(email: email, inviteCode: code);
+      if (!mounted) return;
+      if (res.accepted) {
+        widget.go('email', arg: email);
+      } else {
+        _authError(context, 'That invite code was not accepted.');
+      }
+    } catch (_) {
+      if (mounted) _authError(context, 'Could not verify the code. Try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return _ObFormScaffold(
-      onBack: () => go('login'),
+      onBack: () => widget.go('login'),
       badge: RdIcons.shieldCheck,
       title: 'You need an invite code to join Mira.',
-      desc: 'Enter 6-digit code',
-      input: const _ObInput(hint: 'Code'),
+      desc: 'Enter your invite code',
+      input: _ObInput(
+        hint: 'Code',
+        controller: _code,
+        textInputAction: TextInputAction.go,
+        onSubmitted: (_) => _submit(),
+        autofocus: true,
+      ),
       ctaLabel: 'Enter',
       ctaVariant: _ObVariant.peri,
-      onCta: () => go('email'),
+      busy: _busy,
+      onCta: _submit,
     );
   }
 }
 
 // ── 4. Email code (OTP) ────────────────────────────────────────────────
-class RdEmailCodeScreen extends StatelessWidget {
-  const RdEmailCodeScreen({super.key, required this.go});
+class RdEmailCodeScreen extends StatefulWidget {
+  const RdEmailCodeScreen({super.key, required this.go, this.email});
 
   final RdGo go;
+
+  /// Email carried forward from login/invite (needed to verify the code).
+  final String? email;
+
+  @override
+  State<RdEmailCodeScreen> createState() => _RdEmailCodeScreenState();
+}
+
+class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
+  String _code = '';
+  bool _busy = false;
+
+  /// Verify the emailed code. On success the repository stores the session
+  /// tokens, so from here the app is authenticated.
+  Future<void> _submit() async {
+    if (_busy) return;
+    final email = widget.email;
+    if (email == null) {
+      widget.go('login');
+      return;
+    }
+    if (_code.trim().length < 4) {
+      _authError(context, 'Enter the code we emailed you.');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final user = await AppScope.servicesOf(context)
+          .authRepository
+          .verifyEmailCode(email: email, code: _code.trim());
+      if (!mounted) return;
+      // Returning users (already onboarded) skip straight into the app.
+      widget.go(user.onboardingCompleted ? 'home' : 'details', arg: email);
+    } catch (_) {
+      if (mounted) _authError(context, 'That code did not match. Try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _resend() async {
+    final email = widget.email;
+    if (email == null || _busy) return;
+    try {
+      await AppScope.servicesOf(context).authRepository.startEmailFlow(email);
+      if (mounted) _authError(context, 'We sent a new code.');
+    } catch (_) {
+      if (mounted) _authError(context, 'Could not resend the code.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +373,7 @@ class RdEmailCodeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _ObHeader(onBack: () => go('invite')),
+              _ObHeader(onBack: () => widget.go('invite')),
               const SizedBox(height: 26),
               const _ObBadge(icon: RdIcons.shield),
               const SizedBox(height: 16),
@@ -211,28 +398,39 @@ class RdEmailCodeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 26),
-              const _OtpRow(),
+              _OtpRow(
+                length: 6,
+                onChanged: (v) => setState(() => _code = v),
+                onCompleted: (_) => _submit(),
+              ),
               const SizedBox(height: 22),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(text: 'Didn’t get the code? '),
-                    TextSpan(
-                      text: 'Resend',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Didn’t get the code? ',
+                    style:
+                        GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
+                  ),
+                  GestureDetector(
+                    onTap: _resend,
+                    child: Text(
+                      'Resend',
                       style: GoogleFonts.vazirmatn(
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: rd.navy,
                       ),
                     ),
-                  ],
-                  style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
-                ),
+                  ),
+                ],
               ),
               const Spacer(),
               _ObButton(
                 label: 'Enter',
                 variant: _ObVariant.peri,
-                onTap: () => go('details'),
+                loading: _busy,
+                onTap: _submit,
               ),
               const SizedBox(height: 40),
             ],
@@ -244,23 +442,46 @@ class RdEmailCodeScreen extends StatelessWidget {
 }
 
 // ── 5. Details ─────────────────────────────────────────────────────────
-class RdDetailsScreen extends StatelessWidget {
-  const RdDetailsScreen({super.key, required this.go});
+class RdDetailsScreen extends StatefulWidget {
+  const RdDetailsScreen({super.key, required this.go, this.email});
 
   final RdGo go;
+  final String? email;
+
+  @override
+  State<RdDetailsScreen> createState() => _RdDetailsScreenState();
+}
+
+class _RdDetailsScreenState extends State<RdDetailsScreen> {
+  final _name = TextEditingController();
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  // The name is confirmed and persisted in the setup wizard's onboarding POST;
+  // here we just collect it and move on.
+  void _next() => widget.go('remember');
 
   @override
   Widget build(BuildContext context) {
     return _ObFormScaffold(
-      onBack: () => go('email'),
+      onBack: () => widget.go('email'),
       badge: RdIcons.user,
       title: 'Your details',
-      desc:
-          'Lorem ipsum dolor sit amet, adipiscing elit, sed eiusmod tempor incididunt.',
-      input: const _ObInput(hint: 'your name'),
+      desc: 'This is how Mira will greet you. You can change it later in Settings.',
+      input: _ObInput(
+        hint: 'your name',
+        controller: _name,
+        textInputAction: TextInputAction.go,
+        onSubmitted: (_) => _next(),
+        autofocus: true,
+      ),
       ctaLabel: 'Enter',
       ctaVariant: _ObVariant.peri,
-      onCta: () => go('remember'),
+      onCta: _next,
     );
   }
 }
@@ -480,6 +701,7 @@ class _ObFormScaffold extends StatelessWidget {
     required this.ctaLabel,
     required this.ctaVariant,
     required this.onCta,
+    this.busy = false,
   });
 
   final VoidCallback onBack;
@@ -490,6 +712,7 @@ class _ObFormScaffold extends StatelessWidget {
   final String ctaLabel;
   final _ObVariant ctaVariant;
   final VoidCallback onCta;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -527,7 +750,12 @@ class _ObFormScaffold extends StatelessWidget {
               const SizedBox(height: 22),
               input,
               const Spacer(),
-              _ObButton(label: ctaLabel, variant: ctaVariant, onTap: onCta),
+              _ObButton(
+                label: ctaLabel,
+                variant: ctaVariant,
+                loading: busy,
+                onTap: onCta,
+              ),
               const SizedBox(height: 40),
             ],
           ),
@@ -636,9 +864,21 @@ class _ObBadge extends StatelessWidget {
 }
 
 class _ObInput extends StatelessWidget {
-  const _ObInput({required this.hint});
+  const _ObInput({
+    required this.hint,
+    this.controller,
+    this.keyboardType,
+    this.textInputAction,
+    this.onSubmitted,
+    this.autofocus = false,
+  });
 
   final String hint;
+  final TextEditingController? controller;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -646,6 +886,11 @@ class _ObInput extends StatelessWidget {
     return SizedBox(
       height: 54,
       child: TextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onSubmitted: onSubmitted,
+        autofocus: autofocus,
         // Vivid brand focus blue — kept fixed across themes.
         cursorColor: const Color(0xFF3D63F5),
         style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.ink),
@@ -677,12 +922,14 @@ class _ObButton extends StatelessWidget {
     required this.variant,
     required this.onTap,
     this.leading,
+    this.loading = false,
   });
 
   final String label;
   final _ObVariant variant;
   final VoidCallback onTap;
   final Widget? leading;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -712,7 +959,7 @@ class _ObButton extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: loading ? null : onTap,
       child: Container(
         height: 52,
         width: double.infinity,
@@ -721,21 +968,33 @@ class _ObButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: border,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (leading != null) ...[leading!, const SizedBox(width: 10)],
-            Text(
-              label,
-              style: GoogleFonts.vazirmatn(
-                fontSize: 15,
-                fontWeight:
-                    variant == _ObVariant.social ? FontWeight.w500 : FontWeight.w600,
-                color: fg,
+        child: loading
+            ? Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    valueColor: AlwaysStoppedAnimation<Color>(fg),
+                  ),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (leading != null) ...[leading!, const SizedBox(width: 10)],
+                  Text(
+                    label,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 15,
+                      fontWeight: variant == _ObVariant.social
+                          ? FontWeight.w500
+                          : FontWeight.w600,
+                      color: fg,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -770,22 +1029,25 @@ class _OrDivider extends StatelessWidget {
 }
 
 class _OtpRow extends StatefulWidget {
-  const _OtpRow();
+  const _OtpRow({this.length = 6, this.onChanged, this.onCompleted});
+
+  final int length;
+
+  /// Fires on every edit with the current concatenated code.
+  final ValueChanged<String>? onChanged;
+
+  /// Fires once all [length] boxes are filled.
+  final ValueChanged<String>? onCompleted;
 
   @override
   State<_OtpRow> createState() => _OtpRowState();
 }
 
 class _OtpRowState extends State<_OtpRow> {
-  final List<TextEditingController> _controllers =
-      List.generate(4, (_) => TextEditingController(text: ''));
-  final List<FocusNode> _nodes = List.generate(4, (_) => FocusNode());
-
-  @override
-  void initState() {
-    super.initState();
-    _controllers[0].text = '4';
-  }
+  late final List<TextEditingController> _controllers =
+      List.generate(widget.length, (_) => TextEditingController());
+  late final List<FocusNode> _nodes =
+      List.generate(widget.length, (_) => FocusNode());
 
   @override
   void dispose() {
@@ -798,20 +1060,34 @@ class _OtpRowState extends State<_OtpRow> {
     super.dispose();
   }
 
+  String get _code => _controllers.map((c) => c.text).join();
+
+  void _onChanged(int i, String v) {
+    if (v.isNotEmpty && i < widget.length - 1) {
+      _nodes[i + 1].requestFocus();
+    } else if (v.isEmpty && i > 0) {
+      _nodes[i - 1].requestFocus();
+    }
+    setState(() {});
+    final code = _code;
+    widget.onChanged?.call(code);
+    if (code.length == widget.length) widget.onCompleted?.call(code);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Boxes flex to share the row width, so 6 digits always fit on narrow
+    // screens without overflow.
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        for (var i = 0; i < 4; i++) ...[
-          if (i > 0) const SizedBox(width: 12),
-          _OtpBox(
-            controller: _controllers[i],
-            focusNode: _nodes[i],
-            onChanged: (v) {
-              setState(() {});
-              if (v.isNotEmpty && i < 3) _nodes[i + 1].requestFocus();
-            },
+        for (var i = 0; i < widget.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: _OtpBox(
+              controller: _controllers[i],
+              focusNode: _nodes[i],
+              onChanged: (v) => _onChanged(i, v),
+            ),
           ),
         ],
       ],
@@ -835,7 +1111,6 @@ class _OtpBox extends StatelessWidget {
     final rd = context.rd;
     final filled = controller.text.isNotEmpty;
     return SizedBox(
-      width: 52,
       height: 56,
       child: TextField(
         controller: controller,

@@ -45,7 +45,19 @@ Future<void> main() async {
   final themeController = AppThemeController();
   await themeController.load();
 
-  runApp(MiraApp(themeController: themeController, services: services));
+  // Auth gate: boot straight into the app only if a session already exists;
+  // otherwise start the first-run onboarding/login flow. An expired access
+  // token is refreshed lazily by the API client's 401 interceptor, so a mere
+  // token-present check is enough here.
+  final loggedIn = await services.authRepository.isLoggedIn();
+
+  runApp(
+    MiraApp(
+      themeController: themeController,
+      services: services,
+      initial: loggedIn ? 'home' : 'splash',
+    ),
+  );
 }
 
 class MiraApp extends StatelessWidget {
@@ -53,10 +65,15 @@ class MiraApp extends StatelessWidget {
     super.key,
     required this.themeController,
     required this.services,
+    this.initial = 'home',
   });
 
   final AppThemeController themeController;
   final MiraServices services;
+
+  /// Screen the root boots into — 'home' when a session exists, else 'splash'
+  /// (set by the auth gate in [main]).
+  final String initial;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +104,7 @@ class MiraApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
-            home: const RdRoot(),
+            home: RdRoot(initial: initial),
           );
         },
       ),
