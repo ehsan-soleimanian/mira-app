@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mira_app/app/app_scope.dart';
 
 import '../theme/rd_colors.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -87,7 +88,42 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
     }
   }
 
-  void _finish() => widget.go('home');
+  /// Assemble the wizard selections into the backend setup payload. Keys are
+  /// camelCase to match the API's [CamelModel] alias convention
+  /// (`POST /auth/onboarding/setup`). Fields the wizard doesn't collect
+  /// (e.g. quiet-hours window) are left to the server's defaults.
+  Map<String, dynamic> _collectPrefs() {
+    final name = _nameCtl.text.trim();
+    return {
+      if (name.isNotEmpty) 'displayName': name,
+      'tone': _tone,
+      'focusAreas': _focus.toList(),
+      'importantPeople': _people,
+      'briefTime': _briefTime,
+      'quietHoursEnabled': _quiet,
+      'syncEnabled': _syncOn,
+      'improveEnabled': _improveOn,
+      'connectedSources': _sources.toList(),
+      'importSources': _imports.toList(),
+      'microphonePermission': _micOn,
+      'notificationPermission': _notifOn,
+      'completeOnboarding': true,
+    };
+  }
+
+  void _finish() {
+    // Persist best-effort; never block the transition to Home on the network.
+    final prefs = _collectPrefs();
+    final repo = AppScope.servicesOf(context).onboardingRepository;
+    unawaited(() async {
+      try {
+        await repo.submitSetup(prefs);
+      } catch (_) {
+        // Setup answers are non-critical; ignore failures and let the user in.
+      }
+    }());
+    widget.go('home');
+  }
 
   int get _importTotal => _imports.fold(
       0, (s, id) => s + _importApps.firstWhere((a) => a.id == id).count);

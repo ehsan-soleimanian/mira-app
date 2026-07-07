@@ -34,4 +34,12 @@ class OnboardingRepository {
     await markCompletedLocally(user.id);
     return user;
   }
+
+  /// Persists the full setup-wizard payload (name, tone, focus areas, people,
+  /// rhythm, privacy flags, sources, imports, permissions) collected by the
+  /// redesigned onboarding flow. Body keys are camelCase per the API's
+  /// [CamelModel] convention.
+  Future<void> submitSetup(Map<String, dynamic> prefs) async {
+    await _dio.post<Map<String, dynamic>>('/auth/onboarding/setup', data: prefs);
+  }
 }
