@@ -12,7 +12,7 @@ import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 
-import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 import '../widgets/rd_orb.dart';
@@ -35,14 +35,13 @@ class RdCaptureFlow extends StatefulWidget {
   State<RdCaptureFlow> createState() => _RdCaptureFlowState();
 }
 
-const _ink = Color(0xFF1B1C24);
+/// Navy CTA / brand accent — constant across light & dark, so it stays a fixed
+/// hex here for the standalone sheet widgets that render outside a `context.rd`
+/// scope.
 const _navy = Color(0xFF14328C);
-const _peri = Color(0xFF7E8BC9);
-const _periSoft = Color(0xFFEDEFF8);
-const _muted = Color(0xFF8A8B92);
-const _faint = Color(0xFFB7B8BE);
-const _line = Color(0xFFE9E9E4);
-const _card = Color(0xFFFBFBF9);
+
+bool _isDark(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
 
 class _Tok {
   const _Tok(this.text, {this.mark = false, this.chip});
@@ -526,7 +525,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: RdColors.bg,
+      backgroundColor: context.rd.bg,
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -551,6 +550,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   // ── listen ──────────────────────────────────────────────────────────
   Widget _listen() {
+    final rd = context.rd;
     return Column(
       children: [
         Padding(
@@ -561,13 +561,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               _circBtn('<path d="M6 6l12 12M18 6 6 18"/>', () => widget.go('home')),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(100), border: Border.all(color: _line, width: 1)),
+                decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(100), border: Border.all(color: rd.line, width: 1)),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE24B4A))),
                     const SizedBox(width: 7),
-                    Text(_time, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)),
+                    Text(_time, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.ink)),
                   ],
                 ),
               ),
@@ -582,7 +582,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             children: [
-              Text('Listening…', style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: _peri)),
+              Text('Listening…', style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: rd.peri)),
               const SizedBox(height: 12),
               Wrap(
                 alignment: WrapAlignment.center,
@@ -593,10 +593,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                     _tokens[i].mark
                         ? Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(color: _periSoft, borderRadius: BorderRadius.circular(6)),
-                            child: Text(_tokens[i].text, style: GoogleFonts.vazirmatn(fontSize: 19, fontWeight: FontWeight.w600, color: _navy)),
+                            decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(6)),
+                            // text-on-periSoft → rd.peri (navy vanishes on dark periSoft).
+                            child: Text(_tokens[i].text, style: GoogleFonts.vazirmatn(fontSize: 19, fontWeight: FontWeight.w600, color: rd.peri)),
                           )
-                        : Text(_tokens[i].text, style: GoogleFonts.vazirmatn(fontSize: 19, color: _ink)),
+                        : Text(_tokens[i].text, style: GoogleFonts.vazirmatn(fontSize: 19, color: rd.ink)),
                 ],
               ),
               const SizedBox(height: 18),
@@ -609,8 +610,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                     if (_tokens[i].chip != null)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                        decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(100), border: Border.all(color: _peri.withValues(alpha: 0.4), width: 1)),
-                        child: Text(_tokens[i].chip!, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: _navy)),
+                        decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(100), border: Border.all(color: rd.peri.withValues(alpha: 0.4), width: 1)),
+                        child: Text(_tokens[i].chip!, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.peri)),
                       ),
                 ],
               ),
@@ -642,6 +643,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               child: Container(
                 width: 72,
                 height: 72,
+                // Brand orb button — fixed navy gradient + shadow across themes.
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const RadialGradient(center: Alignment(-0.28, -0.4), colors: [Color(0xFF3A5AD0), _navy]),
@@ -655,7 +657,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           ],
         ),
         const SizedBox(height: 14),
-        Text('Tap ✓ when you’re finished', style: GoogleFonts.vazirmatn(fontSize: 12.5, color: _muted)),
+        Text('Tap ✓ when you’re finished', style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
         const SizedBox(height: 40),
       ],
     );
@@ -663,6 +665,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   // ── processing ──────────────────────────────────────────────────────
   Widget _proc() {
+    final rd = context.rd;
     const labels = ['Transcribing what you said', 'Recognising type & details', 'Finding connections in memory'];
     return Center(
       child: Column(
@@ -670,7 +673,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
         children: [
           const RdOrb(size: 120),
           const SizedBox(height: 26),
-          Text('Understanding', style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: _peri)),
+          Text('Understanding', style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: rd.peri)),
           const SizedBox(height: 22),
           for (var k = 0; k < labels.length; k++)
             Padding(
@@ -684,11 +687,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                     Container(
                       width: 22,
                       height: 22,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: k < _steps ? _navy : const Color(0xFFD8D8DE)),
+                      // Completed step → fixed navy fill; pending → adaptive hairline.
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: k < _steps ? rd.navy : rd.line),
                       child: k < _steps ? const Center(child: RdIcon('<path d="m5 12 5 5 9-11"/>', size: 12, stroke: '#FFFFFF', strokeWidth: 3)) : null,
                     ),
                     const SizedBox(width: 11),
-                    Text(labels[k], style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w500, color: _ink)),
+                    Text(labels[k], style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w500, color: rd.ink)),
                   ],
                 ),
               ),
@@ -794,6 +798,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   // ── review ──────────────────────────────────────────────────────────
   Widget _review() {
+    final rd = context.rd;
     return Column(
       children: [
         _reviewTop('Cancel', () => widget.go('home')),
@@ -807,7 +812,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(18), border: Border.all(color: _line, width: 1)),
+                  decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(18), border: Border.all(color: rd.line, width: 1)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -824,9 +829,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                           ),
                           Row(
                             children: [
-                              const RdIcon('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', size: 13, stroke: '#8A8B92', strokeWidth: 2),
+                              RdIcon('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', size: 13, color: rd.muted, strokeWidth: 2),
                               const SizedBox(width: 5),
-                              Text('Change type', style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: _muted)),
+                              Text('Change type', style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: rd.muted)),
                             ],
                           ),
                         ],
@@ -838,7 +843,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                       if (_realTranscript || _realProposal)
                         Text(
                           _understoodText,
-                          style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: _ink),
+                          style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: rd.ink),
                         )
                       else
                         Text.rich(
@@ -850,7 +855,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                               TextSpan(text: 'Friday', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
                               const TextSpan(text: ' to confirm the contract terms and send the signed copy.'),
                             ],
-                            style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: _ink),
+                            style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: rd.ink),
                           ),
                         ),
                     ],
@@ -864,10 +869,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                   onTap: () => setState(() => _remind = !_remind),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                    decoration: BoxDecoration(color: _periSoft, borderRadius: BorderRadius.circular(14)),
+                    decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(14)),
                     child: Row(
                       children: [
-                        const RdIcon('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M12 2h0M9 2h6"/>', size: 20, stroke: '#14328C', strokeWidth: 1.8),
+                        // On-periSoft icon + text → rd.peri (navy vanishes on dark periSoft).
+                        RdIcon('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M12 2h0M9 2h6"/>', size: 20, color: rd.peri, strokeWidth: 1.8),
                         const SizedBox(width: 11),
                         Expanded(
                           child: Text.rich(
@@ -877,7 +883,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                                 TextSpan(text: 'Thursday morning', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
                                 const TextSpan(text: ', a day before it’s due'),
                               ],
-                              style: GoogleFonts.vazirmatn(fontSize: 13, height: 1.4, color: _navy),
+                              style: GoogleFonts.vazirmatn(fontSize: 13, height: 1.4, color: rd.peri),
                             ),
                           ),
                         ),
@@ -898,6 +904,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   // ── added ───────────────────────────────────────────────────────────
   Widget _added() {
+    final rd = context.rd;
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -907,6 +914,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             Container(
               width: 76,
               height: 76,
+              // Success orb — fixed brand green gradient across themes.
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1F8A5B), Color(0xFF34A56F)]),
@@ -914,16 +922,16 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               child: const Center(child: RdIcon('<path d="m5 12 5 5 9-11"/>', size: 40, stroke: '#FFFFFF', strokeWidth: 2.4)),
             ),
             const SizedBox(height: 24),
-            Text('Kept in memory', style: GoogleFonts.dosis(fontSize: 28, fontWeight: FontWeight.w700, color: _ink)),
+            Text('Kept in memory', style: GoogleFonts.dosis(fontSize: 28, fontWeight: FontWeight.w700, color: rd.ink)),
             const SizedBox(height: 10),
             Text.rich(
               TextSpan(
                 children: [
                   const TextSpan(text: 'Linked to '),
-                  TextSpan(text: '2 memories', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w600, color: _ink)),
+                  TextSpan(text: '2 memories', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w600, color: rd.ink)),
                   const TextSpan(text: ' and 1 reminder. Mira will bring it back at the right time.'),
                 ],
-                style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: _muted),
+                style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: rd.muted),
               ),
               textAlign: TextAlign.center,
             ),
@@ -945,7 +953,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 width: 220,
                 height: 52,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: _navy, borderRadius: BorderRadius.circular(14)),
+                // Fixed navy CTA.
+                decoration: BoxDecoration(color: rd.navy, borderRadius: BorderRadius.circular(14)),
                 child: Text('Done', style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
               ),
             ),
@@ -957,6 +966,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   // ── shared bits ─────────────────────────────────────────────────────
   Widget _reviewTop(String backLabel, VoidCallback onBack) {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Row(
@@ -967,13 +977,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const RdIcon('<path d="M15 18l-6-6 6-6"/>', size: 18, stroke: '#8A8B92', strokeWidth: 2),
+                RdIcon('<path d="M15 18l-6-6 6-6"/>', size: 18, color: rd.muted, strokeWidth: 2),
                 const SizedBox(width: 3),
-                Text(backLabel, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w500, color: _muted)),
+                Text(backLabel, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w500, color: rd.muted)),
               ],
             ),
           ),
-          Text('Review', style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w600, color: _ink)),
+          Text('Review', style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w600, color: rd.ink)),
           const SizedBox(width: 60),
         ],
       ),
@@ -981,9 +991,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   }
 
   Widget _reviewBar() {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: _line, width: 1))),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: rd.line, width: 1))),
       child: Row(
         children: [
           GestureDetector(
@@ -992,8 +1003,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(14), border: Border.all(color: _line, width: 1)),
-              child: Text('Discard', style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: _muted)),
+              decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: rd.line, width: 1)),
+              child: Text('Discard', style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: rd.muted)),
             ),
           ),
           const SizedBox(width: 10),
@@ -1003,7 +1014,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               child: Container(
                 height: 52,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(color: _navy, borderRadius: BorderRadius.circular(14)),
+                // Fixed navy CTA.
+                decoration: BoxDecoration(color: rd.navy, borderRadius: BorderRadius.circular(14)),
                 child: Text('Add to memory', style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
               ),
             ),
@@ -1014,11 +1026,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   }
 
   Widget _eyebrow(String text) {
+    final rd = context.rd;
     return Row(
       children: [
-        Container(width: 6, height: 6, decoration: const BoxDecoration(shape: BoxShape.circle, color: _peri)),
+        Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: rd.peri)),
         const SizedBox(width: 8),
-        Text(text.toUpperCase(), style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: _faint)),
+        Text(text.toUpperCase(), style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: rd.faint)),
       ],
     );
   }
@@ -1026,45 +1039,49 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   Widget _fieldLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(top: 22, bottom: 12),
-      child: Text(text, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w500, color: _muted)),
+      child: Text(text, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w500, color: context.rd.muted)),
     );
   }
 
   Widget _typeChip(String icon, String label) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-      decoration: BoxDecoration(color: _periSoft, borderRadius: BorderRadius.circular(100)),
+      decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(100)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          RdIcon(icon, size: 14, stroke: '#14328C', strokeWidth: 2),
+          // On-periSoft badge → rd.peri (navy vanishes on dark periSoft).
+          RdIcon(icon, size: 14, color: rd.peri, strokeWidth: 2),
           const SizedBox(width: 6),
-          Text(label, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: _navy)),
+          Text(label, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.peri)),
         ],
       ),
     );
   }
 
   Widget _connRow(String icon, String name, String sub, bool on, VoidCallback onTap) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(14), border: Border.all(color: _line, width: 1)),
+      decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: rd.line, width: 1)),
       child: Row(
         children: [
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: _periSoft, borderRadius: BorderRadius.circular(10)),
-            child: Center(child: RdIcon(icon, size: 18, stroke: '#14328C', strokeWidth: 1.8)),
+            decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(10)),
+            // On-periSoft icon → rd.peri (navy vanishes on dark periSoft).
+            child: Center(child: RdIcon(icon, size: 18, color: rd.peri, strokeWidth: 1.8)),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
+                Text(name, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink)),
                 const SizedBox(height: 2),
-                Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: _muted)),
+                Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
               ],
             ),
           ),
@@ -1076,34 +1093,36 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   }
 
   Widget _circBtn(String icon, VoidCallback onTap, {double size = 42}) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: _card, border: Border.all(color: _line, width: 1)),
-        child: Center(child: RdIcon(icon, size: size * 0.4, stroke: '#6B6C73', strokeWidth: 2.1)),
+        decoration: BoxDecoration(shape: BoxShape.circle, color: rd.card, border: Border.all(color: rd.line, width: 1)),
+        child: Center(child: RdIcon(icon, size: size * 0.4, color: rd.gearIcon, strokeWidth: 2.1)),
       ),
     );
   }
 
   /// A pill button for the alternative capture entry modes on the listen screen.
   Widget _entryChip(String icon, String label, VoidCallback onTap) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: _card,
+          color: rd.card,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: _line, width: 1),
+          border: Border.all(color: rd.line, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            RdIcon(icon, size: 15, stroke: '#6B6C73', strokeWidth: 1.9),
+            RdIcon(icon, size: 15, color: rd.gearIcon, strokeWidth: 1.9),
             const SizedBox(width: 7),
-            Text(label, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)),
+            Text(label, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.ink)),
           ],
         ),
       ),
@@ -1111,19 +1130,22 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   }
 
   Widget _graphDot(double size, bool hub) {
+    final rd = context.rd;
     return Container(
       width: size,
       height: size,
+      // Hub node keeps its fixed brand gradient; satellite dots use adaptive
+      // periSoft fill + peri border so they read on both themes.
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: hub ? const RadialGradient(colors: [Color(0xFFAEB9E8), Color(0xFF6472B6)]) : null,
-        color: hub ? null : _periSoft,
-        border: hub ? null : Border.all(color: _peri, width: 1.5),
+        color: hub ? null : rd.periSoft,
+        border: hub ? null : Border.all(color: rd.peri, width: 1.5),
       ),
     );
   }
 
-  Widget _graphLine() => Container(width: 34, height: 1.5, color: _peri.withValues(alpha: 0.5));
+  Widget _graphLine() => Container(width: 34, height: 1.5, color: context.rd.peri.withValues(alpha: 0.5));
 }
 
 class _EChip extends StatelessWidget {
@@ -1134,16 +1156,19 @@ class _EChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: add ? Colors.transparent : _card,
+        color: add ? Colors.transparent : rd.card,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: add ? _peri.withValues(alpha: 0.5) : _line, width: 1),
+        border: Border.all(color: add ? rd.peri.withValues(alpha: 0.5) : rd.line, width: 1),
       ),
+      // The "+ Add" chip sits on the page bg (not periSoft) → rd.peri to stay
+      // legible on dark; genuine detail chips use ink text.
       child: Text(
         label,
-        style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: add ? _navy : _ink),
+        style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: add ? rd.peri : rd.ink),
       ),
     );
   }
@@ -1156,10 +1181,14 @@ class _Tog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // On-track is brand navy (fixed accent). Off-track has no token: keep the
+    // exact light literal, and use a lifted neutral on dark for contrast.
+    final offTrack =
+        _isDark(context) ? const Color(0xFF3A3B44) : const Color(0xFFD3D5DE);
     return Container(
       width: 44,
       height: 26,
-      decoration: BoxDecoration(color: on ? _navy : const Color(0xFFD3D5DE), borderRadius: BorderRadius.circular(100)),
+      decoration: BoxDecoration(color: on ? context.rd.navy : offTrack, borderRadius: BorderRadius.circular(100)),
       child: AnimatedAlign(
         duration: const Duration(milliseconds: 180),
         alignment: on ? Alignment.centerRight : Alignment.centerLeft,
@@ -1190,6 +1219,7 @@ class _WaveformState extends State<_Waveform> with SingleTickerProviderStateMixi
 
   @override
   Widget build(BuildContext context) {
+    final peri = context.rd.peri;
     return SizedBox(
       height: 44,
       child: AnimatedBuilder(
@@ -1203,7 +1233,7 @@ class _WaveformState extends State<_Waveform> with SingleTickerProviderStateMixi
                 Container(
                   width: 3,
                   height: 6 + 26 * (0.5 + 0.5 * math.sin((_c.value * 2 * math.pi) + i * 0.55)).abs(),
-                  decoration: BoxDecoration(color: _peri.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: peri.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2)),
                 ),
               ],
             ],
@@ -1272,8 +1302,8 @@ class _ComposeSheetState extends State<_ComposeSheet> {
           minLines: widget.multiline ? 3 : 1,
           textInputAction:
               widget.multiline ? TextInputAction.newline : TextInputAction.done,
-          style: GoogleFonts.vazirmatn(fontSize: 15, height: 1.5, color: _ink),
-          decoration: _fieldDecoration(widget.hint),
+          style: GoogleFonts.vazirmatn(fontSize: 15, height: 1.5, color: context.rd.ink),
+          decoration: _fieldDecoration(context, widget.hint),
         ),
         const SizedBox(height: 14),
         _SheetSubmit(
@@ -1331,15 +1361,15 @@ class _LinkSheetState extends State<_LinkSheet> {
           autofocus: true,
           keyboardType: TextInputType.url,
           textInputAction: TextInputAction.next,
-          style: GoogleFonts.vazirmatn(fontSize: 15, color: _ink),
-          decoration: _fieldDecoration('https://…'),
+          style: GoogleFonts.vazirmatn(fontSize: 15, color: context.rd.ink),
+          decoration: _fieldDecoration(context, 'https://…'),
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _titleController,
           textInputAction: TextInputAction.done,
-          style: GoogleFonts.vazirmatn(fontSize: 15, color: _ink),
-          decoration: _fieldDecoration('Title (optional)'),
+          style: GoogleFonts.vazirmatn(fontSize: 15, color: context.rd.ink),
+          decoration: _fieldDecoration(context, 'Title (optional)'),
         ),
         const SizedBox(height: 14),
         _SheetSubmit(
@@ -1374,13 +1404,14 @@ class _SheetShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
-        decoration: const BoxDecoration(
-          color: RdColors.bg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: rd.bg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
         child: Column(
@@ -1391,7 +1422,7 @@ class _SheetShell extends StatelessWidget {
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(100)),
+                decoration: BoxDecoration(color: rd.line, borderRadius: BorderRadius.circular(100)),
               ),
             ),
             const SizedBox(height: 18),
@@ -1400,11 +1431,12 @@ class _SheetShell extends StatelessWidget {
                 Container(
                   width: 34,
                   height: 34,
-                  decoration: BoxDecoration(color: _periSoft, borderRadius: BorderRadius.circular(10)),
-                  child: Center(child: RdIcon(icon, size: 18, stroke: '#14328C', strokeWidth: 1.8)),
+                  decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(10)),
+                  // On-periSoft icon → rd.peri (navy vanishes on dark periSoft).
+                  child: Center(child: RdIcon(icon, size: 18, color: rd.peri, strokeWidth: 1.8)),
                 ),
                 const SizedBox(width: 11),
-                Text(title, style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: _ink)),
+                Text(title, style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink)),
               ],
             ),
             const SizedBox(height: 16),
@@ -1446,20 +1478,21 @@ class _SheetSubmit extends StatelessWidget {
   }
 }
 
-InputDecoration _fieldDecoration(String hint) {
+InputDecoration _fieldDecoration(BuildContext context, String hint) {
+  final rd = context.rd;
   return InputDecoration(
     hintText: hint,
-    hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: _faint),
+    hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
     filled: true,
-    fillColor: _card,
+    fillColor: rd.card,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: _line, width: 1),
+      borderSide: BorderSide(color: rd.line, width: 1),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: _peri, width: 1.5),
+      borderSide: BorderSide(color: rd.peri, width: 1.5),
     ),
   );
 }

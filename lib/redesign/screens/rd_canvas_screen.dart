@@ -7,6 +7,7 @@ import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/models/api/graph_models.dart';
 
 import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 
@@ -62,12 +63,13 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final live = _mapNodes != null;
     final context_ =
         _mode == 'board' ? 'Coast trip · 8 memories' : _mapContext;
 
     return Scaffold(
-      backgroundColor: RdColors.bg,
+      backgroundColor: rd.bg,
       body: Stack(
         children: [
           Positioned.fill(
@@ -98,7 +100,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                       decoration: BoxDecoration(
-                        color: RdColors.bg.withValues(alpha: 0.7),
+                        color: rd.bg.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(100),
                       ),
                       child: Text(
@@ -106,7 +108,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
                         style: GoogleFonts.vazirmatn(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
-                          color: RdColors.muted,
+                          color: rd.muted,
                         ),
                       ),
                     ),
@@ -121,12 +123,12 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
             right: 0,
             bottom: 0,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x00F4F4F1), RdColors.bg],
-                  stops: [0.0, 0.55],
+                  colors: [rd.bg.withValues(alpha: 0), rd.bg],
+                  stops: const [0.0, 0.55],
                 ),
               ),
               child: RdBottomNav(active: 'canvas', go: widget.go),
@@ -146,25 +148,27 @@ class _ModeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: RdColors.card.withValues(alpha: 0.9),
+        color: rd.card.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _seg('board', RdIcons.grid4, 'Board'),
+          _seg(context, 'board', RdIcons.grid4, 'Board'),
           const SizedBox(width: 3),
-          _seg('map', RdIcons.navCanvas, 'Map'),
+          _seg(context, 'map', RdIcons.navCanvas, 'Map'),
         ],
       ),
     );
   }
 
-  Widget _seg(String id, String icon, String label) {
+  Widget _seg(BuildContext context, String id, String icon, String label) {
+    final rd = context.rd;
     final on = mode == id;
     return GestureDetector(
       onTap: () => onChanged(id),
@@ -173,7 +177,7 @@ class _ModeToggle extends StatelessWidget {
         height: 30,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: on ? RdColors.navy : Colors.transparent,
+          color: on ? rd.navy : Colors.transparent,
           borderRadius: BorderRadius.circular(100),
         ),
         child: Row(
@@ -181,7 +185,7 @@ class _ModeToggle extends StatelessWidget {
             RdIcon(
               icon,
               size: 14,
-              stroke: on ? '#FFFFFF' : '#8A8B92',
+              color: on ? Colors.white : rd.muted,
               strokeWidth: 1.9,
             ),
             const SizedBox(width: 6),
@@ -190,7 +194,7 @@ class _ModeToggle extends StatelessWidget {
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: on ? Colors.white : RdColors.muted,
+                color: on ? Colors.white : rd.muted,
               ),
             ),
           ],
@@ -426,6 +430,7 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
@@ -457,6 +462,7 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                               nodes: _byId,
                               edges: widget.edges,
                               selected: _selected,
+                              color: rd.peri,
                             ),
                           ),
                         ),
@@ -529,6 +535,7 @@ class _GNodeWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: dimmed ? 0.28 : 1,
@@ -541,7 +548,7 @@ class _GNodeWidget extends StatelessWidget {
             AnimatedScale(
               duration: const Duration(milliseconds: 220),
               scale: selected ? 1.06 : 1,
-              child: _disc(),
+              child: _disc(rd),
             ),
             const SizedBox(height: 6),
             SizedBox(
@@ -554,7 +561,7 @@ class _GNodeWidget extends StatelessWidget {
                 style: GoogleFonts.vazirmatn(
                   fontSize: node.disc >= 68 ? 12.5 : 11.5,
                   fontWeight: node.disc >= 68 ? FontWeight.w600 : FontWeight.w500,
-                  color: RdColors.ink,
+                  color: rd.ink,
                   height: 1.25,
                 ),
               ),
@@ -565,7 +572,7 @@ class _GNodeWidget extends StatelessWidget {
     );
   }
 
-  Widget _disc() {
+  Widget _disc(RdTheme rd) {
     final size = node.disc;
     final iconSize = node.disc >= 68 ? 26.0 : (node.disc >= 52 ? 22.0 : 20.0);
 
@@ -588,7 +595,7 @@ class _GNodeWidget extends StatelessWidget {
               offset: const Offset(0, 12),
             ),
           ],
-          border: selected ? Border.all(color: RdColors.peri, width: 2) : null,
+          border: selected ? Border.all(color: rd.peri, width: 2) : null,
         );
         inner = Text(
           node.initial ?? '',
@@ -601,9 +608,9 @@ class _GNodeWidget extends StatelessWidget {
       case _GType.topic:
         decoration = BoxDecoration(
           shape: BoxShape.circle,
-          color: RdColors.periSoft,
+          color: rd.periSoft,
           border: Border.all(
-            color: selected ? RdColors.peri : const Color(0x807E8BC9),
+            color: selected ? rd.peri : const Color(0x807E8BC9),
             width: selected ? 2 : 1.5,
           ),
         );
@@ -612,9 +619,9 @@ class _GNodeWidget extends StatelessWidget {
       default:
         decoration = BoxDecoration(
           shape: BoxShape.circle,
-          color: RdColors.card,
+          color: rd.card,
           border: Border.all(
-            color: selected ? RdColors.peri : RdColors.line,
+            color: selected ? rd.peri : rd.line,
             width: selected ? 2 : 1,
           ),
           boxShadow: [
@@ -627,7 +634,7 @@ class _GNodeWidget extends StatelessWidget {
           ],
         );
         inner = RdIcon(_gTypeIcon(node.type),
-            size: iconSize, stroke: '#7E8BC9', strokeWidth: 1.8);
+            size: iconSize, color: rd.peri, strokeWidth: 1.8);
     }
 
     return Container(
@@ -640,11 +647,20 @@ class _GNodeWidget extends StatelessWidget {
 }
 
 class _EdgePainter extends CustomPainter {
-  _EdgePainter({required this.nodes, required this.edges, required this.selected});
+  _EdgePainter({
+    required this.nodes,
+    required this.edges,
+    required this.selected,
+    required this.color,
+  });
 
   final Map<String, _GNode> nodes;
   final List<List<String>> edges;
   final String? selected;
+
+  /// Edge tint — the periwinkle accent, passed from the widget so it tracks the
+  /// active [RdTheme] (painters cannot read `context`).
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -655,7 +671,7 @@ class _EdgePainter extends CustomPainter {
       final dim = selected != null && !hot;
 
       final paint = Paint()
-        ..color = RdColors.peri.withValues(
+        ..color = color.withValues(
             alpha: hot ? 0.9 : (dim ? 0.08 : 0.28))
         ..strokeWidth = hot ? 2 : 1.4
         ..strokeCap = StrokeCap.round;
@@ -664,7 +680,8 @@ class _EdgePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_EdgePainter old) => old.selected != selected;
+  bool shouldRepaint(_EdgePainter old) =>
+      old.selected != selected || old.color != color;
 }
 
 class _GraphHint extends StatelessWidget {
@@ -672,22 +689,23 @@ class _GraphHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 15),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBF9).withValues(alpha: 0.85),
+        color: rd.card.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const RdIcon(RdIcons.plusCircle, size: 14, stroke: '#8A8B92', strokeWidth: 2),
+          RdIcon(RdIcons.plusCircle, size: 14, color: rd.muted, strokeWidth: 2),
           const SizedBox(width: 7),
           Text(
             'Tap a memory · drag to explore',
-            style: GoogleFonts.vazirmatn(fontSize: 12, color: RdColors.muted),
+            style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted),
           ),
         ],
       ),
@@ -720,20 +738,21 @@ class _DetailPanel extends StatelessWidget {
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 300),
           opacity: showing ? 1 : 0,
-          child: node == null ? const SizedBox.shrink() : _card(node!),
+          child: node == null ? const SizedBox.shrink() : _card(context, node!),
         ),
       ),
     );
   }
 
-  Widget _card(_GNode n) {
+  Widget _card(BuildContext context, _GNode n) {
+    final rd = context.rd;
     final isPerson = n.type == _GType.person;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF141628).withValues(alpha: 0.28),
@@ -754,7 +773,7 @@ class _DetailPanel extends StatelessWidget {
                 height: 46,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  color: isPerson ? null : RdColors.periSoft,
+                  color: isPerson ? null : rd.periSoft,
                   gradient: isPerson
                       ? const RadialGradient(
                           center: Alignment(-0.28, -0.4),
@@ -787,7 +806,7 @@ class _DetailPanel extends StatelessWidget {
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.8,
-                        color: RdColors.peri,
+                        color: rd.peri,
                       ),
                     ),
                     const SizedBox(height: 1),
@@ -796,7 +815,7 @@ class _DetailPanel extends StatelessWidget {
                       style: GoogleFonts.dosis(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: RdColors.ink,
+                        color: rd.ink,
                         height: 1.15,
                       ),
                     ),
@@ -809,10 +828,10 @@ class _DetailPanel extends StatelessWidget {
                   width: 30,
                   height: 30,
                   alignment: Alignment.center,
-                  child: const RdIcon(
+                  child: RdIcon(
                     RdIcons.close,
                     size: 18,
-                    stroke: '#B7B8BE',
+                    color: rd.faint,
                     strokeWidth: 2,
                   ),
                 ),
@@ -826,7 +845,7 @@ class _DetailPanel extends StatelessWidget {
               style: GoogleFonts.vazirmatn(
                 fontSize: 13,
                 height: 1.5,
-                color: RdColors.muted,
+                color: rd.muted,
               ),
             ),
           ),
@@ -838,7 +857,7 @@ class _DetailPanel extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.8,
-                color: RdColors.faint,
+                color: rd.faint,
               ),
             ),
           ),
@@ -853,9 +872,9 @@ class _DetailPanel extends StatelessWidget {
                     height: 30,
                     padding: const EdgeInsets.symmetric(horizontal: 11),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: rd.card,
                       borderRadius: BorderRadius.circular(100),
-                      border: Border.all(color: RdColors.line, width: 1),
+                      border: Border.all(color: rd.line, width: 1),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -865,7 +884,7 @@ class _DetailPanel extends StatelessWidget {
                               ? RdIcons.people
                               : _gTypeIcon(c.type),
                           size: 14,
-                          stroke: '#7E8BC9',
+                          color: rd.peri,
                           strokeWidth: 1.8,
                         ),
                         const SizedBox(width: 6),
@@ -873,7 +892,7 @@ class _DetailPanel extends StatelessWidget {
                           c.label,
                           style: GoogleFonts.vazirmatn(
                             fontSize: 12.5,
-                            color: RdColors.ink,
+                            color: rd.ink,
                           ),
                         ),
                       ],
@@ -1035,6 +1054,7 @@ class _BoardViewState extends State<_BoardView> {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewport = Size(constraints.maxWidth, constraints.maxHeight);
@@ -1046,8 +1066,10 @@ class _BoardViewState extends State<_BoardView> {
           });
         return Stack(
           children: [
+            // Board canvas background — goes dark in dark mode.
+            Positioned.fill(child: ColoredBox(color: rd.bg)),
             Positioned.fill(
-              child: CustomPaint(painter: _DotGridPainter()),
+              child: CustomPaint(painter: _DotGridPainter(color: rd.line)),
             ),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -1070,12 +1092,14 @@ class _BoardViewState extends State<_BoardView> {
                               painter: _BoardEdgePainter(
                                 edges: _edges,
                                 centerOf: _centerOf,
+                                edgeColor: rd.peri,
+                                userColor: rd.navy,
                               ),
                             ),
                           ),
                           // midpoint relation-label pills for user edges
                           for (final e in _edges)
-                            _relationPill(e),
+                            _relationPill(rd, e),
                           Positioned(
                             left: 150,
                             top: 250,
@@ -1153,7 +1177,7 @@ class _BoardViewState extends State<_BoardView> {
   }
 
   /// A small pill at the midpoint of a user edge, describing the relation.
-  Widget _relationPill(_BoardEdge e) {
+  Widget _relationPill(RdTheme rd, _BoardEdge e) {
     final mid = Offset.lerp(_centerOf(e.from), _centerOf(e.to), 0.5)!;
     const w = 96.0;
     const h = 22.0;
@@ -1167,10 +1191,10 @@ class _BoardViewState extends State<_BoardView> {
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 9),
           decoration: BoxDecoration(
-            color: RdColors.card,
+            color: rd.card,
             borderRadius: BorderRadius.circular(100),
             border: Border.all(
-              color: RdColors.peri.withValues(alpha: 0.5),
+              color: rd.peri.withValues(alpha: 0.5),
               width: 1,
             ),
             boxShadow: [
@@ -1189,7 +1213,7 @@ class _BoardViewState extends State<_BoardView> {
             style: GoogleFonts.vazirmatn(
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
-              color: RdColors.navy,
+              color: rd.navy,
             ),
           ),
         ),
@@ -1257,14 +1281,15 @@ class _ConnectBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
       decoration: BoxDecoration(
-        color: RdColors.navy,
+        color: rd.navy,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: RdColors.navy.withValues(alpha: 0.35),
+            color: rd.navy.withValues(alpha: 0.35),
             blurRadius: 30,
             spreadRadius: -12,
             offset: const Offset(0, 12),
@@ -1305,7 +1330,7 @@ class _ConnectBanner extends StatelessWidget {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: RdColors.navy,
+                  color: rd.navy,
                 ),
               ),
             ),
@@ -1317,9 +1342,15 @@ class _ConnectBanner extends StatelessWidget {
 }
 
 class _DotGridPainter extends CustomPainter {
+  _DotGridPainter({required this.color});
+
+  /// Dot tint — the theme line colour, passed from the widget so the grid
+  /// tracks the active [RdTheme] (painters cannot read `context`).
+  final Color color;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFF787A87).withValues(alpha: 0.18);
+    final paint = Paint()..color = color;
     const step = 22.0;
     for (double y = 0; y < size.height; y += step) {
       for (double x = 0; x < size.width; x += step) {
@@ -1329,11 +1360,16 @@ class _DotGridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DotGridPainter old) => false;
+  bool shouldRepaint(_DotGridPainter old) => old.color != color;
 }
 
 class _BoardEdgePainter extends CustomPainter {
-  _BoardEdgePainter({this.edges = const [], this.centerOf});
+  _BoardEdgePainter({
+    this.edges = const [],
+    this.centerOf,
+    required this.edgeColor,
+    required this.userColor,
+  });
 
   /// User-created connections to render as cubic beziers between card centres.
   final List<_BoardEdge> edges;
@@ -1341,11 +1377,16 @@ class _BoardEdgePainter extends CustomPainter {
   /// Resolves a card id to its live centre in board coordinates.
   final Offset Function(String id)? centerOf;
 
+  /// Ambient/decorative edge tint (periwinkle) and the user-edge tint (navy),
+  /// passed from the widget so both track the active [RdTheme].
+  final Color edgeColor;
+  final Color userColor;
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..color = RdColors.peri.withValues(alpha: 0.4)
+      ..color = edgeColor.withValues(alpha: 0.4)
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 
@@ -1365,7 +1406,7 @@ class _BoardEdgePainter extends CustomPainter {
 
     final dashed = Paint()
       ..style = PaintingStyle.stroke
-      ..color = RdColors.peri.withValues(alpha: 0.55)
+      ..color = edgeColor.withValues(alpha: 0.55)
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
     // dashed bezier, drawn as short segments
@@ -1387,7 +1428,7 @@ class _BoardEdgePainter extends CustomPainter {
     if (resolve != null) {
       final userPaint = Paint()
         ..style = PaintingStyle.stroke
-        ..color = RdColors.navy.withValues(alpha: 0.85)
+        ..color = userColor.withValues(alpha: 0.85)
         ..strokeWidth = 2.4
         ..strokeCap = StrokeCap.round;
       for (final e in edges) {
@@ -1413,7 +1454,7 @@ class _BoardEdgePainter extends CustomPainter {
           ..cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, b.dx, b.dy);
         canvas.drawPath(userPath, userPaint);
         // Small endpoint dots to anchor the connection visually.
-        final dot = Paint()..color = RdColors.navy.withValues(alpha: 0.85);
+        final dot = Paint()..color = userColor.withValues(alpha: 0.85);
         canvas.drawCircle(a, 3, dot);
         canvas.drawCircle(b, 3, dot);
       }
@@ -1422,12 +1463,16 @@ class _BoardEdgePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_BoardEdgePainter old) =>
-      old.edges != edges || old.centerOf != centerOf;
+      old.edges != edges ||
+      old.centerOf != centerOf ||
+      old.edgeColor != edgeColor ||
+      old.userColor != userColor;
 }
 
 class _Frame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return SizedBox(
       width: 360,
       height: 300,
@@ -1436,10 +1481,10 @@ class _Frame extends StatelessWidget {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: RdColors.peri.withValues(alpha: 0.07),
+              color: rd.peri.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(26),
               border: Border.all(
-                color: RdColors.peri.withValues(alpha: 0.28),
+                color: rd.peri.withValues(alpha: 0.28),
                 width: 1.5,
               ),
             ),
@@ -1451,7 +1496,7 @@ class _Frame extends StatelessWidget {
               height: 24,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: RdColors.peri,
+                color: rd.peri,
                 borderRadius: BorderRadius.circular(100),
               ),
               child: Row(
@@ -1575,28 +1620,29 @@ class _BoardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     switch (spec.kind) {
       case _CardKind.sticky:
-        return _sticky();
+        return _sticky(rd);
       case _CardKind.person:
-        return _person();
+        return _person(rd);
       case _CardKind.photo:
-        return _photo();
+        return _photo(rd);
       default:
-        return _basic();
+        return _basic(rd);
     }
   }
 
   /// Border colour/width picks up the connect-source highlight.
-  Border get _border => Border.all(
-        color: highlighted ? RdColors.peri : RdColors.line,
+  Border _borderOf(RdTheme rd) => Border.all(
+        color: highlighted ? rd.peri : rd.line,
         width: highlighted ? 2 : 1,
       );
 
-  BoxDecoration get _shell => BoxDecoration(
-        color: RdColors.card,
+  BoxDecoration _shellOf(RdTheme rd) => BoxDecoration(
+        color: rd.card,
         borderRadius: BorderRadius.circular(16),
-        border: _border,
+        border: _borderOf(rd),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF141628)
@@ -1607,7 +1653,7 @@ class _BoardCard extends StatelessWidget {
           ),
           if (highlighted)
             BoxShadow(
-              color: RdColors.peri.withValues(alpha: 0.45),
+              color: rd.peri.withValues(alpha: 0.45),
               blurRadius: 0,
               spreadRadius: 3,
             ),
@@ -1641,32 +1687,32 @@ class _BoardCard extends StatelessWidget {
     );
   }
 
-  Widget _title() => Text(
+  Widget _title(RdTheme rd) => Text(
         spec.title,
         style: GoogleFonts.vazirmatn(
           fontSize: 13.5,
           fontWeight: FontWeight.w600,
-          color: RdColors.ink,
+          color: rd.ink,
           height: 1.32,
         ),
       );
 
-  Widget _sub() => Padding(
+  Widget _sub(RdTheme rd) => Padding(
         padding: const EdgeInsets.only(top: 4),
         child: Text(
           spec.sub!,
           style: GoogleFonts.vazirmatn(
             fontSize: 11.5,
-            color: RdColors.muted,
+            color: rd.muted,
             height: 1.4,
           ),
         ),
       );
 
-  Widget _basic() {
+  Widget _basic(RdTheme rd) {
     return Container(
       width: 158,
-      decoration: _shell,
+      decoration: _shellOf(rd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -1682,8 +1728,8 @@ class _BoardCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _title(),
-                if (spec.sub != null) _sub(),
+                _title(rd),
+                if (spec.sub != null) _sub(rd),
               ],
             ),
           ),
@@ -1692,10 +1738,10 @@ class _BoardCard extends StatelessWidget {
     );
   }
 
-  Widget _photo() {
+  Widget _photo(RdTheme rd) {
     return Container(
       width: 158,
-      decoration: _shell,
+      decoration: _shellOf(rd),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1723,14 +1769,14 @@ class _BoardCard extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 9, 12, 13),
-            child: _title(),
+            child: _title(rd),
           ),
         ],
       ),
     );
   }
 
-  Widget _sticky() {
+  Widget _sticky(RdTheme rd) {
     return Container(
       width: 150,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 13),
@@ -1738,7 +1784,7 @@ class _BoardCard extends StatelessWidget {
         color: const Color(0xFFFDF6E3),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: highlighted ? RdColors.peri : const Color(0x4DBEA046),
+          color: highlighted ? rd.peri : const Color(0x4DBEA046),
           width: highlighted ? 2 : 1,
         ),
         boxShadow: [
@@ -1751,7 +1797,7 @@ class _BoardCard extends StatelessWidget {
           ),
           if (highlighted)
             BoxShadow(
-              color: RdColors.peri.withValues(alpha: 0.45),
+              color: rd.peri.withValues(alpha: 0.45),
               blurRadius: 0,
               spreadRadius: 3,
             ),
@@ -1813,11 +1859,11 @@ class _BoardCard extends StatelessWidget {
     );
   }
 
-  Widget _person() {
+  Widget _person(RdTheme rd) {
     return Container(
       width: 128,
       padding: const EdgeInsets.all(12),
-      decoration: _shell,
+      decoration: _shellOf(rd),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1852,13 +1898,13 @@ class _BoardCard extends StatelessWidget {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
-                  color: RdColors.ink,
+                  color: rd.ink,
                 ),
               ),
               const SizedBox(height: 1),
               Text(
                 spec.sub!,
-                style: GoogleFonts.vazirmatn(fontSize: 11, color: RdColors.muted),
+                style: GoogleFonts.vazirmatn(fontSize: 11, color: rd.muted),
               ),
             ],
           ),
@@ -1883,12 +1929,13 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBF9).withValues(alpha: 0.9),
+        color: rd.card.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 1),
+        border: Border.all(color: rd.line, width: 1),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF141628).withValues(alpha: 0.35),
@@ -1910,13 +1957,13 @@ class _Toolbar extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: selected == i ? RdColors.navy : Colors.transparent,
+                  color: selected == i ? rd.navy : Colors.transparent,
                 ),
                 child: Center(
                   child: RdIcon(
                     _tools[i],
                     size: 20,
-                    stroke: selected == i ? '#FFFFFF' : '#8A8B92',
+                    color: selected == i ? Colors.white : rd.muted,
                     strokeWidth: 1.8,
                   ),
                 ),
@@ -1938,17 +1985,18 @@ class _ZoomChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBF9).withValues(alpha: 0.9),
+        color: rd.card.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _btn('−', onOut),
+          _btn(rd, '−', onOut),
           SizedBox(
             width: 40,
             child: Text(
@@ -1957,17 +2005,17 @@ class _ZoomChip extends StatelessWidget {
               style: GoogleFonts.vazirmatn(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: RdColors.muted,
+                color: rd.muted,
               ),
             ),
           ),
-          _btn('+', onIn),
+          _btn(rd, '+', onIn),
         ],
       ),
     );
   }
 
-  Widget _btn(String label, VoidCallback onTap) {
+  Widget _btn(RdTheme rd, String label, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1976,9 +2024,9 @@ class _ZoomChip extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
-            color: RdColors.muted,
+            color: rd.muted,
             height: 1,
           ),
         ),
@@ -1994,6 +2042,7 @@ class _SuggestPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -2056,7 +2105,7 @@ class _SuggestPill extends StatelessWidget {
               style: GoogleFonts.vazirmatn(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: RdColors.navy,
+                color: rd.navy,
               ),
             ),
           ),

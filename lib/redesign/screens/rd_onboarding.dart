@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 import '../widgets/rd_orb.dart';
@@ -13,10 +13,28 @@ import '../widgets/rd_orb.dart';
 /// remember → understood, then into the app. Faithful to `onboarding.jsx`
 /// (`.ob-*`). Inputs are local-only; wiring to auth happens when promoted.
 
-const _obBg = Color(0xFFF5F5F5);
-const _ink = Color(0xFF1A1C29);
-const _obMuted = Color(0xFF8A8A8A);
+/// The peri CTA fill (`_ObVariant.peri`) is a fixed brand accent — white text
+/// rides on it in both themes, matching `RdColors.peri` / `context.rd.peri`.
 const _peri = Color(0xFF7E8BC9);
+
+/// A few neutral control surfaces here (input fills, glass circles, badge
+/// backgrounds) have no palette token. To keep light rendering byte-identical
+/// while still flipping for dark, pick the exact light literal in light mode
+/// and a dark-tuned value otherwise.
+bool _isDark(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
+
+/// Formats a [Color] as an `#RRGGBB` string for inline SVG `fill` attributes
+/// (used by the brand-mark icons that must flip with the palette).
+String _hex(Color c) {
+  final r = (c.r * 255.0).round() & 0xff;
+  final g = (c.g * 255.0).round() & 0xff;
+  final b = (c.b * 255.0).round() & 0xff;
+  return '#'
+      '${r.toRadixString(16).padLeft(2, '0')}'
+      '${g.toRadixString(16).padLeft(2, '0')}'
+      '${b.toRadixString(16).padLeft(2, '0')}';
+}
 
 // ── 1. Splash ──────────────────────────────────────────────────────────
 class RdSplashScreen extends StatelessWidget {
@@ -26,8 +44,9 @@ class RdSplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Scaffold(
-      backgroundColor: _obBg,
+      backgroundColor: rd.bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -41,7 +60,7 @@ class RdSplashScreen extends StatelessWidget {
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
                   height: 1.15,
-                  color: _ink,
+                  color: rd.ink,
                 ),
               ),
               const SizedBox(height: 14),
@@ -52,7 +71,7 @@ class RdSplashScreen extends StatelessWidget {
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14,
                     height: 1.5,
-                    color: _obMuted,
+                    color: rd.muted,
                   ),
                 ),
               ),
@@ -79,8 +98,9 @@ class RdLoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Scaffold(
-      backgroundColor: _obBg,
+      backgroundColor: rd.bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -116,7 +136,7 @@ class RdLoginScreen extends StatelessWidget {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12,
                   height: 1.5,
-                  color: const Color(0xFF9A9A9A),
+                  color: rd.muted,
                 ),
               ),
               const SizedBox(height: 34),
@@ -157,8 +177,9 @@ class RdEmailCodeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Scaffold(
-      backgroundColor: _obBg,
+      backgroundColor: rd.bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -175,7 +196,7 @@ class RdEmailCodeScreen extends StatelessWidget {
                 style: GoogleFonts.dosis(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: _ink,
+                  color: rd.ink,
                   height: 1.2,
                 ),
               ),
@@ -186,7 +207,7 @@ class RdEmailCodeScreen extends StatelessWidget {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
                   height: 1.5,
-                  color: _obMuted,
+                  color: rd.muted,
                 ),
               ),
               const SizedBox(height: 26),
@@ -200,11 +221,11 @@ class RdEmailCodeScreen extends StatelessWidget {
                       text: 'Resend',
                       style: GoogleFonts.vazirmatn(
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF14328C),
+                        color: rd.navy,
                       ),
                     ),
                   ],
-                  style: GoogleFonts.vazirmatn(fontSize: 13, color: _obMuted),
+                  style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
                 ),
               ),
               const Spacer(),
@@ -286,8 +307,9 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Scaffold(
-      backgroundColor: _obBg,
+      backgroundColor: rd.bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -307,7 +329,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
                 style: GoogleFonts.dosis(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: _ink,
+                  color: rd.ink,
                   height: 1.2,
                 ),
               ),
@@ -318,7 +340,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
                   height: 1.5,
-                  color: _obMuted,
+                  color: rd.muted,
                 ),
               ),
               const Spacer(),
@@ -330,7 +352,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
                   style: GoogleFonts.vazirmatn(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: RdColors.ink,
+                    color: rd.ink,
                     fontFeatures: const [],
                   ),
                 ),
@@ -339,7 +361,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
                   'TAP TO STOP',
                   style: GoogleFonts.vazirmatn(
                     fontSize: 10,
-                    color: const Color(0xFF595959),
+                    color: rd.muted,
                     letterSpacing: 0.6,
                   ),
                 ),
@@ -350,7 +372,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
                   style: GoogleFonts.vazirmatn(
                     fontSize: 13,
                     height: 1.5,
-                    color: _obMuted,
+                    color: rd.muted,
                   ),
                 ),
                 const SizedBox(height: 22),
@@ -385,8 +407,9 @@ class RdUnderstoodScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Scaffold(
-      backgroundColor: _obBg,
+      backgroundColor: rd.bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -408,7 +431,7 @@ class RdUnderstoodScreen extends StatelessWidget {
                   style: GoogleFonts.dosis(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: _ink,
+                    color: rd.ink,
                     height: 1.2,
                   ),
                 ),
@@ -420,7 +443,7 @@ class RdUnderstoodScreen extends StatelessWidget {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFF14328C),
+                  color: rd.navy,
                 ),
               ),
               const Spacer(),
@@ -470,8 +493,9 @@ class _ObFormScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Scaffold(
-      backgroundColor: _obBg,
+      backgroundColor: rd.bg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -487,7 +511,7 @@ class _ObFormScaffold extends StatelessWidget {
                 style: GoogleFonts.dosis(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: _ink,
+                  color: rd.ink,
                   height: 1.2,
                 ),
               ),
@@ -497,7 +521,7 @@ class _ObFormScaffold extends StatelessWidget {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
                   height: 1.5,
-                  color: _obMuted,
+                  color: rd.muted,
                 ),
               ),
               const SizedBox(height: 22),
@@ -521,6 +545,16 @@ class _ObHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
+    final dark = _isDark(context);
+    // Glass back-button circle: keep the exact light glass (white 0.7 on the
+    // pale page) in light mode; on dark, sit it on a lifted card-tinted disc so
+    // it doesn't glare, with a hairline border matching the palette line.
+    final circleFill =
+        dark ? rd.card.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.7);
+    final circleBorder = dark
+        ? rd.line.withValues(alpha: 0.9)
+        : const Color(0xFFEDF1FF).withValues(alpha: 0.9);
     return SizedBox(
       height: 48,
       child: Stack(
@@ -534,9 +568,9 @@ class _ObHeader extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: circleFill,
                   border: Border.all(
-                    color: const Color(0xFFEDF1FF).withValues(alpha: 0.9),
+                    color: circleBorder,
                     width: 0.5,
                   ),
                   boxShadow: [
@@ -547,12 +581,13 @@ class _ObHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Center(
+                child: Center(
                   child: RdIcon(
                     RdIcons.arrowLeft,
                     size: 22,
                     stroke: '#1A1C29',
                     strokeWidth: 1.6,
+                    color: rd.ink,
                   ),
                 ),
               ),
@@ -565,7 +600,7 @@ class _ObHeader extends StatelessWidget {
                 style: GoogleFonts.dosis(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: _ink,
+                  color: rd.ink,
                 ),
               ),
             ),
@@ -582,14 +617,17 @@ class _ObBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: rd.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE6E6EA), width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
+      // Navy brand glyph — kept fixed across themes (a colored accent, like the
+      // peri/navy CTAs), reading against the card tint beneath it.
       child: Center(
         child: RdIcon(icon, size: 26, stroke: '#293D8C', strokeWidth: 1.7),
       ),
@@ -604,21 +642,22 @@ class _ObInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return SizedBox(
       height: 54,
       child: TextField(
+        // Vivid brand focus blue — kept fixed across themes.
         cursorColor: const Color(0xFF3D63F5),
-        style: GoogleFonts.vazirmatn(fontSize: 14, color: const Color(0xFF1F1F1F)),
+        style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.ink),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle:
-              GoogleFonts.vazirmatn(fontSize: 14, color: const Color(0xFFA8A8AE)),
+          hintStyle: GoogleFonts.vazirmatn(fontSize: 14, color: rd.faint),
           filled: true,
-          fillColor: const Color(0xFFFCFCFC),
+          fillColor: rd.card,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE2E2E6), width: 1),
+            borderSide: BorderSide(color: rd.line, width: 1),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -647,24 +686,29 @@ class _ObButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     late final Color bg;
     late final Color fg;
     BoxBorder? border;
     switch (variant) {
       case _ObVariant.navy:
+        // Fixed navy CTA with white label — constant across themes.
         bg = const Color(0xFF14328C);
         fg = Colors.white;
       case _ObVariant.peri:
+        // Fixed peri CTA with white label — constant across themes.
         bg = _peri;
         fg = Colors.white;
       case _ObVariant.social:
-        bg = Colors.white;
-        fg = const Color(0xFF1A1A1A);
-        border = Border.all(color: const Color(0xFFE2E2E6), width: 1);
+        // Ambient card button — surface, ink and hairline all flip.
+        bg = rd.card;
+        fg = rd.ink;
+        border = Border.all(color: rd.line, width: 1);
       case _ObVariant.ghost:
-        bg = Colors.white;
-        fg = const Color(0xFF14328C);
-        border = Border.all(color: const Color(0xFF14328C), width: 1.4);
+        // Card fill with a fixed navy brand outline + navy label.
+        bg = rd.card;
+        fg = rd.navy;
+        border = Border.all(color: rd.navy, width: 1.4);
     }
 
     return GestureDetector(
@@ -702,22 +746,23 @@ class _OrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.only(top: 22, bottom: 12),
       child: Row(
         children: [
-          const Expanded(child: Divider(color: Color(0xFFE2E2E6), height: 1)),
+          Expanded(child: Divider(color: rd.line, height: 1)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               'Or',
               style: GoogleFonts.vazirmatn(
                 fontSize: 13,
-                color: const Color(0xFF9A9A9A),
+                color: rd.muted,
               ),
             ),
           ),
-          const Expanded(child: Divider(color: Color(0xFFE2E2E6), height: 1)),
+          Expanded(child: Divider(color: rd.line, height: 1)),
         ],
       ),
     );
@@ -787,6 +832,7 @@ class _OtpBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final filled = controller.text.isNotEmpty;
     return SizedBox(
       width: 52,
@@ -798,21 +844,22 @@ class _OtpBox extends StatelessWidget {
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
         maxLength: 1,
+        // Vivid brand focus blue — kept fixed across themes.
         cursorColor: const Color(0xFF3D63F5),
         style: GoogleFonts.dosis(
           fontSize: 22,
           fontWeight: FontWeight.w700,
-          color: _ink,
+          color: rd.ink,
         ),
         decoration: InputDecoration(
           counterText: '',
           filled: true,
-          fillColor: Colors.white,
+          fillColor: rd.card,
           contentPadding: EdgeInsets.zero,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(
-              color: filled ? const Color(0xFF3D63F5) : const Color(0xFFE2E2E6),
+              color: filled ? const Color(0xFF3D63F5) : rd.line,
               width: filled ? 1.5 : 1,
             ),
           ),
@@ -833,6 +880,7 @@ class _RecordButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -840,8 +888,8 @@ class _RecordButton extends StatelessWidget {
         height: 56,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white,
-          border: Border.all(color: const Color(0xFFECECEF), width: 1),
+          color: rd.card,
+          border: Border.all(color: rd.line, width: 1),
           boxShadow: [
             BoxShadow(
               color: const Color(0xFF283CA0).withValues(alpha: 0.14),
@@ -850,12 +898,13 @@ class _RecordButton extends StatelessWidget {
             ),
           ],
         ),
-        child: const Center(
+        child: Center(
           child: RdIcon(
             RdIcons.attachMic,
             size: 26,
             stroke: '#1A1C29',
             strokeWidth: 1.6,
+            color: rd.ink,
           ),
         ),
       ),
@@ -923,8 +972,11 @@ class _AppleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Apple wordmark rides on the social button (an ambient card surface); its
+    // near-black glyph flips to the ink tone so it stays visible on dark cards.
+    final fill = _hex(context.rd.ink);
     return SvgPicture.string(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="#1A1A1A">'
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="$fill">'
       '<path d="M17.05 12.7c-.03-2.6 2.12-3.85 2.22-3.91-1.21-1.77-3.1-2.01-3.77-2.04-1.6-.16-3.13.94-3.94.94-.81 0-2.07-.92-3.4-.9-1.75.03-3.36 1.02-4.26 2.58-1.82 3.15-.47 7.82 1.3 10.38.86 1.25 1.89 2.66 3.23 2.61 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.38.81 1.4-.02 2.28-1.28 3.13-2.54.99-1.45 1.4-2.86 1.42-2.93-.03-.01-2.72-1.05-2.75-4.15M14.5 5.13c.71-.87 1.2-2.07 1.06-3.28-1.03.04-2.27.69-3.01 1.55-.66.76-1.24 1.99-1.09 3.16 1.15.09 2.32-.58 3.04-1.43"/>'
       '</svg>',
       width: 20,

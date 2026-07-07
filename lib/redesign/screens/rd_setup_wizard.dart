@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
 
-import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 import '../widgets/rd_orb.dart';
@@ -23,12 +23,9 @@ class RdSetupWizard extends StatefulWidget {
   State<RdSetupWizard> createState() => _RdSetupWizardState();
 }
 
-const _bg = Color(0xFFF5F5F5);
-const _ink = Color(0xFF1A1C29);
-const _muted = Color(0xFF8A8A8A);
+// Fixed brand accents — identical in light and dark (navy CTAs, peri orbs/dots).
 const _navy = Color(0xFF14328C);
 const _peri = Color(0xFF7E8BC9);
-const _line = Color(0xFFE6E6EA);
 
 const _steps = [
   'welcome', 'address', 'focus', 'people', 'rhythm', 'privacy', 'sources',
@@ -135,7 +132,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: context.rd.bg,
       body: SafeArea(child: _buildStep()),
     );
   }
@@ -180,6 +177,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
     VoidCallback? onCta,
     bool skip = false,
   }) {
+    final rd = context.rd;
     final progIdx = _inputSteps.indexOf(_step);
     return Column(
       children: [
@@ -190,9 +188,9 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
               GestureDetector(
                 onTap: _back,
                 behavior: HitTestBehavior.opaque,
-                child: const Padding(
-                  padding: EdgeInsets.all(6),
-                  child: RdIcon(RdIcons.chevronLeft, size: 22, stroke: '#1A1C29', strokeWidth: 2),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: RdIcon(RdIcons.chevronLeft, size: 22, color: rd.ink, strokeWidth: 2),
                 ),
               ),
               const SizedBox(width: 8),
@@ -206,7 +204,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                           child: Container(
                             height: 4,
                             decoration: BoxDecoration(
-                              color: k <= progIdx ? _navy : const Color(0xFFE2E2E6),
+                              color: k <= progIdx ? _navy : rd.line,
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -226,7 +224,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                         child: Text(
                           'Skip',
                           textAlign: TextAlign.right,
-                          style: GoogleFonts.vazirmatn(fontSize: 14, color: _muted),
+                          style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.muted),
                         ),
                       )
                     : null,
@@ -257,7 +255,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
           fontSize: size,
           fontWeight: FontWeight.w700,
           height: 1.18,
-          color: _ink,
+          color: context.rd.ink,
         ),
       );
 
@@ -265,7 +263,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
         padding: const EdgeInsets.only(top: 8),
         child: Text(
           text,
-          style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: _muted),
+          style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: context.rd.muted),
         ),
       );
 
@@ -276,13 +274,14 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
           style: GoogleFonts.vazirmatn(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: _muted,
+            color: context.rd.muted,
           ),
         ),
       );
 
   // ── welcome ─────────────────────────────────────────────────────────
   Widget _welcome() {
+    final rd = context.rd;
     return Column(
       children: [
         Expanded(
@@ -301,7 +300,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                       fontSize: 30,
                       fontWeight: FontWeight.w700,
                       height: 1.16,
-                      color: _ink,
+                      color: rd.ink,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -313,7 +312,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13.5,
                         height: 1.5,
-                        color: _muted,
+                        color: rd.muted,
                       ),
                     ),
                   ),
@@ -422,7 +421,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
         if (_people.isEmpty)
           Text(
             'No one yet — Mira will still learn as you capture.',
-            style: GoogleFonts.vazirmatn(fontSize: 12.5, color: const Color(0xFFB0B0B6)),
+            style: GoogleFonts.vazirmatn(fontSize: 12.5, color: context.rd.faint),
           )
         else
           Wrap(
@@ -556,10 +555,10 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const RdIcon(
+            RdIcon(
               '<path d="M12 8v5M12 16h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/>',
               size: 15,
-              stroke: '#B0B0B6',
+              color: context.rd.faint,
               strokeWidth: 1.8,
             ),
             const SizedBox(width: 9),
@@ -568,7 +567,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                 _imports.isEmpty
                     ? 'You can also import later from Settings.'
                     : 'Mira will import in the background — you can start using it right away.',
-                style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.5, color: _muted),
+                style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.5, color: context.rd.muted),
               ),
             ),
           ],
@@ -618,6 +617,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
     }
     if (_importTotal > 0) echoes.add('${_fmtK(_importTotal)} imported notes');
     final line = echoes.isEmpty ? 'your preferences' : echoes.join(' · ');
+    final rd = context.rd;
 
     return Center(
       child: Padding(
@@ -634,7 +634,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                 fontSize: 30,
                 fontWeight: FontWeight.w700,
                 height: 1.16,
-                color: _ink,
+                color: rd.ink,
               ),
             ),
             const SizedBox(height: 8),
@@ -643,7 +643,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
               child: Text(
                 'Mira is arranging $line into the shape of your mind.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: _muted),
+                style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: rd.muted),
               ),
             ),
             const SizedBox(height: 26),
@@ -656,6 +656,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── ready ───────────────────────────────────────────────────────────
   Widget _ready() {
+    final rd = context.rd;
     final greet = _nameCtl.text.trim().isEmpty
         ? 'you'
         : _nameCtl.text.trim().split(' ').first;
@@ -692,7 +693,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                       fontSize: 30,
                       fontWeight: FontWeight.w700,
                       height: 1.16,
-                      color: _ink,
+                      color: rd.ink,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -701,7 +702,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                     child: Text(
                       'Everything you capture from here, $greet, has a place to live — and a way back to you.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: _muted),
+                      style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: rd.muted),
                     ),
                   ),
                 ],
@@ -790,6 +791,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
   // ── invite (referral) ───────────────────────────────────────────────
   Widget _invite() {
     const code = 'MIRA-7F3K';
+    final rd = context.rd;
     return Column(
       children: [
         Expanded(
@@ -825,7 +827,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
                     height: 1.16,
-                    color: _ink,
+                    color: rd.ink,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -834,7 +836,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                   child: Text(
                     'Mira is better with the people you think alongside. Invite a few — they skip the waitlist, and you both get a month of Plus.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: _muted),
+                    style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: rd.muted),
                   ),
                 ),
                 const SizedBox(height: 26),
@@ -863,13 +865,14 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
   }
 
   Widget _inviteCode(String code) {
+    final rd = context.rd;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -880,7 +883,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.6,
-              color: const Color(0xFF9A9AA2),
+              color: rd.muted,
             ),
           ),
           const SizedBox(height: 9),
@@ -1029,6 +1032,7 @@ class _WzButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final navy = variant == _WzVariant.navy;
     return GestureDetector(
       onTap: onTap,
@@ -1037,7 +1041,7 @@ class _WzButton extends StatelessWidget {
         width: double.infinity,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: navy ? _navy : Colors.white,
+          color: navy ? _navy : rd.card,
           borderRadius: BorderRadius.circular(12),
           border: navy ? null : Border.all(color: _navy, width: 1.4),
         ),
@@ -1063,22 +1067,23 @@ class _WzInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return SizedBox(
       height: 54,
       child: TextField(
         controller: controller,
         onSubmitted: onSubmitted,
         cursorColor: const Color(0xFF3D63F5),
-        style: GoogleFonts.vazirmatn(fontSize: 14, color: const Color(0xFF1F1F1F)),
+        style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.ink),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: GoogleFonts.vazirmatn(fontSize: 14, color: const Color(0xFFA8A8AE)),
+          hintStyle: GoogleFonts.vazirmatn(fontSize: 14, color: rd.faint),
           filled: true,
-          fillColor: const Color(0xFFFCFCFC),
+          fillColor: rd.card,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE2E2E6), width: 1),
+            borderSide: BorderSide(color: rd.line, width: 1),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
@@ -1101,7 +1106,7 @@ class _WzSwitch extends StatelessWidget {
       width: 46,
       height: 28,
       decoration: BoxDecoration(
-        color: on ? _navy : const Color(0xFFD8D8DE),
+        color: on ? _navy : context.rd.line,
         borderRadius: BorderRadius.circular(100),
       ),
       child: AnimatedAlign(
@@ -1130,22 +1135,23 @@ class _ToneCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: rd.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: on ? _navy : _line, width: on ? 1.6 : 1),
+          border: Border.all(color: on ? _navy : rd.line, width: on ? 1.6 : 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: GoogleFonts.dosis(fontSize: 16, fontWeight: FontWeight.w700, color: _ink)),
+            Text(label, style: GoogleFonts.dosis(fontSize: 16, fontWeight: FontWeight.w700, color: rd.ink)),
             const SizedBox(height: 2),
-            Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12.5, color: _muted)),
+            Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
           ],
         ),
       ),
@@ -1163,26 +1169,27 @@ class _FocusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFFEEF1FB) : Colors.white,
+          color: on ? rd.periSoft : rd.card,
           borderRadius: BorderRadius.circular(100),
-          border: Border.all(color: on ? _navy : _line, width: on ? 1.6 : 1),
+          border: Border.all(color: on ? _navy : rd.line, width: on ? 1.6 : 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            RdIcon(icon, size: 19, stroke: on ? '#14328C' : '#8A8B92', strokeWidth: 1.8),
+            RdIcon(icon, size: 19, color: on ? rd.peri : rd.muted, strokeWidth: 1.8),
             const SizedBox(width: 8),
             Text(
               label,
               style: GoogleFonts.vazirmatn(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w500,
-                color: on ? _navy : _ink,
+                color: on ? rd.peri : rd.ink,
               ),
             ),
           ],
@@ -1202,20 +1209,21 @@ class _TimeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFFEEF1FB) : Colors.white,
+          color: on ? rd.periSoft : rd.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: on ? _navy : _line, width: on ? 1.6 : 1),
+          border: Border.all(color: on ? _navy : rd.line, width: on ? 1.6 : 1),
         ),
         child: Column(
           children: [
-            Text(label, style: GoogleFonts.dosis(fontSize: 15, fontWeight: FontWeight.w700, color: _ink)),
+            Text(label, style: GoogleFonts.dosis(fontSize: 15, fontWeight: FontWeight.w700, color: rd.ink)),
             const SizedBox(height: 3),
-            Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: _muted)),
+            Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
           ],
         ),
       ),
@@ -1234,14 +1242,15 @@ class _ToggleRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: rd.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _line, width: 1),
+          border: Border.all(color: rd.line, width: 1),
         ),
         child: Row(
           children: [
@@ -1250,11 +1259,11 @@ class _ToggleRow extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0F2F8),
+                  color: rd.periSoft,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
-                  child: RdIcon(icon!, size: 20, stroke: '#6B7A99', strokeWidth: 1.8),
+                  child: RdIcon(icon!, size: 20, color: rd.peri, strokeWidth: 1.8),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1263,9 +1272,9 @@ class _ToggleRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
+                  Text(title, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink)),
                   const SizedBox(height: 2),
-                  Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: _muted)),
+                  Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
                 ],
               ),
             ),
@@ -1288,12 +1297,13 @@ class _AssuranceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: rd.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         children: [
@@ -1303,9 +1313,9 @@ class _AssuranceRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
+                Text(title, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink)),
                 const SizedBox(height: 2),
-                Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, height: 1.4, color: _muted)),
+                Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, height: 1.4, color: rd.muted)),
               ],
             ),
           ),
@@ -1334,12 +1344,13 @@ class _SourceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: rd.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         children: [
@@ -1349,9 +1360,9 @@ class _SourceRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
+                Text(title, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink)),
                 const SizedBox(height: 2),
-                Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: _muted)),
+                Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
               ],
             ),
           ),
@@ -1360,7 +1371,7 @@ class _SourceRow extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
               decoration: BoxDecoration(
-                color: connected ? const Color(0xFFE6F4EC) : const Color(0xFFEDEFF4),
+                color: connected ? const Color(0xFFE6F4EC) : rd.periSoft,
                 borderRadius: BorderRadius.circular(100),
               ),
               child: Row(
@@ -1407,14 +1418,15 @@ class _ImportRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: rd.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: on ? _navy : _line, width: on ? 1.6 : 1),
+          border: Border.all(color: on ? _navy : rd.line, width: on ? 1.6 : 1),
         ),
         child: Row(
           children: [
@@ -1424,9 +1436,9 @@ class _ImportRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: _ink)),
+                  Text(title, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink)),
                   const SizedBox(height: 2),
-                  Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: _muted)),
+                  Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
                 ],
               ),
             ),
@@ -1436,7 +1448,7 @@ class _ImportRow extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: on ? _navy : Colors.transparent,
-                border: on ? null : Border.all(color: const Color(0xFFD2D2DA), width: 1.6),
+                border: on ? null : Border.all(color: rd.faint, width: 1.6),
               ),
               child: on
                   ? const Center(child: RdIcon(RdIcons.checkThick, size: 14, stroke: '#FFFFFF', strokeWidth: 3))
@@ -1461,7 +1473,7 @@ class _Tile extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(11)),
-      child: Center(child: RdIcon(icon, size: 20, stroke: '#1A1C29', strokeWidth: 1.8)),
+      child: Center(child: RdIcon(icon, size: 20, color: context.rd.ink, strokeWidth: 1.8)),
     );
   }
 }
@@ -1474,12 +1486,13 @@ class _PersonChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.fromLTRB(6, 6, 10, 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: rd.card,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: _line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1487,20 +1500,20 @@ class _PersonChip extends StatelessWidget {
           Container(
             width: 26,
             height: 26,
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE6EAF7)),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: rd.periSoft),
             child: Center(
               child: Text(
                 name[0].toUpperCase(),
-                style: GoogleFonts.dosis(fontSize: 13, fontWeight: FontWeight.w700, color: _navy),
+                style: GoogleFonts.dosis(fontSize: 13, fontWeight: FontWeight.w700, color: rd.peri),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          Text(name, style: GoogleFonts.vazirmatn(fontSize: 13.5, color: _ink)),
+          Text(name, style: GoogleFonts.vazirmatn(fontSize: 13.5, color: rd.ink)),
           const SizedBox(width: 8),
           GestureDetector(
             onTap: onRemove,
-            child: const RdIcon(RdIcons.close, size: 13, stroke: '#B4B4BC', strokeWidth: 2.4),
+            child: RdIcon(RdIcons.close, size: 13, color: rd.faint, strokeWidth: 2.4),
           ),
         ],
       ),
@@ -1517,12 +1530,13 @@ class _ChannelCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Column(
         children: [
@@ -1530,7 +1544,7 @@ class _ChannelCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-            child: Center(child: RdIcon(icon, size: 20, stroke: '#1A1C29', strokeWidth: 1.8)),
+            child: Center(child: RdIcon(icon, size: 20, color: rd.ink, strokeWidth: 1.8)),
           ),
           const SizedBox(height: 8),
           Text(
@@ -1678,7 +1692,9 @@ class _TourCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(title, style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: _ink)),
+          // Fixed dark ink — the tour card is a light popover over the dark
+          // spotlight scrim, so it keeps light-mode inks in both themes.
+          Text(title, style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: const Color(0xFF1A1C29))),
           const SizedBox(height: 5),
           Text(
             body,
