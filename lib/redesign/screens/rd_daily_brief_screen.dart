@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/models/api/daily_update_models.dart';
+import 'package:mira_app/models/api/reminder_models.dart';
 
 import '../theme/rd_colors.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -11,9 +13,13 @@ import '../widgets/rd_orb.dart';
 
 /// Daily Brief — Mira's morning summary. Wired to `dailyBriefRepository`
 /// (`/daily-update`): tasks render in "needs you", notes/images in "recent",
-/// grouped by day, with the greeting name from the signed-in user. Falls back
-/// to the designed mock (timeline / resurfaced / handled) when the backend is
-/// unreachable, so the screen still reads well offline.
+/// grouped by day, with the greeting name from the signed-in user. Overdue
+/// reminders (`RemindersRepository.list(done: false)`, past their `remindAt`)
+/// surface in a "Waiting on you" section with Snooze / Done actions. When there
+/// is nothing live — no tasks, no overdue reminders, no recent memories — the
+/// screen shows the design's calm empty state. Mira's "resurfaced" cards are
+/// kept as designed sample content (the backend has no resurfaced feed yet),
+/// shown beneath the live sections, so the screen still reads well offline.
 class RdDailyBriefScreen extends StatefulWidget {
   const RdDailyBriefScreen({super.key, required this.go});
 
@@ -29,6 +35,11 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   static const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   List<DailyUpdateItem>? _items;
+
+  /// Overdue reminders (past their `remindAt`), newest-overdue first. Null until
+  /// the first load resolves; empty once loaded when nothing is overdue.
+  List<Reminder>? _overdue;
+
   String _name = 'Sara';
   bool _loaded = false;
 
@@ -52,6 +63,18 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       final update = await services.dailyBriefRepository.fetchDailyUpdate();
       if (mounted) setState(() => _items = update.items);
     } catch (_) {}
+    try {
+      final reminders = await RemindersRepository(apiClient: services.apiClient)
+          .list(done: false);
+      final now = DateTime.now();
+      final overdue = reminders
+          .where((r) => r.remindAt != null && r.remindAt!.isBefore(now))
+          .toList()
+        ..sort((a, b) => a.remindAt!.compareTo(b.remindAt!));
+      if (mounted) setState(() => _overdue = overdue);
+    } catch (_) {
+      // Backend unreachable — leave the section hidden rather than guessing.
+    }
   }
 
   Future<void> _toggleTask(String id, bool done) async {
@@ -63,18 +86,93 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     }
   }
 
-  List<Widget> _bodyChildren() {
-    final items = _items;
-    if (items != null && items.isNotEmpty) return _liveChildren(items);
-    return _mockChildren();
+  /// Snooze an overdue reminder to tomorrow — drop it from the list optimistically
+  /// and push the new `remindAt` best-effort.
+  Future<void> _snoozeReminder(Reminder reminder) async {
+    setState(() =>
+        _overdue = (_overdue ?? []).where((r) => r.id != reminder.id).toList());
+    _toast('Snoozed until tomorrow');
+    try {
+      final services = AppScope.servicesOf(context);
+      await RemindersRepository(apiClient: services.apiClient).update(
+        reminder.id,
+        remindAt: DateTime.now().add(const Duration(days: 1)),
+      );
+    } catch (_) {
+      // The card is already gone locally; a failed sync just means it may
+      // reappear on the next load.
+    }
   }
 
-  List<Widget> _liveChildren(List<DailyUpdateItem> items) {
+  /// Mark an overdue reminder done — drop it from the list optimistically and
+  /// push the flag best-effort.
+  Future<void> _completeReminder(Reminder reminder) async {
+    setState(() =>
+        _overdue = (_overdue ?? []).where((r) => r.id != reminder.id).toList());
+    _toast('Done');
+    try {
+      final services = AppScope.servicesOf(context);
+      await RemindersRepository(apiClient: services.apiClient)
+          .update(reminder.id, done: true);
+    } catch (_) {
+      // Optimistic — the card is already gone locally.
+    }
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: RdColors.ink,
+          content: Text(
+            message,
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+          ),
+        ),
+      );
+  }
+
+  List<Widget> _bodyChildren() {
+    // Before either feed resolves, keep the full designed mock so the screen
+    // reads well while loading / offline.
+    if (_items == null && _overdue == null) return _mockChildren();
+
+    final items = _items ?? const <DailyUpdateItem>[];
     final tasks = items.where(_isTask).toList();
-    final others = items.where((i) => !_isTask(i)).toList();
+    final recent = items.where((i) => !_isTask(i)).toList();
+    final overdue = _overdue ?? const <Reminder>[];
+
+    // Empty day — nothing needs the user, nothing waiting, nothing recent.
+    if (tasks.isEmpty && recent.isEmpty && overdue.isEmpty) {
+      return [_header(), _EmptyState(onCapture: () => widget.go('capture'))];
+    }
+
+    return _liveChildren(tasks: tasks, recent: recent, overdue: overdue);
+  }
+
+  List<Widget> _liveChildren({
+    required List<DailyUpdateItem> tasks,
+    required List<DailyUpdateItem> recent,
+    required List<Reminder> overdue,
+  }) {
     return [
       _header(),
       const _Summary(),
+      // "Waiting on you" — overdue reminders, each with Snooze / Done.
+      if (overdue.isNotEmpty) ...[
+        _OverdueSummary(),
+        _OverdueHeader(count: overdue.length),
+        for (final r in overdue)
+          _OverdueCard(
+            when: _overdueWhen(r.remindAt),
+            title: r.title.trim().isEmpty ? 'Reminder' : r.title,
+            onSnooze: () => _snoozeReminder(r),
+            onDone: () => _completeReminder(r),
+          ),
+      ],
       if (tasks.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.checkCircle,
@@ -88,13 +186,13 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             onToggle: (done) => _toggleTask(t.id, done),
           ),
       ],
-      if (others.isNotEmpty) ...[
+      if (recent.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.resurface,
           label: 'RECENT',
-          count: '${others.length}',
+          count: '${recent.length}',
         ),
-        for (final o in others)
+        for (final o in recent)
           _ResCard(
             icon: _isImage(o) ? RdIcons.vinyl : RdIcons.book,
             image: _isImage(o),
@@ -103,7 +201,34 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             sub: o.summary.trim().isEmpty ? o.title : o.summary,
           ),
       ],
+      // "Mira resurfaced" — the backend has no explicit resurfaced feed yet, so
+      // these two cards are the designed SAMPLE content, shown beneath the live
+      // sections to keep the screen faithful to the design.
+      ..._resurfacedSample(),
       _dbEnd(),
+    ];
+  }
+
+  /// Designed SAMPLE resurfaced cards (no live backend feed for these yet).
+  List<Widget> _resurfacedSample() {
+    return [
+      const _SectionHeader(
+          icon: RdIcons.resurface, label: 'MIRA RESURFACED', count: '2'),
+      _ResCard(
+        icon: RdIcons.vinyl,
+        image: true,
+        why: 'Because the date is close',
+        title: 'Blue Note — Fri, Jul 18',
+        sub:
+            'From a photo you took. Intimate rooms sell out — worth booking this week?',
+        actions: const ['Buy tickets', 'Remind Thursday'],
+      ),
+      const _ResCard(
+        icon: RdIcons.book,
+        why: 'Saved 3 days ago, still unread',
+        title: '“The Overstory”',
+        sub: 'Maya’s recommendation. A quiet weekend read for your coast trip?',
+      ),
     ];
   }
 
@@ -166,6 +291,18 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays == 1) return 'Yesterday';
     return '${diff.inDays} days ago';
+  }
+
+  /// "Due yesterday" / "Due N days ago" for an overdue reminder, by calendar day.
+  static String _overdueWhen(DateTime? remindAt) {
+    if (remindAt == null) return 'Overdue';
+    final now = DateTime.now();
+    final days = DateTime(now.year, now.month, now.day)
+        .difference(DateTime(remindAt.year, remindAt.month, remindAt.day))
+        .inDays;
+    if (days <= 0) return 'Due earlier today';
+    if (days == 1) return 'Due yesterday';
+    return 'Due $days days ago';
   }
 
   static String _greetingForNow() {
@@ -1066,6 +1203,465 @@ class _HandledRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Overdue reminders ("Waiting on you") ───────────────────────────────────
+// Amber-toned section, faithful to `.ov-*` in the design.
+
+const _ovAmber = Color(0xFFC58E3F);
+const _ovAmberDeep = Color(0xFFB8853A);
+
+/// Warm "a few things slipped past" reassurance, shown above the overdue list.
+class _OverdueSummary extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFBF1E4), Color(0xFFFAEBD8)],
+        ),
+        border: Border.all(
+          color: const Color(0xFFC58E3F).withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            margin: const EdgeInsets.only(top: 2),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                center: Alignment(-0.28, -0.4),
+                radius: 0.9,
+                colors: [Color(0xFFE9B770), Color(0xFFC58E3F)],
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'A few things slipped past while you were busy. Nothing’s lost — '
+              'I held onto them. Let’s clear them together, no rush.',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 14.5,
+                height: 1.55,
+                color: const Color(0xFF6A4F24),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverdueHeader extends StatelessWidget {
+  const _OverdueHeader({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(26, 30, 26, 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const RdIcon(
+                RdIcons.dueClock,
+                size: 15,
+                stroke: '#B8853A',
+                strokeWidth: 2,
+              ),
+              const SizedBox(width: 9),
+              Text(
+                'WAITING ON YOU',
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: _ovAmberDeep,
+                ),
+              ),
+            ],
+          ),
+          Text(
+            '$count ${count == 1 ? 'reminder' : 'reminders'}',
+            style: GoogleFonts.vazirmatn(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: RdColors.faint,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverdueCard extends StatelessWidget {
+  const _OverdueCard({
+    required this.when,
+    required this.title,
+    required this.onSnooze,
+    required this.onDone,
+  });
+
+  final String when;
+  final String title;
+  final VoidCallback onSnooze;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(26, 8, 22, 0),
+      decoration: BoxDecoration(
+        color: RdColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: RdColors.line, width: 1),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Left accent bar.
+            Container(
+              width: 3,
+              margin: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD79B45),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(13, 15, 16, 15),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFBF0E0),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: RdIcon(
+                          RdIcons.dueClock,
+                          size: 20,
+                          stroke: '#B8853A',
+                          strokeWidth: 1.7,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            when,
+                            style: GoogleFonts.vazirmatn(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: _ovAmber,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            title,
+                            style: GoogleFonts.vazirmatn(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                              color: RdColors.ink,
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              _OverdueButton(
+                                label: 'Snooze',
+                                solid: false,
+                                onTap: onSnooze,
+                              ),
+                              const SizedBox(width: 8),
+                              _OverdueButton(
+                                label: 'Done',
+                                solid: true,
+                                onTap: onDone,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OverdueButton extends StatelessWidget {
+  const _OverdueButton({
+    required this.label,
+    required this.solid,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool solid;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 15),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: solid ? RdColors.navy : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: solid ? null : Border.all(color: RdColors.line, width: 1),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.vazirmatn(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: solid ? Colors.white : RdColors.muted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────
+// Calm "nothing needs you today", faithful to `.empty-*` in the design.
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onCapture});
+
+  final VoidCallback onCapture;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(26, 24, 26, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Column(
+            children: [
+              const RdOrb(size: 92, ring: true),
+              const SizedBox(height: 20),
+              Text(
+                'Nothing needs you today',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dosis(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: RdColors.ink,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 300),
+                child: Text(
+                  'Your day is open and no memory is waiting on you. I’ll keep '
+                  'everything safe and speak up the moment something matters.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 14.5,
+                    height: 1.6,
+                    color: RdColors.muted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: const [
+              Expanded(
+                child: _EmptyStat(
+                  icon: RdIcons.check,
+                  num: '34',
+                  label: 'memories held safe',
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _EmptyStat(
+                  icon: RdIcons.dueClock,
+                  num: '0',
+                  label: 'reminders due',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          _EmptyCapture(onTap: onCapture),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyStat extends StatelessWidget {
+  const _EmptyStat({required this.icon, required this.num, required this.label});
+
+  final String icon;
+  final String num;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+      decoration: BoxDecoration(
+        color: RdColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: RdColors.line, width: 1),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: RdColors.periSoft,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: RdIcon(icon, size: 18, stroke: '#14328C', strokeWidth: 1.9),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            num,
+            style: GoogleFonts.dosis(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: RdColors.ink,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 11.5,
+              height: 1.3,
+              color: RdColors.muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyCapture extends StatelessWidget {
+  const _EmptyCapture({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFEEF1FA), Color(0xFFE7EBF7)],
+          ),
+          border: Border.all(
+            color: const Color(0xFF7E8BC9).withValues(alpha: 0.18),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const RadialGradient(
+                  center: Alignment(-0.24, -0.4),
+                  radius: 0.9,
+                  colors: [Color(0xFF3A5AD0), Color(0xFF14328C)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color.fromRGBO(20, 50, 140, 0.5),
+                    blurRadius: 18,
+                    spreadRadius: -6,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: RdIcon(RdIcons.mic,
+                    size: 18, stroke: '#FFFFFF', strokeWidth: 1.8),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Capture a thought',
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: RdColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Drop anything on your mind — I’ll hold it for you.',
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 12.5,
+                      color: RdColors.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
