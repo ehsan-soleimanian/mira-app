@@ -5,6 +5,7 @@ import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/models/api/daily_update_models.dart';
 import 'package:mira_app/models/api/reminder_models.dart';
+import 'package:mira_app/models/api/resurfaced_models.dart';
 
 import '../theme/rd_colors.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -18,8 +19,10 @@ import '../widgets/rd_orb.dart';
 /// surface in a "Waiting on you" section with Snooze / Done actions. When there
 /// is nothing live — no tasks, no overdue reminders, no recent memories — the
 /// screen shows the design's calm empty state. Mira's "resurfaced" cards are
-/// kept as designed sample content (the backend has no resurfaced feed yet),
-/// shown beneath the live sections, so the screen still reads well offline.
+/// wired to `dailyBriefRepository.fetchResurfaced()` (`/v2/resurfaced`): each
+/// live item renders its `title` and `reason`. When that feed is empty or the
+/// call fails, the designed sample cards stand in so the screen still reads
+/// well offline.
 class RdDailyBriefScreen extends StatefulWidget {
   const RdDailyBriefScreen({super.key, required this.go});
 
@@ -39,6 +42,11 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   /// Overdue reminders (past their `remindAt`), newest-overdue first. Null until
   /// the first load resolves; empty once loaded when nothing is overdue.
   List<Reminder>? _overdue;
+
+  /// "Mira resurfaced" items from `/v2/resurfaced`. Null until the first load
+  /// resolves or if the call failed; empty once loaded when the feed is empty.
+  /// In both the null and empty cases the section falls back to sample cards.
+  List<ResurfacedItem>? _resurfaced;
 
   String _name = 'Sara';
   bool _loaded = false;
@@ -63,6 +71,14 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       final update = await services.dailyBriefRepository.fetchDailyUpdate();
       if (mounted) setState(() => _items = update.items);
     } catch (_) {}
+    try {
+      final resurfaced =
+          await services.dailyBriefRepository.fetchResurfaced();
+      if (mounted) setState(() => _resurfaced = resurfaced);
+    } catch (_) {
+      // Feed unreachable — leave `_resurfaced` null so the section shows the
+      // designed sample cards instead of an empty gap.
+    }
     try {
       final reminders = await RemindersRepository(apiClient: services.apiClient)
           .list(done: false);
@@ -201,15 +217,58 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             sub: o.summary.trim().isEmpty ? o.title : o.summary,
           ),
       ],
-      // "Mira resurfaced" — the backend has no explicit resurfaced feed yet, so
-      // these two cards are the designed SAMPLE content, shown beneath the live
-      // sections to keep the screen faithful to the design.
-      ..._resurfacedSample(),
+      // "Mira resurfaced" — live items from `/v2/resurfaced` when available,
+      // otherwise the designed SAMPLE content so the section never reads empty.
+      ..._resurfacedChildren(),
       _dbEnd(),
     ];
   }
 
-  /// Designed SAMPLE resurfaced cards (no live backend feed for these yet).
+  /// "Mira resurfaced" section. Renders live items from `/v2/resurfaced` when
+  /// the feed returned any; otherwise falls back to the designed sample cards
+  /// (also used while loading / offline, when `_resurfaced` is still null).
+  List<Widget> _resurfacedChildren() {
+    final items = _resurfaced ?? const <ResurfacedItem>[];
+    if (items.isEmpty) return _resurfacedSample();
+
+    return [
+      _SectionHeader(
+        icon: RdIcons.resurface,
+        label: 'MIRA RESURFACED',
+        count: '${items.length}',
+      ),
+      for (final item in items)
+        _ResCard(
+          icon: RdIcons.book,
+          why: _resurfacedWhy(item.reason),
+          title: item.title.trim().isEmpty ? 'A memory' : item.title,
+          sub: _resurfacedSub(item),
+        ),
+    ];
+  }
+
+  /// The eyebrow line for a resurfaced card — the backend `reason`, trimmed,
+  /// with a gentle fallback when it is blank.
+  static String _resurfacedWhy(String reason) {
+    final trimmed = reason.trim();
+    return trimmed.isEmpty ? 'Brought back for you' : trimmed;
+  }
+
+  /// Supporting line for a resurfaced card, composed from the optional `type`
+  /// and `date`. Falls back to the reason, then a neutral phrase, so the card
+  /// always has a second line to read.
+  static String _resurfacedSub(ResurfacedItem item) {
+    final type = (item.type ?? '').trim();
+    final when = item.date != null ? _sectionLabel(item.date!) : '';
+    if (type.isNotEmpty && when.isNotEmpty) return '$type · $when';
+    if (type.isNotEmpty) return type;
+    if (when.isNotEmpty) return when;
+    final reason = item.reason.trim();
+    return reason.isEmpty ? 'Saved to your memory' : reason;
+  }
+
+  /// Designed SAMPLE resurfaced cards (fallback when the live feed is empty or
+  /// unreachable, and during the initial load / offline mock).
   List<Widget> _resurfacedSample() {
     return [
       const _SectionHeader(
