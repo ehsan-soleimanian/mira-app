@@ -82,6 +82,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
 | `GET` | `/v2/resurfaced` | `daily_brief_repository.dart` | Mira-resurfaced memories (Daily Brief) |
+| `GET` | `/storage/usage` | `settings_repository.dart` | Per-category storage usage + quota (Storage screen) |
 | `GET` | `/daily-brief` | redesigned Daily Brief | Rich Brief state: full, empty, overdue, first-time |
 | `POST` | `/daily-brief/items/{id}/actions` | redesigned Daily Brief | Done, snooze, dismiss, open, undo-snooze card action |
 | `POST` | `/daily-brief/clear-overdue` | redesigned Daily Brief | Snooze all overdue Brief tasks until tomorrow |
@@ -1177,6 +1178,18 @@ Public predicate registry, entity types, and ontology version for client renderi
 **Errors**: none (no auth required in dev; Bearer optional)
 
 ---
+
+### Storage usage
+`GET /storage/usage`
+
+Per-category storage totals for the Settings → Storage screen (`SettingsRepository.fetchStorageUsage()`). User Bearer. Read-only aggregation over the user's library items (`size_bytes` summed per category).
+
+**Response** `200`
+```json
+{ "usedBytes": 6912, "quotaBytes": 5368709120,
+  "categories": [ { "type": "photos", "count": 3, "bytes": 1234 }, { "type": "voice", "count": 1, "bytes": 5678 } ] }
+```
+Categories are always all six (`photos / voice / screenshots / notes / links / other`); `quotaBytes` is a 5 GiB constant.
 
 ### Resurfaced
 `GET /v2/resurfaced`
