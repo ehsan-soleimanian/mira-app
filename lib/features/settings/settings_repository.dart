@@ -68,6 +68,30 @@ class SettingsRepository {
     }
   }
 
+  /// Detailed notification settings for the redesigned Notifications screen
+  /// (`GET /auth/notification-settings`). Returns the raw camelCase payload so
+  /// the screen can read each flag by key; callers fall back to the designed
+  /// defaults when the backend is unreachable.
+  Future<Map<String, dynamic>> notificationSettings() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/auth/notification-settings',
+    );
+    return response.data ?? const <String, dynamic>{};
+  }
+
+  /// Partially update detailed notification settings
+  /// (`PATCH /auth/notification-settings`). [patch] keys are camelCase field
+  /// names (e.g. `dailyBriefEnabled`); the backend accepts snake_case too.
+  Future<Map<String, dynamic>> updateNotificationSettings(
+    Map<String, dynamic> patch,
+  ) async {
+    final response = await _dio.patch<Map<String, dynamic>>(
+      '/auth/notification-settings',
+      data: patch,
+    );
+    return response.data ?? const <String, dynamic>{};
+  }
+
   Future<bool> checkApiReady() async {
     try {
       final response = await _dio.get<Map<String, dynamic>>('/health/ready');

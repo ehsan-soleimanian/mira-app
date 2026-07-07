@@ -1,5 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/models/api/auth_models.dart';
 
 import '../theme/rd_colors.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -28,20 +33,92 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
   bool _faceId = true;
   bool _autoLock = true;
 
+  // Sample fallbacks — used until the real profile loads, or if it can't.
+  static const _sampleName = 'Sara Kim';
+  static const _sampleEmail = 'sara.kim@hey.com';
+
+  /// The signed-in user from `authRepository.fetchMe()`; null until loaded /
+  /// unreachable, in which case the sample profile shows.
+  AuthUser? _user;
+  bool _loaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) {
+      _loaded = true;
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    try {
+      final user = await AppScope.servicesOf(context).authRepository.fetchMe();
+      if (mounted) setState(() => _user = user);
+    } catch (_) {
+      // Backend unreachable — keep the sample profile.
+    }
+  }
+
+  String get _name {
+    final name = _user?.displayName.trim() ?? '';
+    return name.isEmpty ? _sampleName : name;
+  }
+
+  String get _email {
+    final email = _user?.email.trim() ?? '';
+    return email.isEmpty ? _sampleEmail : email;
+  }
+
+  /// First-letter initials for the avatar (e.g. "Sara Kim" → "SK").
+  String get _initials {
+    final parts =
+        _name.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return 'SK';
+    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
+    return (parts.first.characters.first + parts.last.characters.first)
+        .toUpperCase();
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: RdColors.ink,
+          content: Text(
+            message,
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+          ),
+        ),
+      );
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await AppScope.servicesOf(context).authRepository.logout();
+    } catch (_) {
+      // Best-effort — clear whatever we can and let the user know.
+    }
+    _toast('Signed out');
+  }
+
   @override
   Widget build(BuildContext context) {
     return _AcScaffold(
       onBack: widget.onBack,
       title: 'Account',
       children: [
-        const _AcProfile(),
+        _AcProfile(name: _name, email: _email, initials: _initials),
         const SizedBox(height: 8),
         _AcSection(
           label: 'Profile',
-          rows: const [
-            _AcRow(icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', title: 'Name', value: 'Sara Kim'),
-            _AcRow(icon: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>', title: 'Email', value: 'sara.kim@hey.com'),
-            _AcRow(icon: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>', title: 'Phone', value: '+1 (415) •••-2231'),
+          rows: [
+            _AcRow(icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', title: 'Name', value: _name),
+            _AcRow(icon: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>', title: 'Email', value: _email),
+            const _AcRow(icon: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>', title: 'Phone', value: '+1 (415) •••-2231'),
           ],
         ),
         _AcSection(
@@ -98,8 +175,8 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
           ],
         ),
         _AcSection(
-          rows: const [
-            _AcRow(icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>', title: 'Sign out', chevron: false),
+          rows: [
+            _AcRow(icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>', title: 'Sign out', chevron: false, onTap: _signOut),
             _AcRow(icon: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/>', title: 'Delete account', chevron: false, danger: true),
           ],
         ),
@@ -121,12 +198,71 @@ class RdNotificationsScreen extends StatefulWidget {
 }
 
 class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
+  // Designed defaults — shown until backend settings load, or if unreachable.
   final Map<String, bool> _st = {
     'brief': true, 'briefResurface': true, 'timeSensitive': true, 'nudges': true,
     'captureConfirm': true, 'weekly': false, 'quiet': true, 'sound': true, 'haptics': true,
   };
 
-  void _t(String k) => setState(() => _st[k] = !(_st[k] ?? false));
+  /// Maps each toggle key to its backend camelCase field on
+  /// `/notification-settings`. Keys absent here (briefResurface, sound,
+  /// haptics) have no backend field yet and stay local-only.
+  static const _backendField = <String, String>{
+    'brief': 'dailyBriefEnabled',
+    'nudges': 'remindersEnabled',
+    'timeSensitive': 'timeSensitiveEnabled',
+    'captureConfirm': 'captureSuccessEnabled',
+    'weekly': 'weeklyDigestEnabled',
+    'quiet': 'quietHoursEnabled',
+  };
+
+  bool _loaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) {
+      _loaded = true;
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await AppScope.servicesOf(context)
+          .settingsRepository
+          .notificationSettings();
+      if (!mounted) return;
+      setState(() {
+        _backendField.forEach((key, field) {
+          final value = data[field];
+          if (value is bool) _st[key] = value;
+        });
+      });
+    } catch (_) {
+      // Backend unreachable — keep the designed defaults.
+    }
+  }
+
+  /// Optimistically flip the toggle, then PATCH the mapped backend field
+  /// best-effort. Local-only toggles simply update the UI.
+  void _t(String k) {
+    final next = !(_st[k] ?? false);
+    setState(() => _st[k] = next);
+    final field = _backendField[k];
+    if (field == null) return;
+    unawaited(_push(field, next));
+  }
+
+  Future<void> _push(String field, bool value) async {
+    try {
+      await AppScope.servicesOf(context)
+          .settingsRepository
+          .updateNotificationSettings({field: value});
+    } catch (_) {
+      // Best-effort — the optimistic UI stays; nothing to roll back offline.
+    }
+  }
 
   _AcRow _toggleRow(String icon, String title, String? sub, String k) => _AcRow(
         icon: icon,
@@ -508,7 +644,15 @@ class _AcToggle extends StatelessWidget {
 }
 
 class _AcProfile extends StatelessWidget {
-  const _AcProfile();
+  const _AcProfile({
+    required this.name,
+    required this.email,
+    required this.initials,
+  });
+
+  final String name;
+  final String email;
+  final String initials;
 
   @override
   Widget build(BuildContext context) {
@@ -533,7 +677,7 @@ class _AcProfile extends StatelessWidget {
               ),
             ),
             child: Center(
-              child: Text('SK', style: GoogleFonts.dosis(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
+              child: Text(initials, style: GoogleFonts.dosis(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),
           const SizedBox(width: 15),
@@ -541,9 +685,9 @@ class _AcProfile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Sara Kim', style: GoogleFonts.dosis(fontSize: 20, fontWeight: FontWeight.w700, color: RdColors.ink)),
+                Text(name, style: GoogleFonts.dosis(fontSize: 20, fontWeight: FontWeight.w700, color: RdColors.ink)),
                 const SizedBox(height: 2),
-                Text('sara.kim@hey.com', style: GoogleFonts.vazirmatn(fontSize: 13.5, color: RdColors.muted)),
+                Text(email, style: GoogleFonts.vazirmatn(fontSize: 13.5, color: RdColors.muted)),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.fromLTRB(7, 3, 9, 3),
