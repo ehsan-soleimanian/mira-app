@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/core/app_theme_controller.dart';
-import 'package:mira_app/features/capture/capture_flow_controller.dart';
+import 'package:mira_app/app/mira_services.dart';
 
 import 'rd_root.dart';
 import 'theme/rd_colors.dart';

@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/config/api_endpoint_resolver.dart';
-import 'package:mira_app/features/capture/capture_flow_controller.dart';
+import 'package:mira_app/app/mira_services.dart';
 
 /// Boots the real service container the redesign runs on. Mirrors the shipping
 /// `main.dart` bootstrap (API base-url resolution + services), minus the pieces
