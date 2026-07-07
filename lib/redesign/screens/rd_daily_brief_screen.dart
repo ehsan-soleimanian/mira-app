@@ -8,6 +8,7 @@ import 'package:mira_app/models/api/reminder_models.dart';
 import 'package:mira_app/models/api/resurfaced_models.dart';
 
 import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 import '../widgets/rd_orb.dart';
@@ -137,12 +138,13 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   void _toast(String message) {
     if (!mounted) return;
+    final rd = context.rd;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: RdColors.ink,
+          backgroundColor: rd.ink,
           content: Text(
             message,
             style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
@@ -379,8 +381,9 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Scaffold(
-      backgroundColor: RdColors.bg,
+      backgroundColor: rd.bg,
       body: Stack(
         children: [
           Positioned.fill(
@@ -400,12 +403,12 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             right: 0,
             bottom: 0,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0x00F4F4F1), RdColors.bg],
-                  stops: [0.0, 0.55],
+                  colors: [rd.bg.withValues(alpha: 0), rd.bg],
+                  stops: const [0.0, 0.55],
                 ),
               ),
               child: RdBottomNav(active: 'daily', go: widget.go),
@@ -417,6 +420,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   Widget _header() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
       child: Column(
@@ -428,7 +432,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 1.2,
-              color: RdColors.peri,
+              color: rd.peri,
             ),
           ),
           const SizedBox(height: 6),
@@ -444,7 +448,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                       style: GoogleFonts.dosis(
                         fontSize: 30,
                         fontWeight: FontWeight.w700,
-                        color: RdColors.ink,
+                        color: rd.ink,
                         height: 1.05,
                       ),
                     ),
@@ -454,7 +458,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: RdColors.muted,
+                        color: rd.muted,
                       ),
                     ),
                   ],
@@ -467,14 +471,14 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                   height: 42,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: RdColors.card,
-                    border: Border.all(color: RdColors.line, width: 1),
+                    color: rd.card,
+                    border: Border.all(color: rd.line, width: 1),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: RdIcon(
                       RdIcons.gear,
                       size: 19,
-                      stroke: '#6B6C73',
+                      color: rd.gearIcon,
                       strokeWidth: 1.7,
                     ),
                   ),
@@ -488,6 +492,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   Widget _dbEnd() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 26, 40, 0),
       child: Text(
@@ -495,7 +500,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         textAlign: TextAlign.center,
         style: GoogleFonts.vazirmatn(
           fontSize: 12.5,
-          color: RdColors.faint,
+          color: rd.faint,
           height: 1.5,
         ),
       ),
@@ -568,6 +573,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 30, 26, 10),
       child: Row(
@@ -583,7 +589,7 @@ class _SectionHeader extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
-                  color: RdColors.faint,
+                  color: rd.faint,
                 ),
               ),
             ],
@@ -594,7 +600,7 @@ class _SectionHeader extends StatelessWidget {
               style: GoogleFonts.vazirmatn(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: RdColors.faint,
+                color: rd.faint,
               ),
             ),
         ],
@@ -609,6 +615,7 @@ class _Rail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 0, 22, 0),
       child: Stack(
@@ -619,17 +626,17 @@ class _Rail extends StatelessWidget {
             bottom: 12,
             child: Container(
               width: 1.5,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    RdColors.periSoft,
-                    RdColors.peri,
-                    RdColors.peri,
-                    RdColors.periSoft,
+                    rd.periSoft,
+                    rd.peri,
+                    rd.peri,
+                    rd.periSoft,
                   ],
-                  stops: [0.0, 0.2, 0.8, 1.0],
+                  stops: const [0.0, 0.2, 0.8, 1.0],
                 ),
               ),
             ),
@@ -677,6 +684,7 @@ class _TimelineEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
@@ -694,7 +702,7 @@ class _TimelineEntry extends StatelessWidget {
                     style: GoogleFonts.vazirmatn(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
-                      color: RdColors.muted,
+                      color: rd.muted,
                       height: 1.2,
                     ),
                   ),
@@ -703,7 +711,7 @@ class _TimelineEntry extends StatelessWidget {
                     style: GoogleFonts.vazirmatn(
                       fontSize: 9.5,
                       fontWeight: FontWeight.w500,
-                      color: RdColors.faint,
+                      color: rd.faint,
                     ),
                   ),
                 ],
@@ -736,32 +744,33 @@ class _RailNode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     if (now) {
       return Container(
         width: 11,
         height: 11,
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: RdColors.peri,
-          boxShadow: [BoxShadow(color: RdColors.periSoft, spreadRadius: 4)],
+          color: rd.peri,
+          boxShadow: [BoxShadow(color: rd.periSoft, spreadRadius: 4)],
         ),
       );
     }
     return Container(
       width: 11,
       height: 11,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: RdColors.peri,
-        boxShadow: [BoxShadow(color: RdColors.periSoft, spreadRadius: 3)],
+        color: rd.peri,
+        boxShadow: [BoxShadow(color: rd.periSoft, spreadRadius: 3)],
       ),
       child: Center(
         child: Container(
           width: 6,
           height: 6,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: RdColors.card,
+            color: rd.card,
           ),
         ),
       ),
@@ -778,12 +787,13 @@ class _EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -793,7 +803,7 @@ class _EventCard extends StatelessWidget {
             style: GoogleFonts.vazirmatn(
               fontSize: 14.5,
               fontWeight: FontWeight.w600,
-              color: RdColors.ink,
+              color: rd.ink,
               height: 1.3,
             ),
           ),
@@ -810,7 +820,7 @@ class _EventCard extends StatelessWidget {
                   sub,
                   style: GoogleFonts.vazirmatn(
                     fontSize: 12.5,
-                    color: RdColors.muted,
+                    color: rd.muted,
                   ),
                 ),
               ),
@@ -821,7 +831,9 @@ class _EventCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
               decoration: BoxDecoration(
-                color: RdColors.periSoft,
+                // Fixed light periwinkle tint so the navy prep copy stays
+                // legible in dark mode (ambient periSoft flips to dark slate).
+                color: const Color(0xFFEDEFF8),
                 borderRadius: BorderRadius.circular(11),
               ),
               child: Row(
@@ -879,7 +891,9 @@ class _Pill extends StatelessWidget {
       height: 22,
       padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
-        color: RdColors.periSoft,
+        // Fixed light periwinkle tint-badge — navy icon + label read on it in
+        // both themes (ambient periSoft flips to dark slate).
+        color: const Color(0xFFEDEFF8),
         borderRadius: BorderRadius.circular(100),
       ),
       child: Row(
@@ -916,13 +930,14 @@ class _TaskCardState extends State<_TaskCard> {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       margin: const EdgeInsets.fromLTRB(26, 8, 22, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -937,11 +952,11 @@ class _TaskCardState extends State<_TaskCard> {
               height: 24,
               margin: const EdgeInsets.only(top: 1),
               decoration: BoxDecoration(
-                color: _done ? RdColors.navy : Colors.white,
+                color: _done ? rd.navy : rd.card,
                 borderRadius: BorderRadius.circular(8),
                 border: _done
                     ? null
-                    : Border.all(color: RdColors.peri, width: 1.8),
+                    : Border.all(color: rd.peri, width: 1.8),
               ),
               child: _done
                   ? const Center(
@@ -966,7 +981,7 @@ class _TaskCardState extends State<_TaskCard> {
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
                     height: 1.3,
-                    color: _done ? RdColors.faint : RdColors.ink,
+                    color: _done ? rd.faint : rd.ink,
                     decoration:
                         _done ? TextDecoration.lineThrough : TextDecoration.none,
                   ),
@@ -1039,13 +1054,14 @@ class _ResCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       margin: const EdgeInsets.fromLTRB(26, 8, 22, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1061,7 +1077,7 @@ class _ResCard extends StatelessWidget {
                   style: GoogleFonts.vazirmatn(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: RdColors.peri,
+                    color: rd.peri,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -1070,7 +1086,7 @@ class _ResCard extends StatelessWidget {
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
-                    color: RdColors.ink,
+                    color: rd.ink,
                     height: 1.3,
                   ),
                 ),
@@ -1079,7 +1095,7 @@ class _ResCard extends StatelessWidget {
                   sub,
                   style: GoogleFonts.vazirmatn(
                     fontSize: 12.5,
-                    color: RdColors.muted,
+                    color: rd.muted,
                     height: 1.4,
                   ),
                 ),
@@ -1116,7 +1132,10 @@ class _ResIcon extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(13),
-        color: image ? null : RdColors.periSoft,
+        // Fixed light periwinkle tile so the navy glyph reads in both themes
+        // (ambient periSoft flips to dark slate); image variant keeps its navy
+        // gradient.
+        color: image ? null : const Color(0xFFEDEFF8),
         gradient: image
             ? const LinearGradient(
                 begin: Alignment.topLeft,
@@ -1145,21 +1164,22 @@ class _ResButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: solid ? RdColors.navy : Colors.transparent,
+        color: solid ? rd.navy : Colors.transparent,
         borderRadius: BorderRadius.circular(9),
-        border: solid ? null : Border.all(color: RdColors.line, width: 1),
+        border: solid ? null : Border.all(color: rd.line, width: 1),
       ),
       child: Text(
         label,
         style: GoogleFonts.vazirmatn(
           fontSize: 12.5,
           fontWeight: FontWeight.w600,
-          color: solid ? Colors.white : RdColors.muted,
+          color: solid ? Colors.white : rd.muted,
         ),
       ),
     );
@@ -1171,12 +1191,13 @@ class _Handled extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       margin: const EdgeInsets.fromLTRB(26, 8, 22, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Column(
         children: [
@@ -1188,8 +1209,8 @@ class _Handled extends StatelessWidget {
           Container(
             margin: const EdgeInsets.only(top: 12),
             padding: const EdgeInsets.only(top: 12),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: RdColors.line, width: 1)),
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: rd.line, width: 1)),
             ),
             child: _HandledRow(
               icon: RdIcons.dueClock,
@@ -1218,16 +1239,17 @@ class _HandledRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final baseStyle = GoogleFonts.vazirmatn(
       fontSize: 12.5,
       height: 1.4,
-      color: RdColors.muted,
+      color: rd.muted,
     );
     final boldStyle = GoogleFonts.vazirmatn(
       fontSize: 12.5,
       height: 1.4,
       fontWeight: FontWeight.w600,
-      color: RdColors.ink,
+      color: rd.ink,
     );
     return Row(
       children: [
@@ -1362,7 +1384,7 @@ class _OverdueHeader extends StatelessWidget {
             style: GoogleFonts.vazirmatn(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: RdColors.faint,
+              color: context.rd.faint,
             ),
           ),
         ],
@@ -1386,12 +1408,13 @@ class _OverdueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       margin: const EdgeInsets.fromLTRB(26, 8, 22, 0),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: IntrinsicHeight(
         child: Row(
@@ -1447,7 +1470,7 @@ class _OverdueCard extends StatelessWidget {
                             style: GoogleFonts.vazirmatn(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w600,
-                              color: RdColors.ink,
+                              color: rd.ink,
                               height: 1.3,
                             ),
                           ),
@@ -1494,6 +1517,7 @@ class _OverdueButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1501,16 +1525,16 @@ class _OverdueButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 15),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: solid ? RdColors.navy : Colors.transparent,
+          color: solid ? rd.navy : Colors.transparent,
           borderRadius: BorderRadius.circular(10),
-          border: solid ? null : Border.all(color: RdColors.line, width: 1),
+          border: solid ? null : Border.all(color: rd.line, width: 1),
         ),
         child: Text(
           label,
           style: GoogleFonts.vazirmatn(
             fontSize: 12.5,
             fontWeight: FontWeight.w600,
-            color: solid ? Colors.white : RdColors.muted,
+            color: solid ? Colors.white : rd.muted,
           ),
         ),
       ),
@@ -1528,6 +1552,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 0),
       child: Column(
@@ -1543,7 +1568,7 @@ class _EmptyState extends StatelessWidget {
                 style: GoogleFonts.dosis(
                   fontSize: 26,
                   fontWeight: FontWeight.w700,
-                  color: RdColors.ink,
+                  color: rd.ink,
                 ),
               ),
               const SizedBox(height: 12),
@@ -1556,7 +1581,7 @@ class _EmptyState extends StatelessWidget {
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14.5,
                     height: 1.6,
-                    color: RdColors.muted,
+                    color: rd.muted,
                   ),
                 ),
               ),
@@ -1599,12 +1624,13 @@ class _EmptyStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Column(
         children: [
@@ -1612,7 +1638,9 @@ class _EmptyStat extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: RdColors.periSoft,
+              // Fixed light periwinkle tile so the navy glyph reads in dark
+              // mode (ambient periSoft flips to dark slate).
+              color: const Color(0xFFEDEFF8),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
@@ -1625,7 +1653,7 @@ class _EmptyStat extends StatelessWidget {
             style: GoogleFonts.dosis(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: RdColors.ink,
+              color: rd.ink,
               height: 1,
             ),
           ),
@@ -1636,7 +1664,7 @@ class _EmptyStat extends StatelessWidget {
             style: GoogleFonts.vazirmatn(
               fontSize: 11.5,
               height: 1.3,
-              color: RdColors.muted,
+              color: rd.muted,
             ),
           ),
         ],

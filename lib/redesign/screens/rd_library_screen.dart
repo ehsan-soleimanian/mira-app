@@ -6,6 +6,7 @@ import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
 import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_collection_picker.dart';
 import '../widgets/rd_icon.dart';
@@ -210,15 +211,16 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   void _toast(String message) {
     if (!mounted) return;
+    final rd = context.rd;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: RdColors.ink,
+          backgroundColor: rd.ink,
           content: Text(
             message,
-            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.bg),
           ),
         ),
       );
@@ -299,6 +301,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final visible = _visible;
     final days = <String>[];
     for (final m in visible) {
@@ -306,7 +309,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     }
 
     return Scaffold(
-      backgroundColor: RdColors.bg,
+      backgroundColor: rd.bg,
       body: Stack(
         children: [
           Positioned.fill(
@@ -365,12 +368,12 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               right: 0,
               bottom: 0,
               child: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0x00F4F4F1), RdColors.bg],
-                    stops: [0.0, 0.55],
+                    colors: [rd.bg.withValues(alpha: 0.0), rd.bg],
+                    stops: const [0.0, 0.55],
                   ),
                 ),
                 child: RdBottomNav(active: 'library', go: widget.go),
@@ -383,6 +386,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── header ──────────────────────────────────────────────────────────
   Widget _header() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
       child: Column(
@@ -394,7 +398,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 1.2,
-              color: RdColors.peri,
+              color: rd.peri,
             ),
           ),
           const SizedBox(height: 6),
@@ -410,7 +414,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                       style: GoogleFonts.dosis(
                         fontSize: 30,
                         fontWeight: FontWeight.w700,
-                        color: RdColors.ink,
+                        color: rd.ink,
                         height: 1.05,
                       ),
                     ),
@@ -420,7 +424,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        color: RdColors.muted,
+                        color: rd.muted,
                       ),
                     ),
                   ],
@@ -433,14 +437,14 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                   height: 42,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: RdColors.card,
-                    border: Border.all(color: RdColors.line, width: 1),
+                    color: rd.card,
+                    border: Border.all(color: rd.line, width: 1),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: RdIcon(
                       RdIcons.gear,
                       size: 19,
-                      stroke: '#6B6C73',
+                      color: rd.gearIcon,
                       strokeWidth: 1.7,
                     ),
                   ),
@@ -455,31 +459,32 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── search ──────────────────────────────────────────────────────────
   Widget _searchBar() {
+    final rd = context.rd;
     return Container(
       margin: const EdgeInsets.fromLTRB(26, 20, 26, 0),
       height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         children: [
-          const RdIcon(RdIcons.search, size: 19, stroke: '#B7B8BE', strokeWidth: 2),
+          RdIcon(RdIcons.search, size: 19, color: rd.faint, strokeWidth: 2),
           const SizedBox(width: 11),
           Expanded(
             child: TextField(
               controller: _searchCtl,
               onChanged: (v) => setState(() => _query = v),
-              cursorColor: RdColors.navy,
-              style: GoogleFonts.vazirmatn(fontSize: 15, color: RdColors.ink),
+              cursorColor: rd.navy,
+              style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
                 hintText: 'Search your memory…',
                 hintStyle:
-                    GoogleFonts.vazirmatn(fontSize: 15, color: RdColors.faint),
+                    GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
               ),
             ),
           ),
@@ -487,9 +492,9 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
           Container(
             width: 30,
             height: 30,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: RdColors.periSoft,
+              color: rd.periSoft,
             ),
             child: const Center(
               child: RdIcon(
@@ -536,6 +541,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _searchSummary(int count) {
+    final rd = context.rd;
     final q = _query.trim();
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 20, 26, 4),
@@ -555,9 +561,9 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                     : [
                         TextSpan(
                           text: '$count',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w600,
-                            color: RdColors.ink,
+                            color: rd.ink,
                           ),
                         ),
                         TextSpan(text: count == 1 ? ' memory' : ' memories'),
@@ -565,7 +571,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                         if (_colFilterName != null)
                           TextSpan(text: ' in ${_colFilterName!}'),
                       ],
-                style: GoogleFonts.vazirmatn(fontSize: 13, color: RdColors.muted),
+                style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
               ),
             ),
           ),
@@ -582,7 +588,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
-                color: RdColors.peri,
+                color: rd.peri,
               ),
             ),
           ),
@@ -593,6 +599,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── collections ─────────────────────────────────────────────────────
   Widget _collectionsLabel() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 26, 26, 12),
       child: Row(
@@ -600,7 +607,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         children: [
           Row(
             children: [
-              const RdIcon(RdIcons.folder, size: 15, stroke: '#7E8BC9', strokeWidth: 2),
+              RdIcon(RdIcons.folder, size: 15, color: rd.peri, strokeWidth: 2),
               const SizedBox(width: 8),
               Text(
                 'MIRA GROUPED FOR YOU',
@@ -608,7 +615,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
-                  color: RdColors.faint,
+                  color: rd.faint,
                 ),
               ),
             ],
@@ -618,7 +625,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             style: GoogleFonts.vazirmatn(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: RdColors.peri,
+              color: rd.peri,
             ),
           ),
         ],
@@ -728,6 +735,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── list scaffolding ────────────────────────────────────────────────
   Widget _dayLabel(String day) {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 4),
       child: Text(
@@ -736,13 +744,14 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.8,
-          color: RdColors.faint,
+          color: rd.faint,
         ),
       ),
     );
   }
 
   Widget _emptyHint() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 40, 40, 0),
       child: Text(
@@ -750,7 +759,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         textAlign: TextAlign.center,
         style: GoogleFonts.vazirmatn(
           fontSize: 13.5,
-          color: RdColors.faint,
+          color: rd.faint,
           height: 1.5,
         ),
       ),
@@ -758,6 +767,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _end() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 28, 40, 0),
       child: Text(
@@ -765,7 +775,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         textAlign: TextAlign.center,
         style: GoogleFonts.vazirmatn(
           fontSize: 12.5,
-          color: RdColors.faint,
+          color: rd.faint,
           height: 1.5,
         ),
       ),
@@ -774,12 +784,13 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── selection chrome ────────────────────────────────────────────────
   Widget _selBar(List<String> ids) {
+    final rd = context.rd;
     final allSelected = ids.isNotEmpty && ids.every(_selected.contains);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 54, 20, 14),
-      decoration: const BoxDecoration(
-        color: RdColors.bg,
-        border: Border(bottom: BorderSide(color: RdColors.line, width: 1)),
+      decoration: BoxDecoration(
+        color: rd.bg,
+        border: Border(bottom: BorderSide(color: rd.line, width: 1)),
       ),
       child: Row(
         children: [
@@ -790,14 +801,14 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               height: 38,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: RdColors.card,
-                border: Border.all(color: RdColors.line, width: 1),
+                color: rd.card,
+                border: Border.all(color: rd.line, width: 1),
               ),
-              child: const Center(
+              child: Center(
                 child: RdIcon(
                   RdIcons.close,
                   size: 17,
-                  stroke: '#1B1C24',
+                  color: rd.ink,
                   strokeWidth: 2.1,
                 ),
               ),
@@ -812,7 +823,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               style: GoogleFonts.dosis(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: RdColors.ink,
+                color: rd.ink,
               ),
             ),
           ),
@@ -825,7 +836,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: RdColors.peri,
+                  color: rd.peri,
                 ),
               ),
             ),
@@ -836,12 +847,13 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _selActions() {
+    final rd = context.rd;
     final enabled = _selected.isNotEmpty;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBFBF9).withValues(alpha: 0.92),
-        border: const Border(top: BorderSide(color: RdColors.line, width: 1)),
+        color: rd.card.withValues(alpha: 0.92),
+        border: Border(top: BorderSide(color: rd.line, width: 1)),
       ),
       child: Row(
         children: [
@@ -993,7 +1005,7 @@ const _mems = <_LibMem>[
     _MemType t) {
   switch (t) {
     case _MemType.note:
-      return (icon: RdIcons.pencil, bg: RdColors.periSoft, stroke: '#14328C', gradient: null);
+      return (icon: RdIcons.pencil, bg: const Color(0xFFEDEFF8), stroke: '#14328C', gradient: null);
     case _MemType.voice:
       return (icon: RdIcons.mic, bg: const Color(0xFFE7EFEA), stroke: '#2E7D4F', gradient: null);
     case _MemType.link:
@@ -1030,6 +1042,7 @@ class _MemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final style = _typeStyle(mem.type);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1039,10 +1052,10 @@ class _MemTile extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: selected ? RdColors.periSoft : RdColors.card,
+          color: selected ? rd.periSoft : rd.card,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected ? RdColors.peri : RdColors.line,
+            color: selected ? rd.peri : rd.line,
             width: selected ? 1.5 : 1,
           ),
         ),
@@ -1076,7 +1089,7 @@ class _MemTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _title(),
+                  _title(rd),
                   const SizedBox(height: 3),
                   Text(
                     mem.sub,
@@ -1084,12 +1097,12 @@ class _MemTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.vazirmatn(
                       fontSize: 12.5,
-                      color: RdColors.muted,
+                      color: rd.muted,
                       height: 1.45,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _meta(),
+                  _meta(rd),
                 ],
               ),
             ),
@@ -1099,11 +1112,11 @@ class _MemTile extends StatelessWidget {
     );
   }
 
-  Widget _title() {
+  Widget _title(RdTheme rd) {
     final base = GoogleFonts.vazirmatn(
       fontSize: 14.5,
       fontWeight: FontWeight.w600,
-      color: RdColors.ink,
+      color: rd.ink,
       height: 1.35,
     );
     if (query.isEmpty) {
@@ -1124,7 +1137,7 @@ class _MemTile extends StatelessWidget {
             text: mem.title.substring(i, i + query.length),
             style: TextStyle(
               backgroundColor: const Color(0xFF7E8BC9).withValues(alpha: 0.28),
-              color: RdColors.navy,
+              color: rd.peri,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1137,7 +1150,7 @@ class _MemTile extends StatelessWidget {
     );
   }
 
-  Widget _meta() {
+  Widget _meta(RdTheme rd) {
     return Row(
       children: [
         Container(
@@ -1145,7 +1158,7 @@ class _MemTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: RdColors.periSoft,
+            color: rd.periSoft,
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
@@ -1153,7 +1166,7 @@ class _MemTile extends StatelessWidget {
             style: GoogleFonts.vazirmatn(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: RdColors.navy,
+              color: rd.peri,
               letterSpacing: 0.2,
             ),
           ),
@@ -1163,7 +1176,7 @@ class _MemTile extends StatelessWidget {
           child: Text(
             mem.metaTime,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.vazirmatn(fontSize: 11.5, color: RdColors.faint),
+            style: GoogleFonts.vazirmatn(fontSize: 11.5, color: rd.faint),
           ),
         ),
         if (mem.links > 0) ...[
@@ -1171,20 +1184,20 @@ class _MemTile extends StatelessWidget {
           Container(
             width: 3,
             height: 3,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: RdColors.faint,
+              color: rd.faint,
             ),
           ),
           const SizedBox(width: 8),
-          const RdIcon(RdIcons.link, size: 12, stroke: '#7E8BC9', strokeWidth: 2),
+          RdIcon(RdIcons.link, size: 12, color: rd.peri, strokeWidth: 2),
           const SizedBox(width: 4),
           Text(
             '${mem.links} links',
             style: GoogleFonts.vazirmatn(
               fontSize: 11.5,
               fontWeight: FontWeight.w500,
-              color: RdColors.peri,
+              color: rd.peri,
             ),
           ),
         ],
@@ -1200,14 +1213,15 @@ class _Check extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
       width: 22,
       height: 22,
       margin: const EdgeInsets.only(top: 11),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: selected ? RdColors.navy : Colors.white,
-        border: selected ? null : Border.all(color: RdColors.faint, width: 1.8),
+        color: selected ? const Color(0xFF14328C) : rd.card,
+        border: selected ? null : Border.all(color: rd.faint, width: 1.8),
       ),
       child: selected
           ? const Center(
@@ -1238,15 +1252,16 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 34,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: active ? RdColors.navy : RdColors.card,
+          color: active ? const Color(0xFF14328C) : rd.card,
           borderRadius: BorderRadius.circular(100),
-          border: active ? null : Border.all(color: RdColors.line, width: 1),
+          border: active ? null : Border.all(color: rd.line, width: 1),
         ),
         child: Row(
           children: [
@@ -1254,7 +1269,7 @@ class _FilterChip extends StatelessWidget {
               RdIcon(
                 icon!,
                 size: 14,
-                stroke: active ? '#FFFFFF' : '#8A8B92',
+                color: active ? Colors.white : rd.muted,
                 strokeWidth: 2,
               ),
               const SizedBox(width: 6),
@@ -1264,7 +1279,7 @@ class _FilterChip extends StatelessWidget {
               style: GoogleFonts.vazirmatn(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: active ? Colors.white : RdColors.muted,
+                color: active ? Colors.white : rd.muted,
               ),
             ),
           ],
@@ -1352,7 +1367,8 @@ class _SelAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? const Color(0xFFC0492A) : RdColors.muted;
+    final rd = context.rd;
+    final color = danger ? const Color(0xFFC0492A) : rd.muted;
     final iconColor = danger ? '#C0492A' : '#14328C';
     return Expanded(
       child: GestureDetector(
@@ -1368,8 +1384,8 @@ class _SelAction extends StatelessWidget {
                 height: 42,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(13),
-                  color: RdColors.card,
-                  border: Border.all(color: RdColors.line, width: 1),
+                  color: rd.card,
+                  border: Border.all(color: rd.line, width: 1),
                 ),
                 child: Center(
                   child: RdIcon(icon, size: 20, stroke: iconColor, strokeWidth: 1.7),

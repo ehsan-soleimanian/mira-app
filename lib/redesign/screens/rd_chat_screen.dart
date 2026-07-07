@@ -5,7 +5,7 @@ import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
-import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 
@@ -25,14 +25,6 @@ class RdChatScreen extends StatefulWidget {
   @override
   State<RdChatScreen> createState() => _RdChatScreenState();
 }
-
-const _ink = Color(0xFF1B1C24);
-const _navy = Color(0xFF14328C);
-const _peri = Color(0xFF7E8BC9);
-const _muted = Color(0xFF8A8B92);
-const _faint = Color(0xFFB7B8BE);
-const _card = Color(0xFFFBFBF9);
-const _line = Color(0x12141C2D);
 
 class _Cite {
   const _Cite(this.type, this.title, this.sub, {this.id, this.body});
@@ -275,12 +267,13 @@ class _RdChatScreenState extends State<RdChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final remaining = _starters.where((s) => !_asked.contains(s)).toList();
     final lastIsMira = _msgs.isNotEmpty && _msgs.last.mira && !_typing;
     final hasDraft = _draftCtl.text.trim().isNotEmpty;
 
     return Scaffold(
-      backgroundColor: RdColors.bg,
+      backgroundColor: rd.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -308,11 +301,11 @@ class _RdChatScreenState extends State<RdChatScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                                 decoration: BoxDecoration(
-                                  color: _card,
+                                  color: rd.card,
                                   borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(color: _peri.withValues(alpha: 0.4), width: 1),
+                                  border: Border.all(color: rd.peri.withValues(alpha: 0.4), width: 1),
                                 ),
-                                child: Text(s, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _navy)),
+                                child: Text(s, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.navy)),
                               ),
                             ),
                         ],
@@ -329,6 +322,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
   }
 
   Widget _header() {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 14),
       child: Row(
@@ -339,7 +333,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ask Mira', style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: _ink, height: 1)),
+                Text('Ask Mira', style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink, height: 1)),
                 const SizedBox(height: 3),
                 Row(
                   children: [
@@ -347,7 +341,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text('About “$_anchor”',
-                          overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 12, color: _muted)),
+                          overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
                     ),
                   ],
                 ),
@@ -365,6 +359,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
   }
 
   Widget _bubble(_Msg m) {
+    final rd = context.rd;
     if (!m.mira) {
       return Align(
         alignment: Alignment.centerRight,
@@ -372,8 +367,8 @@ class _RdChatScreenState extends State<RdChatScreen> {
           constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.76),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-            decoration: const BoxDecoration(
-              color: _navy,
+            decoration: BoxDecoration(
+              color: rd.navy,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(18),
                 topRight: Radius.circular(18),
@@ -400,21 +395,21 @@ class _RdChatScreenState extends State<RdChatScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
                   decoration: BoxDecoration(
-                    color: _card,
+                    color: rd.card,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(5),
                       topRight: Radius.circular(18),
                       bottomLeft: Radius.circular(18),
                       bottomRight: Radius.circular(18),
                     ),
-                    border: Border.all(color: _line, width: 1),
+                    border: Border.all(color: rd.line, width: 1),
                   ),
-                  child: Text(m.text, style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.55, color: const Color(0xFF262832))),
+                  child: Text(m.text, style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.55, color: rd.ink)),
                 ),
               ),
               if (m.cites.isNotEmpty) ...[
                 const SizedBox(height: 9),
-                Text('FROM YOUR MEMORIES', style: GoogleFonts.vazirmatn(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.7, color: _faint)),
+                Text('FROM YOUR MEMORIES', style: GoogleFonts.vazirmatn(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.7, color: rd.faint)),
                 const SizedBox(height: 5),
                 for (final c in m.cites) ...[
                   _CiteCard(cite: c, onTap: () => _openCite(c)),
@@ -428,7 +423,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                     decoration: BoxDecoration(
-                      color: _remSet ? const Color(0xFFE7F3EC) : _navy,
+                      color: _remSet ? rd.success.withValues(alpha: 0.14) : rd.navy,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Row(
@@ -443,7 +438,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
                         const SizedBox(width: 8),
                         Text(
                           _remSet ? 'Added to Thursday morning' : 'Set this reminder',
-                          style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _remSet ? const Color(0xFF1F8A5B) : Colors.white),
+                          style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _remSet ? rd.success : Colors.white),
                         ),
                       ],
                     ),
@@ -458,9 +453,10 @@ class _RdChatScreenState extends State<RdChatScreen> {
   }
 
   Widget _compose(bool hasDraft) {
+    final rd = context.rd;
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: _line, width: 1))),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: rd.line, width: 1))),
       child: Row(
         children: [
           Expanded(
@@ -469,9 +465,9 @@ class _RdChatScreenState extends State<RdChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 18),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: _card,
+                color: rd.card,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _line, width: 1),
+                border: Border.all(color: rd.line, width: 1),
               ),
               child: TextField(
                 controller: _draftCtl,
@@ -479,13 +475,13 @@ class _RdChatScreenState extends State<RdChatScreen> {
                 onSubmitted: (v) {
                   if (v.trim().isNotEmpty) _ask(v.trim());
                 },
-                cursorColor: _peri,
-                style: GoogleFonts.vazirmatn(fontSize: 14, color: _ink),
+                cursorColor: rd.peri,
+                style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.ink),
                 decoration: InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
                   hintText: 'Ask about your memories…',
-                  hintStyle: GoogleFonts.vazirmatn(fontSize: 14, color: _faint),
+                  hintStyle: GoogleFonts.vazirmatn(fontSize: 14, color: rd.faint),
                 ),
               ),
             ),
@@ -504,8 +500,8 @@ class _RdChatScreenState extends State<RdChatScreen> {
               height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: hasDraft ? _navy : _card,
-                border: hasDraft ? null : Border.all(color: _line, width: 1),
+                color: hasDraft ? rd.navy : rd.card,
+                border: hasDraft ? null : Border.all(color: rd.line, width: 1),
               ),
               child: Center(
                 child: hasDraft
@@ -528,17 +524,18 @@ class _IcBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _card,
+          color: rd.card,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _line, width: 1),
+          border: Border.all(color: rd.line, width: 1),
         ),
-        child: Center(child: RdIcon(icon, size: 19, stroke: '#3A3B45', strokeWidth: 1.9)),
+        child: Center(child: RdIcon(icon, size: 19, stroke: '#3A3B45', strokeWidth: 1.9, color: rd.ink)),
       ),
     );
   }
@@ -589,12 +586,13 @@ class _CiteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     final s = _citeStyle(cite.type);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-        decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(13), border: Border.all(color: _line, width: 1)),
+        decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(13), border: Border.all(color: rd.line, width: 1)),
         child: Row(
           children: [
             Container(
@@ -608,8 +606,8 @@ class _CiteCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(cite.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)),
-                  Text(cite.sub, style: GoogleFonts.vazirmatn(fontSize: 11, color: _muted)),
+                  Text(cite.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.ink)),
+                  Text(cite.sub, style: GoogleFonts.vazirmatn(fontSize: 11, color: rd.muted)),
                 ],
               ),
             ),
@@ -638,6 +636,7 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -646,14 +645,14 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           decoration: BoxDecoration(
-            color: _card,
+            color: rd.card,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(5),
               topRight: Radius.circular(18),
               bottomLeft: Radius.circular(18),
               bottomRight: Radius.circular(18),
             ),
-            border: Border.all(color: _line, width: 1),
+            border: Border.all(color: rd.line, width: 1),
           ),
           child: AnimatedBuilder(
             animation: _c,
@@ -670,7 +669,7 @@ class _TypingBubbleState extends State<_TypingBubble> with SingleTickerProviderS
                         offset: Offset(0, -3 * lift),
                         child: Opacity(
                           opacity: 0.35 + 0.65 * lift,
-                          child: Container(width: 7, height: 7, decoration: const BoxDecoration(shape: BoxShape.circle, color: _peri)),
+                          child: Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: rd.peri)),
                         ),
                       );
                     }),

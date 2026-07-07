@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/models/api/collection_models.dart';
 
-import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import 'rd_icon.dart';
 
 /// The user's pick from the "add to collection" sheet: an existing collection,
@@ -47,10 +47,11 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Container(
-      decoration: const BoxDecoration(
-        color: RdColors.bg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: rd.bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
         left: 20,
@@ -67,7 +68,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: RdColors.line,
+                color: rd.line,
                 borderRadius: BorderRadius.circular(100),
               ),
             ),
@@ -78,7 +79,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
             style: GoogleFonts.dosis(
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: RdColors.ink,
+              color: rd.ink,
             ),
           ),
           const SizedBox(height: 12),
@@ -103,6 +104,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
   }
 
   Widget _row(MemoryCollection c) {
+    final rd = context.rd;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => Navigator.of(context).pop(RdColChoice.existing(c)),
@@ -110,9 +112,9 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          color: RdColors.card,
+          color: rd.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: RdColors.line, width: 1),
+          border: Border.all(color: rd.line, width: 1),
         ),
         child: Row(
           children: [
@@ -126,13 +128,13 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
                 style: GoogleFonts.vazirmatn(
                   fontSize: 14.5,
                   fontWeight: FontWeight.w600,
-                  color: RdColors.ink,
+                  color: rd.ink,
                 ),
               ),
             ),
             Text(
               '${c.itemCount}',
-              style: GoogleFonts.vazirmatn(fontSize: 12.5, color: RdColors.faint),
+              style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.faint),
             ),
           ],
         ),
@@ -141,6 +143,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
   }
 
   Widget _createRow() {
+    final rd = context.rd;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _creating = true),
@@ -153,7 +156,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
               style: GoogleFonts.dosis(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: RdColors.peri,
+                color: rd.peri,
               ),
             ),
             const SizedBox(width: 12),
@@ -162,7 +165,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
               style: GoogleFonts.vazirmatn(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
-                color: RdColors.peri,
+                color: rd.peri,
               ),
             ),
           ],
@@ -172,6 +175,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
   }
 
   Widget _newRow() {
+    final rd = context.rd;
     return Row(
       children: [
         Expanded(
@@ -179,22 +183,22 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
-              color: RdColors.card,
+              color: rd.card,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: RdColors.line, width: 1),
+              border: Border.all(color: rd.line, width: 1),
             ),
             child: Center(
               child: TextField(
                 controller: _newCtl,
                 autofocus: true,
-                cursorColor: RdColors.navy,
-                style: GoogleFonts.vazirmatn(fontSize: 15, color: RdColors.ink),
+                cursorColor: rd.navy,
+                style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
                 decoration: InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
                   hintText: 'Collection name',
                   hintStyle:
-                      GoogleFonts.vazirmatn(fontSize: 15, color: RdColors.faint),
+                      GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
                 ),
                 onSubmitted: (_) => _submitNew(),
               ),
@@ -209,7 +213,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
             width: 48,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: RdColors.navy,
+              color: Color(0xFF14328C),
             ),
             child: const Center(
               child: RdIcon(

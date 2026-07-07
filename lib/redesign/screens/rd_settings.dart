@@ -7,6 +7,7 @@ import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 
 import '../theme/rd_colors.dart';
+import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 
@@ -15,8 +16,15 @@ import '../widgets/rd_icon.dart';
 /// / tile primitives live here and every screen composes them. Faithful to
 /// `account.jsx`, `notifications.jsx`, `connectedapps.jsx`. Toggles are local.
 
+/// Danger red for destructive rows — fixed across themes (never a text tone).
 const _danger = Color(0xFFC0392B);
-const _green = Color(0xFF1F8A5B);
+
+/// A handful of neutral control surfaces here (toggle off-track, storage track)
+/// have no palette token. To keep light rendering byte-identical while still
+/// flipping for dark, pick the exact light literal in light mode and a
+/// dark-tuned value otherwise.
+bool _isDark(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
 
 // ══ Account ════════════════════════════════════════════════════════════
 class RdAccountScreen extends StatefulWidget {
@@ -87,6 +95,8 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
       ..showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
+          // Fixed dark pill in both themes — its content text is white, so it
+          // must not flip to the near-white dark-mode ink.
           backgroundColor: RdColors.ink,
           content: Text(
             message,
@@ -369,6 +379,7 @@ class _RdConnectedAppsScreenState extends State<RdConnectedAppsScreen> {
   }
 
   _AcRow _available(String k, Color bg, String icon, String name, String sub) {
+    final rd = context.rd;
     final on = _conn[k] ?? false;
     return _AcRow(
       tile: (bg, icon),
@@ -379,15 +390,17 @@ class _RdConnectedAppsScreenState extends State<RdConnectedAppsScreen> {
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const RdIcon(RdIcons.checkThick, size: 15, stroke: '#1F8A5B', strokeWidth: 2.4),
+                RdIcon(RdIcons.checkThick, size: 15, color: rd.success, strokeWidth: 2.4),
                 const SizedBox(width: 4),
-                Text('Connected', style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _green)),
+                Text('Connected', style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.success)),
               ],
             )
           : GestureDetector(
               onTap: () => setState(() => _conn[k] = true),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                // Solid dark pill with white label — kept fixed so the white
+                // text stays legible in both themes (ink flips near-white).
                 decoration: BoxDecoration(color: RdColors.ink, borderRadius: BorderRadius.circular(100)),
                 child: Text('Connect', style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
               ),
@@ -407,8 +420,9 @@ class _AcScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Scaffold(
-      backgroundColor: RdColors.bg,
+      backgroundColor: rd.bg,
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -426,9 +440,9 @@ class _AcScaffold extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const RdIcon(RdIcons.chevronLeft, size: 20, stroke: '#14328C', strokeWidth: 2),
+                        RdIcon(RdIcons.chevronLeft, size: 20, color: rd.navy, strokeWidth: 2),
                         const SizedBox(width: 3),
-                        Text('Settings', style: GoogleFonts.vazirmatn(fontSize: 15, color: RdColors.navy)),
+                        Text('Settings', style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.navy)),
                       ],
                     ),
                   ),
@@ -436,12 +450,12 @@ class _AcScaffold extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(26, 12, 26, 4),
-                child: Text(title, style: GoogleFonts.dosis(fontSize: 30, fontWeight: FontWeight.w700, color: RdColors.ink)),
+                child: Text(title, style: GoogleFonts.dosis(fontSize: 30, fontWeight: FontWeight.w700, color: rd.ink)),
               ),
               if (intro != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 4, 28, 0),
-                  child: Text(intro!, style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: RdColors.muted)),
+                  child: Text(intro!, style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: rd.muted)),
                 ),
               ...children,
             ],
@@ -460,6 +474,7 @@ class _AcSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
       child: Column(
@@ -470,23 +485,23 @@ class _AcSection extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(6, 0, 6, 9),
               child: Text(
                 label!.toUpperCase(),
-                style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: RdColors.faint),
+                style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: rd.faint),
               ),
             ),
           Container(
             decoration: BoxDecoration(
-              color: RdColors.card,
+              color: rd.card,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: RdColors.line, width: 1),
+              border: Border.all(color: rd.line, width: 1),
             ),
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
                 for (var i = 0; i < rows.length; i++) ...[
                   if (i > 0)
-                    const Padding(
-                      padding: EdgeInsets.only(left: 52),
-                      child: Divider(height: 1, thickness: 1, color: RdColors.line),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 52),
+                      child: Divider(height: 1, thickness: 1, color: rd.line),
                     ),
                   rows[i],
                 ],
@@ -526,6 +541,7 @@ class _AcRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -539,7 +555,7 @@ class _AcRow extends StatelessWidget {
             ] else if (icon != null) ...[
               SizedBox(
                 width: 24,
-                child: RdIcon(icon!, size: 19, stroke: danger ? '#C0392B' : '#7E8BC9', strokeWidth: 1.8),
+                child: RdIcon(icon!, size: 19, color: danger ? _danger : rd.peri, strokeWidth: 1.8),
               ),
               const SizedBox(width: 14),
             ],
@@ -552,7 +568,7 @@ class _AcRow extends StatelessWidget {
                     style: GoogleFonts.vazirmatn(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
-                      color: danger ? _danger : RdColors.ink,
+                      color: danger ? _danger : rd.ink,
                     ),
                   ),
                   if (sub != null) ...[
@@ -563,14 +579,14 @@ class _AcRow extends StatelessWidget {
                           Container(
                             width: 6,
                             height: 6,
-                            decoration: const BoxDecoration(shape: BoxShape.circle, color: _green),
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: rd.success),
                           ),
                           const SizedBox(width: 6),
                         ],
                         Flexible(
                           child: Text(
                             sub!,
-                            style: GoogleFonts.vazirmatn(fontSize: 12.5, color: RdColors.muted),
+                            style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
                           ),
                         ),
                       ],
@@ -582,14 +598,14 @@ class _AcRow extends StatelessWidget {
             if (value != null)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: Text(value!, style: GoogleFonts.vazirmatn(fontSize: 14, color: RdColors.muted)),
+                child: Text(value!, style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.muted)),
               ),
             if (trailing != null)
               Padding(padding: const EdgeInsets.only(left: 8), child: trailing!)
             else if (chevron)
-              const Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: RdIcon('<path d="m9 6 6 6-6 6"/>', size: 18, stroke: '#B7B8BE', strokeWidth: 2),
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: RdIcon('<path d="m9 6 6 6-6 6"/>', size: 18, color: rd.faint, strokeWidth: 2),
               ),
           ],
         ),
@@ -606,11 +622,13 @@ class _AcTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The tile tint [bg] is a translucent brand colour, so the glyph reads
+    // against the card beneath it — use the ink tone so it flips for dark.
     return Container(
       width: 34,
       height: 34,
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-      child: Center(child: RdIcon(icon, size: 19, stroke: '#1B1C24', strokeWidth: 1.9)),
+      child: Center(child: RdIcon(icon, size: 19, color: context.rd.ink, strokeWidth: 1.9)),
     );
   }
 }
@@ -622,11 +640,15 @@ class _AcToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // On-track is brand navy (fixed accent). Off-track has no token: keep the
+    // exact light literal, and use a lifted neutral on dark for contrast.
+    final offTrack =
+        _isDark(context) ? const Color(0xFF3A3B44) : const Color(0xFFD8D8D2);
     return Container(
       width: 46,
       height: 28,
       decoration: BoxDecoration(
-        color: on ? RdColors.navy : const Color(0xFFD8D8D2),
+        color: on ? context.rd.navy : offTrack,
         borderRadius: BorderRadius.circular(100),
       ),
       child: AnimatedAlign(
@@ -658,13 +680,18 @@ class _AcProfile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
+    // Success chip has no soft token: keep the exact light green, use a dark
+    // success-tinted fill on dark so the bright chip doesn't glare.
+    final chipBg =
+        _isDark(context) ? const Color(0xFF1B2E24) : const Color(0xFFE7F3EC);
     return Container(
       margin: const EdgeInsets.fromLTRB(22, 18, 22, 0),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: RdColors.card,
+        color: rd.card,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: Border.all(color: rd.line, width: 1),
       ),
       child: Row(
         children: [
@@ -687,19 +714,19 @@ class _AcProfile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.dosis(fontSize: 20, fontWeight: FontWeight.w700, color: RdColors.ink)),
+                Text(name, style: GoogleFonts.dosis(fontSize: 20, fontWeight: FontWeight.w700, color: rd.ink)),
                 const SizedBox(height: 2),
-                Text(email, style: GoogleFonts.vazirmatn(fontSize: 13.5, color: RdColors.muted)),
+                Text(email, style: GoogleFonts.vazirmatn(fontSize: 13.5, color: rd.muted)),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.fromLTRB(7, 3, 9, 3),
-                  decoration: BoxDecoration(color: const Color(0xFFE7F3EC), borderRadius: BorderRadius.circular(100)),
+                  decoration: BoxDecoration(color: chipBg, borderRadius: BorderRadius.circular(100)),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(width: 6, height: 6, decoration: const BoxDecoration(shape: BoxShape.circle, color: _green)),
+                      Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: rd.success)),
                       const SizedBox(width: 5),
-                      Text('All memories synced', style: GoogleFonts.vazirmatn(fontSize: 11.5, fontWeight: FontWeight.w600, color: _green)),
+                      Text('All memories synced', style: GoogleFonts.vazirmatn(fontSize: 11.5, fontWeight: FontWeight.w600, color: rd.success)),
                     ],
                   ),
                 ),
@@ -717,6 +744,10 @@ class _AcStorage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
+    // Track has no token: keep the exact light literal, darken for dark mode.
+    final trackBg =
+        _isDark(context) ? const Color(0xFF2A2B33) : const Color(0xFFE7E7E1);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       child: Column(
@@ -726,22 +757,22 @@ class _AcStorage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text('34 memories', style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w700, color: RdColors.ink)),
+              Text('34 memories', style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w700, color: rd.ink)),
               const Spacer(),
-              Text('of 2,000 · plenty of room', style: GoogleFonts.vazirmatn(fontSize: 12.5, color: RdColors.muted)),
+              Text('of 2,000 · plenty of room', style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
             ],
           ),
           const SizedBox(height: 10),
           Container(
             height: 7,
-            decoration: BoxDecoration(color: const Color(0xFFE7E7E1), borderRadius: BorderRadius.circular(100)),
+            decoration: BoxDecoration(color: trackBg, borderRadius: BorderRadius.circular(100)),
             child: FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: 0.22,
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(100),
-                  gradient: const LinearGradient(colors: [Color(0xFF7E8BC9), Color(0xFF14328C)]),
+                  gradient: LinearGradient(colors: [rd.peri, rd.navy]),
                 ),
               ),
             ),
@@ -757,24 +788,28 @@ class _CaPrivacy extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
+    // Periwinkle info panel: keep the exact light tint, use the periSoft token
+    // on dark (its dark value is the intended deep-periwinkle surface).
+    final panelBg = _isDark(context) ? rd.periSoft : const Color(0xFFEEF1F7);
     return Container(
       margin: const EdgeInsets.fromLTRB(22, 20, 22, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: panelBg, borderRadius: BorderRadius.circular(14)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const RdIcon(
+          RdIcon(
             '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>',
             size: 18,
-            stroke: '#6B7A99',
+            color: rd.muted,
             strokeWidth: 1.8,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'Mira only reads what you connect, and processes it privately. Disconnect anytime.',
-              style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.5, color: RdColors.muted),
+              style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.5, color: rd.muted),
             ),
           ),
         ],
@@ -793,7 +828,7 @@ class _AcFoot extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 26),
       child: Center(
-        child: Text(text, style: GoogleFonts.vazirmatn(fontSize: 12, color: RdColors.faint)),
+        child: Text(text, style: GoogleFonts.vazirmatn(fontSize: 12, color: context.rd.faint)),
       ),
     );
   }
