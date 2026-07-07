@@ -78,6 +78,23 @@ class GraphRepository {
     return response.data!['title'] as String? ?? title;
   }
 
+  /// Patches a capture's lifecycle flags. Sends only the provided keys as a
+  /// camelCase body to `PATCH /v2/captures/{id}/state`.
+  Future<void> updateCaptureState(
+    String captureId, {
+    bool? pinned,
+    bool? reminderEnabled,
+  }) async {
+    final data = <String, dynamic>{
+      'pinned': ?pinned,
+      'reminderEnabled': ?reminderEnabled,
+    };
+    await _dio.patch<Map<String, dynamic>>(
+      '/v2/captures/$captureId/state',
+      data: data,
+    );
+  }
+
   Future<GraphIngestResponse> correctCapture(String captureId, String text) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/v2/captures/$captureId/correct',

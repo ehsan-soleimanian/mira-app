@@ -137,11 +137,14 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           await AppScope.servicesOf(context).graphRepository.fetchCaptureDetail(id);
       if (!mounted) return;
       final parsed = _parseDetail(detail);
+      final uiState = detail['uiState'] as Map<String, dynamic>? ?? const {};
+      final pinned = uiState['pinned'] as bool?;
       setState(() {
         if (parsed.links.isNotEmpty) _realLinks = parsed.links;
         if (parsed.people.isNotEmpty) _realPeople = parsed.people;
         if (parsed.tags.isNotEmpty) _realTags = parsed.tags;
         if (parsed.insight != null) _realInsight = parsed.insight;
+        if (pinned != null) _pinned = pinned;
       });
     } catch (_) {
       // Keep the sample content — the id may not be a graph capture.
@@ -323,8 +326,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       );
   }
 
-  // Pin is client-only for now — there is no backend pin flag yet, so the
-  // toggle just flips local state and confirms with a toast.
+  // Optimistic pin toggle: flip local state + toast immediately, then persist
+  // to the backend best-effort. A null id (sample memory) or offline backend
+  // leaves the optimistic UI as-is.
   void _togglePin() {
     final next = !_pinned;
     setState(() {
@@ -332,6 +336,19 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       _menu = false;
     });
     _toast(next ? 'Pinned' : 'Unpinned');
+    unawaited(_persistPin(next));
+  }
+
+  Future<void> _persistPin(bool pinned) async {
+    final id = widget.id;
+    if (id == null) return;
+    try {
+      await AppScope.servicesOf(context)
+          .graphRepository
+          .updateCaptureState(id, pinned: pinned);
+    } catch (_) {
+      // Ignore — the id may not be a graph capture, or the backend is offline.
+    }
   }
 
   String _fmt(double s) =>
@@ -351,17 +368,20 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   void _saveEdit() {
     final nextTitle =
         _titleCtl.text.trim().isEmpty ? _title : _titleCtl.text.trim();
+    final nextBody = _bodyCtl.text.trim().isEmpty ? _body : _bodyCtl.text.trim();
     setState(() {
       _title = nextTitle;
-      _body = _bodyCtl.text.trim().isEmpty ? _body : _bodyCtl.text.trim();
+      _body = nextBody;
       _editing = false;
       _edited = true;
       _saved = true;
     });
-    // Best-effort persistence of the new title. `widget.id` may be a library
-    // item (not a graph capture), so failures are ignored — the local edit and
-    // the "re-read" toast already reflect the change.
+    // Best-effort persistence of the new title, plus a real re-ingest of the
+    // edited body so Mira re-reads it. `widget.id` may be a library item (not a
+    // graph capture), so failures are ignored — the local edit and the
+    // "re-read" toast already reflect the change.
     unawaited(_persistTitle(nextTitle));
+    unawaited(_reread(nextBody));
     Future.delayed(const Duration(milliseconds: 2800), () {
       if (mounted) setState(() => _saved = false);
     });
@@ -372,6 +392,19 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     if (id == null) return;
     try {
       await AppScope.servicesOf(context).graphRepository.patchCaptureTitle(id, title);
+    } catch (_) {
+      // Ignore — the id may not be a graph capture, or the backend is offline.
+    }
+  }
+
+  /// Re-ingests the edited note/transcript body through the graph so Mira
+  /// re-reads the corrected content. Best-effort — a null id (sample memory) or
+  /// an offline backend is silently ignored.
+  Future<void> _reread(String text) async {
+    final id = widget.id;
+    if (id == null || text.trim().isEmpty) return;
+    try {
+      await AppScope.servicesOf(context).graphRepository.correctCapture(id, text);
     } catch (_) {
       // Ignore — the id may not be a graph capture, or the backend is offline.
     }
