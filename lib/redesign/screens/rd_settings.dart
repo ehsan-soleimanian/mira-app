@@ -155,8 +155,14 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
         ),
         _AcSection(
           label: 'Plan',
-          rows: const [
-            _AcRow(icon: '<path d="M3 8l4 3 5-6 5 6 4-3-2 11H5L3 8Z"/>', title: 'Mira Plus', sub: 'Renews Aug 12 · \$8 / month', value: 'Manage'),
+          rows: [
+            _AcRow(
+              icon: '<path d="M3 8l4 3 5-6 5 6 4-3-2 11H5L3 8Z"/>',
+              title: 'Mira Plus',
+              sub: 'Renews Aug 12 · \$8 / month',
+              value: 'Manage',
+              onTap: () => widget.go('paywall'),
+            ),
           ],
         ),
         _AcSection(

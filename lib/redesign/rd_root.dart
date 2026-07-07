@@ -11,6 +11,7 @@ import 'screens/rd_library_screen.dart';
 import 'screens/rd_listen_screen.dart';
 import 'screens/rd_memory_screen.dart';
 import 'screens/rd_onboarding.dart';
+import 'screens/rd_paywall.dart';
 import 'screens/rd_reminders.dart';
 import 'screens/rd_settings.dart';
 import 'screens/rd_setup_wizard.dart';
@@ -112,6 +113,8 @@ class _RdRootState extends State<RdRoot> {
         return RdChatScreen(go: _go, onBack: _back);
       case 'reminders':
         return RdRemindersScreen(go: _go, onBack: _back, backLabel: 'Account');
+      case 'paywall':
+        return RdPaywallScreen(go: _go, onBack: _back);
       case 'storage':
         return RdStorageScreen(go: _go, onBack: _back);
       case 'capture':
