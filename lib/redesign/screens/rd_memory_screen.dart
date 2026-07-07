@@ -12,6 +12,14 @@ import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_collection_picker.dart';
 import '../widgets/rd_icon.dart';
 
+/// A person surfaced from the capture's connected graph entities — the avatar
+/// initial plus display name shown in the "People & tags" row.
+class _Person {
+  const _Person(this.initial, this.name);
+  final String initial;
+  final String name;
+}
+
 /// Memory detail — the pushed view you reach by tapping a memory. Shows the
 /// capture (typed note or voice transcript with a player), Mira's reading of
 /// it, its connections, people, and source, with inline edit, an action menu,
@@ -79,6 +87,18 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   late final TextEditingController _bodyCtl = TextEditingController();
   final Set<int> _fixed = {};
 
+  // Real data pulled from `GET /v2/captures/{id}` when [widget.id] is a graph
+  // capture. Each stays null until a successful, non-empty fetch — the getters
+  // below fall back to the sample content whenever a field is null, so the
+  // screen still reads well offline or when the id is a library item (404).
+  String? _realInsight;
+  List<_MemLink>? _realLinks;
+  List<_Person>? _realPeople;
+  List<String>? _realTags;
+
+  List<_MemLink> get _links =>
+      _realLinks ?? (widget.isVoice ? _voiceLinks : _noteLinks);
+
   static const _noteTitle = 'Contract with John';
   static const _noteBody =
       'Needs a call to confirm the terms before Friday. The signed copy is in the folder from last week’s meeting — John wants the partnership scope narrowed to Q3 first.';
@@ -92,11 +112,162 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.id != null) unawaited(_loadDetail());
+  }
+
+  @override
   void dispose() {
     _tick?.cancel();
     _titleCtl.dispose();
     _bodyCtl.dispose();
     super.dispose();
+  }
+
+  /// Best-effort enrichment: fetch the capture's graph detail and replace the
+  /// sample insight / connections / people / tags with real data. Any failure
+  /// (the id is a library item, the capture isn't in the graph, or the backend
+  /// is offline) leaves the sample content untouched — this never throws.
+  Future<void> _loadDetail() async {
+    final id = widget.id;
+    if (id == null) return;
+    try {
+      final detail =
+          await AppScope.servicesOf(context).graphRepository.fetchCaptureDetail(id);
+      if (!mounted) return;
+      final parsed = _parseDetail(detail);
+      setState(() {
+        if (parsed.links.isNotEmpty) _realLinks = parsed.links;
+        if (parsed.people.isNotEmpty) _realPeople = parsed.people;
+        if (parsed.tags.isNotEmpty) _realTags = parsed.tags;
+        if (parsed.insight != null) _realInsight = parsed.insight;
+      });
+    } catch (_) {
+      // Keep the sample content — the id may not be a graph capture.
+    }
+  }
+
+  /// Maps the `{ capture, connections: { nodes, edges } }` payload into the
+  /// screen's view types. Connected captures (kind `CAPTURE`) become tappable
+  /// memory links; person entities become people chips; other entities become
+  /// `#tag` chips. The insight is synthesised from what was actually linked.
+  ({
+    List<_MemLink> links,
+    List<_Person> people,
+    List<String> tags,
+    String? insight,
+  }) _parseDetail(Map<String, dynamic> detail) {
+    final connections =
+        detail['connections'] as Map<String, dynamic>? ?? const {};
+    final nodes = (connections['nodes'] as List<dynamic>? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
+
+    final links = <_MemLink>[];
+    final people = <_Person>[];
+    final tags = <String>[];
+
+    for (final node in nodes) {
+      final nodeId = node['id'] as String?;
+      if (nodeId == null || nodeId == widget.id) continue;
+      final kind = (node['kind'] as String? ?? '').toUpperCase();
+      final title = (node['title'] as String? ?? '').trim();
+      if (title.isEmpty) continue;
+      final subtitle = (node['subtitle'] as String? ?? '').trim();
+      final entityType = (node['entityType'] as String? ?? '').toUpperCase();
+
+      if (kind == 'CAPTURE') {
+        links.add(_MemLink(
+          _linkTypeFor(entityType, subtitle),
+          title,
+          subtitle.isEmpty ? 'Connected memory' : subtitle,
+          'Linked',
+          id: nodeId,
+        ));
+      } else if (kind == 'ENTITY') {
+        if (entityType == 'PERSON') {
+          final initial = title.characters.isEmpty
+              ? '?'
+              : title.characters.first.toUpperCase();
+          if (people.length < 4) people.add(_Person(initial, title));
+        } else {
+          final tag = _hashTag(title);
+          if (tag.isNotEmpty && tags.length < 5 && !tags.contains(tag)) {
+            tags.add(tag);
+          }
+        }
+      }
+    }
+
+    return (
+      links: links.take(5).toList(),
+      people: people,
+      tags: tags,
+      insight: _buildInsight(links.length, people, tags),
+    );
+  }
+
+  /// Chooses a `_MemLink` visual style from the connected capture's traits.
+  String _linkTypeFor(String entityType, String subtitle) {
+    final s = subtitle.toLowerCase();
+    if (s.contains('voice')) return 'voice';
+    if (s.contains('photo') || s.contains('image')) return 'photo';
+    if (entityType == 'EVENT' || s.contains('meeting') || s.contains('event')) {
+      return 'event';
+    }
+    return 'note';
+  }
+
+  /// Turns an entity name into a lowercase single-word hashtag ("Q3 launch" →
+  /// "#q3"). Returns empty when nothing usable remains.
+  String _hashTag(String name) {
+    final word = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .firstWhere((w) => w.isNotEmpty, orElse: () => '');
+    final cleaned = word.replaceAll(RegExp(r'[^0-9A-Za-z]'), '').toLowerCase();
+    return cleaned.isEmpty ? '' : '#$cleaned';
+  }
+
+  /// Writes a short, human insight from what Mira actually linked, so the
+  /// "Mira noticed" card reflects real connections instead of the sample copy.
+  String? _buildInsight(int linkCount, List<_Person> people, List<String> tags) {
+    final parts = <String>[];
+    if (linkCount > 0) {
+      parts.add('linked it to $linkCount related '
+          '${linkCount == 1 ? 'memory' : 'memories'}');
+    }
+    if (people.isNotEmpty) {
+      final names = people.map((p) => p.name).take(2).join(' and ');
+      parts.add('connected $names');
+    }
+    if (tags.isNotEmpty) {
+      parts.add('tagged it ${tags.take(3).join(', ')}');
+    }
+    if (parts.isEmpty) return null;
+    final body = parts.length == 1
+        ? parts.first
+        : '${parts.sublist(0, parts.length - 1).join(', ')} and ${parts.last}';
+    return 'I read through this and $body so it stays easy to find.';
+  }
+
+  /// Opens a connected memory when the link carries a real graph id; otherwise
+  /// preserves the sample behaviour of jumping to chat.
+  void _openLink(_MemLink link) {
+    final id = link.id;
+    if (id == null) {
+      widget.go('chat');
+      return;
+    }
+    widget.go(
+      'memory',
+      arg: RdMemoryArg(
+        id: id,
+        title: link.title,
+        isVoice: link.type == 'voice',
+      ),
+    );
   }
 
   void _togglePlay() {
@@ -630,9 +801,10 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           ),
           const SizedBox(height: 11),
           Text(
-            widget.isVoice
-                ? 'You were thinking out loud about the launch. I pulled out three actions — brief design, gather testimonials, check timing with Priya — and linked them to your Q3 plan.'
-                : 'This looks time-sensitive. I linked it to your meeting with John and the signed contract photo, and set a gentle reminder so it doesn’t slip.',
+            _realInsight ??
+                (widget.isVoice
+                    ? 'You were thinking out loud about the launch. I pulled out three actions — brief design, gather testimonials, check timing with Priya — and linked them to your Q3 plan.'
+                    : 'This looks time-sensitive. I linked it to your meeting with John and the signed contract photo, and set a gentle reminder so it doesn’t slip.'),
             style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.55, color: const Color(0xFF46485A)),
           ),
           const SizedBox(height: 14),
@@ -677,7 +849,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   }
 
   Widget _connections() {
-    final links = widget.isVoice ? _voiceLinks : _noteLinks;
+    final links = _links;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -699,7 +871,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         ),
         const SizedBox(height: 12),
         for (final l in links) ...[
-          _LinkRow(link: l, onTap: () => widget.go('chat')),
+          _LinkRow(link: l, onTap: () => _openLink(l)),
           if (l != links.last) const SizedBox(height: 8),
         ],
       ],
@@ -707,8 +879,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   }
 
   Widget _peopleTags() {
-    final person = widget.isVoice ? ('P', 'Priya Shah') : ('J', 'John Avery');
-    final tags = widget.isVoice ? ['#q3', '#launch', '#idea'] : ['#contract', '#partnership', '#q3'];
+    // Prefer people/tags pulled from the graph; fall back to the sample pair
+    // when the fetch found none (or the id wasn't a graph capture).
+    final people = _realPeople ??
+        [widget.isVoice ? const _Person('P', 'Priya Shah') : const _Person('J', 'John Avery')];
+    final tags = _realTags ??
+        (widget.isVoice ? const ['#q3', '#launch', '#idea'] : const ['#contract', '#partnership', '#q3']);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -724,23 +900,24 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(5, 5, 13, 5),
-              decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(100), border: Border.all(color: _line, width: 1)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE6EAF7)),
-                    child: Center(child: Text(person.$1, style: GoogleFonts.dosis(fontSize: 13, fontWeight: FontWeight.w700, color: _navy))),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(person.$2, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)),
-                ],
+            for (final person in people)
+              Container(
+                padding: const EdgeInsets.fromLTRB(5, 5, 13, 5),
+                decoration: BoxDecoration(color: _card, borderRadius: BorderRadius.circular(100), border: Border.all(color: _line, width: 1)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE6EAF7)),
+                      child: Center(child: Text(person.initial, style: GoogleFonts.dosis(fontSize: 13, fontWeight: FontWeight.w700, color: _navy))),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(person.name, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)),
+                  ],
+                ),
               ),
-            ),
             for (final t in tags)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
@@ -1020,11 +1197,15 @@ const _noteIcon = '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z
 const _voiceIcon = '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/>';
 
 class _MemLink {
-  const _MemLink(this.type, this.title, this.sub, this.rel);
+  const _MemLink(this.type, this.title, this.sub, this.rel, {this.id});
   final String type;
   final String title;
   final String sub;
   final String rel;
+
+  /// Graph capture id when this link came from real data — lets the row open
+  /// that memory. Null for the sample links, which fall back to opening chat.
+  final String? id;
 }
 
 const _noteLinks = [

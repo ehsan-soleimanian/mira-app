@@ -37,6 +37,15 @@ class GraphRepository {
     return response.data!;
   }
 
+  /// Fetches the redesigned memory-detail payload for a capture:
+  /// `{ capture, uiState, connections: { nodes, edges } }`.
+  /// The [captureId] must be a graph capture id — a library-item id will 404,
+  /// which callers are expected to catch and fall back from.
+  Future<Map<String, dynamic>> fetchCaptureDetail(String captureId) async {
+    final response = await _dio.get<Map<String, dynamic>>('/v2/captures/$captureId');
+    return response.data!;
+  }
+
   Future<List<GraphTaskDto>> fetchTasks({String? status}) async {
     final response = await _dio.get<List<dynamic>>(
       '/v2/tasks',
