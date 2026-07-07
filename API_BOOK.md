@@ -55,7 +55,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/auth/onboarding/setup` | redesigned onboarding | Save setup wizard preferences, sources, permissions |
 | `GET` | `/auth/settings` | `settings_repository.dart` | User preferences |
 | `PATCH` | `/auth/settings` | `settings_repository.dart` | Update preferences |
-| `GET` | `/auth/notification-settings` | settings / notifications | Detailed Brief/reminder/quiet-hours preferences |
+| `GET` | `/auth/notification-settings` | settings / notifications | Brief/reminder/quiet-hours + resurface/sound/haptics preferences |
 | `PATCH` | `/auth/notification-settings` | settings / notifications | Update detailed notification preferences |
 | `POST` | `/captures` | `capture_repository.dart` | Text capture |
 | `POST` | `/captures/transcribe` | `capture_repository.dart` | STT only (onboarding) |
@@ -81,6 +81,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/v2/search` | — | Hybrid entity + capture search |
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
+| `GET` | `/v2/resurfaced` | `daily_brief_repository.dart` | Mira-resurfaced memories (Daily Brief) |
 | `GET` | `/daily-brief` | redesigned Daily Brief | Rich Brief state: full, empty, overdue, first-time |
 | `POST` | `/daily-brief/items/{id}/actions` | redesigned Daily Brief | Done, snooze, dismiss, open, undo-snooze card action |
 | `POST` | `/daily-brief/clear-overdue` | redesigned Daily Brief | Snooze all overdue Brief tasks until tomorrow |
@@ -1176,6 +1177,22 @@ Public predicate registry, entity types, and ontology version for client renderi
 **Errors**: none (no auth required in dev; Bearer optional)
 
 ---
+
+### Resurfaced
+`GET /v2/resurfaced`
+
+Memories Mira brings back for the Daily Brief "resurfaced" section (`DailyBriefRepository.fetchResurfaced()`). User Bearer. Read-only over the graph — OPEN tasks due within ~14 days ("The date is close.") and captures saved within ~7 days ("Saved N days ago."), deduped, capped at 5.
+
+**Response** `200`
+```json
+{
+  "count": 1,
+  "items": [
+    { "id": "task_abc", "title": "Call Alex", "reason": "The date is close.", "date": "2026-07-15T09:00:00Z", "type": "Task" }
+  ]
+}
+```
+`date` is ISO 8601 or null; `type` is a string or null.
 
 ### Daily update
 `GET /daily-update`
