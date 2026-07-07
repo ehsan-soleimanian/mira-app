@@ -49,7 +49,7 @@ Personal AI memory assistant UI — capture, daily brief, settings, graph (plann
 |------|-------|
 | Package | `mira_app` |
 | SDK | Dart `^3.12.1` |
-| UI | Self-contained **redesign** system under `lib/redesign/` (`redesign/theme/` tokens, `redesign/widgets/`); built from `design/*.html`+`.jsx` |
+| UI | Self-contained **redesign** system under `lib/redesign/`; **light + dark** via `RdTheme` ThemeExtension read through `context.rd` (`AppThemeController` System/Light/Dark + accent/text-size, persisted). Built from `design/*.html`+`.jsx` and `design2/` |
 | Fonts | `google_fonts` |
 | SVG | `flutter_svg` |
 | HTTP | `dio` + `flutter_secure_storage` |
@@ -59,35 +59,30 @@ Personal AI memory assistant UI — capture, daily brief, settings, graph (plann
 
 ```
 lib/
-├── main.dart                      # Entry → boots RdRoot with redesign ThemeData + MiraServices
+├── main.dart                      # Entry → boots RdRoot; light + dark ThemeData (RdTheme extension)
 ├── app/
 │   ├── app_scope.dart             # InheritedWidget DI (themeController + services)
-│   └── mira_services.dart         # DI container: ApiClient + every repository (moved out of capture/)
+│   ├── mira_services.dart         # DI container: ApiClient + every repository + MemoryStore
+│   └── memory_store.dart          # Shared client cache (ChangeNotifier) — edits propagate across screens
 ├── core/
-│   ├── api/                       # ApiClient (dio, 401 refresh)
-│   ├── auth/                      # AuthRepository, TokenStorage, GoogleSignIn
-│   ├── config/                    # ApiConfig, dev endpoint resolver
+│   ├── api/ · auth/ · config/     # ApiClient (401 refresh), AuthRepository/TokenStorage/GoogleSignIn, ApiConfig
+│   ├── app_theme_controller.dart  # System/Light/Dark + accent/text-size/motion (shared_preferences)
 │   ├── notifications/             # NotificationService
 │   └── update/                    # AppReleaseRepository
-├── redesign/                      # ── THE APP (new UI, from design/*.html+.jsx) ──
+├── redesign/                      # ── THE APP (from design/ + design2/) ──
 │   ├── rd_root.dart               # Router: go(screen); 4 tabs reset, others push/pop
-│   ├── redesign_app.dart          # Alt entry host (main_redesign.dart)
-│   ├── redesign_boot.dart         # Service bootstrap for the alt entry
-│   ├── theme/                     # rd_colors, rd_typography
-│   ├── widgets/                   # rd_icon, rd_orb, rd_bottom_nav
-│   └── screens/                   # 11 screens (home, daily_brief, library, memory, capture_flow,
-│                                  #   chat, canvas, listen, settings, onboarding, setup_wizard)
+│   ├── redesign_app.dart · redesign_boot.dart   # alt entry (main_redesign.dart)
+│   ├── theme/                     # rd_colors (const light), rd_theme (RdTheme light+dark via context.rd), rd_typography
+│   ├── widgets/                   # rd_icon (theme color param), rd_orb, rd_bottom_nav, rd_collection_picker
+│   └── screens/                   # 15: home, daily_brief, library, memory, capture_flow, chat, canvas,
+│                                  #   listen, settings, onboarding, setup_wizard, appearance, reminders,
+│                                  #   storage, paywall
 ├── features/                      # ── DATA LAYER ONLY (old UI removed) ──
-│   ├── auth/                      # onboarding_repository
-│   ├── capture/                   # capture_repository + voice/ engine + utils (UI deleted)
-│   ├── daily_brief/               # daily_brief_repository
-│   ├── graph/  graph_v2/          # graph_repository, layout + physics models
-│   ├── reminders/                 # reminders_repository (→ /reminders)
-│   ├── settings/                  # settings_repository
-│   └── workspace/                 # library / assistant / canvas / space / plugin / publish repos
-├── models/api/                    # auth, capture, daily-brief, reminder, workspace models
+│   ├── auth/ · capture/ · daily_brief/ · graph/ graph_v2/ · reminders/ · settings/
+│   └── workspace/                 # library / collections / assistant / canvas / space / plugin / publish
+├── models/api/                    # auth, capture, daily-brief, reminder, collection, resurfaced, storage, workspace
 └── l10n/                          # app_en / app_fa
-test/                              # data + model + logic tests (widget tests removed)
+test/                              # data + model + logic tests
 ```
 
 ### Current State
@@ -100,21 +95,27 @@ The app **is** the redesign under `lib/redesign/` (11 screens built from `design
 |------|------|--------|
 | `rd_home_screen` | `GET /me`, `GET /v2/daily-update` | ✅ live read + sample fallback |
 | `rd_daily_brief_screen` | `GET /me`, `/v2/daily-update`, `PATCH /v2/tasks/{id}`, `GET/PATCH /reminders` | ✅ live read + task-toggle + **overdue reminders w/ snooze & done** |
-| `rd_library_screen` | `GET /library/items`, `GET/POST /collections`, `POST /collections/{id}/items`, `DELETE /library/items/{id}` | ✅ live read; **collections** strip (tap → filter to members) + multi-select bulk actions (add-to-collection + delete wired; pin/archive optimistic) |
+| `rd_library_screen` | `GET /library/items` (via **MemoryStore**), `/collections`, `/library/items/bulk-actions`, `?includeArchived`, `/v2/canvas` | ✅ reads through MemoryStore (edits propagate); collections strip; multi-select **add-to-collection · pin · archive · delete · add-to-board** (all real) + **Archived view** + Restore |
 | `rd_memory_screen` | `GET/PATCH /v2/captures/{id}`, `DELETE /library/items/{id}`, `POST /collections/{id}/items`, `/reminders` | ✅ pin / edit (+"re-read") / delete-confirm / add-to-collection / Ask Mira→chat **+ real insight / connections / people / tags** (sample fallback) |
 | `rd_capture_flow` | `/library/items` · `/imports/link` · `/uploads`, `transcribeVoice`, `/reminders` | ✅ note/link/photo/type create real memories **+ real device-mic voice recording + transcription** (fallback simulated on web/desktop) |
 | `rd_chat_screen` | `POST /assistant/run`, `POST /reminders` | ✅ **real assistant** — answer + cited memories (tappable → memory); reminder action + offline fallback |
-| `rd_canvas_screen` | `GET /v2/graph` | ✅ Map wired to the live graph (spiral layout, sample fallback) **+ Board card-drag & connect-mode** |
-| `rd_settings` | `GET /auth/me`, `GET/PATCH /auth/notification-settings` | ✅ **Account profile + Notifications toggles** wired; plan/security sample |
+| `rd_canvas_screen` | `GET /v2/graph`, `/v2/canvas` (list/create/fetch/update) | ✅ Map on live graph + Board drag/connect **+ multi-board (switcher · persisted boards · memory-ref cards)** |
+| `rd_settings` | `GET /auth/me`, `GET/PATCH /auth/notification-settings` | ✅ Account profile + Notifications; rows → **Appearance · Reminders · Storage · Paywall** |
 | `rd_onboarding` | — | ❌ navigation only; `/auth/*` (register/login/config) exist |
 | `rd_setup_wizard` | `POST /auth/onboarding/setup` | ✅ **persists collected preferences on finish** |
 | `rd_listen_screen` | — | ❌ simulated voice; `POST /voice/realtime` + SSE exist |
+| `rd_appearance` | — (local prefs) | ✅ **dark-mode toggle** (System/Light/Dark) + live accent / text-size / motion / app-icon (persisted) |
+| `rd_reminders` | `GET /reminders`, `PATCH`/`DELETE` | ✅ dedicated list — done / snooze / delete |
+| `rd_storage` | `GET /storage/usage` | ✅ usage bar + per-category breakdown |
+| `rd_paywall` | — | ✅ Mira Plus UI — **stub CTAs, no Stripe/billing** |
 
 **Takeaway:** the backend already covers essentially every current screen — the remaining work is **Flutter wiring**, not missing endpoints. Repositories built in `MiraServices` but not yet used by any screen: `assistant`, `canvas`, `space`, `onboarding`, `settings`, `capture`, `plugin`, `publish`, `appRelease`. Genuine backend gaps are small: no UI lists reminders (`GET /reminders` unused), and Memory enrichment needs the library-item-id → graph-node-id resolution.
 
 **New in `new-feature` branch:** the **Collections** feature — relational MariaDB CRUD at `/collections` (create · list · detail · rename · delete · add-items · remove-item, user-scoped, 11 integration tests), a Flutter `CollectionsRepository` + `MemoryCollection` models, and Library wiring: the "Mira grouped for you" strip is live (tap a card → filter to its members) and multi-select **Add to collection** + **Delete** hit the backend (pin/archive are optimistic pending backend flags). Implements the new design's Library grouping + bulk-select workflow end-to-end.
 
 Also delivered on `new-feature`: **Canvas Map** wired to the live graph (`e32371f`); **Memory-detail** lifecycle — pin / edit (+"re-read") / delete-confirm / add-to-collection / Ask-Mira→chat (`d3ea105`); **Daily-Brief** overdue reminders + snooze/done (`8fd56b0`); **Setup-wizard** persistence → `POST /auth/onboarding/setup` (`1804dd9`); **Settings** Account profile + Notifications toggles (`16285c4`); **Capture** note/link/photo/type creating real memories (`737653f`). A full-implementation round then closed the remaining gaps: **Chat** wired to `/assistant/run` (`07949d8`), **Memory** insight/connections from `GET /v2/captures/{id}` (`82f8ee9`), **Canvas Board** card-drag + connect-mode (`97c7672`), and **real device-mic voice capture** + `transcribeVoice` transcription with a web/desktop fallback (`dc0b76b`). A final gap-closing round then wired the last pieces (each with a graceful fallback): **pin** persists to `PATCH /v2/captures/{id}/state`; **Memory re-read** calls `POST /v2/captures/{id}/correct`; three extra **notification toggles** (resurface/sound/haptics — new backend fields, migration `018`); a new **`GET /v2/resurfaced`** feed for the Daily Brief; and the **real capture ingest pipeline** (`createTextCapture → streamCapture → approve`) surfacing genuine extracted entities in the review. What now stays illustrative is only static design copy (the reminder card's "Thursday morning", the "Change type" / "+ Add" affordances).
+
+**design2 round** (dark mode + new screens, from `design2/`): full **dark mode** — `RdTheme` ThemeExtension (light+dark) read via `context.rd`, `AppThemeController` System/Light/Dark + accent/text-size/motion (persisted), every screen migrated (`5dabafe`→`9996ea0`); **Appearance** screen (`972a018`); **Reminders** screen → `/reminders` (`cb09498`); **Storage** screen + backend `GET /storage/usage` (`51947f1` / backend `7f804db`); **Archive** — Pin/Archive real via existing `POST /library/items/bulk-actions` + `?includeArchived` + Archived view/Restore (`e79e8c6`/`30ddad6`, no backend change needed); **Paywall** UI-only (`af9c64b`); **multi-board Canvas** persisted to `/v2/canvas` + Library "Add to board" (`1b1dc5c`/`6786164`); **MemoryStore** shared cache (`lib/app/memory_store.dart`) so a Memory edit/delete propagates to Library live (`2136238`). **Deferred: full Stripe billing** — user has no Stripe keys, so the paywall stays a UI stub; real subscription/checkout/webhooks/entitlements need their account + keys + webhook URL.
 
 ### Commands
 
