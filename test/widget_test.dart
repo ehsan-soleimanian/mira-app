@@ -50,6 +50,14 @@ void main() {
     expect(micTitle, findsOneWidget);
     expect(find.text('Voice mic well (741:4986-mic)'), findsOneWidget);
 
+    final insetMicTitle = find.text('Molecules / MiraInsetMicButton');
+    await _scrollListUntilVisible(tester, insetMicTitle);
+    expect(insetMicTitle, findsOneWidget);
+    expect(
+      find.text('Inset workspace mic (workspace-inset-mic)'),
+      findsOneWidget,
+    );
+
     final stopTitle = find.text('Molecules / MiraStopButton (618:3447)');
     await _scrollListUntilVisible(tester, stopTitle);
     expect(stopTitle, findsOneWidget);

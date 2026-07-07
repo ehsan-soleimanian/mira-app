@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mira — Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F4F4F1; --card: #FBFBF9; --ink: #1B1C24; --muted: #8A8B92; --faint: #B7B8BE;
+    --navy: #14328C; --peri: #7E8BC9; --peri-soft: #EDEFF8; --line: #E9E9E4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: radial-gradient(1200px 800px at 50% -12%, #ffffff 0%, #ececeb 60%, #e4e4e6 100%);
+    font-family: Vazirmatn, -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage { transform-origin: center center; }
+
+  .bezel { width: 419px; height: 878px; padding: 13px; border-radius: 56px;
+    background: linear-gradient(150deg,#2b2c30 0%,#46474c 18%,#1d1e21 40%,#3a3b40 70%,#232427 100%);
+    box-shadow: 0 50px 100px -20px rgba(20,22,40,.45), 0 18px 40px -16px rgba(20,22,40,.35), inset 0 0 0 1.5px rgba(255,255,255,.10), inset 0 0 2px 2px rgba(0,0,0,.5); }
+  .screen { position: relative; width: 393px; height: 852px; border-radius: 44px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 124px; height: 36px; border-radius: 20px; background: #000; z-index: 50; }
+  .statusbar { position: absolute; top: 0; left: 0; right: 0; height: 48px; z-index: 40; display: flex; align-items: center; justify-content: space-between; padding: 16px 32px 0; }
+  .clock { font-family: -apple-system, system-ui; font-weight: 600; font-size: 15px; color: var(--ink); }
+  .home-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 139px; height: 5px; border-radius: 100px; background: rgba(0,0,0,.28); z-index: 60; }
+
+  .scroll { flex: 1; overflow-y: auto; scrollbar-width: none; padding-bottom: 120px; }
+  .scroll::-webkit-scrollbar { display: none; }
+
+  /* header */
+  .lb-head { padding: 60px 26px 0; }
+  .lb-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--peri); }
+  .lb-titlerow { display: flex; align-items: flex-start; justify-content: space-between; margin-top: 6px; }
+  .lb-title { font-family: Dosis, sans-serif; font-weight: 700; font-size: 30px; color: var(--ink); line-height: 1.05; }
+  .lb-title small { display: block; font-family: Vazirmatn; font-weight: 500; font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .lb-gear { width: 42px; height: 42px; border-radius: 50%; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; flex-shrink: 0; }
+
+  /* search */
+  .lb-search { margin: 20px 26px 0; display: flex; align-items: center; gap: 11px; height: 50px; padding: 0 16px; border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); cursor: text; }
+  .lb-search input { flex: 1; border: none; background: none; outline: none; font-family: Vazirmatn, sans-serif; font-size: 15px; color: var(--ink); }
+  .lb-search input::placeholder { color: var(--faint); }
+  .lb-search .voice { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; border: none; cursor: pointer; background: var(--peri-soft); color: var(--navy); display: flex; align-items: center; justify-content: center; }
+
+  /* filter chips */
+  .lb-filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 18px 26px 4px; }
+  .lb-filters::-webkit-scrollbar { display: none; }
+  .chip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 100px; border: none; cursor: pointer; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); font-family: Vazirmatn, sans-serif; font-size: 13px; font-weight: 500; transition: background .15s ease, color .15s ease, box-shadow .15s ease; }
+  .chip svg { flex-shrink: 0; }
+  .chip.on { background: var(--navy); color: #fff; box-shadow: none; }
+  .chip.on svg { stroke: #fff; }
+
+  /* collections */
+  .lb-seclabel { display: flex; align-items: center; justify-content: space-between; padding: 26px 26px 12px; }
+  .lb-seclabel .l { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--faint); }
+  .lb-seclabel .l .ic { color: var(--peri); display: flex; }
+  .lb-seclabel .see { border: none; background: none; cursor: pointer; font-family: Vazirmatn, sans-serif; font-size: 12.5px; font-weight: 600; color: var(--peri); }
+  .coll-row { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding: 0 26px 4px; }
+  .coll-row::-webkit-scrollbar { display: none; }
+  .coll { flex-shrink: 0; width: 150px; padding: 16px; border-radius: 18px; cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); position: relative; overflow: hidden; transition: transform .12s ease; }
+  .coll:active { transform: scale(.98); }
+  .coll.c1 { background: linear-gradient(155deg, #EEF1FA, #E3E8F6); }
+  .coll.c2 { background: linear-gradient(155deg, #F0EEF7, #E8E3F2); }
+  .coll.c3 { background: linear-gradient(155deg, #EAF1EE, #DFEDE6); }
+  .coll-ic { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.7); color: var(--navy); }
+  .coll-nm { font-family: Dosis, sans-serif; font-weight: 700; font-size: 17px; color: var(--ink); margin-top: 40px; }
+  .coll-ct { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* memory list */
+  .day-label { padding: 24px 26px 4px; font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--faint); }
+  .mem { display: flex; gap: 13px; margin: 8px 20px 0; padding: 15px 16px; border-radius: 18px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; transition: transform .12s ease, box-shadow .15s ease; }
+  .mem:active { transform: scale(.99); }
+  .mem:hover { box-shadow: inset 0 0 0 1px var(--peri-soft), 0 8px 20px -14px rgba(30,34,70,.4); }
+  .mem-ic { width: 44px; height: 44px; border-radius: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .mem-ic.note { background: var(--peri-soft); color: var(--navy); }
+  .mem-ic.voice { background: #E7EFEA; color: #2E7D4F; }
+  .mem-ic.link { background: #FBEFE7; color: #B65A2E; }
+  .mem-ic.event { background: #EAE7F6; color: #5B4B9E; }
+  .mem-ic.photo { position: relative; overflow: hidden; background: linear-gradient(150deg,#1b2b6b,#0f1c4d); color: #fff; }
+  .mem-ic.photo::after { content:""; position: absolute; inset: 0; background: radial-gradient(circle at 68% 28%, rgba(223,184,119,.5), transparent 60%); }
+  .mem-ic.photo svg { position: relative; z-index: 1; }
+  .mem-body { flex: 1; min-width: 0; }
+  .mem-t { font-size: 14.5px; font-weight: 600; color: var(--ink); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mem-s { font-size: 12.5px; color: var(--muted); line-height: 1.45; margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mem-meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .mem-tp { display: inline-flex; align-items: center; gap: 5px; height: 21px; padding: 0 8px; border-radius: 100px; background: var(--peri-soft); color: var(--navy); font-size: 10px; font-weight: 600; letter-spacing: .2px; }
+  .mem-time { font-size: 11.5px; color: var(--faint); }
+  .mem-links { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--peri); font-weight: 500; }
+  .mem-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--faint); }
+
+  .lb-end { text-align: center; font-size: 12.5px; color: var(--faint); padding: 28px 40px 0; line-height: 1.5; }
+
+  .empty-hint { display: none; text-align: center; padding: 40px 40px 0; color: var(--faint); font-size: 13.5px; line-height: 1.5; }
+
+  /* bottom nav */
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; height: 96px; padding: 0 30px 22px; display: flex; align-items: flex-end; justify-content: space-between; background: linear-gradient(180deg, rgba(244,244,241,0), var(--bg) 55%); }
+  .navitem { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 6px; font-family: Vazirmatn, sans-serif; font-size: 11px; font-weight: 500; color: var(--faint); }
+  .navitem.is-active { color: var(--navy); }
+  .navspacer { width: 64px; }
+  .navmic { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
+    background: radial-gradient(circle at 38% 30%, #8b98d6, #5b69ad); box-shadow: 0 14px 28px -8px rgba(70,85,150,.6), inset 0 2px 4px rgba(255,255,255,.4); display: flex; align-items: center; justify-content: center; }
+
+  /* demo state toggle */
+  .state-toggle { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; gap: 3px; padding: 4px; border-radius: 100px; background: rgba(255,255,255,.82); backdrop-filter: blur(10px); box-shadow: 0 6px 20px -8px rgba(20,22,40,.3), inset 0 0 0 1px rgba(255,255,255,.6); }
+  .state-toggle button { border: none; background: none; cursor: pointer; height: 30px; padding: 0 15px; border-radius: 100px; font-family: Vazirmatn, sans-serif; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .state-toggle button.on { background: var(--navy); color: #fff; }
+
+  /* first-time library */
+  #libFirst { padding: 0 26px; }
+  .lf-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 30px 6px 0; }
+  .lf-orb { position: relative; width: 96px; height: 96px; border-radius: 50%; background: radial-gradient(circle at 36% 30%, #aeb9e8, #6472b6 75%); box-shadow: 0 18px 40px -14px rgba(90,105,180,.55), inset 0 2px 6px rgba(255,255,255,.5); animation: breathe 6s ease-in-out infinite; }
+  .lf-orb::after { content:""; position: absolute; inset: 13px; border-radius: 50%; background: radial-gradient(circle at 62% 66%, rgba(255,255,255,.4), transparent 55%); }
+  .lf-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(126,139,201,.3); animation: pulse 6s ease-in-out infinite; }
+  .lf-ring.r1 { inset: -14px; }
+  .lf-ring.r2 { inset: -28px; border-color: rgba(126,139,201,.18); animation-delay: .4s; }
+  .lf-hero h2 { font-family: Dosis, sans-serif; font-weight: 700; font-size: 27px; line-height: 1.15; color: var(--ink); margin: 24px 0 0; }
+  .lf-hero p { font-size: 14.5px; line-height: 1.6; color: var(--muted); margin: 12px 0 0; max-width: 300px; }
+
+  .lf-preview { margin: 28px 0 0; display: flex; flex-direction: column; gap: 10px; }
+  .lf-plabel { font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--faint); margin-bottom: 2px; }
+  .lf-ghost { display: flex; align-items: center; gap: 13px; padding: 15px 16px; border-radius: 18px; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); }
+  .lf-gic { width: 42px; height: 42px; border-radius: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--peri-soft); color: var(--peri); }
+  .lf-gtx { flex: 1; }
+  .lf-gtx .a { height: 10px; border-radius: 6px; background: var(--line); width: 62%; }
+  .lf-gtx .b { height: 8px; border-radius: 6px; background: var(--peri-soft); width: 40%; margin-top: 8px; }
+
+  .lf-cta { margin: 28px 0 0; display: flex; align-items: center; gap: 12px; width: 100%; padding: 15px 18px; border: none; cursor: pointer; border-radius: 18px; background: linear-gradient(150deg,#1a3a9e,#14328C); box-shadow: 0 14px 30px -12px rgba(20,50,140,.55); transition: transform .12s ease, filter .15s ease; }
+  .lf-cta:active { transform: scale(.99); }
+  .lf-cta:hover { filter: brightness(1.08); }
+  .lf-cta .cta-ic { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; background: rgba(255,255,255,.16); display: flex; align-items: center; justify-content: center; }
+  .lf-cta .cta-tx { text-align: left; }
+  .lf-cta .cta-tx b { display: block; font-size: 14.5px; font-weight: 600; color: #fff; }
+  .lf-cta .cta-tx span { font-size: 12.5px; color: rgba(255,255,255,.7); }
+  .lf-reassure { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 16px 0 0; font-size: 12.5px; color: var(--faint); }
+  .lf-reassure svg { color: var(--peri); }
+
+  /* search results state */
+  .sr-head { display: none; padding: 20px 26px 4px; }
+  .sr-count { font-size: 13px; color: var(--muted); }
+  .sr-count b { font-weight: 600; color: var(--ink); }
+  .sr-clear { border: none; background: none; cursor: pointer; font-family: Vazirmatn, sans-serif; font-size: 12.5px; font-weight: 600; color: var(--peri); padding: 0; }
+  .sr-headrow { display: flex; align-items: baseline; justify-content: space-between; }
+  .hl { background: rgba(126,139,201,.28); color: var(--navy); border-radius: 4px; padding: 0 2px; font-weight: 600; }
+  .semantic { display: none; }
+  .sem-label { display: flex; align-items: center; gap: 8px; padding: 26px 26px 4px; font-size: 12px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--faint); }
+  .sem-label .ic { color: var(--peri); display: flex; }
+  .sem-note { padding: 2px 26px 8px 26px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .sem-why { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 100px; background: var(--peri-soft); color: var(--navy); font-size: 10px; font-weight: 600; margin-top: 8px; }
+
+  /* selection mode */
+  .mem-check { display: none; width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; align-self: center; background: #fff; box-shadow: inset 0 0 0 1.8px var(--faint); align-items: center; justify-content: center; transition: background .15s ease, box-shadow .15s ease; }
+  .mem-check svg { opacity: 0; transition: opacity .15s ease; }
+  .selecting .mem-check { display: flex; }
+  .selecting .mem { cursor: pointer; }
+  .mem.sel { box-shadow: inset 0 0 0 1.5px var(--peri); background: var(--peri-soft); }
+  .mem.sel .mem-check { background: var(--navy); box-shadow: none; }
+  .mem.sel .mem-check svg { opacity: 1; }
+
+  /* focused selection: hide browse chrome, show just the list under the bar */
+  .selecting .lb-head, .selecting .lb-search, .selecting .lb-filters,
+  .selecting #collLabel, .selecting #collRow, .selecting .sr-head, .selecting .lb-end { display: none !important; }
+  .selecting .scroll { padding-top: 96px; }
+  .selecting .day-label:first-child { padding-top: 6px; }
+
+  .sel-bar { position: absolute; top: 0; left: 0; right: 0; z-index: 45; padding: 54px 20px 14px; display: none; align-items: center; gap: 12px; background: var(--bg); box-shadow: 0 1px 0 var(--line); }
+  .sel-bar.show { display: flex; }
+  .sel-x { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; border: none; cursor: pointer; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); display: flex; align-items: center; justify-content: center; }
+  .sel-count { flex: 1; font-family: Dosis, sans-serif; font-weight: 700; font-size: 20px; color: var(--ink); }
+  .sel-all { border: none; background: none; cursor: pointer; font-family: Vazirmatn, sans-serif; font-size: 13px; font-weight: 600; color: var(--peri); padding: 8px; }
+
+  .sel-actions { position: absolute; left: 0; right: 0; bottom: 0; z-index: 46; display: none; padding: 12px 16px calc(20px + env(safe-area-inset-bottom)); background: rgba(251,251,249,.92); backdrop-filter: blur(10px); box-shadow: 0 -1px 0 var(--line); }
+  .sel-actions.show { display: flex; gap: 6px; }
+  .sa { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 4px; border: none; cursor: pointer; background: none; font-family: Vazirmatn, sans-serif; font-size: 11px; font-weight: 500; color: var(--muted); border-radius: 12px; transition: background .15s ease; }
+  .sa:hover { background: var(--peri-soft); }
+  .sa:disabled { opacity: .4; cursor: default; }
+  .sa:disabled:hover { background: none; }
+  .sa .saic { width: 42px; height: 42px; border-radius: 13px; display: flex; align-items: center; justify-content: center; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); color: var(--navy); }
+  .sa.danger .saic { color: #C0492A; }
+  .sa.danger { color: #C0492A; }
+
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.25); opacity: .5; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+</head>
+<body>
+  <div class="state-toggle">
+    <button id="stFull" class="on" onclick="setLib('full')">Populated</button>
+    <button id="stFirst" onclick="setLib('first')">First-time</button>
+    <button id="stSearch" onclick="setLib('search')">Search</button>
+    <button id="stSelect" onclick="setLib('select')">Select</button>
+  </div>
+  <div id="wrap"><div id="stage">
+    <div class="bezel"><div class="screen" data-screen-label="Library">
+      <div class="island"></div>
+      <div class="statusbar"><span class="clock">9:41</span>
+        <span><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="7" width="3" height="5" rx="1" fill="#1B1C24"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#1B1C24"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#1B1C24"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#1B1C24"/></svg></span>
+      </div>
+
+      <!-- selection top bar -->
+      <div class="sel-bar" id="selBar">
+        <button class="sel-x" onclick="exitSelect()" aria-label="Cancel"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1B1C24" stroke-width="2.1" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        <div class="sel-count" id="selCount">Select memories</div>
+        <button class="sel-all" onclick="toggleSelectAll()" id="selAllBtn">Select all</button>
+      </div>
+
+      <div class="scroll">
+        <!-- header -->
+        <div class="lb-head">
+          <div class="lb-eyebrow">Your memory</div>
+          <div class="lb-titlerow">
+            <div class="lb-title">Library<small>342 memories, all held safe</small></div>
+            <button class="lb-gear" aria-label="Settings"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6B6C73" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+          </div>
+        </div>
+
+        <div id="libPopulated">
+        <!-- search -->
+        <div class="lb-search" onclick="this.querySelector('input').focus()">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#B7B8BE" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="q" placeholder="Search your memory…" oninput="applyFilters()" />
+          <button class="voice" aria-label="Search by voice"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg></button>
+        </div>
+
+        <!-- filter chips -->
+        <div class="lb-filters" id="filters">
+          <button class="chip on" data-f="all" onclick="setFilter(this)">All</button>
+          <button class="chip" data-f="note" onclick="setFilter(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A8B92" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Notes</button>
+          <button class="chip" data-f="voice" onclick="setFilter(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A8B92" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/></svg>Voice</button>
+          <button class="chip" data-f="photo" onclick="setFilter(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A8B92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/></svg>Photos</button>
+          <button class="chip" data-f="link" onclick="setFilter(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A8B92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Links</button>
+          <button class="chip" data-f="event" onclick="setFilter(this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A8B92" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Events</button>
+        </div>
+
+        <!-- search results summary -->
+        <div class="sr-head" id="srHead">
+          <div class="sr-headrow">
+            <div class="sr-count" id="srCount">—</div>
+            <button class="sr-clear" onclick="clearSearch()">Clear</button>
+          </div>
+        </div>
+
+        <!-- collections -->
+        <div class="lb-seclabel" id="collLabel">
+          <span class="l"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>Mira grouped for you</span>
+          <button class="see">See all</button>
+        </div>
+        <div class="coll-row" id="collRow">
+          <div class="coll c1">
+            <div class="coll-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6" stroke-linecap="round"/></svg></div>
+            <div class="coll-nm">People</div>
+            <div class="coll-ct">28 memories · 9 people</div>
+          </div>
+          <div class="coll c2">
+            <div class="coll-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+            <div class="coll-nm">Coast trip</div>
+            <div class="coll-ct">14 memories · planning</div>
+          </div>
+          <div class="coll c3">
+            <div class="coll-ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 4v5"/></svg></div>
+            <div class="coll-nm">Work</div>
+            <div class="coll-ct">41 memories · 3 projects</div>
+          </div>
+        </div>
+
+        <!-- memories -->
+        <div class="mem-list" id="memList">
+          <div class="day-label" data-day>Today</div>
+
+          <div class="mem" data-type="note" data-text="contract with john call confirm terms">
+            <span class="mem-ic note"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">Contract with John</div>
+              <div class="mem-s">Needs a call to confirm the terms before Friday. Connects to the meeting note from last week.</div>
+              <div class="mem-meta"><span class="mem-tp">Note</span><span class="mem-time">2h ago</span><span class="mem-sep"></span><span class="mem-links"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7"/><path d="M8.2 13.2 15.8 17"/></svg>3 links</span></div>
+            </div>
+          </div>
+
+          <div class="mem" data-type="voice" data-text="book maya recommended the overstory">
+            <span class="mem-ic voice"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">Book Maya recommended</div>
+              <div class="mem-s">“The Overstory” — a quiet weekend read for the coast trip.</div>
+              <div class="mem-meta"><span class="mem-tp">Voice · 0:12</span><span class="mem-time">Today, 8:30 AM</span></div>
+            </div>
+          </div>
+
+          <div class="day-label" data-day>This week</div>
+
+          <div class="mem" data-type="event" data-text="blue note live jazz corner room tickets">
+            <span class="mem-ic event"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">Blue Note — live jazz</div>
+              <div class="mem-s">Fri, Jul 18 · 8 PM at The Corner Room. From a photo you took.</div>
+              <div class="mem-meta"><span class="mem-tp">Event</span><span class="mem-time">Tue</span><span class="mem-sep"></span><span class="mem-links"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7"/><path d="M8.2 13.2 15.8 17"/></svg>2 links</span></div>
+            </div>
+          </div>
+
+          <div class="mem" data-type="link" data-text="article calm technology second brain design">
+            <span class="mem-ic link"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">On calm technology</div>
+              <div class="mem-s">Saved article about designing tools that ask for less attention.</div>
+              <div class="mem-meta"><span class="mem-tp">Link</span><span class="mem-time">Mon</span></div>
+            </div>
+          </div>
+
+          <div class="mem" data-type="photo" data-text="whiteboard sketch product roadmap studio">
+            <span class="mem-ic photo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">Whiteboard sketch</div>
+              <div class="mem-s">Roadmap from the studio session — Mira read the three phases.</div>
+              <div class="mem-meta"><span class="mem-tp">Photo</span><span class="mem-time">Mon</span></div>
+            </div>
+          </div>
+
+          <div class="day-label" data-day>Earlier</div>
+
+          <div class="mem" data-type="note" data-text="idea quiet weekend coast spring">
+            <span class="mem-ic note"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">A quiet weekend on the coast</div>
+              <div class="mem-s">Idea for spring — somewhere slow, near the water.</div>
+              <div class="mem-meta"><span class="mem-tp">Note</span><span class="mem-time">Jun 28</span></div>
+            </div>
+          </div>
+
+          <div class="mem" data-type="voice" data-text="flight sa 482 august trip booking">
+            <span class="mem-ic voice"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">Flight SA 482 booked</div>
+              <div class="mem-s">Aug 2 departure. Check-in reminder set for the day before.</div>
+              <div class="mem-meta"><span class="mem-tp">Voice · 0:08</span><span class="mem-time">Jun 24</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- connected by meaning (semantic) -->
+        <div class="semantic" id="semantic">
+          <div class="sem-label"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.2"/><circle cx="5.5" cy="18" r="2.2"/><circle cx="18.5" cy="18" r="2.2"/><path d="M11 6.8 6.6 15.6M13 6.8l4.4 8.8M7.9 18h8.2"/></svg></span>Connected by meaning</div>
+          <div class="sem-note">These don't say the word, but Mira thinks they belong together.</div>
+          <div class="mem">
+            <span class="mem-ic voice"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">Flight SA 482 booked</div>
+              <div class="mem-s">Aug 2 departure — the trip you're planning near the water.</div>
+              <div><span class="sem-why"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>Same trip</span></div>
+            </div>
+          </div>
+          <div class="mem">
+            <span class="mem-ic event"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
+            <div class="mem-body">
+              <div class="mem-t">Book Maya recommended</div>
+              <div class="mem-s">“The Overstory” — you saved it as a weekend read for the trip.</div>
+              <div><span class="sem-why"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>Weekend plan</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-hint" id="emptyHint">Nothing here yet under this filter.<br/>Everything you capture will settle in quietly.</div>
+
+        <div class="lb-end">You've kept 342 memories.<br/>Mira holds them so you don't have to.</div>
+        </div><!-- /libPopulated -->
+
+        <!-- first-time -->
+        <div id="libFirst" style="display:none">
+          <div class="lf-hero">
+            <div class="lf-orb"><span class="lf-ring r1"></span><span class="lf-ring r2"></span></div>
+            <h2>Your Library is empty<br/>— for now</h2>
+            <p>This is where every thought you capture will live. No folders to make, no filing to do. Just capture, and I'll keep it here, searchable and connected.</p>
+          </div>
+
+          <div class="lf-preview">
+            <div class="lf-plabel">What lands here</div>
+            <div class="lf-ghost">
+              <span class="lf-gic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+              <span class="lf-gtx"><span class="a"></span><span class="b"></span></span>
+            </div>
+            <div class="lf-ghost">
+              <span class="lf-gic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg></span>
+              <span class="lf-gtx"><span class="a" style="width:52%"></span><span class="b" style="width:34%"></span></span>
+            </div>
+            <div class="lf-ghost">
+              <span class="lf-gic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/></svg></span>
+              <span class="lf-gtx"><span class="a" style="width:58%"></span><span class="b" style="width:44%"></span></span>
+            </div>
+          </div>
+
+          <button class="lf-cta">
+            <span class="cta-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg></span>
+            <span class="cta-tx"><b>Capture your first memory</b><span>Say it, type it, or snap it — I'll hold it here.</span></span>
+          </button>
+          <div class="lf-reassure"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Private by default. Only you can see your memory.</div>
+        </div>
+      </div>
+
+      <div class="nav">
+        <button class="navitem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Home</button>
+        <button class="navitem is-active"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h11"/><path d="M4 10h11"/><path d="M4 15h7"/><circle cx="18.5" cy="16.5" r="3"/><path d="M20.8 18.8 23 21"/></svg>Library</button>
+        <div class="navspacer"></div>
+        <button class="navitem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><circle cx="5.5" cy="18" r="2.4"/><circle cx="18.5" cy="18" r="2.4"/><path d="M11 7 6.6 15.8"/><path d="M13 7l4.4 8.8"/><path d="M7.9 18h8.2"/></svg>Canvas</button>
+        <button class="navitem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Brief</button>
+        <button class="navmic" aria-label="Capture"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+      </div>
+
+      <div class="home-indicator"></div>
+
+      <!-- bulk action bar -->
+      <div class="sel-actions" id="selActions">
+        <button class="sa" id="saCollect" disabled><span class="saic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>Collection</button>
+        <button class="sa" id="saPin" disabled><span class="saic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5M9 3h6l-1 6 3 3H7l3-3-1-6Z"/></svg></span>Pin</button>
+        <button class="sa" id="saArchive" disabled><span class="saic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/></svg></span>Archive</button>
+        <button class="sa danger" id="saDelete" disabled><span class="saic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg></span>Delete</button>
+      </div>
+    </div></div>
+  </div></div>
+
+  <script>
+    let filter = 'all', selecting = false;
+    function setLib(mode) {
+      const first = mode === 'first', search = mode === 'search', select = mode === 'select';
+      document.getElementById('libPopulated').style.display = first ? 'none' : '';
+      document.getElementById('libFirst').style.display = first ? '' : 'none';
+      document.getElementById('stFull').classList.toggle('on', mode === 'full');
+      document.getElementById('stFirst').classList.toggle('on', first);
+      document.getElementById('stSearch').classList.toggle('on', search);
+      document.getElementById('stSelect').classList.toggle('on', select);
+      document.querySelector('.lb-eyebrow').textContent = first ? 'Getting started' : 'Your memory';
+      document.querySelector('.lb-title small').textContent = first ? 'Nothing kept yet' : '342 memories, all held safe';
+      const q = document.getElementById('q');
+      if (search) { q.value = 'coast'; } else if (mode === 'full') { q.value = ''; filter = 'all'; document.querySelectorAll('#filters .chip').forEach(c => c.classList.toggle('on', c.dataset.f === 'all')); }
+      if (select) enterSelect(); else exitSelect(true);
+      applyFilters();
+      document.querySelector('.scroll').scrollTop = 0;
+    }
+
+    function enterSelect() {
+      selecting = true;
+      document.querySelector('.screen').classList.add('selecting');
+      document.getElementById('selBar').classList.add('show');
+      document.getElementById('selActions').classList.add('show');
+      // demo: preselect two memories so the state reads clearly
+      const mems = document.querySelectorAll('#memList .mem');
+      mems.forEach((m, i) => m.classList.toggle('sel', i === 0 || i === 2));
+      updateSelCount();
+    }
+    function exitSelect(silent) {
+      selecting = false;
+      document.querySelector('.screen').classList.remove('selecting');
+      document.getElementById('selBar').classList.remove('show');
+      document.getElementById('selActions').classList.remove('show');
+      document.querySelectorAll('#memList .mem.sel').forEach(m => m.classList.remove('sel'));
+      if (!silent) { document.getElementById('stSelect').classList.remove('on'); document.getElementById('stFull').classList.add('on'); }
+    }
+    function toggleMem(m) {
+      if (!selecting) return;
+      m.classList.toggle('sel');
+      updateSelCount();
+    }
+    function toggleSelectAll() {
+      const mems = [...document.querySelectorAll('#memList .mem')].filter(m => m.style.display !== 'none');
+      const allSel = mems.every(m => m.classList.contains('sel'));
+      mems.forEach(m => m.classList.toggle('sel', !allSel));
+      updateSelCount();
+    }
+    function updateSelCount() {
+      const n = document.querySelectorAll('#memList .mem.sel').length;
+      document.getElementById('selCount').textContent = n === 0 ? 'Select memories' : n + ' selected';
+      ['saCollect','saPin','saArchive','saDelete'].forEach(id => document.getElementById(id).disabled = n === 0);
+      const mems = [...document.querySelectorAll('#memList .mem')].filter(m => m.style.display !== 'none');
+      const allSel = mems.length && mems.every(m => m.classList.contains('sel'));
+      document.getElementById('selAllBtn').textContent = allSel ? 'Deselect all' : 'Select all';
+    }
+
+    // inject check affordance + click handlers
+    document.querySelectorAll('#memList .mem').forEach(m => {
+      const chk = document.createElement('span');
+      chk.className = 'mem-check';
+      chk.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-11"/></svg>';
+      m.insertBefore(chk, m.firstChild);
+      m.addEventListener('click', () => toggleMem(m));
+    });
+
+    function clearSearch() {
+      document.getElementById('q').value = '';
+      document.getElementById('stSearch').classList.remove('on');
+      document.getElementById('stFull').classList.add('on');
+      applyFilters();
+    }
+    const SEMANTIC_KEYS = ['coast','trip','weekend','water','trav','trav','maya','vacation','holiday','away'];
+    function highlight(el, q) {
+      // restore original text first
+      if (el.dataset.orig) el.textContent = el.dataset.orig; else el.dataset.orig = el.textContent;
+      if (!q) return;
+      const txt = el.dataset.orig, i = txt.toLowerCase().indexOf(q);
+      if (i < 0) return;
+      el.innerHTML = txt.slice(0, i) + '<span class="hl">' + txt.slice(i, i + q.length) + '</span>' + txt.slice(i + q.length);
+    }
+    function setFilter(btn) {
+      filter = btn.dataset.f;
+      document.querySelectorAll('#filters .chip').forEach(c => c.classList.toggle('on', c === btn));
+      applyFilters();
+    }
+    function applyFilters() {
+      const q = document.getElementById('q').value.trim().toLowerCase();
+      const searching = q.length > 0 || filter !== 'all';
+      let shown = 0;
+      document.querySelectorAll('#memList .mem').forEach(m => {
+        const okType = filter === 'all' || m.dataset.type === filter;
+        const title = m.querySelector('.mem-t');
+        const titleText = (title.dataset.orig || title.textContent).toLowerCase();
+        const okText = !q || m.dataset.text.includes(q) || titleText.includes(q);
+        const vis = okType && okText;
+        m.style.display = vis ? '' : 'none';
+        highlight(title, vis ? q : '');
+        if (vis) shown++;
+      });
+      // hide day labels with no visible memories under them
+      document.querySelectorAll('#memList [data-day]').forEach(lbl => {
+        let sib = lbl.nextElementSibling, any = false;
+        while (sib && !sib.hasAttribute('data-day')) {
+          if (sib.classList.contains('mem') && sib.style.display !== 'none') any = true;
+          sib = sib.nextElementSibling;
+        }
+        lbl.style.display = any ? '' : 'none';
+      });
+      // collections + label hide while actively searching/filtering
+      document.getElementById('collLabel').style.display = searching ? 'none' : '';
+      document.getElementById('collRow').style.display = searching ? 'none' : '';
+      // results summary header
+      const hasQuery = q.length > 0;
+      const srHead = document.getElementById('srHead');
+      srHead.style.display = hasQuery ? 'block' : 'none';
+      if (hasQuery) {
+        const orig = document.getElementById('q').value.trim();
+        document.getElementById('srCount').innerHTML = shown === 0
+          ? 'No direct matches for “<b>' + orig + '</b>”'
+          : '<b>' + shown + '</b> ' + (shown === 1 ? 'memory' : 'memories') + ' for “<b>' + orig + '</b>”';
+      }
+      // semantic "connected by meaning" — reveal when the query relates
+      const isSem = hasQuery && SEMANTIC_KEYS.some(k => q.includes(k) || k.includes(q) && q.length >= 3);
+      document.getElementById('semantic').style.display = isSem ? 'block' : 'none';
+      // hide the reassuring end line during search
+      document.querySelector('.lb-end').style.display = searching ? 'none' : '';
+      document.getElementById('emptyHint').style.display = (shown === 0 && !isSem) ? 'block' : 'none';
+    }
+
+    function fit() {
+      const stage = document.getElementById('stage');
+      const bezel = stage.querySelector('.bezel');
+      const scale = Math.min((innerWidth - 40) / bezel.offsetWidth, (innerHeight - 40) / bezel.offsetHeight, 1.15);
+      stage.style.transform = `scale(${scale})`;
+    }
+    addEventListener('resize', fit); fit(); setTimeout(fit, 200);
+  </script>
+</body>
+</html>

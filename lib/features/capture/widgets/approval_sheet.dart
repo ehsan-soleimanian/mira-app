@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/features/capture/utils/proposal_display.dart';
+import 'package:mira_app/features/capture/widgets/capture_chat_widgets.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/theme/app_colors.dart';
 
 /// Bottom sheet for approving a structured capture proposal.
@@ -40,9 +42,7 @@ class ApprovalSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final display = resolveProposalDisplay(proposal);
-    final title = display.title;
-    final summary = display.summary;
-    final nodeType = display.nodeType;
+    final l10n = AppLocalizations.of(context)!;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -56,7 +56,7 @@ class ApprovalSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Save to memory?',
+            l10n.captureApprovalReviewTitle,
             style: GoogleFonts.vazirmatn(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -65,28 +65,30 @@ class ApprovalSheet extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            nodeType,
-            style: GoogleFonts.vazirmatn(
-              fontSize: 12,
-              color: AppColors.hintText,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: GoogleFonts.vazirmatn(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            summary,
+            l10n.captureApprovalSavePrompt,
             style: GoogleFonts.vazirmatn(
               fontSize: 14,
               color: AppColors.textSecondary,
             ),
+          ),
+          const SizedBox(height: 12),
+          CaptureDraftReview(
+            scale: 1,
+            title: display.title,
+            summary: display.summary,
+            nodeType: display.nodeType,
+            label: l10n.captureApprovalDraftLabel,
+            sourceLabel: l10n.captureApprovalSourceLabel,
+            memoryLabel: l10n.captureApprovalMemoryLabel,
+            savedAsLabel: l10n.captureApprovalSavedAsLabel,
+            emptySummaryLabel: l10n.captureApprovalEmptySummary,
+            moreContextLabel: l10n.captureApprovalMoreContext,
+            sourceTitle: display.sourceTitle,
+            sourceType: display.sourceType,
+            deadline: display.deadline,
+            relatedLabels: display.relatedLabels,
+            insightLabels: display.insightLabels,
+            needsMoreContext: display.needsMoreContext,
           ),
           const SizedBox(height: 20),
           Row(
@@ -97,7 +99,7 @@ class ApprovalSheet extends StatelessWidget {
                     Navigator.of(context).pop();
                     onDismiss();
                   },
-                  child: const Text('Dismiss'),
+                  child: Text(l10n.captureApprovalDismissAction),
                 ),
               ),
               const SizedBox(width: 12),
@@ -107,7 +109,7 @@ class ApprovalSheet extends StatelessWidget {
                     Navigator.of(context).pop();
                     onApprove();
                   },
-                  child: const Text('Approve'),
+                  child: Text(l10n.captureApprovalSaveAction),
                 ),
               ),
             ],

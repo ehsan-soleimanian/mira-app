@@ -290,6 +290,48 @@ abstract class AppLocalizations {
   /// **'Open graph'**
   String get homeOpenGraph;
 
+  /// No description provided for @homeWorkspaceLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get homeWorkspaceLibrary;
+
+  /// No description provided for @homeWorkspaceCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get homeWorkspaceCanvas;
+
+  /// No description provided for @homeAnswerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira found this'**
+  String get homeAnswerTitle;
+
+  /// No description provided for @homeAnswerSourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved memory'**
+  String get homeAnswerSourceLabel;
+
+  /// No description provided for @homeContinueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the conversation going'**
+  String get homeContinueTitle;
+
+  /// No description provided for @homeContinuePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask a follow-up or add a correction'**
+  String get homeContinuePrompt;
+
+  /// No description provided for @homeContinueResponseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The next answer will update the card above.'**
+  String get homeContinueResponseHint;
+
   /// No description provided for @sharedImportAppBarTitle.
   ///
   /// In en, this message translates to:
@@ -431,13 +473,49 @@ abstract class AppLocalizations {
   /// No description provided for @captureApprovalDraftLabel.
   ///
   /// In en, this message translates to:
-  /// **'Mira understood'**
+  /// **'Review before saving'**
   String get captureApprovalDraftLabel;
+
+  /// No description provided for @captureApprovalReviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save this memory?'**
+  String get captureApprovalReviewTitle;
+
+  /// No description provided for @captureApprovalSourceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get captureApprovalSourceLabel;
+
+  /// No description provided for @captureApprovalMemoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory draft'**
+  String get captureApprovalMemoryLabel;
+
+  /// No description provided for @captureApprovalSavedAsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Will be saved as'**
+  String get captureApprovalSavedAsLabel;
+
+  /// No description provided for @captureApprovalEmptySummary.
+  ///
+  /// In en, this message translates to:
+  /// **'No extracted description yet.'**
+  String get captureApprovalEmptySummary;
+
+  /// No description provided for @captureApprovalMoreContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the source is clear so far. Add a note below if Mira should remember what this means.'**
+  String get captureApprovalMoreContext;
 
   /// No description provided for @captureApprovalSavePrompt.
   ///
   /// In en, this message translates to:
-  /// **'I drafted this memory. Want me to adjust anything before I save it?'**
+  /// **'Here is exactly what Mira will save. Tell me what to change before I add it to memory.'**
   String get captureApprovalSavePrompt;
 
   /// No description provided for @captureApprovalSavedPrompt.

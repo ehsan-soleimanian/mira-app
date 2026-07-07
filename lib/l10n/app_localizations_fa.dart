@@ -109,6 +109,28 @@ class AppLocalizationsFa extends AppLocalizations {
   String get homeOpenGraph => 'باز کردن گراف';
 
   @override
+  String get homeWorkspaceLibrary => 'کتابخانه';
+
+  @override
+  String get homeWorkspaceCanvas => 'بوم';
+
+  @override
+  String get homeAnswerTitle => 'میرا این را پیدا کرد';
+
+  @override
+  String get homeAnswerSourceLabel => 'حافظه تاییدشده';
+
+  @override
+  String get homeContinueTitle => 'گفتگو را ادامه بده';
+
+  @override
+  String get homeContinuePrompt => 'سؤال بعدی را بپرس یا چیزی را اصلاح کن';
+
+  @override
+  String get homeContinueResponseHint =>
+      'پاسخ سؤال بعدی در کارت بالایی به‌روزرسانی می‌شود.';
+
+  @override
   String get sharedImportAppBarTitle => 'ارسال به میرا';
 
   @override
@@ -186,11 +208,30 @@ class AppLocalizationsFa extends AppLocalizations {
       'طبیعی بنویس. اگر بین سوال و خاطره مردد باشد، از تو می‌پرسد.';
 
   @override
-  String get captureApprovalDraftLabel => 'برداشت میرا';
+  String get captureApprovalDraftLabel => 'قبل از ذخیره بررسی کن';
+
+  @override
+  String get captureApprovalReviewTitle => 'این در حافظه ذخیره شود؟';
+
+  @override
+  String get captureApprovalSourceLabel => 'ورودی';
+
+  @override
+  String get captureApprovalMemoryLabel => 'پیش‌نویس حافظه';
+
+  @override
+  String get captureApprovalSavedAsLabel => 'نوع ذخیره‌سازی';
+
+  @override
+  String get captureApprovalEmptySummary => 'هنوز توضیح استخراج‌شده‌ای ندارد.';
+
+  @override
+  String get captureApprovalMoreContext =>
+      'فعلا فقط منبع واضح است. اگر می‌خواهی میرا معنای این ورودی را هم به یاد بسپارد، پایین صفحه یک توضیح اضافه کن.';
 
   @override
   String get captureApprovalSavePrompt =>
-      'این پیش‌نویس حافظه را ساختم. قبل از ذخیره، چیزی را تغییر بدهم؟';
+      'این دقیقا چیزی است که میرا ذخیره می‌کند. اگر چیزی کم است، قبل از ذخیره اصلاحش کن.';
 
   @override
   String get captureApprovalSavedPrompt =>

@@ -27,9 +27,11 @@ abstract final class ComposerTokens {
   static const greyBorderLayers = [
     ComposerBorderLayer(
       LinearGradient(
-        colors: [Color(0xFFCFD2D7), Color(0xFFFFFFFF), Color(0xFFCFD2D7)],
-        stops: [0.0, 0.54, 1.0],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFD2D6DE), Color(0xFFC6CBD4)],
       ),
+      strokeWidth: 1.2,
     ),
   ];
 
@@ -66,24 +68,22 @@ abstract final class ComposerTokens {
       gradient: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [surfaceTop, surfaceBottom],
+        colors: [surfaceTop, Color(0xFFF8F9FB)],
       ),
       boxShadow: [
         BoxShadow(
-          color: softShadow.withValues(alpha: 0.45),
-          offset: const Offset(0, 6),
-          blurRadius: 16,
+          color: softShadow.withValues(alpha: 0.24),
+          offset: const Offset(0, 4),
+          blurRadius: 9,
+          spreadRadius: -2,
         ),
-        const BoxShadow(
-          color: Colors.white,
-          offset: Offset(0, -2),
-          blurRadius: 6,
+        BoxShadow(
+          color: Colors.white.withValues(alpha: 0.75),
+          offset: const Offset(0, -1),
+          blurRadius: 2,
         ),
         if (active)
-          BoxShadow(
-            color: activeGlow.withValues(alpha: 0.22),
-            blurRadius: 18,
-          ),
+          BoxShadow(color: activeGlow.withValues(alpha: 0.22), blurRadius: 18),
       ],
     );
   }
@@ -94,10 +94,6 @@ abstract final class ComposerTokens {
       offset: const Offset(0, 6),
       blurRadius: 16,
     ),
-    const BoxShadow(
-      color: Colors.white,
-      offset: Offset(0, -2),
-      blurRadius: 6,
-    ),
+    const BoxShadow(color: Colors.white, offset: Offset(0, -2), blurRadius: 6),
   ];
 }

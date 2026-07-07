@@ -16,9 +16,12 @@ class VoiceRecordingResult {
 /// Port for device/simulated voice recording (Adapter pattern).
 abstract class VoiceRecorderPort {
   Future<bool> start();
+  Future<bool> startRealtime() => start();
   Future<VoiceRecordingResult> stop();
   Future<void> cancel();
   Stream<double> get amplitudeStream;
+  Stream<List<int>>? get realtimeAudioStream => null;
+  bool get supportsRealtimeAudio => false;
   bool get isRecording;
 }
 
@@ -38,6 +41,12 @@ class SimulatedVoiceRecorder implements VoiceRecorderPort {
   Stream<double> get amplitudeStream => _ampController.stream;
 
   @override
+  Stream<List<int>>? get realtimeAudioStream => null;
+
+  @override
+  bool get supportsRealtimeAudio => false;
+
+  @override
   Future<bool> start() async {
     if (_recording) return true;
     _recording = true;
@@ -49,6 +58,9 @@ class SimulatedVoiceRecorder implements VoiceRecorderPort {
     });
     return true;
   }
+
+  @override
+  Future<bool> startRealtime() => Future.value(false);
 
   @override
   Future<VoiceRecordingResult> stop() async {

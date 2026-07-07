@@ -1,8 +1,15 @@
 # MIRA — Agent Guide (Flutter App)
 
-> Last updated: 2026-07-05 (Fabric-style Library intelligence, annotations, MCP/API/clipper)
+> Last updated: 2026-07-07 (real-time voice transcription via WS + SSE)
 
 **See also**: [`CLAUDE.md`](CLAUDE.md) (engineering rules) | [`API_BOOK.md`](API_BOOK.md) (backend contract) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.md) (graph pipeline) | [`../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html`](../mira-backend/docs/GRAPH_V2_ARCHITECTURE.html) (styled doc) | [`../mira-backend/DEPLOY.md`](../mira-backend/DEPLOY.md) (CI/CD)
+
+---
+
+## Agent Response Language
+
+- در این workspace پاسخ‌های کاربرمحور را فارسی و راست‌به‌چپ بنویس. برای کد، مسیر فایل، دستور ترمینال، لاگ، شناسه API، و متن دقیق خطا همان قالب اصلی را حفظ کن. فقط وقتی کاربر صریحاً زبان یا قالب دیگری خواست، از این قانون فاصله بگیر.
+- همیشه پاسخ‌های کاربرمحور را با متن ساده‌ی RTL و فارسی بنویس؛ از wrapperهای HTML مثل `<div dir="rtl">` استفاده نکن، مگر کاربر صریحاً HTML بخواهد.
 
 ---
 
@@ -281,14 +288,17 @@ Do not label manual-only sources as "connected", "ready to connect", or "plugins
 
 ### Voice capture architecture
 
-Full STT / API error matrix: [`../mira-backend/AGENTS.md`](../mira-backend/AGENTS.md#voice-capture-architecture). API contract: [`API_BOOK.md`](API_BOOK.md) (`POST /captures/transcribe`, `POST /captures/voice`).
+Full STT / API error matrix: [`../mira-backend/AGENTS.md`](../mira-backend/AGENTS.md#voice-capture-architecture). API contract: [`API_BOOK.md`](API_BOOK.md) (`POST /captures/transcribe`, `POST /captures/voice`, `POST /captures/voice/realtime`, realtime SSE + audio WebSocket).
 
 **Invariant:** audio is never stored on device or server after upload — failure means re-record or type manually.
+
+**Realtime v1:** home voice capture attempts realtime first, then falls back to the existing batch upload path. OpenRouter + Gemini Flash remains the batch STT route. True realtime requires direct Gemini Live because OpenRouter audio input is file/base64-style chat completion input, while Gemini Live accepts streaming PCM audio over WebSocket.
 
 | Flow | UI | API | Recovery on failure |
 |------|-----|-----|---------------------|
 | **Onboarding** | `onboarding_first_capture_screen.dart` | `transcribeVoice` → edit field → text submit | `VoiceCaptureFailurePanel` — **دوباره بگو** / **با متن بنویس** (focus field) |
-| **Home long-press** | `VoiceRecordingScreen` + `CaptureFlowController` | `createVoiceCapture` → SSE | `CaptureUiPhase.voiceFailed` — same panel; text opens home composer |
+| **Home long-press realtime** | `VoiceRecordingScreen` + `CaptureFlowController` | `startRealtimeVoiceSession` → WS audio + SSE events | fallback to batch `createVoiceCapture`; then `CaptureUiPhase.voiceFailed` if batch also fails |
+| **Home long-press batch fallback** | `VoiceRecordingScreen` + `CaptureFlowController` | `createVoiceCapture` → SSE | `CaptureUiPhase.voiceFailed` — same panel; text opens home composer |
 
 ```mermaid
 flowchart TD
@@ -296,11 +306,19 @@ flowchart TD
     B -->|no| C[SimulatedVoiceRecorder / stop]
     B -->|yes| D{Flow}
     D -->|onboarding| E[POST /captures/transcribe]
-    D -->|home| F[POST /captures/voice]
+    D -->|home realtime| RT[POST /captures/voice/realtime]
+    RT --> EV[GET /captures/voice/realtime/{sessionId}/events]
+    RT --> AW[WS /captures/voice/realtime/{sessionId}/audio]
+    AW --> GL[Gemini Live direct WS]
+    GL --> TF[transcript_final]
+    TF --> VC[VOICE capture from transcript]
+    VC --> I[SSE → approval]
+    RT -->|unavailable| F[POST /captures/voice]
+    D -->|home batch fallback| F
     E -->|fail| G[VoiceCaptureFailurePanel]
     E -->|ok| H[Edit transcript]
     F -->|fail| G
-    F -->|ok| I[SSE → approval]
+    F -->|ok| I
     I -->|error event| G
     G --> R[دوباره بگو → re-record]
     G --> T[با متن بنویس → composer / field]
@@ -308,24 +326,49 @@ flowchart TD
 
 **UI phases** (`capture_ui_phase.dart`): `idle` · `recording` · `uploading` · `processing` · `voiceFailed` · `approving`
 
+**Realtime API events**
+
+| Event | Payload | Client behavior |
+|-------|---------|-----------------|
+| `ready` | `{}` | session is ready; keep recording |
+| `transcript_delta` | `{ "text": "...", "isFinal": false }` | update `voiceRealtimeTranscript` below the orb |
+| `transcript_final` | `{ "text": "...", "source": "gemini_live" }` | keep final text while backend creates capture |
+| `capture_created` | `{ "captureId": "...", "state": "processing" }` | transition to processing using the new capture id |
+| `proposal` / `question_answer` / `clarification` | existing capture stream shape | reuse existing approval/question/clarification UI |
+| `error` | `{ "message": "..." }` | fallback if recording has not committed; otherwise show voice failure |
+| `done` | `{}` | close realtime session |
+
 **Client files:**
 
 | File | Role |
 |------|------|
-| `capture_flow_controller.dart` | Orchestration; `retryVoiceAfterFailure()`, `openTextFallbackFromVoice()`, `dismissVoiceFailure()` |
-| `capture_repository.dart` | One automatic retry on `503` / connection timeout before surfacing error |
+| `capture_flow_controller.dart` | Orchestration; realtime session lifecycle; partial transcript state; `retryVoiceAfterFailure()`, `openTextFallbackFromVoice()`, `dismissVoiceFailure()` |
+| `capture_repository.dart` | Batch STT plus realtime session creation, SSE parsing, and WebSocket audio upload |
 | `utils/capture_errors.dart` | Persian user messages via `formatVoiceCaptureError()` |
 | `widgets/voice_capture_failure_panel.dart` | Shared in-place recovery UI |
-| `screens/voice_recording_screen.dart` | Home voice route |
-| `voice/device_voice_recorder.dart` | Mic + `SimulatedVoiceRecorder` fallback |
+| `screens/voice_recording_screen.dart` | Home voice route; shows live partial transcript under the orb |
+| `voice/device_voice_recorder.dart` | Mic recording; realtime `PCM16 / 16kHz` stream plus batch file fallback |
+| `voice/voice_recorder_port.dart` | Recorder contract; optional realtime audio stream |
 
 **Client behaviour:**
 
 - `DeviceVoiceRecorder` → `SimulatedVoiceRecorder` when permission/hardware/web fails.
+- Home voice starts with `POST /captures/voice/realtime`; if session creation, realtime recorder startup, SSE, or WebSocket setup fails before commit, fall back to the old `POST /captures/voice` batch path.
+- Realtime sends raw chunks only in memory over WebSocket as PCM16 16kHz mono. Do not persist chunks on device or backend.
+- Realtime transcript UI updates from `transcript_delta`; `Uploading voice…` style copy is only for batch fallback.
+- After `transcript_final`, backend creates a normal `VOICE` capture from transcript text and forwards existing capture event shapes (`proposal`, `question_answer`, `clarification`) through the realtime SSE session.
 - `createVoiceCapture`: dev mock pipeline on connection error / timeout / `404` / `501` (`CaptureMockData`); `401` retries multipart once after token refresh; **one silent retry** on `503` / network before failure UI.
 - STT / upload / SSE `error` on voice route → `voiceFailed` (not SnackBar + pop). Save/cancel errors during approval still use SnackBar (`lastCaptureError`).
 - **با متن بنویس** (Home): sets `requestTextPrompt` → pops voice screen → `AppBottomShell` opens `PromptInputBar`.
 - No offline queue or failed-capture inbox.
+
+**Backend realtime contract**
+
+- `POST /captures/voice/realtime` returns `RealtimeVoiceSessionResponse { sessionId, eventsPath, audioWsPath, expiresAt }`.
+- `GET /captures/voice/realtime/{sessionId}/events` is authenticated SSE and emits realtime transcript plus existing capture events.
+- `WS /captures/voice/realtime/{sessionId}/audio` accepts authenticated PCM16 chunks and a final end message with duration metadata.
+- Direct Gemini Live config is controlled by backend env (`GEMINI_LIVE_API_KEY`, `GEMINI_LIVE_MODEL`, `REALTIME_VOICE_SESSION_TTL_SECONDS`). If live mode is required but unavailable, the backend returns `503` so Flutter can batch fallback.
+- Capture metadata should record `transcript_source=gemini_live`, `streaming=true`, `duration_ms`, and byte count; bucket/path/raw audio must never appear in responses.
 
 **Backend onboarding endpoints** (see [`API_BOOK.md`](API_BOOK.md)): `GET /auth/config`, `POST /auth/email/start`, `POST /auth/invite/verify`, `POST /auth/email/verify` (creates user + tokens), `GET /auth/onboarding/status`, `POST /auth/onboarding` (saves profile, sets `onboarding_completed`).
 

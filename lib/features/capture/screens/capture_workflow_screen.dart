@@ -12,6 +12,7 @@ import 'package:mira_app/components/organisms/mira_composer_bar.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
 import 'package:mira_app/features/capture/capture_workflow_initial_action.dart';
 import 'package:mira_app/features/capture/media/capture_media_picker.dart';
+import 'package:mira_app/features/capture/utils/answer_text_sanitizer.dart';
 import 'package:mira_app/features/capture/utils/capture_errors.dart';
 import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/widgets/entity_equivalence_panel.dart';
@@ -439,8 +440,9 @@ class _CaptureWorkflowScreenState extends State<CaptureWorkflowScreen> {
 
   void _applyAnswer(String answer) {
     if (!mounted) return;
+    final cleaned = sanitizeAssistantAnswer(answer);
     setState(() {
-      _answer = answer;
+      _answer = cleaned.isEmpty ? answer : cleaned;
       _proposal = null;
       _pendingApproval = false;
       _memorySaved = false;
@@ -806,24 +808,27 @@ class _WorkflowContent extends StatelessWidget {
           top: belowPageHeader
               ? HomeScreenTokens.headlineYBelowHeader(s)
               : HomeScreenTokens.headlineY(s),
-          left: 0,
-          right: 0,
-          child: Text(
-            localization.captureWorkflowComposeTitle,
-            textAlign: TextAlign.center,
-            style: AppTypography.homeHeadline(s),
-          ),
-        ),
-        Positioned(
-          top: belowPageHeader
-              ? HomeScreenTokens.subtitleYBelowHeader(s)
-              : HomeScreenTokens.subtitleY(s),
-          left: 0,
-          right: 0,
-          child: Text(
-            localization.captureWorkflowComposeSubtitle,
-            textAlign: TextAlign.center,
-            style: AppTypography.homeSubtitle(s),
+          left: 24 * s,
+          right: 24 * s,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                localization.captureWorkflowComposeTitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTypography.homeHeadline(s),
+              ),
+              SizedBox(height: 8 * s),
+              Text(
+                localization.captureWorkflowComposeSubtitle,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTypography.homeSubtitle(s),
+              ),
+            ],
           ),
         ),
         Positioned(
@@ -1097,6 +1102,17 @@ class _DynamicConversationBody extends StatelessWidget {
             summary: display.summary,
             nodeType: display.nodeType,
             label: localization.captureApprovalDraftLabel,
+            sourceLabel: localization.captureApprovalSourceLabel,
+            memoryLabel: localization.captureApprovalMemoryLabel,
+            savedAsLabel: localization.captureApprovalSavedAsLabel,
+            emptySummaryLabel: localization.captureApprovalEmptySummary,
+            moreContextLabel: localization.captureApprovalMoreContext,
+            sourceTitle: display.sourceTitle,
+            sourceType: display.sourceType,
+            deadline: display.deadline,
+            relatedLabels: display.relatedLabels,
+            insightLabels: display.insightLabels,
+            needsMoreContext: display.needsMoreContext,
           ),
           SizedBox(height: 18 * s),
           CaptureMiraMessage(

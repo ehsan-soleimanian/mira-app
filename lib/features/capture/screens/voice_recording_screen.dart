@@ -229,6 +229,7 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
       return _ProcessingBody(
         scale: s,
         uploading: flow.phase == CaptureUiPhase.uploading,
+        liveTranscript: flow.voiceRealtimeTranscript,
         belowPageHeader: true,
       );
     }
@@ -236,6 +237,7 @@ class _VoiceRecordingScreenState extends State<VoiceRecordingScreen> {
     return _ListeningBody(
       scale: s,
       duration: flow.recordingDuration,
+      liveTranscript: flow.voiceRealtimeTranscript,
       onStop: _stopAndSubmit,
       belowPageHeader: true,
     );
@@ -246,12 +248,14 @@ class _ListeningBody extends StatelessWidget {
   const _ListeningBody({
     required this.scale,
     required this.duration,
+    this.liveTranscript,
     required this.onStop,
     this.belowPageHeader = false,
   });
 
   final double scale;
   final Duration duration;
+  final String? liveTranscript;
   final VoidCallback onStop;
   final bool belowPageHeader;
 
@@ -299,10 +303,27 @@ class _ListeningBody extends StatelessWidget {
         Positioned(
           left: 0,
           right: 0,
-          bottom: 130 * s,
+          bottom: 128 * s,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (liveTranscript?.trim().isNotEmpty == true) ...[
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 28 * s),
+                  child: Text(
+                    liveTranscript!.trim(),
+                    textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15 * s,
+                      height: 1.35,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 18 * s),
+              ],
               MiraStopButton(
                 size: StopButtonTokens.defaultSize * s,
                 onTap: onStop,
@@ -337,11 +358,13 @@ class _ProcessingBody extends StatelessWidget {
   const _ProcessingBody({
     required this.scale,
     required this.uploading,
+    this.liveTranscript,
     this.belowPageHeader = false,
   });
 
   final double scale;
   final bool uploading;
+  final String? liveTranscript;
   final bool belowPageHeader;
 
   double _headlineTop(double s) => belowPageHeader
@@ -391,8 +414,12 @@ class _ProcessingBody extends StatelessWidget {
           left: 24 * s,
           right: 24 * s,
           child: Text(
-            'Just a moment',
+            liveTranscript?.trim().isNotEmpty == true
+                ? liveTranscript!.trim()
+                : 'Just a moment',
             textAlign: TextAlign.center,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
             style: AppTypography.dosis(
               size: 16 * s,
               color: AppColors.subtitle,

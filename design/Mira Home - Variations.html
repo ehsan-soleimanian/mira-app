@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="design_doc_mode" content="canvas" />
+<title>Mira — Home Variations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #F4F4F1;
+    --card:      #FBFBF9;
+    --ink:       #1B1C24;
+    --muted:     #8A8B92;
+    --faint:     #B7B8BE;
+    --navy:      #14328C;
+    --peri:      #7E8BC9;
+    --peri-soft: #EDEFF8;
+    --line:      #E9E9E4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Vazirmatn, -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+
+  .frame { position: absolute; }
+  .caption { font-family: Dosis, sans-serif; font-weight: 600; font-size: 26px; color: #2b2c33; margin-bottom: 4px; }
+  .caption-sub { font-size: 14px; color: #7c7d85; margin-bottom: 22px; max-width: 419px; line-height: 1.5; }
+
+  /* ── device ── */
+  .bezel {
+    width: 419px; height: 878px; padding: 13px; border-radius: 56px;
+    background: linear-gradient(150deg,#2b2c30 0%,#46474c 18%,#1d1e21 40%,#3a3b40 70%,#232427 100%);
+    box-shadow: 0 50px 100px -20px rgba(20,22,40,.45), 0 18px 40px -16px rgba(20,22,40,.35),
+                inset 0 0 0 1.5px rgba(255,255,255,.10), inset 0 0 2px 2px rgba(0,0,0,.5);
+  }
+  .screen {
+    position: relative; width: 393px; height: 852px; border-radius: 44px; overflow: hidden;
+    background: var(--bg); display: flex; flex-direction: column;
+  }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 124px; height: 36px; border-radius: 20px; background: #000; z-index: 50; }
+  .statusbar { position: absolute; top: 0; left: 0; right: 0; height: 48px; z-index: 40; display: flex; align-items: center; justify-content: space-between; padding: 16px 32px 0; }
+  .clock { font-family: -apple-system, system-ui; font-weight: 600; font-size: 15px; color: var(--ink); letter-spacing: .2px; }
+  .status-icons { display: flex; align-items: center; gap: 7px; }
+  .home-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 139px; height: 5px; border-radius: 100px; background: rgba(0,0,0,.28); z-index: 60; }
+
+  /* ── header ── */
+  .header { padding: 62px 26px 0; display: flex; align-items: flex-start; justify-content: space-between; }
+  .greet-eyebrow { font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: .2px; }
+  .greet-name { font-family: Dosis, sans-serif; font-weight: 600; font-size: 22px; color: var(--ink); line-height: 1.1; margin-top: 2px; }
+  .gear { width: 42px; height: 42px; border-radius: 50%; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; transition: transform .12s ease; }
+  .gear:active { transform: scale(.92); }
+
+  /* ── hero ── */
+  .hero { padding: 30px 26px 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .hero--tight { padding-top: 22px; }
+  .orb { position: relative; width: 92px; height: 92px; border-radius: 50%;
+    background: radial-gradient(circle at 36% 30%, #aeb9e8 0%, #8b98d6 42%, #6472b6 100%);
+    box-shadow: 0 18px 40px -14px rgba(90,105,180,.55), inset 0 2px 6px rgba(255,255,255,.5);
+    animation: breathe 6s ease-in-out infinite; }
+  .orb--sm { width: 74px; height: 74px; }
+  .orb::after { content:""; position:absolute; inset: 12px; border-radius:50%;
+    background: radial-gradient(circle at 62% 66%, rgba(255,255,255,.35), rgba(255,255,255,0) 55%); }
+  .orb-ring { position:absolute; inset:-14px; border-radius:50%; border:1px solid rgba(126,139,201,.28); animation: pulse 6s ease-in-out infinite; }
+  .hero-title { font-family: Dosis, sans-serif; font-weight: 700; font-size: 27px; line-height: 1.22; color: var(--ink); margin: 24px 0 0; letter-spacing: .2px; max-width: 300px; }
+  .hero-title--sm { font-size: 24px; margin-top: 18px; }
+  .hero-sub { font-size: 14px; line-height: 1.6; color: var(--muted); margin: 12px 0 0; max-width: 290px; }
+
+  /* ── capture ── */
+  .capture { margin: 26px 26px 0; }
+  .capture--tight { margin-top: 22px; }
+  .capture-field {
+    display: flex; align-items: center; gap: 12px; height: 62px; padding: 0 8px 0 20px;
+    background: var(--card); border-radius: 20px; box-shadow: 0 6px 22px -14px rgba(30,34,70,.30), inset 0 0 0 1px var(--line);
+  }
+  .capture-ph { flex: 1; font-size: 15px; color: var(--faint); }
+  .mic { width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0; border: none; cursor: pointer;
+    background: radial-gradient(circle at 38% 30%, #3a5ad0, #14328C);
+    box-shadow: 0 8px 18px -6px rgba(20,50,140,.55); display: flex; align-items: center; justify-content: center; transition: transform .12s ease; }
+  .mic:active { transform: scale(.92); }
+
+  .modes { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px; }
+  .mode { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 100px;
+    background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); font-size: 12.5px; font-weight: 500;
+    border: none; cursor: pointer; transition: background .15s ease, color .15s ease; }
+  .mode:hover { background: #fff; color: var(--ink); }
+  .mode svg { flex-shrink: 0; }
+
+  /* ── surfaced ── */
+  .surfaced { margin: 30px 26px 0; }
+  .surfaced-label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .surfaced-label .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--peri); }
+  .surface-card { display: flex; gap: 14px; padding: 18px; background: var(--card); border-radius: 18px; box-shadow: inset 0 0 0 1px var(--line); }
+  .surface-node { position: relative; flex-shrink: 0; width: 34px; display: flex; justify-content: center; padding-top: 3px; }
+  .surface-node .n { width: 12px; height: 12px; border-radius: 50%; background: var(--peri); box-shadow: 0 0 0 4px var(--peri-soft); }
+  .surface-node .stem { position: absolute; top: 18px; bottom: -22px; width: 1.5px; background: linear-gradient(var(--peri) 0%, transparent 100%); opacity: .35; }
+  .surface-body { flex: 1; }
+  .surface-text { font-size: 14px; line-height: 1.55; color: var(--ink); }
+  .surface-text b { font-weight: 600; }
+  .surface-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .s-btn { height: 34px; padding: 0 16px; border-radius: 10px; border: none; cursor: pointer; font-family: Vazirmatn, sans-serif; font-weight: 600; font-size: 13px; transition: transform .12s ease, filter .15s ease; }
+  .s-btn:active { transform: scale(.97); }
+  .s-btn--solid { background: var(--navy); color: #fff; }
+  .s-btn--solid:hover { filter: brightness(1.1); }
+  .s-btn--ghost { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
+
+  /* ── recent memories ── */
+  .recents { margin: 26px 26px 0; }
+  .recents-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .recents-see { border: none; background: none; cursor: pointer; font-family: Vazirmatn, sans-serif; font-size: 12px; font-weight: 600; color: var(--peri); }
+  .rlist { position: relative; }
+  .rlist::before { content: ""; position: absolute; left: 5.5px; top: 22px; bottom: 22px; width: 1.5px; background: linear-gradient(var(--peri-soft), var(--peri) 30%, var(--peri) 70%, var(--peri-soft)); opacity: .7; }
+  .ritem { position: relative; display: flex; gap: 16px; align-items: flex-start; padding: 13px 0; cursor: pointer; }
+  .ritem:not(:last-child) { box-shadow: inset 0 -1px 0 var(--line); }
+  .rnode { position: relative; z-index: 1; flex-shrink: 0; margin-top: 4px; width: 13px; height: 13px; border-radius: 50%; background: var(--card); box-shadow: 0 0 0 3px var(--peri-soft), inset 0 0 0 3px var(--peri); }
+  .rbody { flex: 1; min-width: 0; }
+  .rtitle { font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink); }
+  .rmeta { display: flex; align-items: center; gap: 7px; margin-top: 5px; font-size: 12px; color: var(--faint); }
+  .rmeta .sep { width: 3px; height: 3px; border-radius: 50%; background: var(--faint); }
+  .rmeta svg { color: var(--peri); }
+  .rlink { display: inline-flex; align-items: center; gap: 5px; color: var(--peri); font-weight: 500; }
+
+  /* ── bottom nav ── */
+  .spacer { flex: 1; }
+  .nav { position: relative; height: 96px; padding: 0 30px 22px; display: flex; align-items: flex-end; justify-content: space-between; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 6px; font-family: Vazirmatn, sans-serif; font-size: 11px; font-weight: 500; color: var(--faint); transition: color .15s ease; }
+  .nav-item.is-active { color: var(--navy); }
+  .nav-item:hover { color: var(--muted); }
+  .nav-item.is-active:hover { color: var(--navy); }
+  .nav-spacer { width: 64px; }
+  .nav-mic { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%);
+    width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
+    background: radial-gradient(circle at 38% 30%, #8b98d6, #5b69ad);
+    box-shadow: 0 14px 28px -8px rgba(70,85,150,.6), inset 0 2px 4px rgba(255,255,255,.4);
+    display: flex; align-items: center; justify-content: center; transition: transform .14s ease; }
+  .nav-mic:active { transform: translateX(-50%) scale(.93); }
+
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @keyframes pulse { 0%,100% { transform: scale(1); opacity: .5; } 50% { transform: scale(1.12); opacity: .15; } }
+  @media (prefers-reduced-motion: reduce) { .orb, .orb-ring { animation: none !important; } }
+</style>
+</head>
+<body>
+
+  <!-- ══ Variation A — Surfaced (calm, single proactive card) ══ -->
+  <div class="frame" style="left: 120px; top: 120px;">
+    <div class="caption">A · Proactive</div>
+    <div class="caption-sub">The calmest state — Mira surfaces one relevant memory, nothing more.</div>
+    <div class="bezel">
+      <div class="screen" data-screen-label="Home A — Proactive">
+        <div class="island"></div>
+        <div class="statusbar">
+          <span class="clock">9:41</span>
+          <span class="status-icons">
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x="0" y="7" width="3" height="5" rx="1" fill="#1B1C24"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#1B1C24"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#1B1C24"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#1B1C24"/></svg>
+            <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="19" height="10" rx="3" stroke="#1B1C24" stroke-opacity="0.4"/><rect x="2.5" y="2.5" width="15" height="7" rx="1.6" fill="#1B1C24"/><rect x="21" y="4" width="1.6" height="4" rx="0.8" fill="#1B1C24" fill-opacity=".4"/></svg>
+          </span>
+        </div>
+        <div class="header">
+          <div>
+            <div class="greet-eyebrow">Good evening</div>
+            <div class="greet-name">Sara</div>
+          </div>
+          <button class="gear" aria-label="Settings">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6B6C73" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+        <div class="hero">
+          <div class="orb"><span class="orb-ring"></span></div>
+          <h1 class="hero-title">Your memory is<br/>quiet and ready</h1>
+          <p class="hero-sub">Drop a thought and let it go. Mira remembers it, connects it, and brings it back at the right time.</p>
+        </div>
+        <div class="capture">
+          <div class="capture-field">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B7B8BE" stroke-width="1.7" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span class="capture-ph">Type or say anything…</span>
+            <button class="mic" aria-label="Speak">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg>
+            </button>
+          </div>
+          <div class="modes">
+            <button class="mode"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/></svg>Voice</button>
+            <button class="mode"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/></svg>Photo</button>
+            <button class="mode"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/></svg>Screenshot</button>
+            <button class="mode"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Link</button>
+          </div>
+        </div>
+        <div class="surfaced">
+          <div class="surfaced-label"><span class="dot"></span>Mira surfaced this for you</div>
+          <div class="surface-card">
+            <div class="surface-node"><span class="n"></span><span class="stem"></span></div>
+            <div class="surface-body">
+              <p class="surface-text">Your note about the <b>contract with John</b> connects to a call tomorrow. Want me to hold a reminder?</p>
+              <div class="surface-actions">
+                <button class="s-btn s-btn--solid">Remind me</button>
+                <button class="s-btn s-btn--ghost">Not now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="nav">
+          <button class="nav-item is-active">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+            Home
+          </button>
+          <button class="nav-item">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h11"/><path d="M4 10h11"/><path d="M4 15h7"/><circle cx="18.5" cy="16.5" r="3"/><path d="M20.8 18.8 23 21"/></svg>
+            Library
+          </button>
+          <div class="nav-spacer"></div>
+          <button class="nav-item">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><circle cx="5.5" cy="18" r="2.4"/><circle cx="18.5" cy="18" r="2.4"/><path d="M11 7 6.6 15.8"/><path d="M13 7l4.4 8.8"/><path d="M7.9 18h8.2"/></svg>
+            Canvas
+          </button>
+          <button class="nav-item">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+            Brief
+          </button>
+          <button class="nav-mic" aria-label="Capture by voice">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg>
+          </button>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Variation B — Recent memories ══ -->
+  <div class="frame" style="left: 700px; top: 120px;">
+    <div class="caption">B · Recent memories</div>
+    <div class="caption-sub">A quiet thread of what you just captured — a calm sense of continuity without the card grid.</div>
+    <div class="bezel">
+      <div class="screen" data-screen-label="Home B — Recent memories">
+        <div class="island"></div>
+        <div class="statusbar">
+          <span class="clock">9:41</span>
+          <span class="status-icons">
+            <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x="0" y="7" width="3" height="5" rx="1" fill="#1B1C24"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#1B1C24"/><rect x="10" y="2" width="3" height="10" rx="1" fill="#1B1C24"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#1B1C24"/></svg>
+            <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="19" height="10" rx="3" stroke="#1B1C24" stroke-opacity="0.4"/><rect x="2.5" y="2.5" width="15" height="7" rx="1.6" fill="#1B1C24"/><rect x="21" y="4" width="1.6" height="4" rx="0.8" fill="#1B1C24" fill-opacity=".4"/></svg>
+          </span>
+        </div>
+        <div class="header">
+          <div>
+            <div class="greet-eyebrow">Good evening</div>
+            <div class="greet-name">Sara</div>
+          </div>
+          <button class="gear" aria-label="Settings">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#6B6C73" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+        <div class="hero hero--tight">
+          <div class="orb orb--sm"><span class="orb-ring"></span></div>
+          <h1 class="hero-title hero-title--sm">Your memory is<br/>quiet and ready</h1>
+        </div>
+        <div class="capture capture--tight">
+          <div class="capture-field">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#B7B8BE" stroke-width="1.7" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span class="capture-ph">Type or say anything…</span>
+            <button class="mic" aria-label="Speak">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="recents">
+          <div class="recents-head">
+            <div class="surfaced-label"><span class="dot"></span>Recently captured</div>
+            <button class="recents-see">See all</button>
+          </div>
+          <div class="rlist">
+            <div class="ritem">
+              <span class="rnode"></span>
+              <div class="rbody">
+                <div class="rtitle">Contract with John — needs a call to confirm terms</div>
+                <div class="rmeta">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  Note <span class="sep"></span> 2h ago <span class="sep"></span>
+                  <span class="rlink"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7"/><path d="M8.2 13.2 15.8 17"/></svg>3 links</span>
+                </div>
+              </div>
+            </div>
+            <div class="ritem">
+              <span class="rnode"></span>
+              <div class="rbody">
+                <div class="rtitle">Book Maya recommended — “The Overstory”</div>
+                <div class="rmeta">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/></svg>
+                  Voice <span class="sep"></span> Yesterday
+                </div>
+              </div>
+            </div>
+            <div class="ritem">
+              <span class="rnode"></span>
+              <div class="rbody">
+                <div class="rtitle">Idea — a quiet weekend on the coast in spring</div>
+                <div class="rmeta">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  Note <span class="sep"></span> 2 days ago
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="spacer"></div>
+        <div class="nav">
+          <button class="nav-item is-active">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+            Home
+          </button>
+          <button class="nav-item">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h11"/><path d="M4 10h11"/><path d="M4 15h7"/><circle cx="18.5" cy="16.5" r="3"/><path d="M20.8 18.8 23 21"/></svg>
+            Library
+          </button>
+          <div class="nav-spacer"></div>
+          <button class="nav-item">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><circle cx="5.5" cy="18" r="2.4"/><circle cx="18.5" cy="18" r="2.4"/><path d="M11 7 6.6 15.8"/><path d="M13 7l4.4 8.8"/><path d="M7.9 18h8.2"/></svg>
+            Canvas
+          </button>
+          <button class="nav-item">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+            Brief
+          </button>
+          <button class="nav-mic" aria-label="Capture by voice">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/></svg>
+          </button>
+        </div>
+        <div class="home-indicator"></div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

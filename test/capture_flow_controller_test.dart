@@ -70,6 +70,7 @@ CaptureFlowController _controller(VoiceRecorderPort recorder) {
   return CaptureFlowController(
     captureRepository: repository,
     voiceRecorder: recorder,
+    realtimeVoiceEnabled: false,
   );
 }
 
@@ -81,6 +82,12 @@ class _FakeVoiceRecorder implements VoiceRecorderPort {
   Stream<double> get amplitudeStream => const Stream.empty();
 
   @override
+  Stream<List<int>>? get realtimeAudioStream => null;
+
+  @override
+  bool get supportsRealtimeAudio => false;
+
+  @override
   bool get isRecording => _recording;
 
   @override
@@ -89,6 +96,9 @@ class _FakeVoiceRecorder implements VoiceRecorderPort {
     _recording = true;
     return true;
   }
+
+  @override
+  Future<bool> startRealtime() => Future.value(false);
 
   @override
   Future<VoiceRecordingResult> stop() async {

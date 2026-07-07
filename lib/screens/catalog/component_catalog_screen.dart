@@ -3,6 +3,7 @@ import 'package:mira_app/components/components.dart';
 import 'package:mira_app/screens/catalog/bottom_nav_preview_pane.dart';
 import 'package:mira_app/screens/catalog/composer_preview_pane.dart';
 import 'package:mira_app/screens/catalog/ear_nav_mic_button_preview_pane.dart';
+import 'package:mira_app/screens/catalog/inset_mic_button_preview_pane.dart';
 import 'package:mira_app/screens/catalog/mira_input_preview_pane.dart';
 import 'package:mira_app/screens/catalog/note_card_preview_pane.dart';
 import 'package:mira_app/screens/catalog/mira_button_preview_pane.dart';
@@ -62,15 +63,14 @@ class _ComponentCatalogScreenState extends State<ComponentCatalogScreen> {
               runSpacing: MiraSpacing.sm,
               children: [
                 FilledButton(
-                  onPressed: () => Navigator.of(context).pushMira(
-                    (_) => const HomeScreen(),
-                  ),
+                  onPressed: () =>
+                      Navigator.of(context).pushMira((_) => const HomeScreen()),
                   child: const Text('Home Screen'),
                 ),
                 FilledButton(
-                  onPressed: () => Navigator.of(context).pushMira(
-                    (_) => const DailyBriefScreen(),
-                  ),
+                  onPressed: () => Navigator.of(
+                    context,
+                  ).pushMira((_) => const DailyBriefScreen()),
                   child: const Text('Daily Brief'),
                 ),
               ],
@@ -127,6 +127,11 @@ class _ComponentCatalogScreenState extends State<ComponentCatalogScreen> {
           const _Section(
             title: 'Molecules / MiraEarNavMicButton (741:4986-mic)',
             child: EarNavMicButtonPreviewPane(),
+          ),
+          const SizedBox(height: MiraSpacing.md),
+          const _Section(
+            title: 'Molecules / MiraInsetMicButton',
+            child: InsetMicButtonPreviewPane(),
           ),
           const SizedBox(height: MiraSpacing.md),
           const _Section(

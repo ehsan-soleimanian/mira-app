@@ -10,6 +10,7 @@ import 'package:mira_app/core/update/app_release_repository.dart';
 import 'package:mira_app/features/auth/onboarding_repository.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
 import 'package:mira_app/features/capture/capture_ui_phase.dart';
+import 'package:mira_app/features/capture/utils/answer_text_sanitizer.dart';
 import 'package:mira_app/features/capture/utils/capture_errors.dart';
 import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
@@ -33,11 +34,15 @@ class CaptureFlowController extends ChangeNotifier {
   CaptureFlowController({
     required CaptureRepository captureRepository,
     VoiceRecorderPort? voiceRecorder,
+    bool realtimeVoiceEnabled = true,
   }) : _captures = captureRepository,
-       _recorder = voiceRecorder ?? createVoiceRecorder();
+       _recorder = voiceRecorder ?? createVoiceRecorder(),
+       // ignore: prefer_initializing_formals
+       _realtimeVoiceEnabled = realtimeVoiceEnabled;
 
   final CaptureRepository _captures;
   final VoiceRecorderPort _recorder;
+  final bool _realtimeVoiceEnabled;
 
   CaptureUiPhase phase = CaptureUiPhase.idle;
   Duration recordingDuration = Duration.zero;
@@ -45,6 +50,7 @@ class CaptureFlowController extends ChangeNotifier {
   bool usedMockPipeline = false;
   bool requestTextPrompt = false;
   String? requestedPromptText;
+  String? voiceRealtimeTranscript;
 
   /// Active voice long-press session (stays on [VoiceRecordingScreen] until idle).
   bool voiceSessionActive = false;
@@ -60,6 +66,11 @@ class CaptureFlowController extends ChangeNotifier {
 
   Timer? _recordingTimer;
   Stream<double>? _amplitudeStream;
+  RealtimeVoiceSession? _realtimeVoiceSession;
+  StreamSubscription<CaptureStreamEvent>? _realtimeVoiceEvents;
+  Future<void>? _realtimeAudioSend;
+  Completer<int>? _realtimeDuration;
+  Completer<void>? _realtimeDone;
 
   Stream<double> get amplitudeStream =>
       _amplitudeStream ?? const Stream.empty();
@@ -110,7 +121,43 @@ class CaptureFlowController extends ChangeNotifier {
     }
     hideBubbleMenu();
     voiceFailureMessage = null;
-    final started = await _recorder.start();
+    var started = false;
+    try {
+      if (!_realtimeVoiceEnabled) {
+        throw StateError('Realtime voice disabled for this controller');
+      }
+      _realtimeVoiceSession = await _captures.startRealtimeVoiceSession();
+      started = await _recorder.startRealtime();
+      final audioStream = _recorder.realtimeAudioStream;
+      if (!started || audioStream == null) {
+        _realtimeVoiceSession = null;
+        if (started) {
+          await _recorder.cancel();
+        }
+        started = await _recorder.start();
+      } else {
+        _realtimeDuration = Completer<int>();
+        _realtimeDone = Completer<void>();
+        _realtimeAudioSend = _captures.sendRealtimeVoiceAudio(
+          session: _realtimeVoiceSession!,
+          audioStream: audioStream,
+          durationMs: _realtimeDuration!.future,
+        );
+        _realtimeVoiceEvents = _captures
+            .streamRealtimeVoiceEvents(_realtimeVoiceSession!)
+            .listen(
+              _handleRealtimeVoiceEvent,
+              onError: (Object error) {
+                if (!(_realtimeDone?.isCompleted ?? true)) {
+                  _realtimeDone?.completeError(error);
+                }
+              },
+            );
+      }
+    } catch (_) {
+      _realtimeVoiceSession = null;
+      started = await _recorder.start();
+    }
     if (!started) {
       if (phase == CaptureUiPhase.bubbleMenu) {
         phase = CaptureUiPhase.idle;
@@ -124,6 +171,7 @@ class CaptureFlowController extends ChangeNotifier {
     activeCaptureId = null;
     pendingProposal = null;
     voiceSessionPrompt = null;
+    voiceRealtimeTranscript = null;
     phase = CaptureUiPhase.recording;
     _recordingTimer?.cancel();
     _recordingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -135,6 +183,12 @@ class CaptureFlowController extends ChangeNotifier {
 
   Future<void> cancelRecording() async {
     _recordingTimer?.cancel();
+    await _realtimeVoiceEvents?.cancel();
+    _realtimeVoiceEvents = null;
+    _realtimeVoiceSession = null;
+    _realtimeAudioSend = null;
+    _realtimeDuration = null;
+    _realtimeDone = null;
     await _recorder.cancel();
     recordingDuration = Duration.zero;
     voiceFailureMessage = null;
@@ -177,6 +231,21 @@ class CaptureFlowController extends ChangeNotifier {
     notifyListeners();
 
     final result = await _recorder.stop();
+    if (_realtimeVoiceSession != null) {
+      phase = CaptureUiPhase.processing;
+      notifyListeners();
+      _realtimeDuration?.complete(result.duration.inMilliseconds);
+      try {
+        await _realtimeAudioSend;
+        await _realtimeDone?.future.timeout(const Duration(seconds: 35));
+      } catch (error) {
+        _enterVoiceFailure(formatVoiceCaptureError(error));
+      } finally {
+        recordingDuration = Duration.zero;
+        notifyListeners();
+      }
+      return;
+    }
     phase = CaptureUiPhase.processing;
     notifyListeners();
 
@@ -272,6 +341,7 @@ class CaptureFlowController extends ChangeNotifier {
     activeCaptureId = null;
     pendingProposal = null;
     voiceSessionPrompt = null;
+    voiceRealtimeTranscript = null;
     pendingTimeClarification = null;
     pendingIntentClarification = null;
     approvalBusy = false;
@@ -284,9 +354,70 @@ class CaptureFlowController extends ChangeNotifier {
     activeCaptureId = null;
     pendingProposal = null;
     voiceSessionPrompt = null;
+    voiceRealtimeTranscript = null;
     approvalBusy = false;
     pendingTimeClarification = null;
     pendingIntentClarification = null;
+    pendingEntityClarification = null;
+    _realtimeVoiceSession = null;
+    _realtimeAudioSend = null;
+    _realtimeDuration = null;
+  }
+
+  void _handleRealtimeVoiceEvent(CaptureStreamEvent event) {
+    switch (event.event) {
+      case 'ready':
+      case 'heartbeat':
+        return;
+      case 'transcript_delta':
+      case 'transcript_final':
+        voiceRealtimeTranscript = event.data['text']?.toString();
+        notifyListeners();
+        break;
+      case 'capture_created':
+        activeCaptureId = event.data['captureId']?.toString();
+        notifyListeners();
+        break;
+      case 'proposal':
+        final captureId = activeCaptureId;
+        if (captureId != null) {
+          _enterVoiceApproval(captureId, event.data);
+        }
+        break;
+      case 'question_answer':
+        lastAnswer = sanitizeAssistantAnswer(
+          event.data['answer']?.toString() ?? '',
+        );
+        _resetVoiceSession();
+        phase = CaptureUiPhase.idle;
+        notifyListeners();
+        break;
+      case 'clarification':
+        pendingIntentClarification = {
+          'prompt': event.data['prompt']?.toString(),
+        };
+        phase = CaptureUiPhase.approving;
+        notifyListeners();
+        break;
+      case 'error':
+        _enterVoiceFailure(
+          event.data['detail']?.toString() ?? 'Voice processing failed.',
+        );
+        if (!(_realtimeDone?.isCompleted ?? true)) {
+          _realtimeDone?.complete();
+        }
+        break;
+      case 'done':
+        if (phase == CaptureUiPhase.processing) {
+          _resetVoiceSession();
+          phase = CaptureUiPhase.idle;
+          notifyListeners();
+        }
+        if (!(_realtimeDone?.isCompleted ?? true)) {
+          _realtimeDone?.complete();
+        }
+        break;
+    }
   }
 
   void _enterVoiceApproval(String captureId, Map<String, dynamic> proposal) {
@@ -357,14 +488,20 @@ class CaptureFlowController extends ChangeNotifier {
             await _handleProposal(sheetContext, created.captureId, event.data);
           }
         case 'question_answer':
-          lastAnswer = event.data['answer'] as String?;
+          lastAnswer = sanitizeAssistantAnswer(
+            event.data['answer']?.toString() ?? '',
+          );
           if (presentation == _CapturePresentation.voiceRoute) {
             _resetVoiceSession();
             phase = CaptureUiPhase.idle;
           } else if (sheetContext != null && sheetContext.mounted) {
             ScaffoldMessenger.of(sheetContext).showSnackBar(
               SnackBar(
-                content: Text(lastAnswer ?? 'Answer received'),
+                content: Text(
+                  lastAnswer?.isNotEmpty == true
+                      ? lastAnswer!
+                      : 'Answer received',
+                ),
                 behavior: SnackBarBehavior.floating,
               ),
             );
@@ -452,14 +589,14 @@ class CaptureFlowController extends ChangeNotifier {
         );
       }
     } else if (created.state == 'question_answered' && created.answer != null) {
-      lastAnswer = created.answer;
+      lastAnswer = sanitizeAssistantAnswer(created.answer!);
       if (presentation == _CapturePresentation.voiceRoute) {
         _resetVoiceSession();
         phase = CaptureUiPhase.idle;
       } else if (sheetContext != null && sheetContext.mounted) {
         ScaffoldMessenger.of(sheetContext).showSnackBar(
           SnackBar(
-            content: Text(created.answer!),
+            content: Text(lastAnswer!),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -518,7 +655,7 @@ class CaptureFlowController extends ChangeNotifier {
         _enterVoiceApproval(captureId, updated.proposal!);
       } else if (updated.state == 'question_answered' &&
           updated.answer != null) {
-        lastAnswer = updated.answer;
+        lastAnswer = sanitizeAssistantAnswer(updated.answer!);
         _resetVoiceSession();
         phase = CaptureUiPhase.idle;
       } else if (updated.state == 'clarification_needed') {
@@ -653,11 +790,11 @@ class CaptureFlowController extends ChangeNotifier {
         await _handleProposal(context, captureId, updated.proposal!);
       }
     } else if (updated.state == 'question_answered' && updated.answer != null) {
-      lastAnswer = updated.answer;
+      lastAnswer = sanitizeAssistantAnswer(updated.answer!);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(updated.answer!)));
+        ).showSnackBar(SnackBar(content: Text(lastAnswer!)));
       }
     }
   }
@@ -665,6 +802,7 @@ class CaptureFlowController extends ChangeNotifier {
   @override
   void dispose() {
     _recordingTimer?.cancel();
+    _realtimeVoiceEvents?.cancel();
     final recorder = _recorder;
     if (recorder is DeviceVoiceRecorder) {
       recorder.dispose();
@@ -801,7 +939,10 @@ class MiraServices {
       googleSignInService: googleSignInService,
     );
     final onboardingRepository = OnboardingRepository(apiClient: apiClient);
-    final captureRepository = CaptureRepository(apiClient: apiClient);
+    final captureRepository = CaptureRepository(
+      apiClient: apiClient,
+      tokenStorage: tokenStorage,
+    );
     final dailyBriefRepository = DailyBriefRepository(apiClient: apiClient);
     final graphRepository = GraphRepository(apiClient: apiClient);
     final settingsRepository = SettingsRepository(apiClient: apiClient);

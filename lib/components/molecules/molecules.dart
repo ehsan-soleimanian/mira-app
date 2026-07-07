@@ -10,6 +10,7 @@ export 'mira_add_button.dart';
 export 'mira_ear_nav_mic_button.dart';
 export 'mira_ear_notch_bar_painter.dart';
 export 'mira_gradient_border_painter.dart';
+export 'mira_inset_mic_button.dart';
 export 'mira_input_field.dart';
 export 'mira_primary_button.dart';
 export 'mira_inner_shadow_painter.dart';

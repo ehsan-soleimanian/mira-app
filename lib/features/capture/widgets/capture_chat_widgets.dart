@@ -97,6 +97,17 @@ class CaptureDraftReview extends StatelessWidget {
     required this.summary,
     required this.nodeType,
     required this.label,
+    required this.sourceLabel,
+    required this.memoryLabel,
+    required this.savedAsLabel,
+    required this.emptySummaryLabel,
+    required this.moreContextLabel,
+    this.sourceTitle = '',
+    this.sourceType = '',
+    this.deadline = '',
+    this.relatedLabels = const [],
+    this.insightLabels = const [],
+    this.needsMoreContext = false,
   });
 
   final double scale;
@@ -104,16 +115,36 @@ class CaptureDraftReview extends StatelessWidget {
   final String summary;
   final String nodeType;
   final String label;
+  final String sourceLabel;
+  final String memoryLabel;
+  final String savedAsLabel;
+  final String emptySummaryLabel;
+  final String moreContextLabel;
+  final String sourceTitle;
+  final String sourceType;
+  final String deadline;
+  final List<String> relatedLabels;
+  final List<String> insightLabels;
+  final bool needsMoreContext;
 
   @override
   Widget build(BuildContext context) {
     final s = scale;
     final accent = AppColors.micBlueNav;
+    final sourceText = [
+      if (sourceType.trim().isNotEmpty) _humanizeSourceType(sourceType),
+      if (sourceTitle.trim().isNotEmpty) sourceTitle.trim(),
+    ].join(' / ');
+    final chips = <String>[
+      if (deadline.trim().isNotEmpty) deadline.trim(),
+      ...relatedLabels.take(2),
+      ...insightLabels.where((item) => item.trim() != title.trim()).take(2),
+    ];
 
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        constraints: BoxConstraints(maxWidth: 292 * s),
+        constraints: BoxConstraints(maxWidth: 340 * s),
         padding: EdgeInsets.fromLTRB(14 * s, 12 * s, 14 * s, 14 * s),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -157,42 +188,191 @@ class CaptureDraftReview extends StatelessWidget {
                 ),
                 if (nodeType.trim().isNotEmpty) ...[
                   SizedBox(width: 8 * s),
-                  Flexible(
-                    child: Text(
-                      nodeType,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
-                      style: AppTypography.dosis(
-                        size: 12 * s,
-                        weight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
+                  _DraftChip(scale: s, text: nodeType),
                 ],
               ],
             ),
-            if (title.trim().isNotEmpty) ...[
+            if (sourceText.isNotEmpty) ...[
               SizedBox(height: 12 * s),
-              MiraMarkdownText(
-                data: title,
+              _DraftSection(
                 scale: s,
-                fontSize: 17,
-                color: AppColors.textPrimary,
+                icon: Icons.insert_drive_file_outlined,
+                label: sourceLabel,
+                child: Text(
+                  sourceText,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.dosis(
+                    size: 14 * s,
+                    weight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
             ],
-            if (summary.trim().isNotEmpty &&
-                summary.trim() != title.trim()) ...[
-              SizedBox(height: 8 * s),
-              MiraMarkdownText(
-                data: summary,
-                scale: s,
-                fontSize: 14,
-                color: AppColors.textSecondary,
+            SizedBox(height: 10 * s),
+            _DraftSection(
+              scale: s,
+              icon: Icons.bookmark_added_outlined,
+              label: memoryLabel,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (title.trim().isNotEmpty)
+                    MiraMarkdownText(
+                      data: title,
+                      scale: s,
+                      fontSize: 17,
+                      color: AppColors.textPrimary,
+                    ),
+                  SizedBox(height: 6 * s),
+                  MiraMarkdownText(
+                    data:
+                        summary.trim().isNotEmpty &&
+                            summary.trim() != title.trim()
+                        ? summary
+                        : emptySummaryLabel,
+                    scale: s,
+                    fontSize: 13,
+                    color:
+                        summary.trim().isNotEmpty &&
+                            summary.trim() != title.trim()
+                        ? AppColors.textSecondary
+                        : AppColors.hintText,
+                  ),
+                ],
+              ),
+            ),
+            if (chips.isNotEmpty) ...[
+              SizedBox(height: 12 * s),
+              Wrap(
+                spacing: 6 * s,
+                runSpacing: 6 * s,
+                children: [
+                  for (final chip in chips) _DraftChip(scale: s, text: chip),
+                ],
+              ),
+            ],
+            SizedBox(height: 12 * s),
+            _DraftSection(
+              scale: s,
+              icon: Icons.inventory_2_outlined,
+              label: savedAsLabel,
+              child: Text(
+                nodeType.trim().isNotEmpty ? nodeType : 'Memory',
+                style: AppTypography.dosis(
+                  size: 14 * s,
+                  weight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            if (needsMoreContext) ...[
+              SizedBox(height: 12 * s),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 10 * s,
+                  vertical: 9 * s,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F8FC),
+                  borderRadius: BorderRadius.circular(10 * s),
+                ),
+                child: Text(
+                  moreContextLabel,
+                  style: AppTypography.dosis(
+                    size: 12 * s,
+                    weight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  String _humanizeSourceType(String value) {
+    final normalized = value.trim().replaceAll('_', ' ');
+    if (normalized.isEmpty) return '';
+    return normalized[0].toUpperCase() + normalized.substring(1);
+  }
+}
+
+class _DraftSection extends StatelessWidget {
+  const _DraftSection({
+    required this.scale,
+    required this.icon,
+    required this.label,
+    required this.child,
+  });
+
+  final double scale;
+  final IconData icon;
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = scale;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16 * s, color: AppColors.textSecondary),
+        SizedBox(width: 8 * s),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.dosis(
+                  size: 11 * s,
+                  weight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              SizedBox(height: 3 * s),
+              child,
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DraftChip extends StatelessWidget {
+  const _DraftChip({required this.scale, required this.text});
+
+  final double scale;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = scale;
+
+    return Container(
+      constraints: BoxConstraints(maxWidth: 150 * s),
+      padding: EdgeInsets.symmetric(horizontal: 8 * s, vertical: 5 * s),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F3FA),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTypography.dosis(
+          size: 11 * s,
+          weight: FontWeight.w600,
+          color: AppColors.textSecondary,
         ),
       ),
     );

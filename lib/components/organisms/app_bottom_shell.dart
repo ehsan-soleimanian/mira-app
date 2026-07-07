@@ -102,7 +102,7 @@ class _AppBottomShellState extends State<AppBottomShell> {
   }
 
   Future<void> _submitPrompt(String value) async {
-    final text = value.trim();
+    final text = _preparePromptForCapture(value.trim());
     if (text.isEmpty) return;
     _closePromptInput();
     await _flow?.submitPrompt(context, text);
@@ -153,6 +153,54 @@ class _AppBottomShellState extends State<AppBottomShell> {
       recordingProgress: _recordingProgress,
     );
   }
+}
+
+String _preparePromptForCapture(String text) {
+  if (text.isEmpty || !_containsPersian(text)) return text;
+
+  const askPrefix = 'what do i know about ';
+  final lower = text.toLowerCase();
+  if (lower.startsWith(askPrefix)) {
+    final topic = text.substring(askPrefix.length).trim();
+    if (topic.isNotEmpty) {
+      return 'درباره‌ی $topic چه چیزهایی می‌دانی؟ لطفا کامل و فقط فارسی پاسخ بده.';
+    }
+  }
+
+  if (_looksLikeQuestion(text) && !_asksForPersian(text)) {
+    return '$text\nلطفا کامل و فقط فارسی پاسخ بده.';
+  }
+  return text;
+}
+
+bool _containsPersian(String value) =>
+    RegExp(r'[\u0600-\u06FF]').hasMatch(value);
+
+bool _asksForPersian(String value) {
+  final normalized = value.toLowerCase();
+  return normalized.contains('فارسی') || normalized.contains('persian');
+}
+
+bool _looksLikeQuestion(String value) {
+  final lower = value.toLowerCase().trimLeft();
+  if (value.contains('?') || value.contains('؟')) return true;
+  return lower.startsWith('who ') ||
+      lower.startsWith('what ') ||
+      lower.startsWith('when ') ||
+      lower.startsWith('where ') ||
+      lower.startsWith('why ') ||
+      lower.startsWith('how ') ||
+      lower.startsWith('do ') ||
+      lower.startsWith('does ') ||
+      lower.startsWith('did ') ||
+      lower.startsWith('آیا ') ||
+      lower.startsWith('چی ') ||
+      lower.startsWith('چه ') ||
+      lower.startsWith('کی ') ||
+      lower.startsWith('کجا ') ||
+      lower.startsWith('چرا ') ||
+      lower.startsWith('چطور ') ||
+      lower.startsWith('درباره');
 }
 
 class _WorkspaceBottomNav extends StatelessWidget {

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mira — Canvas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Dosis:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F4F4F1; --card: #FBFBF9; --ink: #1B1C24; --muted: #8A8B92; --faint: #B7B8BE;
+    --navy: #14328C; --peri: #7E8BC9; --peri-soft: #EDEFF8; --line: #E9E9E4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: radial-gradient(1200px 800px at 50% -12%, #ffffff 0%, #ececeb 60%, #e4e4e6 100%);
+    font-family: Vazirmatn, -apple-system, system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage { transform-origin: center center; }
+
+  .bezel { width: 419px; height: 878px; padding: 13px; border-radius: 56px;
+    background: linear-gradient(150deg,#2b2c30 0%,#46474c 18%,#1d1e21 40%,#3a3b40 70%,#232427 100%);
+    box-shadow: 0 50px 100px -20px rgba(20,22,40,.45), 0 18px 40px -16px rgba(20,22,40,.35), inset 0 0 0 1.5px rgba(255,255,255,.10), inset 0 0 2px 2px rgba(0,0,0,.5); }
+  .screen { position: relative; width: 393px; height: 852px; border-radius: 44px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+  .island { position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 124px; height: 36px; border-radius: 20px; background: #000; z-index: 50; }
+  .statusbar { position: absolute; top: 0; left: 0; right: 0; height: 48px; z-index: 40; display: flex; align-items: center; justify-content: space-between; padding: 16px 32px 0; }
+  .clock { font-family: -apple-system, system-ui; font-weight: 600; font-size: 15px; color: var(--ink); }
+  .home-indicator { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 139px; height: 5px; border-radius: 100px; background: rgba(0,0,0,.28); z-index: 60; }
+
+  /* header */
+  .c-header { position: relative; z-index: 20; padding: 58px 22px 12px; display: flex; align-items: center; gap: 12px; background: linear-gradient(180deg, var(--bg) 62%, rgba(244,244,241,0)); }
+  .c-board { flex: 1; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .c-swatch { width: 40px; height: 40px; border-radius: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(150deg,#1b3b7a,#12245c); color: #fff; box-shadow: 0 8px 18px -8px rgba(20,40,110,.5); }
+  .c-board .tx { min-width: 0; }
+  .c-board .t { font-family: Dosis, sans-serif; font-weight: 700; font-size: 21px; color: var(--ink); line-height: 1.05; display: flex; align-items: center; gap: 6px; }
+  .c-board .t svg { color: var(--faint); }
+  .c-board .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .c-icbtn { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; transition: transform .12s ease; }
+  .c-icbtn:active { transform: scale(.92); }
+  .c-avatars { display: flex; }
+  .c-avatars span { width: 30px; height: 30px; border-radius: 50%; margin-left: -8px; box-shadow: 0 0 0 2px var(--bg); display: flex; align-items: center; justify-content: center; font-family: Dosis; font-weight: 700; font-size: 12px; color: #fff; }
+  .c-avatars span:first-child { margin-left: 0; }
+
+  /* board surface */
+  .c-canvas { position: absolute; inset: 0; overflow: hidden; touch-action: none;
+    background-color: #F1F1EC;
+    background-image: radial-gradient(rgba(120,122,135,.18) 1.2px, transparent 1.2px);
+    background-size: 22px 22px; }
+  .c-pan { position: absolute; left: 0; top: 0; width: 1200px; height: 1200px; transform-origin: 0 0; transition: transform .5s cubic-bezier(.2,.7,.2,1); }
+  .c-edges { position: absolute; left: 0; top: 0; width: 1200px; height: 1200px; overflow: visible; pointer-events: none; }
+  .c-edges path { fill: none; stroke: var(--peri); stroke-width: 2; opacity: .4; stroke-linecap: round; }
+  .c-edges path.dashed { stroke-dasharray: 2 7; opacity: .55; }
+  .c-edges path.edge-new { stroke: var(--navy); opacity: .85; stroke-width: 2.4; stroke-dasharray: 340; stroke-dashoffset: 340; animation: drawEdge .6s ease forwards; }
+  @keyframes drawEdge { to { stroke-dashoffset: 0; } }
+
+  /* group frame */
+  .frame { position: absolute; border-radius: 26px; background: rgba(126,139,201,.07); box-shadow: inset 0 0 0 1.5px rgba(126,139,201,.28); }
+  .frame .flabel { position: absolute; top: -12px; right: 18px; height: 24px; padding: 0 12px; border-radius: 100px; background: var(--peri); color: #fff; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: 0 6px 14px -6px rgba(90,105,180,.5); }
+
+  /* cards */
+  .cc { position: absolute; width: 158px; border-radius: 16px; background: var(--card); box-shadow: 0 10px 24px -14px rgba(20,22,40,.4), inset 0 0 0 1px var(--line); cursor: grab; transition: box-shadow .2s ease, transform .18s cubic-bezier(.2,.7,.2,1); user-select: none; }
+  .cc:active { cursor: grabbing; }
+  .cc.lift { box-shadow: 0 22px 44px -16px rgba(20,22,40,.5), inset 0 0 0 1.5px var(--peri); transform: scale(1.03); z-index: 30; }
+  .cc-head { display: flex; align-items: center; gap: 8px; padding: 11px 12px 0; }
+  .cc-tp { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 100px; font-size: 10px; font-weight: 600; }
+  .cc-tp.note { background: var(--peri-soft); color: var(--navy); }
+  .cc-tp.voice { background: #E7EFEA; color: #2E7D4F; }
+  .cc-tp.link { background: #FBEFE7; color: #B65A2E; }
+  .cc-tp.event { background: #EAE7F6; color: #5B4B9E; }
+  .cc-tp.task { background: #EAF1EE; color: #2E7D4F; }
+  .cc-body { padding: 9px 12px 13px; }
+  .cc-t { font-size: 13.5px; font-weight: 600; color: var(--ink); line-height: 1.32; }
+  .cc-s { font-size: 11.5px; color: var(--muted); line-height: 1.4; margin-top: 4px; }
+  .cc-photo { height: 92px; border-radius: 16px 16px 0 0; position: relative; overflow: hidden; background: linear-gradient(160deg,#2c5578,#16324f 70%); }
+  .cc-photo::after { content:""; position:absolute; inset:0; background: radial-gradient(circle at 30% 20%, rgba(240,220,180,.4), transparent 55%), linear-gradient(0deg, rgba(10,20,40,.35), transparent 50%); }
+  .cc-photo .cap { position: absolute; left: 10px; bottom: 8px; z-index: 1; color: #fff; font-size: 11px; font-weight: 500; text-shadow: 0 1px 4px rgba(0,0,0,.4); }
+  /* person card */
+  .cc.person { width: 128px; }
+  .cc.person .p-row { display: flex; align-items: center; gap: 10px; padding: 12px; }
+  .cc .p-av { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; background: radial-gradient(circle at 36% 30%, #aeb9e8, #7482c2 70%); color: #fff; display: flex; align-items: center; justify-content: center; font-family: Dosis; font-weight: 700; font-size: 17px; }
+  .cc .p-nm { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+  .cc .p-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  /* checklist sticky */
+  .cc.sticky { width: 150px; background: #FDF6E3; box-shadow: 0 10px 24px -14px rgba(120,100,30,.45), inset 0 0 0 1px rgba(190,160,70,.3); }
+  .cc.sticky .cc-t { color: #6a5312; }
+  .chk { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; color: #7a6526; }
+  .chk .box { width: 15px; height: 15px; border-radius: 5px; flex-shrink: 0; box-shadow: inset 0 0 0 1.5px rgba(160,130,50,.6); display: flex; align-items: center; justify-content: center; }
+  .chk.done .box { background: #C79A2E; box-shadow: none; }
+  .chk.done span { text-decoration: line-through; opacity: .6; }
+
+  /* Mira suggestion pill (proactive connection) */
+  .c-suggest { position: absolute; left: 14px; right: 14px; bottom: 168px; z-index: 32; display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-radius: 18px; background: rgba(20,22,40,.92); backdrop-filter: blur(8px); box-shadow: 0 18px 40px -16px rgba(20,22,40,.55); transition: opacity .3s ease, transform .3s ease; }
+  .c-suggest.hide { opacity: 0; transform: translateY(14px); pointer-events: none; }
+  .c-suggest .orb { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; background: radial-gradient(circle at 36% 30%, #aeb9e8, #6472b6 75%); box-shadow: inset 0 2px 4px rgba(255,255,255,.4); animation: breathe 5s ease-in-out infinite; }
+  .c-suggest .tx { flex: 1; font-size: 12.5px; line-height: 1.4; color: #fff; }
+  .c-suggest .tx b { font-weight: 600; }
+  .c-suggest .add { flex-shrink: 0; height: 30px; padding: 0 13px; border-radius: 9px; border: none; cursor: pointer; background: #fff; color: var(--navy); font-family: Vazirmatn; font-weight: 600; font-size: 12px; }
+  .c-suggest .dismiss { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; border: none; cursor: pointer; background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); display: flex; align-items: center; justify-content: center; }
+
+  /* right-side toolbar */
+  .c-tools { position: absolute; right: 14px; top: 118px; z-index: 34; display: flex; flex-direction: column; gap: 8px; padding: 7px; border-radius: 100px; background: rgba(251,251,249,.9); backdrop-filter: blur(10px); box-shadow: 0 10px 26px -12px rgba(20,22,40,.35), inset 0 0 0 1px rgba(255,255,255,.6); }
+  .tool { width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; transition: background .15s ease, color .15s ease; }
+  .tool:hover { background: var(--peri-soft); color: var(--navy); }
+  .tool.on { background: var(--navy); color: #fff; }
+
+  /* zoom / fit chip */
+  .c-fit { position: absolute; left: 14px; bottom: 116px; z-index: 33; display: flex; align-items: center; gap: 2px; padding: 4px; border-radius: 100px; background: rgba(251,251,249,.9); backdrop-filter: blur(10px); box-shadow: inset 0 0 0 1px var(--line); }
+  .c-fit button { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .c-fit button:hover { background: var(--peri-soft); color: var(--navy); }
+  .c-fit .lvl { min-width: 40px; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* bottom nav */
+  .nav { position: absolute; left: 0; right: 0; bottom: 0; z-index: 35; height: 96px; padding: 0 30px 22px; display: flex; align-items: flex-end; justify-content: space-between; background: linear-gradient(180deg, rgba(244,244,241,0), var(--bg) 55%); }
+  .navitem { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: none; cursor: pointer; padding: 6px; font-family: Vazirmatn, sans-serif; font-size: 11px; font-weight: 500; color: var(--faint); }
+  .navitem.is-active { color: var(--navy); }
+  .navspacer { width: 64px; }
+  .navmic { position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
+    background: radial-gradient(circle at 38% 30%, #8b98d6, #5b69ad); box-shadow: 0 14px 28px -8px rgba(70,85,150,.6), inset 0 2px 4px rgba(255,255,255,.4); display: flex; align-items: center; justify-content: center; }
+
+  /* connect mode */
+  .c-connect-banner { position: absolute; top: 0; left: 0; right: 0; z-index: 44; padding: 54px 16px 14px; display: none; align-items: center; gap: 11px; background: linear-gradient(180deg, var(--navy) 70%, rgba(20,50,140,0)); }
+  .c-connect-banner.show { display: flex; }
+  .ccb-orb { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; background: radial-gradient(circle at 36% 30%, #aeb9e8, #6472b6 75%); box-shadow: inset 0 2px 4px rgba(255,255,255,.4); }
+  .ccb-tx { flex: 1; color: #fff; font-size: 13px; line-height: 1.3; }
+  .ccb-tx b { font-weight: 700; }
+  .ccb-tx small { display: block; font-size: 11.5px; color: rgba(255,255,255,.75); margin-top: 1px; }
+  .ccb-done { flex-shrink: 0; height: 32px; padding: 0 15px; border-radius: 10px; border: none; cursor: pointer; background: #fff; color: var(--navy); font-family: Vazirmatn; font-weight: 600; font-size: 13px; }
+
+  .connecting .cc { cursor: pointer; box-shadow: 0 10px 24px -14px rgba(20,22,40,.4), inset 0 0 0 1.5px rgba(126,139,201,.5); }
+  .screen.conn .c-header { opacity: 0; pointer-events: none; }
+  .connecting .cc:hover { box-shadow: 0 14px 30px -14px rgba(20,22,40,.45), inset 0 0 0 1.5px var(--peri); }
+  .connecting .cc.src { box-shadow: 0 20px 42px -16px rgba(20,50,140,.5), inset 0 0 0 2.5px var(--navy); transform: scale(1.03); z-index: 33; }
+  .connecting .cc.src::after { content:""; position: absolute; inset: -6px; border-radius: 20px; border: 1.5px dashed var(--peri); animation: srcPulse 1.6s ease-in-out infinite; }
+  @keyframes srcPulse { 0%,100% { opacity: .4; transform: scale(1); } 50% { opacity: .9; transform: scale(1.02); } }
+
+  .rel-label { position: absolute; transform: translate(-50%,-50%); z-index: 20; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: 100px; background: var(--navy); color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: 0 6px 14px -6px rgba(20,50,140,.55); opacity: 0; animation: relIn .4s ease .35s forwards; }
+  @keyframes relIn { to { opacity: 1; } }
+  .rel-label svg { opacity: .85; }
+
+  /* demo toggle */
+  .state-toggle { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 100; display: flex; gap: 3px; padding: 4px; border-radius: 100px; background: rgba(255,255,255,.82); backdrop-filter: blur(10px); box-shadow: 0 6px 20px -8px rgba(20,22,40,.3), inset 0 0 0 1px rgba(255,255,255,.6); }
+  .state-toggle button { border: none; background: none; cursor: pointer; height: 30px; padding: 0 15px; border-radius: 100px; font-family: Vazirmatn, sans-serif; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .state-toggle button.on { background: var(--navy); color: #fff; }
+
+  @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } .c-pan { transition: none; } }
+</style>
+</head>
+<body>
+  <div class="state-toggle">
+    <button id="stBoard" class="on" onclick="setMode('board')">Board</button>
+    <button id="stConnect" onclick="setMode('connect')">Connect</button>
+  </div>
+  <div id="wrap"><div id="stage">
+    <div class="bezel"><div class="screen" data-screen-label="Canvas">
+      <div class="island"></div>
+
+      <!-- connect mode banner -->
+      <div class="c-connect-banner" id="connectBanner">
+        <span class="ccb-orb"></span>
+        <span class="ccb-tx" id="ccbTx"><b>Connect mode</b><small>Tap a memory, then another, to link them.</small></span>
+        <button class="ccb-done" onclick="setMode('board')">Done</button>
+      </div>
+
+      <!-- board surface (behind header) -->
+      <div class="c-canvas" id="canvas">
+        <div class="c-pan" id="pan">
+          <svg class="c-edges" id="edges" viewBox="0 0 1200 1200">
+            <path d="M250 300 C 300 340, 300 380, 268 430" />
+            <path d="M330 300 C 380 330, 420 360, 452 402" />
+            <path d="M300 470 C 360 500, 400 520, 452 470" />
+            <path d="M250 560 C 300 590, 360 600, 300 640" />
+            <path class="dashed" d="M492 452 C 520 520, 470 590, 392 636" />
+          </svg>
+
+          <!-- group frame -->
+          <div class="frame" style="left:150px; top:250px; width:360px; height:300px;">
+            <span class="flabel"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>Spring · the coast</span>
+          </div>
+
+          <!-- seed idea note -->
+          <div class="cc" style="left:170px; top:200px; transform: rotate(-2deg);" data-card>
+            <div class="cc-head"><span class="cc-tp note"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Note</span></div>
+            <div class="cc-body"><div class="cc-t">A quiet weekend on the coast</div><div class="cc-s">Somewhere slow, near the water — spring.</div></div>
+          </div>
+
+          <!-- photo -->
+          <div class="cc" style="left:360px; top:196px; transform: rotate(2deg);" data-card>
+            <div class="cc-photo"><span class="cap">Big Sur · saved photo</span></div>
+            <div class="cc-body"><div class="cc-t">Big Sur shoreline</div></div>
+          </div>
+
+          <!-- flight -->
+          <div class="cc" style="left:180px; top:400px; transform: rotate(-1deg);" data-card>
+            <div class="cc-head"><span class="cc-tp voice"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/></svg>Voice</span></div>
+            <div class="cc-body"><div class="cc-t">Flight SA 482 · Aug 2</div><div class="cc-s">Check-in reminder set for Aug 1.</div></div>
+          </div>
+
+          <!-- airbnb link -->
+          <div class="cc" style="left:380px; top:392px; transform: rotate(1.5deg);" data-card>
+            <div class="cc-head"><span class="cc-tp link"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>Link</span></div>
+            <div class="cc-body"><div class="cc-t">Cabin by the water</div><div class="cc-s">Airbnb — saved to compare.</div></div>
+          </div>
+
+          <!-- checklist sticky -->
+          <div class="cc sticky" style="left:190px; top:596px; transform: rotate(-2.5deg);" data-card>
+            <div class="cc-body">
+              <div class="cc-t">Pack list</div>
+              <div class="chk done"><span class="box"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"><path d="m5 12 5 5 9-11"/></svg></span><span>Camera</span></div>
+              <div class="chk"><span class="box"></span><span>Warm layers</span></div>
+              <div class="chk"><span class="box"></span><span>The Overstory</span></div>
+            </div>
+          </div>
+
+          <!-- book -->
+          <div class="cc" style="left:470px; top:560px; transform: rotate(2deg);" data-card>
+            <div class="cc-head"><span class="cc-tp note"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H18v18H6.5A2.5 2.5 0 0 0 4 22.5z"/><path d="M4 4.5v15"/></svg>Book</span></div>
+            <div class="cc-body"><div class="cc-t">"The Overstory"</div><div class="cc-s">Maya's rec — a weekend read.</div></div>
+          </div>
+
+          <!-- person: Maya -->
+          <div class="cc person" style="left:560px; top:452px; transform: rotate(-1.5deg);" data-card>
+            <div class="p-row"><span class="p-av">M</span><div><div class="p-nm">Maya</div><div class="p-sub">joining · maybe</div></div></div>
+          </div>
+        </div>
+
+        <!-- Mira proactive suggestion -->
+        <div class="c-suggest" id="suggest">
+          <span class="orb"></span>
+          <span class="tx"><b>Blue Note</b> plays near the coast that same weekend. Add it to this board?</span>
+          <button class="add">Add</button>
+          <button class="dismiss" onclick="document.getElementById('suggest').classList.add('hide')" aria-label="Dismiss"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </div>
+
+        <!-- right toolbar -->
+        <div class="c-tools">
+          <button class="tool on" title="Move"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg></button>
+          <button class="tool" title="Add card"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg></button>
+          <button class="tool" title="Text"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6h14M12 6v13"/></svg></button>
+          <button class="tool" title="Connect"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8 8l8 8"/></svg></button>
+        </div>
+
+        <!-- zoom -->
+        <div class="c-fit">
+          <button onclick="zoomBy(-0.15)" aria-label="Zoom out">−</button>
+          <span class="lvl" id="lvl">70%</span>
+          <button onclick="zoomBy(0.15)" aria-label="Zoom in">+</button>
+        </div>
+      </div>
+
+      <!-- header (floats over board) -->
+      <div class="c-header">
+        <div class="c-board">
+          <span class="c-swatch"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
+          <span class="tx">
+            <span class="t">Coast trip <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+            <span class="s">8 memories · edited 2h ago</span>
+          </span>
+        </div>
+        <div class="c-avatars">
+          <span style="background:radial-gradient(circle at 36% 30%,#aeb9e8,#6472b6)">S</span>
+          <span style="background:radial-gradient(circle at 36% 30%,#e9b6b0,#c26a76)">M</span>
+        </div>
+        <button class="c-icbtn" aria-label="Share"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6B6C73" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13M8 7l4-4 4 4"/></svg></button>
+      </div>
+
+      <div class="nav">
+        <button class="navitem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Home</button>
+        <button class="navitem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h11"/><path d="M4 10h11"/><path d="M4 15h7"/><circle cx="18.5" cy="16.5" r="3"/><path d="M20.8 18.8 23 21"/></svg>Library</button>
+        <div class="navspacer"></div>
+        <button class="navitem is-active"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.4"/><circle cx="5.5" cy="18" r="2.4"/><circle cx="18.5" cy="18" r="2.4"/><path d="M11 7 6.6 15.8"/><path d="M13 7l4.4 8.8"/><path d="M7.9 18h8.2"/></svg>Canvas</button>
+        <button class="navitem"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>Brief</button>
+        <button class="navmic" aria-label="Capture"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button>
+      </div>
+
+      <div class="home-indicator"></div>
+    </div></div>
+  </div></div>
+
+  <script>
+    const pan = document.getElementById('pan');
+    let offX = -100, offY = 17, scale = 0.7;
+    function applyPan() { pan.style.transform = `translate(${offX}px, ${offY}px) scale(${scale})`; document.getElementById('lvl').textContent = Math.round(scale*100) + '%'; }
+    function zoomBy(d) {
+      const cw = document.getElementById('canvas').clientWidth, ch = document.getElementById('canvas').clientHeight;
+      const cx = cw/2, cy = ch/2;
+      const ns = Math.max(0.4, Math.min(1.4, scale + d));
+      // zoom toward center
+      offX = cx - (cx - offX) * (ns/scale);
+      offY = cy - (cy - offY) * (ns/scale);
+      scale = ns; applyPan();
+    }
+    applyPan();
+
+    // pan by dragging empty board
+    const canvas = document.getElementById('canvas');
+    let drag = null;
+    canvas.addEventListener('pointerdown', e => {
+      if (e.target.closest('.cc') || e.target.closest('.c-tools') || e.target.closest('.c-fit') || e.target.closest('.c-suggest') || e.target.closest('.c-header') || e.target.closest('.nav')) return;
+      drag = { x: e.clientX, y: e.clientY, ox: offX, oy: offY }; pan.style.transition = 'none';
+    });
+    addEventListener('pointermove', e => {
+      if (!drag) return;
+      offX = drag.ox + (e.clientX - drag.x); offY = drag.oy + (e.clientY - drag.y); applyPan();
+    });
+    addEventListener('pointerup', () => { if (drag) { pan.style.transition = ''; drag = null; } });
+
+    // drag individual cards
+    document.querySelectorAll('[data-card]').forEach(card => {
+      let cd = null;
+      card.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        if (connecting) return; // in connect mode, taps link cards instead of dragging
+        const m = /rotate\(([-0-9.]+)deg\)/.exec(card.style.transform);
+        cd = { x: e.clientX, y: e.clientY, l: parseFloat(card.style.left), t: parseFloat(card.style.top), rot: m ? m[1] : 0 };
+        card.classList.add('lift'); card.setPointerCapture(e.pointerId);
+      });
+      card.addEventListener('pointermove', e => {
+        if (!cd) return;
+        card.style.left = (cd.l + (e.clientX - cd.x) / scale) + 'px';
+        card.style.top  = (cd.t + (e.clientY - cd.y) / scale) + 'px';
+      });
+      card.addEventListener('pointerup', e => { if (cd) { card.classList.remove('lift'); cd = null; } });
+      card.addEventListener('click', e => { if (connecting) { e.stopPropagation(); handleConnectTap(card); } });
+    });
+
+    // toolbar active state
+    document.querySelectorAll('.c-tools .tool').forEach((t, i) => {
+      t.addEventListener('click', () => {
+        if (i === 3) { setMode('connect'); return; }
+        setMode('board');
+        document.querySelectorAll('.c-tools .tool').forEach(o => o.classList.remove('on'));
+        t.classList.add('on');
+      });
+    });
+
+    // ── connect mode ──────────────────────────────────────
+    let connecting = false, srcCard = null;
+    function setMode(mode) {
+      const on = mode === 'connect';
+      connecting = on;
+      canvas.classList.toggle('connecting', on);
+      document.querySelector('.screen').classList.toggle('conn', on);
+      document.getElementById('connectBanner').classList.toggle('show', on);
+      document.getElementById('stBoard').classList.toggle('on', !on);
+      document.getElementById('stConnect').classList.toggle('on', on);
+      // the toolbar Connect tool reflects the mode too
+      document.querySelectorAll('.c-tools .tool').forEach((t, i) => t.classList.toggle('on', on ? i === 3 : i === 0));
+      // Mira quietens her suggestion while you're wiring things up
+      document.getElementById('suggest').classList.toggle('hide', on);
+      clearSrc();
+      resetBanner();
+    }
+    function clearSrc() { if (srcCard) srcCard.classList.remove('src'); srcCard = null; }
+    function resetBanner() { document.getElementById('ccbTx').innerHTML = '<b>Connect mode</b><small>Tap a memory, then another, to link them.</small>'; }
+
+    // suggest a relationship label from the two cards' content
+    function suggestRelation(a, b) {
+      const t = (a.textContent + ' ' + b.textContent).toLowerCase();
+      if (t.includes('maya')) return 'with Maya';
+      if (t.includes('overstory') || t.includes('pack')) return 'to bring';
+      if (t.includes('flight') || t.includes('cabin') || t.includes('coast') || t.includes('big sur')) return 'same trip';
+      return 'related';
+    }
+    function centerOf(card) {
+      return { x: parseFloat(card.style.left) + card.offsetWidth / 2, y: parseFloat(card.style.top) + card.offsetHeight / 2 };
+    }
+    function drawConnection(a, b) {
+      const A = centerOf(a), B = centerOf(b);
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      const NS = 'http://www.w3.org/2000/svg';
+      const path = document.createElementNS(NS, 'path');
+      const cx1 = A.x + (mx - A.x) * .6, cy1 = A.y, cx2 = B.x - (B.x - mx) * .6, cy2 = B.y;
+      path.setAttribute('d', `M${A.x} ${A.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${B.x} ${B.y}`);
+      path.setAttribute('class', 'edge-new');
+      document.getElementById('edges').appendChild(path);
+      // relationship label at midpoint (lives in pan so it scales with the board)
+      const lbl = document.createElement('div');
+      lbl.className = 'rel-label';
+      lbl.style.left = mx + 'px'; lbl.style.top = my + 'px';
+      lbl.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>' + suggestRelation(a, b);
+      pan.appendChild(lbl);
+    }
+    function handleConnectTap(card) {
+      if (!srcCard) {
+        srcCard = card; card.classList.add('src');
+        document.getElementById('ccbTx').innerHTML = '<b>Now tap another memory</b><small>Mira will suggest how they connect.</small>';
+      } else if (card !== srcCard) {
+        drawConnection(srcCard, card);
+        clearSrc();
+        document.getElementById('ccbTx').innerHTML = '<b>Linked ✓</b><small>Tap another memory to keep connecting.</small>';
+      }
+    }
+
+    function fit() {
+      const stage = document.getElementById('stage');
+      const bezel = stage.querySelector('.bezel');
+      const s = Math.min((innerWidth - 40) / bezel.offsetWidth, (innerHeight - 40) / bezel.offsetHeight, 1.15);
+      stage.style.transform = `scale(${s})`;
+    }
+    addEventListener('resize', fit); fit(); setTimeout(fit, 200);
+  </script>
+</body>
+</html>

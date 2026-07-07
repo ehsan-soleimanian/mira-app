@@ -51,8 +51,12 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/auth/refresh` | `api_client.dart` | Rotate access token |
 | `GET` | `/auth/me` | `auth_repository.dart`, onboarding | Current user profile |
 | `POST` | `/auth/onboarding` | `onboarding_repository.dart` | Complete onboarding wizard |
+| `GET` | `/auth/onboarding/setup` | redesigned onboarding | Read full setup-wizard answers |
+| `POST` | `/auth/onboarding/setup` | redesigned onboarding | Save setup wizard preferences, sources, permissions |
 | `GET` | `/auth/settings` | `settings_repository.dart` | User preferences |
 | `PATCH` | `/auth/settings` | `settings_repository.dart` | Update preferences |
+| `GET` | `/auth/notification-settings` | settings / notifications | Detailed Brief/reminder/quiet-hours preferences |
+| `PATCH` | `/auth/notification-settings` | settings / notifications | Update detailed notification preferences |
 | `POST` | `/captures` | `capture_repository.dart` | Text capture |
 | `POST` | `/captures/transcribe` | `capture_repository.dart` | STT only (onboarding) |
 | `POST` | `/captures/voice` | `capture_repository.dart` | Voice capture (home) |
@@ -69,12 +73,17 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/v2/tasks` | `graph_repository.dart` | Open tasks list |
 | `PATCH` | `/v2/tasks/{id}` | `graph_repository.dart` | Update task status/title/due |
 | `DELETE` | `/v2/captures/{id}` | `graph_repository.dart` | Archive capture + cascade |
+| `GET` | `/v2/captures/{id}` | redesigned memory detail | Capture text, UI state, and connected graph nodes/edges |
 | `PATCH` | `/v2/captures/{id}` | `graph_repository.dart` | Display title-only edit |
+| `PATCH` | `/v2/captures/{id}/state` | redesigned memory detail | Pin/reminder/collection UI state for a memory |
 | `POST` | `/v2/captures/{id}/correct` | `graph_repository.dart` | Semantic correction (re-ingest) |
 | `POST` | `/v2/assertions/{id}/reject` | `graph_repository.dart` | Reject assertion from entity sheet |
 | `GET` | `/v2/search` | — | Hybrid entity + capture search |
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
+| `GET` | `/daily-brief` | redesigned Daily Brief | Rich Brief state: full, empty, overdue, first-time |
+| `POST` | `/daily-brief/items/{id}/actions` | redesigned Daily Brief | Done, snooze, dismiss, open, undo-snooze card action |
+| `POST` | `/daily-brief/clear-overdue` | redesigned Daily Brief | Snooze all overdue Brief tasks until tomorrow |
 | `POST` | `/canvas` | `canvas_repository.dart` | Create a visual workspace board |
 | `GET` | `/canvas` | `canvas_repository.dart` | List user's visual workspace boards |
 | `GET` | `/canvas/{id}` | `canvas_repository.dart` | Fetch a visual board |
@@ -84,6 +93,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/library/imports/text` | `library_repository.dart` | Import pasted text, exports, HTML, notes |
 | `POST` | `/library/search-v2` | `library_repository.dart` | Chunk-level Library search with snippets/citations |
 | `POST` | `/library/meetings` | `library_repository.dart` | Import meeting transcript or meeting media |
+| `POST` | `/library/items/bulk-actions` | redesigned Library selection bar | Pin, archive, restore, delete, add/remove collection for selected items |
 | `GET` | `/library/items/{id}/chunks` | `library_repository.dart` | Extracted text/transcript/OCR chunks |
 | `POST` | `/library/items/{id}/save-to-graph` | `library_repository.dart` | Send extracted Library text into Graph V2 via save capture |
 | `GET` | `/library/items/{id}/annotations` | `library_repository.dart` | Reader annotations for an item |
@@ -95,6 +105,11 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/plugins` | `plugin_repository.dart` | Connector registry and status |
 | `POST` | `/plugins/{id}/connect` | `plugin_repository.dart` | Configure connector adapter |
 | `POST` | `/plugins/{id}/sync` | `plugin_repository.dart` | Manual connector sync into Library |
+| `GET` | `/reminders` | `reminders_repository.dart` | List reminders (optional `?done=true\|false`) |
+| `POST` | `/reminders` | `reminders_repository.dart` | Create a reminder |
+| `GET` | `/reminders/{id}` | `reminders_repository.dart` | Get one reminder |
+| `PATCH` | `/reminders/{id}` | `reminders_repository.dart` | Toggle done / reschedule / edit title |
+| `DELETE` | `/reminders/{id}` | `reminders_repository.dart` | Delete a reminder |
 | `POST` | `/waitlist` | Landing (Next.js) | Waitlist signup — public, no auth |
 
 ---
@@ -107,9 +122,10 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 4. [Graph & Daily Update](#graph--daily-update)
 5. [Workspace Library & Connectors](#workspace-library--connectors)
 6. [Waitlist (Landing)](#waitlist-landing)
-7. [Super Admin](#super-admin)
-8. [Flutter integration notes](#flutter-integration-notes)
-9. [Planned — Phase 4+](#planned--phase-4)
+7. [Reminders](#reminders)
+8. [Super Admin](#super-admin)
+9. [Flutter integration notes](#flutter-integration-notes)
+10. [Planned — Phase 4+](#planned--phase-4)
 
 App-facing routes summary: [App endpoints (quick reference)](#app-endpoints-quick-reference).
 
@@ -1629,6 +1645,81 @@ Admin Bearer. Query: `limit` (default 100, max 500), `offset` (default 0).
 `DELETE /admin/api/waitlist/{entry_id}`
 
 Admin Bearer. **Response** `200` `{ "deleted": true }` · **404** when not found.
+
+---
+
+## Reminders
+
+App-facing reminders the user attaches to captures, tasks, and memories (Daily Brief tasks, the Memory reminder toggle, Chat "set reminder", the Capture review step). All routes require a **user Bearer** token. Stored relationally in MariaDB (not the graph); `source_node_id` optionally links a reminder to the graph node it came from.
+
+### Create reminder
+`POST /reminders`
+
+```json
+{
+  "title": "Call John to confirm the Q3 scope",
+  "remind_at": "2026-08-01T09:00:00Z",
+  "source_node_id": "capture-or-entity-id"
+}
+```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `title` | string | yes | 1–500 chars |
+| `remind_at` | string (ISO 8601) \| null | no | when to surface it |
+| `source_node_id` | string \| null | no | graph node this reminder relates to |
+
+**Response** `201`
+```json
+{
+  "id": "uuid",
+  "title": "Call John to confirm the Q3 scope",
+  "remind_at": "2026-08-01T09:00:00+00:00",
+  "source_node_id": "capture-or-entity-id",
+  "done": false,
+  "created_at": "2026-07-07T12:00:00+00:00",
+  "updated_at": "2026-07-07T12:00:00+00:00"
+}
+```
+**422** on validation error (empty or over-long title).
+
+### List reminders
+`GET /reminders`
+
+User Bearer. Query: `done` (`true`/`false`, optional), `limit` (default 100, max 500), `offset` (default 0). Newest first.
+
+**Response** `200`
+```json
+{
+  "count": 1,
+  "items": [
+    {
+      "id": "uuid",
+      "title": "Buy Blue Note tickets",
+      "remind_at": null,
+      "source_node_id": null,
+      "done": false,
+      "created_at": "2026-07-07T12:00:00+00:00",
+      "updated_at": "2026-07-07T12:00:00+00:00"
+    }
+  ]
+}
+```
+
+### Get reminder
+`GET /reminders/{id}` — User Bearer. Returns the reminder, or **404** when not found or not owned.
+
+### Update reminder
+`PATCH /reminders/{id}`
+
+Partial update — only fields present in the body are changed. Commonly used to toggle `done` or reschedule.
+```json
+{ "done": true }
+```
+**Response** `200` (the updated reminder) · **404** when not found · **422** on validation error.
+
+### Delete reminder
+`DELETE /reminders/{id}` — User Bearer. **Response** `204` · **404** when not found.
 
 ---
 

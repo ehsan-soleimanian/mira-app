@@ -5,6 +5,28 @@ class VoiceTranscriptResult {
   final String source;
 }
 
+class RealtimeVoiceSession {
+  const RealtimeVoiceSession({
+    required this.sessionId,
+    required this.eventsPath,
+    required this.audioWsPath,
+    required this.expiresAt,
+  });
+
+  factory RealtimeVoiceSession.fromJson(Map<String, dynamic> json) =>
+      RealtimeVoiceSession(
+        sessionId: json['sessionId'] as String,
+        eventsPath: json['eventsPath'] as String,
+        audioWsPath: json['audioWsPath'] as String,
+        expiresAt: DateTime.parse(json['expiresAt'] as String),
+      );
+
+  final String sessionId;
+  final String eventsPath;
+  final String audioWsPath;
+  final DateTime expiresAt;
+}
+
 class CaptureResponse {
   const CaptureResponse({
     required this.captureId,

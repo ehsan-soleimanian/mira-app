@@ -109,6 +109,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeOpenGraph => 'Open graph';
 
   @override
+  String get homeWorkspaceLibrary => 'Library';
+
+  @override
+  String get homeWorkspaceCanvas => 'Canvas';
+
+  @override
+  String get homeAnswerTitle => 'Mira found this';
+
+  @override
+  String get homeAnswerSourceLabel => 'Approved memory';
+
+  @override
+  String get homeContinueTitle => 'Keep the conversation going';
+
+  @override
+  String get homeContinuePrompt => 'Ask a follow-up or add a correction';
+
+  @override
+  String get homeContinueResponseHint =>
+      'The next answer will update the card above.';
+
+  @override
   String get sharedImportAppBarTitle => 'Share to Mira';
 
   @override
@@ -185,11 +207,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'Type naturally. Mira will ask if it needs to choose question vs memory.';
 
   @override
-  String get captureApprovalDraftLabel => 'Mira understood';
+  String get captureApprovalDraftLabel => 'Review before saving';
+
+  @override
+  String get captureApprovalReviewTitle => 'Save this memory?';
+
+  @override
+  String get captureApprovalSourceLabel => 'Source';
+
+  @override
+  String get captureApprovalMemoryLabel => 'Memory draft';
+
+  @override
+  String get captureApprovalSavedAsLabel => 'Will be saved as';
+
+  @override
+  String get captureApprovalEmptySummary => 'No extracted description yet.';
+
+  @override
+  String get captureApprovalMoreContext =>
+      'Only the source is clear so far. Add a note below if Mira should remember what this means.';
 
   @override
   String get captureApprovalSavePrompt =>
-      'I drafted this memory. Want me to adjust anything before I save it?';
+      'Here is exactly what Mira will save. Tell me what to change before I add it to memory.';
 
   @override
   String get captureApprovalSavedPrompt =>

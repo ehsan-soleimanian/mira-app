@@ -3,15 +3,22 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:mira_app/core/api/api_client.dart';
+import 'package:mira_app/core/auth/token_storage.dart';
+import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/features/capture/capture_mock_data.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 import 'package:mira_app/models/api/graph_models.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 /// Capture create, SSE stream, approve/dismiss/confirm-time.
 class CaptureRepository {
-  CaptureRepository({required ApiClient apiClient}) : _dio = apiClient.dio;
+  CaptureRepository({required ApiClient apiClient, TokenStorage? tokenStorage})
+    : _dio = apiClient.dio,
+      // ignore: prefer_initializing_formals
+      _tokenStorage = tokenStorage;
 
   final Dio _dio;
+  final TokenStorage? _tokenStorage;
 
   Future<CaptureResponse> createTextCapture(String text) async {
     final response = await _dio.post<Map<String, dynamic>>(
@@ -154,6 +161,50 @@ class CaptureRepository {
     return CaptureResponse.fromJson(response.data!);
   }
 
+  Future<RealtimeVoiceSession> startRealtimeVoiceSession() async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/voice/realtime',
+    );
+    return RealtimeVoiceSession.fromJson(response.data!);
+  }
+
+  Stream<CaptureStreamEvent> streamRealtimeVoiceEvents(
+    RealtimeVoiceSession session,
+  ) async* {
+    final response = await _dio.get<ResponseBody>(
+      session.eventsPath,
+      options: Options(responseType: ResponseType.stream),
+    );
+    yield* _parseSseStream(response.data!.stream);
+  }
+
+  Future<void> sendRealtimeVoiceAudio({
+    required RealtimeVoiceSession session,
+    required Stream<List<int>> audioStream,
+    required Future<int> durationMs,
+  }) async {
+    final token = await _tokenStorage?.readAccessToken();
+    if (token == null || token.isEmpty) {
+      throw StateError('Missing access token for realtime voice');
+    }
+    final channel = WebSocketChannel.connect(
+      _webSocketUri(session.audioWsPath, token),
+    );
+    try {
+      await channel.ready;
+      await for (final chunk in audioStream) {
+        if (chunk.isNotEmpty) {
+          channel.sink.add(chunk);
+        }
+      }
+      channel.sink.add(
+        jsonEncode({'type': 'end', 'durationMs': await durationMs}),
+      );
+    } finally {
+      await channel.sink.close();
+    }
+  }
+
   bool _shouldUseVoiceMock(DioException error) {
     final code = error.response?.statusCode;
     return error.type == DioExceptionType.connectionError ||
@@ -217,8 +268,12 @@ class CaptureRepository {
       options: Options(responseType: ResponseType.stream),
     );
 
+    yield* _parseSseStream(response.data!.stream);
+  }
+
+  Stream<CaptureStreamEvent> _parseSseStream(Stream<List<int>> stream) async* {
     final buffer = StringBuffer();
-    await for (final chunk in response.data!.stream) {
+    await for (final chunk in stream) {
       buffer.write(utf8.decode(chunk));
       final content = buffer.toString();
       final parts = content.split('\n\n');
@@ -235,6 +290,16 @@ class CaptureRepository {
       final event = _parseSsePart(buffer.toString());
       if (event != null) yield event;
     }
+  }
+
+  Uri _webSocketUri(String path, String token) {
+    final base = Uri.parse(ApiConfig.baseUrl);
+    final scheme = base.scheme == 'https' ? 'wss' : 'ws';
+    return base.replace(
+      scheme: scheme,
+      path: path,
+      queryParameters: {'token': token},
+    );
   }
 
   CaptureStreamEvent? _parseSsePart(String part) {

@@ -20,8 +20,10 @@ class DeviceVoiceRecorder implements VoiceRecorderPort {
   Timer? _ampTimer;
   DateTime? _startedAt;
   String? _path;
+  Stream<List<int>>? _realtimeStream;
   bool _recording = false;
   bool _usingFallback = false;
+  bool _usingRealtime = false;
 
   @override
   bool get isRecording => _recording;
@@ -30,6 +32,12 @@ class DeviceVoiceRecorder implements VoiceRecorderPort {
   Stream<double> get amplitudeStream => _usingFallback
       ? _fallback.amplitudeStream
       : _ampController.stream;
+
+  @override
+  Stream<List<int>>? get realtimeAudioStream => _realtimeStream;
+
+  @override
+  bool get supportsRealtimeAudio => !_usingFallback && _realtimeStream != null;
 
   @override
   Future<bool> start() async {
@@ -63,6 +71,40 @@ class DeviceVoiceRecorder implements VoiceRecorderPort {
     }
   }
 
+  @override
+  Future<bool> startRealtime() async {
+    if (_recording) return true;
+
+    try {
+      if (!await _recorder.hasPermission()) {
+        return false;
+      }
+      final stream = await _recorder.startStream(
+        const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: 16000,
+          numChannels: 1,
+          streamBufferSize: 3200,
+        ),
+      );
+      _realtimeStream = stream;
+      _recording = true;
+      _usingRealtime = true;
+      _startedAt = DateTime.now();
+      _ampTimer = Timer.periodic(const Duration(milliseconds: 80), (_) async {
+        final amp = await _recorder.getAmplitude();
+        final normalized =
+            ((amp.current + 50) / 50).clamp(0.15, 1.0).toDouble();
+        _ampController.add(normalized);
+      });
+      return true;
+    } catch (_) {
+      _realtimeStream = null;
+      _usingRealtime = false;
+      return false;
+    }
+  }
+
   Future<bool> _startFallback() async {
     _usingFallback = true;
     _recording = true;
@@ -79,6 +121,16 @@ class DeviceVoiceRecorder implements VoiceRecorderPort {
 
     final started = _startedAt ?? DateTime.now();
     _ampTimer?.cancel();
+    if (_usingRealtime) {
+      await _recorder.stop();
+      _recording = false;
+      _usingRealtime = false;
+      _startedAt = null;
+      _realtimeStream = null;
+      return VoiceRecordingResult(
+        duration: DateTime.now().difference(started),
+      );
+    }
     final path = _path;
     await _recorder.stop();
     _recording = false;
@@ -113,8 +165,10 @@ class DeviceVoiceRecorder implements VoiceRecorderPort {
       }
     }
     _recording = false;
+    _usingRealtime = false;
     _startedAt = null;
     _path = null;
+    _realtimeStream = null;
   }
 
   void dispose() {

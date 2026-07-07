@@ -1,0 +1,77 @@
+/* Generated from Figma Variables. First mode = :root default.
+   FLOAT tokens are unitless — multiply by 1px in calc() where a length is needed. */
+
+:root {
+  --16: 16;
+  --36: 36;
+  --accents-blue: rgb(0,136,255); /* @kind color */
+  --backgrounds-grouped-primary: rgb(242,242,247); /* @kind color */
+  --brand-primary: rgb(223,158,205); /* @kind color */
+  --brand-secondary: rgb(255,196,127); /* @kind color */
+  --brand-tertiary: rgb(15,52,244); /* @kind color */
+  --color-2: rgb(255,255,255); /* @kind color */
+  --color-backgrounds-controlitembghover: var(--color-neutral-100); /* @kind color */
+  --color-border-colorborder: var(--color-neutral-200); /* @kind color */
+  --color-neutral-100: rgb(245,245,245); /* @kind color */
+  --color-neutral-200: rgb(229,229,229); /* @kind color */
+  --color-neutral-400: rgb(163,163,163); /* @kind color */
+  --color-neutral-500: rgb(115,115,115); /* @kind color */
+  --color-neutral-800: rgb(38,38,38); /* @kind color */
+  --color-texticon-colortextdescription: var(--color-neutral-500); /* @kind color */
+  --color-texticon-colortextheading: var(--color-neutral-800); /* @kind color */
+  --font-family: "Roboto";
+  --font-size-label: 13;
+  --font-weight-regular: 400;
+  --greyscale-black: rgb(26,26,26); /* @kind color */
+  --icon-default-2: rgb(255,255,255); /* @kind color */
+  --icon-default: rgb(255,255,255); /* @kind color */
+  --line-height-label: 16;
+  --neutral-01-2: rgb(4,4,4); /* @kind color */
+  --neutral-01: rgb(10,10,10); /* @kind color */
+  --neutral-02: rgba(122,128,140,0.32); /* @kind color */
+  --neutral-03-2: rgb(122,128,140); /* @kind color */
+  --neutral-03: rgba(122,128,140,0.32); /* @kind color */
+  --neutral-04-2: rgb(122,128,140); /* @kind color */
+  --neutral-04: rgb(250,250,250); /* @kind color */
+  --neutral-05: rgb(255,255,255); /* @kind color */
+  --neutral-4: rgb(141,141,148); /* @kind color */
+  --neutral-black: rgb(13,12,34); /* @kind color */
+  --padding-lg: var(--unit-6);
+  --padding-md: var(--unit-4);
+  --padding-xx-lg: var(--unit-12);
+  --red: rgb(255,146,159); /* @kind color */
+  --spacing-xx-lg: var(--unit-16);
+  --surface-surface: rgb(250,251,254); /* @kind color */
+  --unit-12: 48;
+  --unit-16: 64;
+  --unit-4: 16;
+  --unit-5: 20;
+  --unit-6: 24;
+  --white-for-massage: rgb(221,221,221); /* @kind color */
+}
+
+:root[data-theme="dark"], .dark {
+  --accents-blue: rgb(0,145,255); /* @kind color */
+  --accents-blue: rgb(92,184,255); /* @kind color */
+  --backgrounds-grouped-primary: rgb(0,0,0); /* @kind color */
+  --backgrounds-grouped-primary: rgb(0,0,0); /* @kind color */
+  --brand-tertiary: rgb(82,171,246); /* @kind color */
+  --color-backgrounds-controlitembghover: var(--color-neutral-800); /* @kind color */
+  --color-border-colorborder: var(--color-neutral-500); /* @kind color */
+  --color-texticon-colortextdescription: var(--color-neutral-400); /* @kind color */
+  --color-texticon-colortextheading: var(--color-neutral-100); /* @kind color */
+  --neutral-4: rgb(112,125,175); /* @kind color */
+  --neutral-black: rgb(237,241,253); /* @kind color */
+  --padding-lg: var(--unit-6);
+  --padding-md: var(--unit-5);
+  --padding-xx-lg: var(--unit-12);
+  --spacing-xx-lg: var(--unit-16);
+  --surface-surface: rgb(27,36,64); /* @kind color */
+}
+
+:root[data-theme="light"], .light {
+  --accents-blue: rgb(30,110,244); /* @kind color */
+  --backgrounds-grouped-primary: rgb(235,235,239); /* @kind color */
+  --icon-default-2: rgb(38,39,43); /* @kind color */
+  --icon-default: rgb(38,39,43); /* @kind color */
+}

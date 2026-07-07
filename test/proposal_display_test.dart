@@ -12,11 +12,12 @@ void main() {
     expect(display.title, 'Call Alex');
     expect(display.summary, 'Tomorrow at 3pm');
     expect(display.nodeType, 'Task');
+    expect(display.hasSource, isFalse);
     expect(display.hasContent, isTrue);
-    expect(isGraphV2Proposal({
-      'title': 'Call Alex',
-      'summary': 'Tomorrow at 3pm',
-    }), isFalse);
+    expect(
+      isGraphV2Proposal({'title': 'Call Alex', 'summary': 'Tomorrow at 3pm'}),
+      isFalse,
+    );
   });
 
   test('graph v2 proposal derives display from assertions', () {
@@ -42,7 +43,7 @@ void main() {
     final display = resolveProposalDisplay(proposal);
 
     expect(display.title, 'I am a product manager and founder');
-    expect(display.summary, 'Product Manager · Founder');
+    expect(display.summary, 'Product Manager / Founder');
     expect(display.hasContent, isTrue);
   });
 
@@ -57,5 +58,25 @@ void main() {
 
     expect(display.title, 'Review contract with John');
     expect(display.nodeType, 'Task');
+  });
+
+  test('resource proposal separates source from saved memory draft', () {
+    final display = resolveProposalDisplay({
+      'title': 'scaled_Capture.JPG',
+      'summary': '',
+      'node_type': 'Resource',
+      'source': {
+        'capture_type': 'image',
+        'filename': 'scaled_Capture.JPG',
+        'stored_raw': false,
+      },
+    });
+
+    expect(display.title, 'scaled_Capture.JPG');
+    expect(display.nodeType, 'Resource');
+    expect(display.sourceTitle, 'scaled_Capture.JPG');
+    expect(display.sourceType, 'image');
+    expect(display.hasSource, isTrue);
+    expect(display.needsMoreContext, isTrue);
   });
 }
