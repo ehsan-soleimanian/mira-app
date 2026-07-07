@@ -11,10 +11,10 @@ import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 
 /// Canvas — two ways to see your memory. **Board** is a freeform, pan/zoom
-/// surface of loose cards; **Map** is Mira's automatic memory graph, where
-/// tapping a node centres it, highlights its neighbours, and opens a detail
-/// panel. Faithful to `.rd-canvas` / `CanvasScreen` in the design. Card
-/// dragging and connect-mode on the board are deferred (noted below).
+/// surface of loose cards you can drag around and connect; **Map** is Mira's
+/// automatic memory graph, where tapping a node centres it, highlights its
+/// neighbours, and opens a detail panel. Faithful to `.rd-canvas` /
+/// `CanvasScreen` in the design.
 class RdCanvasScreen extends StatefulWidget {
   const RdCanvasScreen({super.key, required this.go});
 
@@ -892,6 +892,18 @@ class _DetailPanel extends StatelessWidget {
 // Board view — freeform card surface (pan + zoom)
 // ══════════════════════════════════════════════════════════════════════
 
+/// A user-drawn connection between two board cards, rendered in connect-mode.
+class _BoardEdge {
+  const _BoardEdge({required this.from, required this.to, required this.label});
+
+  final String from;
+  final String to;
+  final String label;
+}
+
+/// Connect tool lives at toolbar index 3.
+const _connectTool = 3;
+
 class _BoardView extends StatefulWidget {
   const _BoardView();
 
@@ -909,6 +921,25 @@ class _BoardViewState extends State<_BoardView> {
 
   int _tool = 0;
   bool _suggestVisible = true;
+
+  /// Card positions (top-left, board coordinates), seeded from the specs.
+  /// Dragging mutates these so cards keep their positions after drop.
+  late final Map<String, Offset> _positions = {
+    for (final c in _boardCards) c.id: Offset(c.left, c.top),
+  };
+
+  /// The card currently under the finger — lifted (bigger shadow, slight
+  /// scale) and raised above its siblings.
+  String? _draggingId;
+
+  /// Connect-mode: the first-tapped card (source); the second tap creates an
+  /// edge and clears this.
+  String? _connectSource;
+
+  /// User-created connections (persist for the session).
+  final List<_BoardEdge> _edges = [];
+
+  bool get _connectMode => _tool == _connectTool;
 
   void _onScaleStart(ScaleStartDetails d) {
     _startScale = _scale;
@@ -933,11 +964,86 @@ class _BoardViewState extends State<_BoardView> {
     });
   }
 
+  void _onCardDragStart(String id) {
+    setState(() => _draggingId = id);
+  }
+
+  void _onCardDragUpdate(String id, Offset delta) {
+    // Scale-compensate: a finger movement of `delta` in screen space equals
+    // `delta / scale` in board space.
+    final current = _positions[id] ?? Offset.zero;
+    setState(() => _positions[id] = current + delta / _scale);
+  }
+
+  void _onCardDragEnd() {
+    setState(() => _draggingId = null);
+  }
+
+  void _onCardTap(String id) {
+    if (!_connectMode) return;
+    setState(() {
+      if (_connectSource == null) {
+        _connectSource = id;
+      } else if (_connectSource == id) {
+        // Tapping the source again cancels the selection.
+        _connectSource = null;
+      } else {
+        _edges.add(_BoardEdge(
+          from: _connectSource!,
+          to: id,
+          label: _relationLabel(_connectSource!, id),
+        ));
+        _connectSource = null;
+      }
+    });
+  }
+
+  void _exitConnect() {
+    setState(() {
+      _tool = 0;
+      _connectSource = null;
+    });
+  }
+
+  /// Suggested relation text for a new edge, biased by card content so the
+  /// midpoint pill reads sensibly (e.g. "with Maya", "reminder").
+  String _relationLabel(String from, String to) {
+    final a = _specById(from);
+    final b = _specById(to);
+    if (a.kind == _CardKind.person || b.kind == _CardKind.person) {
+      final person = a.kind == _CardKind.person ? a : b;
+      return 'with ${person.title}';
+    }
+    if (a.kind == _CardKind.voice || b.kind == _CardKind.voice) {
+      return 'reminder';
+    }
+    if (a.kind == _CardKind.book || b.kind == _CardKind.book) {
+      return 'to read';
+    }
+    return 'related';
+  }
+
+  _CardSpec _specById(String id) =>
+      _boardCards.firstWhere((c) => c.id == id);
+
+  /// Centre of a card in board coordinates, from its live position + size.
+  Offset _centerOf(String id) {
+    final pos = _positions[id] ?? Offset.zero;
+    final size = _specById(id).approxSize;
+    return pos + Offset(size.width / 2, size.height / 2);
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewport = Size(constraints.maxWidth, constraints.maxHeight);
+        // Draw the dragging card last so it floats above its siblings.
+        final ordered = [..._boardCards]..sort((a, b) {
+            if (a.id == _draggingId) return 1;
+            if (b.id == _draggingId) return -1;
+            return 0;
+          });
         return Stack(
           children: [
             Positioned.fill(
@@ -960,20 +1066,35 @@ class _BoardViewState extends State<_BoardView> {
                         clipBehavior: Clip.none,
                         children: [
                           Positioned.fill(
-                            child: CustomPaint(painter: _BoardEdgePainter()),
+                            child: CustomPaint(
+                              painter: _BoardEdgePainter(
+                                edges: _edges,
+                                centerOf: _centerOf,
+                              ),
+                            ),
                           ),
+                          // midpoint relation-label pills for user edges
+                          for (final e in _edges)
+                            _relationPill(e),
                           Positioned(
                             left: 150,
                             top: 250,
                             child: _Frame(),
                           ),
-                          for (final c in _boardCards)
+                          for (final c in ordered)
                             Positioned(
-                              left: c.left,
-                              top: c.top,
-                              child: Transform.rotate(
-                                angle: c.rotation * math.pi / 180,
-                                child: _BoardCard(spec: c),
+                              left: _positions[c.id]!.dx,
+                              top: _positions[c.id]!.dy,
+                              child: _DraggableCard(
+                                spec: c,
+                                lifted: _draggingId == c.id,
+                                isSource: _connectSource == c.id,
+                                connectMode: _connectMode,
+                                onPanStart: () => _onCardDragStart(c.id),
+                                onPanUpdate: (delta) =>
+                                    _onCardDragUpdate(c.id, delta),
+                                onPanEnd: _onCardDragEnd,
+                                onTap: () => _onCardTap(c.id),
                               ),
                             ),
                         ],
@@ -989,7 +1110,11 @@ class _BoardViewState extends State<_BoardView> {
               top: 118,
               child: _Toolbar(
                 selected: _tool,
-                onSelect: (i) => setState(() => _tool = i),
+                onSelect: (i) => setState(() {
+                  _tool = i;
+                  // Leaving connect-mode drops any pending source.
+                  if (i != _connectTool) _connectSource = null;
+                }),
               ),
             ),
             // zoom / fit
@@ -1002,8 +1127,19 @@ class _BoardViewState extends State<_BoardView> {
                 onIn: () => _zoom(0.15, viewport),
               ),
             ),
-            // Mira suggestion
-            if (_suggestVisible)
+            // connect-mode banner (top) — explains the two-tap flow + Done
+            if (_connectMode)
+              Positioned(
+                left: 14,
+                right: 14,
+                top: 118,
+                child: _ConnectBanner(
+                  hasSource: _connectSource != null,
+                  onDone: _exitConnect,
+                ),
+              ),
+            // Mira suggestion (hidden while connecting to keep the flow clear)
+            if (_suggestVisible && !_connectMode)
               Positioned(
                 left: 14,
                 right: 14,
@@ -1013,6 +1149,169 @@ class _BoardViewState extends State<_BoardView> {
           ],
         );
       },
+    );
+  }
+
+  /// A small pill at the midpoint of a user edge, describing the relation.
+  Widget _relationPill(_BoardEdge e) {
+    final mid = Offset.lerp(_centerOf(e.from), _centerOf(e.to), 0.5)!;
+    const w = 96.0;
+    const h = 22.0;
+    return Positioned(
+      left: mid.dx - w / 2,
+      top: mid.dy - h / 2,
+      child: IgnorePointer(
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 0, maxWidth: w),
+          height: h,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: RdColors.card,
+            borderRadius: BorderRadius.circular(100),
+            border: Border.all(
+              color: RdColors.peri.withValues(alpha: 0.5),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF141628).withValues(alpha: 0.12),
+                blurRadius: 10,
+                spreadRadius: -4,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Text(
+            e.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: RdColors.navy,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Wraps a `_BoardCard` with drag + connect-mode interactions. Keeps rotation
+/// and applies a "lifted" transform while dragging and a pulsing source
+/// highlight while it is the connect source.
+class _DraggableCard extends StatelessWidget {
+  const _DraggableCard({
+    required this.spec,
+    required this.lifted,
+    required this.isSource,
+    required this.connectMode,
+    required this.onPanStart,
+    required this.onPanUpdate,
+    required this.onPanEnd,
+    required this.onTap,
+  });
+
+  final _CardSpec spec;
+  final bool lifted;
+  final bool isSource;
+  final bool connectMode;
+  final VoidCallback onPanStart;
+  final ValueChanged<Offset> onPanUpdate;
+  final VoidCallback onPanEnd;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onPanStart: (_) => onPanStart(),
+      onPanUpdate: (d) => onPanUpdate(d.delta),
+      onPanEnd: (_) => onPanEnd(),
+      onPanCancel: onPanEnd,
+      child: Transform.rotate(
+        angle: spec.rotation * math.pi / 180,
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 140),
+          scale: lifted ? 1.05 : 1,
+          child: _BoardCard(
+            spec: spec,
+            lifted: lifted,
+            highlighted: isSource,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Connect-mode banner shown at the top of the board — explains the two-tap
+/// flow and offers a Done affordance to exit connect-mode.
+class _ConnectBanner extends StatelessWidget {
+  const _ConnectBanner({required this.hasSource, required this.onDone});
+
+  final bool hasSource;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: RdColors.navy,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: RdColors.navy.withValues(alpha: 0.35),
+            blurRadius: 30,
+            spreadRadius: -12,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const RdIcon(RdIcons.connect,
+              size: 18, stroke: '#FFFFFF', strokeWidth: 2),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              hasSource
+                  ? 'Now tap another card to connect them'
+                  : 'Connect mode · tap two cards to link them',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: onDone,
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                'Done',
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: RdColors.navy,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1034,6 +1333,14 @@ class _DotGridPainter extends CustomPainter {
 }
 
 class _BoardEdgePainter extends CustomPainter {
+  _BoardEdgePainter({this.edges = const [], this.centerOf});
+
+  /// User-created connections to render as cubic beziers between card centres.
+  final List<_BoardEdge> edges;
+
+  /// Resolves a card id to its live centre in board coordinates.
+  final Offset Function(String id)? centerOf;
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -1050,6 +1357,7 @@ class _BoardEdgePainter extends CustomPainter {
       canvas.drawPath(path, paint);
     }
 
+    // Ambient, decorative links that give the board its lived-in feel.
     bez(250, 300, 300, 340, 300, 380, 268, 430);
     bez(330, 300, 380, 330, 420, 360, 452, 402);
     bez(300, 470, 360, 500, 400, 520, 452, 470);
@@ -1072,10 +1380,49 @@ class _BoardEdgePainter extends CustomPainter {
         d += 9;
       }
     }
+
+    // User-created connections — solid cubic beziers between the two card
+    // centres, gently bowed so multiple edges stay readable.
+    final resolve = centerOf;
+    if (resolve != null) {
+      final userPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..color = RdColors.navy.withValues(alpha: 0.85)
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round;
+      for (final e in edges) {
+        final a = resolve(e.from);
+        final b = resolve(e.to);
+        final dx = b.dx - a.dx;
+        final dy = b.dy - a.dy;
+        // Control points offset perpendicular to the line for a soft curve.
+        final len = math.sqrt(dx * dx + dy * dy);
+        final nx = len == 0 ? 0.0 : -dy / len;
+        final ny = len == 0 ? 0.0 : dx / len;
+        final bow = (len * 0.16).clamp(10.0, 48.0);
+        final c1 = Offset(
+          a.dx + dx * 0.33 + nx * bow,
+          a.dy + dy * 0.33 + ny * bow,
+        );
+        final c2 = Offset(
+          a.dx + dx * 0.66 + nx * bow,
+          a.dy + dy * 0.66 + ny * bow,
+        );
+        final userPath = Path()
+          ..moveTo(a.dx, a.dy)
+          ..cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, b.dx, b.dy);
+        canvas.drawPath(userPath, userPaint);
+        // Small endpoint dots to anchor the connection visually.
+        final dot = Paint()..color = RdColors.navy.withValues(alpha: 0.85);
+        canvas.drawCircle(a, 3, dot);
+        canvas.drawCircle(b, 3, dot);
+      }
+    }
   }
 
   @override
-  bool shouldRepaint(_BoardEdgePainter old) => false;
+  bool shouldRepaint(_BoardEdgePainter old) =>
+      old.edges != edges || old.centerOf != centerOf;
 }
 
 class _Frame extends StatelessWidget {
@@ -1134,6 +1481,7 @@ enum _CardKind { note, photo, voice, link, sticky, book, person }
 
 class _CardSpec {
   const _CardSpec({
+    required this.id,
     required this.kind,
     required this.left,
     required this.top,
@@ -1143,6 +1491,7 @@ class _CardSpec {
     this.tag,
   });
 
+  final String id;
   final _CardKind kind;
   final double left;
   final double top;
@@ -1150,16 +1499,37 @@ class _CardSpec {
   final String title;
   final String? sub;
   final String? tag;
+
+  /// Approximate rendered size per card kind — used to derive card centres for
+  /// connect-mode edges. Widths mirror the layout constants in `_BoardCard`;
+  /// heights are eyeballed to the designed content so the bezier endpoints land
+  /// roughly on each card's middle.
+  Size get approxSize {
+    switch (kind) {
+      case _CardKind.photo:
+        return const Size(158, 150);
+      case _CardKind.sticky:
+        return const Size(150, 150);
+      case _CardKind.person:
+        return const Size(128, 64);
+      case _CardKind.note:
+        return const Size(158, 96);
+      case _CardKind.voice:
+      case _CardKind.link:
+      case _CardKind.book:
+        return const Size(158, 92);
+    }
+  }
 }
 
 const _boardCards = <_CardSpec>[
-  _CardSpec(kind: _CardKind.note, left: 170, top: 200, rotation: -2, tag: 'Note', title: 'A quiet weekend on the coast', sub: 'Somewhere slow, near the water — spring.'),
-  _CardSpec(kind: _CardKind.photo, left: 360, top: 196, rotation: 2, title: 'Big Sur shoreline'),
-  _CardSpec(kind: _CardKind.voice, left: 180, top: 400, rotation: -1, tag: 'Voice', title: 'Flight SA 482 · Aug 2', sub: 'Check-in reminder set for Aug 1.'),
-  _CardSpec(kind: _CardKind.link, left: 380, top: 392, rotation: 1.5, tag: 'Link', title: 'Cabin by the water', sub: 'Airbnb — saved to compare.'),
-  _CardSpec(kind: _CardKind.sticky, left: 190, top: 596, rotation: -2.5, title: 'Pack list'),
-  _CardSpec(kind: _CardKind.book, left: 470, top: 560, rotation: 2, tag: 'Book', title: '“The Overstory”', sub: 'Maya’s rec — a weekend read.'),
-  _CardSpec(kind: _CardKind.person, left: 560, top: 452, rotation: -1.5, title: 'Maya', sub: 'joining · maybe'),
+  _CardSpec(id: 'coast', kind: _CardKind.note, left: 170, top: 200, rotation: -2, tag: 'Note', title: 'A quiet weekend on the coast', sub: 'Somewhere slow, near the water — spring.'),
+  _CardSpec(id: 'bigsur', kind: _CardKind.photo, left: 360, top: 196, rotation: 2, title: 'Big Sur shoreline'),
+  _CardSpec(id: 'flight', kind: _CardKind.voice, left: 180, top: 400, rotation: -1, tag: 'Voice', title: 'Flight SA 482 · Aug 2', sub: 'Check-in reminder set for Aug 1.'),
+  _CardSpec(id: 'cabin', kind: _CardKind.link, left: 380, top: 392, rotation: 1.5, tag: 'Link', title: 'Cabin by the water', sub: 'Airbnb — saved to compare.'),
+  _CardSpec(id: 'packlist', kind: _CardKind.sticky, left: 190, top: 596, rotation: -2.5, title: 'Pack list'),
+  _CardSpec(id: 'book', kind: _CardKind.book, left: 470, top: 560, rotation: 2, tag: 'Book', title: '“The Overstory”', sub: 'Maya’s rec — a weekend read.'),
+  _CardSpec(id: 'maya', kind: _CardKind.person, left: 560, top: 452, rotation: -1.5, title: 'Maya', sub: 'joining · maybe'),
 ];
 
 ({Color bg, String stroke}) _tagStyle(String tag) {
@@ -1189,9 +1559,19 @@ String _tagIcon(String tag) {
 }
 
 class _BoardCard extends StatelessWidget {
-  const _BoardCard({required this.spec});
+  const _BoardCard({
+    required this.spec,
+    this.lifted = false,
+    this.highlighted = false,
+  });
 
   final _CardSpec spec;
+
+  /// True while the card is being dragged — bigger shadow.
+  final bool lifted;
+
+  /// True when the card is the connect-mode source — peri highlight border.
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
@@ -1207,17 +1587,30 @@ class _BoardCard extends StatelessWidget {
     }
   }
 
+  /// Border colour/width picks up the connect-source highlight.
+  Border get _border => Border.all(
+        color: highlighted ? RdColors.peri : RdColors.line,
+        width: highlighted ? 2 : 1,
+      );
+
   BoxDecoration get _shell => BoxDecoration(
         color: RdColors.card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: RdColors.line, width: 1),
+        border: _border,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF141628).withValues(alpha: 0.28),
-            blurRadius: 24,
-            spreadRadius: -14,
-            offset: const Offset(0, 10),
+            color: const Color(0xFF141628)
+                .withValues(alpha: lifted ? 0.42 : 0.28),
+            blurRadius: lifted ? 40 : 24,
+            spreadRadius: lifted ? -10 : -14,
+            offset: Offset(0, lifted ? 20 : 10),
           ),
+          if (highlighted)
+            BoxShadow(
+              color: RdColors.peri.withValues(alpha: 0.45),
+              blurRadius: 0,
+              spreadRadius: 3,
+            ),
         ],
       );
 
@@ -1344,14 +1737,24 @@ class _BoardCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFDF6E3),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x4DBEA046), width: 1),
+        border: Border.all(
+          color: highlighted ? RdColors.peri : const Color(0x4DBEA046),
+          width: highlighted ? 2 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF78641E).withValues(alpha: 0.28),
-            blurRadius: 24,
-            spreadRadius: -14,
-            offset: const Offset(0, 10),
+            color: const Color(0xFF78641E)
+                .withValues(alpha: lifted ? 0.42 : 0.28),
+            blurRadius: lifted ? 40 : 24,
+            spreadRadius: lifted ? -10 : -14,
+            offset: Offset(0, lifted ? 20 : 10),
           ),
+          if (highlighted)
+            BoxShadow(
+              color: RdColors.peri.withValues(alpha: 0.45),
+              blurRadius: 0,
+              spreadRadius: 3,
+            ),
         ],
       ),
       child: Column(
