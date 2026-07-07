@@ -12,6 +12,7 @@ import 'package:mira_app/app/mira_services.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/redesign/rd_root.dart';
 import 'package:mira_app/redesign/theme/rd_colors.dart';
+import 'package:mira_app/redesign/theme/rd_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +42,10 @@ Future<void> main() async {
     }
   }
 
-  runApp(MiraApp(themeController: AppThemeController(), services: services));
+  final themeController = AppThemeController();
+  await themeController.load();
+
+  runApp(MiraApp(themeController: themeController, services: services));
 }
 
 class MiraApp extends StatelessWidget {
@@ -67,14 +71,8 @@ class MiraApp extends StatelessWidget {
                 AppLocalizations.of(context)!.appTitle,
             debugShowCheckedModeBanner: false,
             themeMode: themeController.mode,
-            theme: ThemeData(
-              useMaterial3: true,
-              scaffoldBackgroundColor: RdColors.bg,
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: RdColors.navy,
-                surface: RdColors.bg,
-              ),
-            ),
+            theme: _lightTheme(),
+            darkTheme: _darkTheme(),
             localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
@@ -88,4 +86,35 @@ class MiraApp extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Light theme — matches the current app. Carries [RdTheme.light] so migrated
+/// screens can read tokens via `context.rd`.
+ThemeData _lightTheme() {
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    scaffoldBackgroundColor: RdTheme.light.bg,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: RdTheme.light.navy,
+      surface: RdTheme.light.bg,
+    ),
+    extensions: const [RdTheme.light],
+  );
+}
+
+/// Dark theme — the redesign dark palette. Carries [RdTheme.dark]; only takes
+/// effect once screens migrate off the const `RdColors` tokens.
+ThemeData _darkTheme() {
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: RdTheme.dark.bg,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: RdTheme.dark.navy,
+      brightness: Brightness.dark,
+      surface: RdTheme.dark.card,
+    ),
+    extensions: const [RdTheme.dark],
+  );
 }
