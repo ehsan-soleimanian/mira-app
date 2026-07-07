@@ -169,6 +169,12 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
               onTap: () => widget.go('notifications'),
             ),
             _AcRow(
+              icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
+              title: 'Appearance',
+              sub: 'Theme, accent, text size & motion',
+              onTap: () => widget.go('appearance'),
+            ),
+            _AcRow(
               icon: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
               title: 'Connected apps',
               sub: 'Calendar, Notes, Photos & more',

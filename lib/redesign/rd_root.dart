@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'screens/rd_appearance.dart';
 import 'screens/rd_canvas_screen.dart';
 import 'screens/rd_capture_flow.dart';
 import 'screens/rd_chat_screen.dart';
@@ -91,6 +92,8 @@ class _RdRootState extends State<RdRoot> {
         return RdNotificationsScreen(go: _go, onBack: _back);
       case 'connectedapps':
         return RdConnectedAppsScreen(go: _go, onBack: _back);
+      case 'appearance':
+        return RdAppearanceScreen(go: _go, onBack: _back);
       case 'memory':
         final a = arg is RdMemoryArg ? arg : null;
         return RdMemoryScreen(

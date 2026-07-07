@@ -71,8 +71,15 @@ class MiraApp extends StatelessWidget {
                 AppLocalizations.of(context)!.appTitle,
             debugShowCheckedModeBanner: false,
             themeMode: themeController.mode,
-            theme: _lightTheme(),
-            darkTheme: _darkTheme(),
+            theme: _lightTheme(themeController.accent),
+            darkTheme: _darkTheme(themeController.accent),
+            // Live text size: scale the whole tree by the user's preference.
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(themeController.textScale),
+              ),
+              child: child!,
+            ),
             localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
@@ -89,8 +96,8 @@ class MiraApp extends StatelessWidget {
 }
 
 /// Light theme — matches the current app. Carries [RdTheme.light] so migrated
-/// screens can read tokens via `context.rd`.
-ThemeData _lightTheme() {
+/// screens can read tokens via `context.rd`. [accent] recolors `peri` app-wide.
+ThemeData _lightTheme(Color accent) {
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
@@ -99,13 +106,14 @@ ThemeData _lightTheme() {
       seedColor: RdTheme.light.navy,
       surface: RdTheme.light.bg,
     ),
-    extensions: const [RdTheme.light],
+    extensions: [RdTheme.light.copyWith(peri: accent)],
   );
 }
 
 /// Dark theme — the redesign dark palette. Carries [RdTheme.dark]; only takes
-/// effect once screens migrate off the const `RdColors` tokens.
-ThemeData _darkTheme() {
+/// effect once screens migrate off the const `RdColors` tokens. [accent]
+/// recolors `peri` app-wide.
+ThemeData _darkTheme(Color accent) {
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
@@ -115,6 +123,6 @@ ThemeData _darkTheme() {
       brightness: Brightness.dark,
       surface: RdTheme.dark.card,
     ),
-    extensions: const [RdTheme.dark],
+    extensions: [RdTheme.dark.copyWith(peri: accent)],
   );
 }
