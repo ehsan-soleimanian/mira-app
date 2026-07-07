@@ -1,10 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
+import 'package:mira_app/models/api/workspace_models.dart';
 
 import '../theme/rd_colors.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -13,7 +12,10 @@ import '../widgets/rd_icon.dart';
 /// Ask Mira — a calm, memory-grounded chat. Mira answers by drawing on
 /// connected memories, cited inline as small cards. Faithful to `chat.jsx`
 /// (`.rd-chat`), grounded in the "Contract with John" note context. Answers
-/// are scripted; the compose bar and starter chips drive the conversation.
+/// come from the real assistant (`POST /assistant/run` via
+/// [AssistantRepository]); the compose bar and starter chips drive the
+/// conversation. If the assistant is unreachable, a scripted fallback keeps
+/// the screen readable offline.
 class RdChatScreen extends StatefulWidget {
   const RdChatScreen({super.key, required this.go, required this.onBack});
 
@@ -33,10 +35,76 @@ const _card = Color(0xFFFBFBF9);
 const _line = Color(0x12141C2D);
 
 class _Cite {
-  const _Cite(this.type, this.title, this.sub);
+  const _Cite(this.type, this.title, this.sub, {this.id, this.body});
   final String type;
   final String title;
   final String sub;
+
+  /// Real memory id + snippet, when the cite came from the assistant. Drives
+  /// navigation into the memory detail; null for the scripted fallback cards.
+  final String? id;
+  final String? body;
+
+  /// Builds a cite card from a real Library search match (preferred shape).
+  factory _Cite.fromMatch(LibrarySearchMatch match) {
+    final item = match.item;
+    final snippet = match.snippet.trim().isNotEmpty
+        ? match.snippet.trim()
+        : item.summary;
+    return _Cite(
+      _citeTypeFor(item.type),
+      item.title.trim().isNotEmpty ? item.title.trim() : 'Untitled memory',
+      _citeSub(item, snippet),
+      id: item.id,
+      body: snippet.isNotEmpty ? snippet : null,
+    );
+  }
+
+  /// Builds a cite card from a legacy item-level citation.
+  factory _Cite.fromItem(LibraryItem item) {
+    final snippet = item.summary.trim();
+    return _Cite(
+      _citeTypeFor(item.type),
+      item.title.trim().isNotEmpty ? item.title.trim() : 'Untitled memory',
+      _citeSub(item, snippet),
+      id: item.id,
+      body: snippet.isNotEmpty ? snippet : null,
+    );
+  }
+}
+
+/// Maps a Library item type to one of the four cite-card visual styles
+/// (`event`, `photo`, `voice`, or the default note look).
+String _citeTypeFor(String type) {
+  switch (type) {
+    case 'audio':
+      return 'voice';
+    case 'image':
+    case 'video':
+      return 'photo';
+    case 'event':
+    case 'meeting':
+      return 'event';
+    default:
+      return 'note';
+  }
+}
+
+/// A short secondary line for a cite card: prefer the snippet, else a
+/// human label derived from the item type.
+String _citeSub(LibraryItem item, String snippet) {
+  if (snippet.isNotEmpty) return snippet;
+  final t = _citeTypeFor(item.type);
+  switch (t) {
+    case 'voice':
+      return 'Voice · read by Mira';
+    case 'photo':
+      return 'Photo · read by Mira';
+    case 'event':
+      return 'Event';
+    default:
+      return 'Note';
+  }
 }
 
 class _Msg {
@@ -116,6 +184,20 @@ class _RdChatScreenState extends State<RdChatScreen> {
     }
   }
 
+  /// Opens the tapped cited memory on real data when the assistant supplied an
+  /// id; otherwise falls back to the placeholder memory detail.
+  void _openCite(_Cite c) {
+    widget.go(
+      'memory',
+      arg: RdMemoryArg(
+        id: c.id,
+        title: c.title,
+        body: c.body ?? c.sub,
+        isVoice: c.type == 'voice',
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scroll.dispose();
@@ -132,32 +214,63 @@ class _RdChatScreenState extends State<RdChatScreen> {
     });
   }
 
-  void _ask(String q) {
-    final key = _answers.keys.firstWhere(
-      (k) => k.toLowerCase() == q.toLowerCase(),
-      orElse: () => '',
-    );
-    final ans = key.isNotEmpty
-        ? _answers[key]!
-        : _Answer(
-            'I don’t have anything on that yet — but the moment you capture it, I’ll connect it here. For now, this memory links to the rest of your “$_anchor” thread.',
-            cites: const [_Cite('event', 'Meeting with John', 'Last Thursday')],
-          );
-    if (key.isNotEmpty) _asked.add(key);
+  Future<void> _ask(String q) async {
+    _asked.add(q);
     setState(() {
       _msgs.add(_Msg.me(q));
       _typing = true;
       _draftCtl.clear();
     });
     _scrollDown();
-    Timer(const Duration(milliseconds: 1150), () {
-      if (!mounted) return;
-      setState(() {
-        _typing = false;
-        _msgs.add(_Msg.mira(ans.text, cites: ans.cites, action: ans.action));
-      });
-      _scrollDown();
+
+    final answer = await _resolveAnswer(q);
+    if (!mounted) return;
+    setState(() {
+      _typing = false;
+      _msgs.add(_Msg.mira(answer.text, cites: answer.cites, action: answer.action));
     });
+    _scrollDown();
+  }
+
+  /// Asks the real assistant (`POST /assistant/run`). On success, renders the
+  /// answer text and turns cited/source memories into tappable cite cards
+  /// (prefers `sourceCitations`, falls back to legacy `citations`). If the call
+  /// throws (offline, timeout), returns a scripted fallback so the chat still
+  /// reads well.
+  Future<_Answer> _resolveAnswer(String q) async {
+    try {
+      final services = AppScope.servicesOf(context);
+      final res = await services.assistantRepository.run(q);
+      final text = res.answer.trim().isNotEmpty
+          ? res.answer.trim()
+          : 'I looked, but I don’t have anything on that yet — capture it and I’ll connect it here.';
+
+      final cites = <_Cite>[];
+      if (res.sourceCitations.isNotEmpty) {
+        cites.addAll(res.sourceCitations.map(_Cite.fromMatch));
+      } else if (res.citations.isNotEmpty) {
+        cites.addAll(res.citations.map(_Cite.fromItem));
+      }
+      // The assistant contract carries no follow-up questions, so we keep the
+      // static starter chips; a reminder-style "action" only makes sense for
+      // the scripted flow, so real answers never render the reminder button.
+      return _Answer(text, cites: cites);
+    } catch (_) {
+      return _fallbackAnswer(q);
+    }
+  }
+
+  /// Scripted reply used only when the assistant call fails.
+  _Answer _fallbackAnswer(String q) {
+    final key = _answers.keys.firstWhere(
+      (k) => k.toLowerCase() == q.toLowerCase(),
+      orElse: () => '',
+    );
+    if (key.isNotEmpty) return _answers[key]!;
+    return _Answer(
+      'I don’t have anything on that yet — but the moment you capture it, I’ll connect it here. For now, this memory links to the rest of your “$_anchor” thread.',
+      cites: const [_Cite('event', 'Meeting with John', 'Last Thursday')],
+    );
   }
 
   @override
@@ -304,7 +417,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
                 Text('FROM YOUR MEMORIES', style: GoogleFonts.vazirmatn(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.7, color: _faint)),
                 const SizedBox(height: 5),
                 for (final c in m.cites) ...[
-                  _CiteCard(cite: c, onTap: () => widget.go('memory')),
+                  _CiteCard(cite: c, onTap: () => _openCite(c)),
                   const SizedBox(height: 7),
                 ],
               ],
