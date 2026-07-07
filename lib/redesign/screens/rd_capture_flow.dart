@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/app/mira_services.dart';
 import 'package:mira_app/features/capture/media/capture_media_picker.dart';
+import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
+import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 
 import '../theme/rd_colors.dart';
@@ -55,9 +57,10 @@ const _tokens = [
   _Tok('send'), _Tok('the'), _Tok('signed'), _Tok('copy.'),
 ];
 
-/// The full sentence Mira "understood" from the simulated voice capture. Shared
-/// as the source of truth for the review UI, the persisted memory content, and
-/// the reminder title so they never drift apart.
+/// The full sentence Mira "understood" from a voice capture — used as the
+/// FALLBACK transcript when the real device mic / transcription path is
+/// unavailable (web, desktop, denied permission, or a failed/empty transcribe).
+/// When a real transcript is captured it overrides `_transcript` at runtime.
 const _voiceTranscript =
     'Call John before Friday to confirm the contract terms and send the signed copy.';
 const _voiceTitle = 'Call John before Friday';
@@ -72,6 +75,18 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   bool _conn2 = true;
   bool _conn3 = false;
   bool _remind = true;
+
+  // Live transcript state. Defaults to the simulated sentence and is overridden
+  // only when a real device recording is transcribed successfully.
+  String _transcript = _voiceTranscript;
+  String _transcriptTitle = _voiceTitle;
+  bool _realTranscript = false;
+
+  // Real device-mic recorder (with its own built-in simulated fallback). A
+  // recording is started when the listen view opens and stopped/transcribed on
+  // finish. Null until the first listen session begins.
+  VoiceRecorderPort? _recorder;
+  bool _recorderActive = false;
 
   Timer? _secTimer;
   Timer? _revealTimer;
@@ -89,6 +104,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     _revealTimer?.cancel();
     for (final t in _timers) {
       t.cancel();
+    }
+    // Best-effort teardown of the mic so a disposed screen never holds the mic.
+    final recorder = _recorder;
+    if (recorder != null) {
+      unawaited(recorder.cancel().catchError((_) {}));
+      if (recorder is DeviceVoiceRecorder) recorder.dispose();
     }
     super.dispose();
   }
@@ -108,7 +129,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _view = 'listen';
       _sec = 0;
       _revealed = 0;
+      // Reset transcript to the simulated default; a real recording (below)
+      // may override it on finish.
+      _transcript = _voiceTranscript;
+      _transcriptTitle = _voiceTitle;
+      _realTranscript = false;
     });
+    unawaited(_beginRecording());
     _secTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _sec++));
     _revealTimer = Timer.periodic(const Duration(milliseconds: 340), (t) {
       if (_revealed >= _tokens.length) {
@@ -120,12 +147,64 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     });
   }
 
+  /// Start a REAL device-mic recording for this listen session. The recorder
+  /// requests mic permission itself and, on web/desktop/denied/hardware
+  /// failure, silently records in its own simulated mode. Either way this never
+  /// throws and never blocks the animation — worst case `_recorderActive` stays
+  /// false and finish falls back to the simulated transcript.
+  Future<void> _beginRecording() async {
+    try {
+      final recorder = _recorder ??= createVoiceRecorder();
+      final started = await recorder.start();
+      if (mounted) _recorderActive = started;
+    } catch (_) {
+      _recorderActive = false;
+    }
+  }
+
+  /// Stop the recording and, when a real audio file was captured, transcribe it
+  /// to a real sentence. Returns silently (leaving the simulated transcript in
+  /// place) on ANY failure: no active recorder, simulated capture, missing
+  /// file, transcription error, or an empty/whitespace result. Never throws.
+  Future<void> _finishRecording() async {
+    final recorder = _recorder;
+    if (recorder == null || !_recorderActive) return;
+    _recorderActive = false;
+    // Capture services before any await so no BuildContext is used across an
+    // async gap.
+    final services = AppScope.servicesOf(context);
+    try {
+      final result = await recorder.stop();
+      final path = result.filePath;
+      if (result.simulated || path == null || path.isEmpty) return;
+
+      final transcript = await services.captureRepository.transcribeVoice(
+        durationMs: result.duration.inMilliseconds,
+        audioPath: path,
+      );
+      final text = transcript.text.trim();
+      if (text.isEmpty) return;
+      if (!mounted) return;
+      setState(() {
+        _transcript = text;
+        _transcriptTitle = _titleFrom(text);
+        _realTranscript = true;
+      });
+    } catch (_) {
+      // Best-effort — keep the simulated transcript and complete the flow.
+    }
+  }
+
   void _toProc() {
     _clearTimers();
     setState(() {
       _view = 'proc';
       _steps = 0;
     });
+    // Stop + transcribe the real recording in the background while the
+    // "Understanding" steps animate; the result (if any) overrides the
+    // transcript before the review screen appears. Best-effort — never blocks.
+    unawaited(_finishRecording());
     for (var k = 0; k < 3; k++) {
       _timers.add(Timer(Duration(milliseconds: 500 + k * 650), () => setState(() => _steps = k + 1)));
     }
@@ -141,7 +220,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   /// confirmation is instant and still shows even when offline.
   void _addToMemory() {
     final services = AppScope.servicesOf(context);
-    unawaited(_persistNote(services, title: _voiceTitle, content: _voiceTranscript));
+    unawaited(_persistNote(services, title: _transcriptTitle, content: _transcript));
     if (_remind) unawaited(_createReminder(services));
     setState(() => _view = 'added');
   }
@@ -162,8 +241,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   Future<void> _createReminder(MiraServices services) async {
     try {
+      // Use the real transcript as the reminder title when one was captured;
+      // otherwise keep the simulated reminder text the design expects.
+      final title = _realTranscript
+          ? _transcript
+          : 'Call John before Friday to confirm the contract terms';
       await RemindersRepository(apiClient: services.apiClient).create(
-        title: 'Call John before Friday to confirm the contract terms',
+        title: title,
       );
     } catch (_) {
       // Best-effort — the capture is still kept.
@@ -479,18 +563,26 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Text.rich(
-                        TextSpan(
-                          children: [
-                            const TextSpan(text: 'Call '),
-                            TextSpan(text: 'John', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
-                            const TextSpan(text: ' before '),
-                            TextSpan(text: 'Friday', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
-                            const TextSpan(text: ' to confirm the contract terms and send the signed copy.'),
-                          ],
+                      // Real transcript → show it verbatim; simulated → keep the
+                      // design's highlighted John/Friday markup.
+                      if (_realTranscript)
+                        Text(
+                          _transcript,
                           style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: _ink),
+                        )
+                      else
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              const TextSpan(text: 'Call '),
+                              TextSpan(text: 'John', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
+                              const TextSpan(text: ' before '),
+                              TextSpan(text: 'Friday', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
+                              const TextSpan(text: ' to confirm the contract terms and send the signed copy.'),
+                            ],
+                            style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: _ink),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
