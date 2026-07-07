@@ -99,20 +99,22 @@ The app **is** the redesign under `lib/redesign/` (11 screens built from `design
 | Screen (`lib/redesign/screens/`) | Backend calls | Status |
 |------|------|--------|
 | `rd_home_screen` | `GET /me`, `GET /v2/daily-update` | ✅ live read + sample fallback |
-| `rd_daily_brief_screen` | `GET /me`, `/v2/daily-update`, `PATCH /v2/tasks/{id}` | ✅ live read + task-toggle write |
+| `rd_daily_brief_screen` | `GET /me`, `/v2/daily-update`, `PATCH /v2/tasks/{id}`, `GET/PATCH /reminders` | ✅ live read + task-toggle + **overdue reminders w/ snooze & done** |
 | `rd_library_screen` | `GET /library/items`, `GET/POST /collections`, `POST /collections/{id}/items`, `DELETE /library/items/{id}` | ✅ live read; **collections** strip (tap → filter to members) + multi-select bulk actions (add-to-collection + delete wired; pin/archive optimistic) |
-| `rd_memory_screen` | `POST /reminders` | ⚠️ reminder write only; insight/connections sample (needs `GET /v2/captures/{id}`) |
-| `rd_capture_flow` | `POST /reminders` | ⚠️ reminder write only; voice capture **simulated** (`POST /voice/realtime` + SSE exist, unused) |
+| `rd_memory_screen` | `POST /reminders`, `PATCH /v2/captures/{id}`, `DELETE /library/items/{id}`, `POST /collections/{id}/items` | ✅ **pin / edit (+"re-read") / delete-confirm / add-to-collection / Ask Mira→chat**; insight still sample |
+| `rd_capture_flow` | `POST /library/items` · `/library/imports/link` · `/library/uploads`, `POST /reminders` | ✅ **note/link/photo/type create real memories**; voice-audio + realtime SSE still simulated |
 | `rd_chat_screen` | `POST /reminders` | ⚠️ reminder write only; chat **simulated** (`POST /assistant/run` exists, unused) |
-| `rd_canvas_screen` | — | ❌ sample; `GET /v2/canvas`, `/graph` exist |
-| `rd_settings` | — | ❌ sample; `/settings`, `/notification-settings`, `/me` exist |
+| `rd_canvas_screen` | `GET /v2/graph` | ✅ **Map wired to the live graph** (client spiral layout, sample fallback); Board drag/connect deferred |
+| `rd_settings` | `GET /auth/me`, `GET/PATCH /auth/notification-settings` | ✅ **Account profile + Notifications toggles** wired; plan/security sample |
 | `rd_onboarding` | — | ❌ navigation only; `/auth/*` (register/login/config) exist |
-| `rd_setup_wizard` | — | ❌ sample; `POST /auth/onboarding/setup` exists |
+| `rd_setup_wizard` | `POST /auth/onboarding/setup` | ✅ **persists collected preferences on finish** |
 | `rd_listen_screen` | — | ❌ simulated voice; `POST /voice/realtime` + SSE exist |
 
 **Takeaway:** the backend already covers essentially every current screen — the remaining work is **Flutter wiring**, not missing endpoints. Repositories built in `MiraServices` but not yet used by any screen: `assistant`, `canvas`, `space`, `onboarding`, `settings`, `capture`, `plugin`, `publish`, `appRelease`. Genuine backend gaps are small: no UI lists reminders (`GET /reminders` unused), and Memory enrichment needs the library-item-id → graph-node-id resolution.
 
 **New in `new-feature` branch:** the **Collections** feature — relational MariaDB CRUD at `/collections` (create · list · detail · rename · delete · add-items · remove-item, user-scoped, 11 integration tests), a Flutter `CollectionsRepository` + `MemoryCollection` models, and Library wiring: the "Mira grouped for you" strip is live (tap a card → filter to its members) and multi-select **Add to collection** + **Delete** hit the backend (pin/archive are optimistic pending backend flags). Implements the new design's Library grouping + bulk-select workflow end-to-end.
+
+Also delivered on `new-feature`: **Canvas Map** wired to the live graph (`e32371f`); **Memory-detail** lifecycle — pin / edit (+"re-read") / delete-confirm / add-to-collection / Ask-Mira→chat (`d3ea105`); **Daily-Brief** overdue reminders + snooze/done (`8fd56b0`); **Setup-wizard** persistence → `POST /auth/onboarding/setup` (`1804dd9`); **Settings** Account profile + Notifications toggles (`16285c4`); **Capture** note/link/photo/type creating real memories (`737653f`). Still simulated: Chat/assistant (`/assistant/run` exists, unused), real capture voice-audio + realtime SSE, and Canvas Board drag/connect.
 
 ### Commands
 
