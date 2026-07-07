@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:mira_app/core/api/api_client.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 import 'package:mira_app/models/api/settings_models.dart';
+import 'package:mira_app/models/api/storage_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsRepository {
@@ -90,6 +91,14 @@ class SettingsRepository {
       data: patch,
     );
     return response.data ?? const <String, dynamic>{};
+  }
+
+  /// Storage usage for the redesigned Storage screen (`GET /storage/usage`).
+  /// Returns the account's used / quota bytes plus the six-category breakdown.
+  /// The screen supplies its own sample fallback, so errors propagate here.
+  Future<StorageUsage> fetchStorageUsage() async {
+    final response = await _dio.get<Map<String, dynamic>>('/storage/usage');
+    return StorageUsage.fromJson(response.data!);
   }
 
   Future<bool> checkApiReady() async {

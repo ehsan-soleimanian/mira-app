@@ -14,6 +14,7 @@ import 'screens/rd_onboarding.dart';
 import 'screens/rd_reminders.dart';
 import 'screens/rd_settings.dart';
 import 'screens/rd_setup_wizard.dart';
+import 'screens/rd_storage.dart';
 import 'theme/rd_colors.dart';
 import 'widgets/rd_bottom_nav.dart';
 import 'widgets/rd_icon.dart';
@@ -111,6 +112,8 @@ class _RdRootState extends State<RdRoot> {
         return RdChatScreen(go: _go, onBack: _back);
       case 'reminders':
         return RdRemindersScreen(go: _go, onBack: _back, backLabel: 'Account');
+      case 'storage':
+        return RdStorageScreen(go: _go, onBack: _back);
       case 'capture':
       case 'captureflow':
         return RdCaptureFlow(go: _go);

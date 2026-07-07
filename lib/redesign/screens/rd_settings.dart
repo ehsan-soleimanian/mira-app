@@ -190,10 +190,10 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
         ),
         _AcSection(
           label: 'Memory & data',
-          rows: const [
-            _AcStorage(),
-            _AcRow(icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/>', title: 'Export my data', sub: 'Download everything Mira holds'),
-            _AcRow(icon: '<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/>', title: 'Memory history', sub: 'See what was captured & when'),
+          rows: [
+            _AcStorage(onTap: () => widget.go('storage')),
+            const _AcRow(icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/>', title: 'Export my data', sub: 'Download everything Mira holds'),
+            const _AcRow(icon: '<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/>', title: 'Memory history', sub: 'See what was captured & when'),
           ],
         ),
         _AcSection(
@@ -752,7 +752,11 @@ class _AcProfile extends StatelessWidget {
 }
 
 class _AcStorage extends StatelessWidget {
-  const _AcStorage();
+  const _AcStorage({this.onTap});
+
+  /// Opens the full Storage screen. When null the row is inert (kept optional so
+  /// the widget stays reusable), otherwise it reads as tappable via a chevron.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -760,36 +764,43 @@ class _AcStorage extends StatelessWidget {
     // Track has no token: keep the exact light literal, darken for dark mode.
     final trackBg =
         _isDark(context) ? const Color(0xFF2A2B33) : const Color(0xFFE7E7E1);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text('34 memories', style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w700, color: rd.ink)),
-              const Spacer(),
-              Text('of 2,000 · plenty of room', style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            height: 7,
-            decoration: BoxDecoration(color: trackBg, borderRadius: BorderRadius.circular(100)),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: 0.22,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(100),
-                  gradient: LinearGradient(colors: [rd.peri, rd.navy]),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('34 memories', style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w700, color: rd.ink)),
+                const SizedBox(width: 8),
+                Text('of 2,000 · plenty of room', style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+                const Spacer(),
+                if (onTap != null)
+                  RdIcon('<path d="m9 6 6 6-6 6"/>', size: 18, color: rd.faint, strokeWidth: 2),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              height: 7,
+              decoration: BoxDecoration(color: trackBg, borderRadius: BorderRadius.circular(100)),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: 0.22,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(100),
+                    gradient: LinearGradient(colors: [rd.peri, rd.navy]),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
