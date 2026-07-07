@@ -127,6 +127,17 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
           const Spacer(),
           _CircleButton(
             size: 42,
+            onTap: () => widget.go('ask'),
+            child: RdIcon(
+              RdIcons.search,
+              size: 18,
+              color: rd.gearIcon,
+              strokeWidth: 1.8,
+            ),
+          ),
+          const SizedBox(width: 10),
+          _CircleButton(
+            size: 42,
             onTap: () => widget.go('account'),
             child: RdIcon(
               RdIcons.gear,

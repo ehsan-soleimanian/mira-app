@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'screens/rd_appearance.dart';
+import 'screens/rd_ask_screen.dart';
 import 'screens/rd_canvas_screen.dart';
 import 'screens/rd_capture_flow.dart';
 import 'screens/rd_chat_screen.dart';
@@ -113,6 +114,8 @@ class _RdRootState extends State<RdRoot> {
         return RdListenScreen(go: _go, onBack: _back);
       case 'chat':
         return RdChatScreen(go: _go, onBack: _back);
+      case 'ask':
+        return RdAskScreen(go: _go, onBack: _back);
       case 'reminders':
         return RdRemindersScreen(go: _go, onBack: _back, backLabel: 'Account');
       case 'paywall':

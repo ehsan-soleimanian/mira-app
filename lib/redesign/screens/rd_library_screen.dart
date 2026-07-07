@@ -813,6 +813,27 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                 ),
               ),
               GestureDetector(
+                onTap: () => widget.go('ask'),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: rd.card,
+                    border: Border.all(color: rd.line, width: 1),
+                  ),
+                  child: Center(
+                    child: RdIcon(
+                      RdIcons.search,
+                      size: 18,
+                      color: rd.gearIcon,
+                      strokeWidth: 1.8,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
                 onTap: () => widget.go('account'),
                 child: Container(
                   width: 42,
