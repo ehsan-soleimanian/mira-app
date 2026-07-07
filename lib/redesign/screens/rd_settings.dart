@@ -205,15 +205,17 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
   };
 
   /// Maps each toggle key to its backend camelCase field on
-  /// `/notification-settings`. Keys absent here (briefResurface, sound,
-  /// haptics) have no backend field yet and stay local-only.
+  /// `/notification-settings`. Every toggle is backend-persisted.
   static const _backendField = <String, String>{
     'brief': 'dailyBriefEnabled',
+    'briefResurface': 'briefResurfaceEnabled',
     'nudges': 'remindersEnabled',
     'timeSensitive': 'timeSensitiveEnabled',
     'captureConfirm': 'captureSuccessEnabled',
     'weekly': 'weeklyDigestEnabled',
     'quiet': 'quietHoursEnabled',
+    'sound': 'soundEnabled',
+    'haptics': 'hapticsEnabled',
   };
 
   bool _loaded = false;
