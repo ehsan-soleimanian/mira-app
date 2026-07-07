@@ -1,3 +1,4 @@
+import 'package:mira_app/app/memory_store.dart';
 import 'package:mira_app/core/api/api_client.dart';
 import 'package:mira_app/core/auth/auth_repository.dart';
 import 'package:mira_app/core/auth/google_sign_in_service.dart';
@@ -33,6 +34,7 @@ class MiraServices {
     required this.settingsRepository,
     required this.appReleaseRepository,
     required this.libraryRepository,
+    required this.memoryStore,
     required this.collectionsRepository,
     required this.assistantRepository,
     required this.spaceRepository,
@@ -65,6 +67,7 @@ class MiraServices {
     final settingsRepository = SettingsRepository(apiClient: apiClient);
     final appReleaseRepository = AppReleaseRepository(apiClient: apiClient);
     final libraryRepository = LibraryRepository(apiClient: apiClient);
+    final memoryStore = MemoryStore(libraryRepository);
     final collectionsRepository = CollectionsRepository(apiClient: apiClient);
     final assistantRepository = AssistantRepository(apiClient: apiClient);
     final spaceRepository = SpaceRepository(apiClient: apiClient);
@@ -84,6 +87,7 @@ class MiraServices {
       settingsRepository: settingsRepository,
       appReleaseRepository: appReleaseRepository,
       libraryRepository: libraryRepository,
+      memoryStore: memoryStore,
       collectionsRepository: collectionsRepository,
       assistantRepository: assistantRepository,
       spaceRepository: spaceRepository,
@@ -105,6 +109,10 @@ class MiraServices {
   final SettingsRepository settingsRepository;
   final AppReleaseRepository appReleaseRepository;
   final LibraryRepository libraryRepository;
+
+  /// Shared client-side memory cache (source of truth across screens). Depends
+  /// on [libraryRepository], so it's constructed after it.
+  final MemoryStore memoryStore;
   final CollectionsRepository collectionsRepository;
   final AssistantRepository assistantRepository;
   final SpaceRepository spaceRepository;

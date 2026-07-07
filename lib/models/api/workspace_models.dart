@@ -80,6 +80,46 @@ class LibraryItem {
       source == 'import:youtube' ||
       source == 'import:tiktoks' ||
       source == 'import:reels';
+
+  /// Returns a copy with the given fields replaced. Used by `MemoryStore` to
+  /// apply optimistic local edits (e.g. a new title / summary) without a
+  /// re-fetch. Non-nullable in signature, so it can only set values — clearing
+  /// a nullable field isn't needed here.
+  LibraryItem copyWith({
+    String? id,
+    String? type,
+    String? title,
+    String? summary,
+    String? contentText,
+    String? source,
+    String? storageKey,
+    String? mimeType,
+    int? sizeBytes,
+    String? checksum,
+    List<String>? spaceIds,
+    List<String>? tags,
+    Map<String, dynamic>? metadata,
+    String? extractionStatus,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => LibraryItem(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    title: title ?? this.title,
+    summary: summary ?? this.summary,
+    contentText: contentText ?? this.contentText,
+    source: source ?? this.source,
+    storageKey: storageKey ?? this.storageKey,
+    mimeType: mimeType ?? this.mimeType,
+    sizeBytes: sizeBytes ?? this.sizeBytes,
+    checksum: checksum ?? this.checksum,
+    spaceIds: spaceIds ?? this.spaceIds,
+    tags: tags ?? this.tags,
+    metadata: metadata ?? this.metadata,
+    extractionStatus: extractionStatus ?? this.extractionStatus,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }
 
 class LibraryChunk {

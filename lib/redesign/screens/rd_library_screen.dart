@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/app/memory_store.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
@@ -44,26 +45,48 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   bool _archivedView = false;
   List<_LibMem>? _archivedItems;
 
-  /// Live items from the backend; null until the first load. Falls back to the
-  /// sample set when the backend is unreachable.
+  /// Live items, derived from the shared [MemoryStore]; null until the first
+  /// successful load. Falls back to the sample set when the backend is
+  /// unreachable (the store never loaded).
   List<_LibMem>? _items;
   bool _loaded = false;
+
+  /// The shared memory cache we read from and subscribe to, so edits made on
+  /// other screens (e.g. Memory detail) reflect here live.
+  MemoryStore? _store;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final store = AppScope.servicesOf(context).memoryStore;
+    if (!identical(store, _store)) {
+      _store?.removeListener(_onStoreChanged);
+      _store = store..addListener(_onStoreChanged);
+    }
     if (!_loaded) {
       _loaded = true;
       _load();
     }
   }
 
+  /// Re-maps the browse list from the store whenever it changes (an edit or
+  /// removal elsewhere), so the Library stays in sync without a re-fetch.
+  void _onStoreChanged() {
+    final store = _store;
+    if (!mounted || store == null || !store.loaded) return;
+    setState(() => _items = store.getAll().map(_toLibMem).toList());
+  }
+
   Future<void> _load() async {
     final services = AppScope.servicesOf(context);
     try {
-      final items = await services.libraryRepository.list();
-      final mapped = items.map(_toLibMem).toList();
-      if (mounted) setState(() => _items = mapped);
+      // Load through the shared store (source of truth) rather than hitting the
+      // repository directly, so this screen and the others share one cache.
+      await services.memoryStore.load();
+      if (mounted && services.memoryStore.loaded) {
+        setState(() =>
+            _items = services.memoryStore.getAll().map(_toLibMem).toList());
+      }
     } catch (_) {
       // Backend unreachable — keep the sample library.
     }
@@ -149,6 +172,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   @override
   void dispose() {
+    _store?.removeListener(_onStoreChanged);
     _searchCtl.dispose();
     super.dispose();
   }
@@ -404,6 +428,11 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
       _items =
           (_items ?? _mems).where((m) => !_selected.contains(m.id)).toList();
     });
+    // Drop from the shared store too, so the removal holds when the Library
+    // re-maps from the cache (e.g. on the next visit).
+    for (final id in ids) {
+      services.memoryStore.removeLocal(id);
+    }
     _exitSelect();
     var failed = 0;
     for (final id in ids) {
@@ -441,6 +470,11 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
       _items =
           (_items ?? _mems).where((m) => !_selected.contains(m.id)).toList();
     });
+    // Archived items leave the browse list — drop them from the shared store so
+    // they stay gone when the Library re-maps from the cache.
+    for (final id in ids) {
+      services.memoryStore.removeLocal(id);
+    }
     _exitSelect();
     try {
       await services.libraryRepository.bulkAction(ids, 'archive');

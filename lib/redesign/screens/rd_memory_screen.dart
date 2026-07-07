@@ -377,6 +377,16 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       _edited = true;
       _saved = true;
     });
+    // Write the edit through the shared store so the Library (and any other
+    // listener) reflects the new title / summary immediately, without a
+    // re-fetch. Guarded on a null id (sample memory) — the store no-ops on ids
+    // it hasn't cached anyway.
+    final id = widget.id;
+    if (id != null) {
+      AppScope.servicesOf(context)
+          .memoryStore
+          .applyLocalEdit(id, title: nextTitle, summary: nextBody);
+    }
     // Best-effort persistence of the new title, plus a real re-ingest of the
     // edited body so Mira re-reads it. `widget.id` may be a library item (not a
     // graph capture), so failures are ignored — the local edit and the
@@ -418,8 +428,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     setState(() => _confirm = false);
     final id = widget.id;
     if (id != null) {
+      final services = AppScope.servicesOf(context);
+      // Drop from the shared store first so the Library reflects the delete the
+      // moment we land back on it.
+      services.memoryStore.removeLocal(id);
       try {
-        await AppScope.servicesOf(context).libraryRepository.delete(id);
+        await services.libraryRepository.delete(id);
       } catch (_) {
         // Ignore — leave to the Library either way.
       }
