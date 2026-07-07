@@ -259,6 +259,141 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     }
   }
 
+  /// Selected memories resolved to their `_LibMem`s — needed to build board
+  /// cards (title / type / summary), taken from the currently-loaded source.
+  List<_LibMem> _selectedMems() {
+    final source = _items ?? _mems;
+    return source.where((m) => _selected.contains(m.id)).toList();
+  }
+
+  /// "Add to board" action — pick an existing Canvas board (or create one), then
+  /// append the selected memories as memory-ref cards. Best-effort: re-fetches
+  /// the board first so we append onto (rather than clobber) its current nodes,
+  /// then persists via `canvasRepository.update`.
+  Future<void> _addSelectedToBoard() async {
+    final mems = _selectedMems();
+    if (mems.isEmpty) return;
+    final repo = AppScope.servicesOf(context).canvasRepository;
+
+    // Load the board list for the picker (best-effort — an empty list still
+    // lets the user create a fresh board to drop the memories onto).
+    List<CanvasDto> boards;
+    try {
+      boards = await repo.list();
+    } catch (_) {
+      boards = const [];
+    }
+    if (!mounted) return;
+
+    final choice = await showModalBottomSheet<_BoardChoice>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _BoardPickerSheet(boards: boards),
+    );
+    if (choice == null || !mounted) return;
+
+    try {
+      // Resolve the target board (create it first when "New board" was chosen).
+      final target = choice.board ?? await repo.create(title: choice.name!);
+      // Re-fetch so we merge onto the freshest node set.
+      final board = await repo.fetch(target.id);
+      final nodes = [...board.nodes, ..._boardNodesFor(mems, board.nodes)];
+      await repo.update(board.id, nodes: nodes);
+      if (!mounted) return;
+      final name = board.title.trim().isEmpty ? 'board' : board.title.trim();
+      _exitSelect();
+      _boardAddedToast(mems.length, name);
+    } catch (_) {
+      _toast('Couldn’t add to board. Check your connection.');
+    }
+  }
+
+  /// Builds memory-ref board nodes for [mems], matching the board's node shape
+  /// `{id, kind, left, top, rotation, title, sub?, tag?, memId}`. New cards flow
+  /// in a 3-wide grid dropped below any [existing] cards so they never stack.
+  List<Map<String, dynamic>> _boardNodesFor(
+    List<_LibMem> mems,
+    List<Map<String, dynamic>> existing,
+  ) {
+    const startLeft = 170.0;
+    const stepX = 185.0;
+    const stepY = 155.0;
+    const perRow = 3;
+
+    // Drop the batch below the lowest existing card (or near the top on an
+    // empty board) so we don't land on top of what's already there.
+    var baseTop = 220.0;
+    if (existing.isNotEmpty) {
+      var maxTop = double.negativeInfinity;
+      for (final n in existing) {
+        final t = n['top'];
+        if (t is num && t.toDouble() > maxTop) maxTop = t.toDouble();
+      }
+      if (maxTop.isFinite) baseTop = maxTop + stepY;
+    }
+
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final nodes = <Map<String, dynamic>>[];
+    for (var i = 0; i < mems.length; i++) {
+      final m = mems[i];
+      final col = i % perRow;
+      final row = i ~/ perRow;
+      final sub = m.sub.trim();
+      nodes.add(<String, dynamic>{
+        'id': 'lib${stamp}_$i',
+        'kind': _boardKindFor(m.type),
+        'left': startLeft + col * stepX,
+        'top': baseTop + row * stepY,
+        'rotation': 0.0,
+        'title': m.title,
+        if (sub.isNotEmpty) 'sub': sub,
+        'tag': _typeLabelFor(m.type),
+        'memId': m.id,
+      });
+    }
+    return nodes;
+  }
+
+  /// Maps a library memory type to a board card `kind`. The board styles only
+  /// voice / link distinctly; everything else reads best as a basic note card
+  /// (so the real title + summary show, not the photo card's fixed artwork).
+  static String _boardKindFor(_MemType t) {
+    switch (t) {
+      case _MemType.voice:
+        return 'voice';
+      case _MemType.link:
+        return 'link';
+      case _MemType.note:
+      case _MemType.photo:
+      case _MemType.event:
+        return 'note';
+    }
+  }
+
+  /// Confirms the add, with a shortcut to jump straight to the Canvas board.
+  void _boardAddedToast(int n, String board) {
+    if (!mounted) return;
+    final rd = context.rd;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: rd.ink,
+          content: Text(
+            'Added $n to “$board”',
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.bg),
+          ),
+          action: SnackBarAction(
+            label: 'View',
+            textColor: rd.peri,
+            onPressed: () => widget.go('canvas'),
+          ),
+        ),
+      );
+  }
+
   /// "Delete" action — remove the selected memories via `libraryRepository.delete`
   /// (optimistically dropped from the list first for a responsive feel).
   Future<void> _deleteSelected() async {
@@ -1077,6 +1212,12 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             onTap: _addSelectedToCollection,
           ),
           _SelAction(
+            icon: RdIcons.navCanvas,
+            label: 'Board',
+            enabled: enabled,
+            onTap: _addSelectedToBoard,
+          ),
+          _SelAction(
             icon: RdIcons.pushpin,
             label: 'Pin',
             enabled: enabled,
@@ -1617,6 +1758,230 @@ class _SelAction extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ── add-to-board picker ────────────────────────────────────────────────
+/// The user's pick from the "add to board" sheet: an existing board, or a
+/// request to create a new one named [name].
+class _BoardChoice {
+  const _BoardChoice.existing(this.board) : name = null;
+  const _BoardChoice.create(this.name) : board = null;
+
+  final CanvasDto? board;
+  final String? name;
+}
+
+/// Bottom sheet listing the user's Canvas boards with an inline "New board"
+/// create row, returning a [_BoardChoice] via `Navigator.pop`. Mirrors
+/// `RdCollectionPickerSheet` so the two "add to…" flows feel identical.
+class _BoardPickerSheet extends StatefulWidget {
+  const _BoardPickerSheet({required this.boards});
+
+  final List<CanvasDto> boards;
+
+  @override
+  State<_BoardPickerSheet> createState() => _BoardPickerSheetState();
+}
+
+class _BoardPickerSheetState extends State<_BoardPickerSheet> {
+  final TextEditingController _newCtl = TextEditingController();
+  bool _creating = false;
+
+  @override
+  void dispose() {
+    _newCtl.dispose();
+    super.dispose();
+  }
+
+  void _submitNew() {
+    final name = _newCtl.text.trim();
+    if (name.isEmpty) return;
+    Navigator.of(context).pop(_BoardChoice.create(name));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Container(
+      decoration: BoxDecoration(
+        color: rd.bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: rd.line,
+                borderRadius: BorderRadius.circular(100),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Add to board',
+            style: GoogleFonts.dosis(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: rd.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_creating)
+            _newRow(rd)
+          else ...[
+            if (widget.boards.isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [for (final b in widget.boards) _row(rd, b)],
+                  ),
+                ),
+              ),
+            _createRow(rd),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(RdTheme rd, CanvasDto b) {
+    final title = b.title.trim().isEmpty ? 'Untitled board' : b.title.trim();
+    final count = b.nodes.length;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.of(context).pop(_BoardChoice.existing(b)),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: rd.line, width: 1),
+        ),
+        child: Row(
+          children: [
+            const RdIcon(RdIcons.grid4,
+                size: 18, stroke: '#14328C', strokeWidth: 1.8),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: rd.ink,
+                ),
+              ),
+            ),
+            Text(
+              '$count ${count == 1 ? 'card' : 'cards'}',
+              style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.faint),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _createRow(RdTheme rd) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _creating = true),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        child: Row(
+          children: [
+            Text(
+              '+',
+              style: GoogleFonts.dosis(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: rd.peri,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'New board',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: rd.peri,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _newRow(RdTheme rd) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: rd.card,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: rd.line, width: 1),
+            ),
+            child: Center(
+              child: TextField(
+                controller: _newCtl,
+                autofocus: true,
+                cursorColor: rd.navy,
+                style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  hintText: 'Board name',
+                  hintStyle:
+                      GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
+                ),
+                onSubmitted: (_) => _submitNew(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: _submitNew,
+          child: Container(
+            height: 48,
+            width: 48,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF14328C),
+            ),
+            child: const Center(
+              child: RdIcon(
+                RdIcons.checkThick,
+                size: 18,
+                stroke: '#FFFFFF',
+                strokeWidth: 2.6,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
