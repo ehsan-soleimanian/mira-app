@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/app/mira_services.dart';
 import 'package:mira_app/features/capture/media/capture_media_picker.dart';
+import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
@@ -88,6 +89,19 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   VoiceRecorderPort? _recorder;
   bool _recorderActive = false;
 
+  // ── real capture ingest pipeline ────────────────────────────────────
+  // When the real backend pipeline succeeds, these hold the live capture id and
+  // the extracted proposal so "Add to memory" can approve() it and the review
+  // can render GENUINE data. When any of these is null/empty the review and the
+  // confirm both fall back to the current simulated behaviour.
+  String? _captureId;
+  ProposalDisplay? _proposal;
+  bool _realProposal = false;
+  // Guards `_runPipeline` so text + voice can't both drive it for one session.
+  bool _pipelineStarted = false;
+  // Indices of real connection rows the user has toggled on (all on by default).
+  final Set<int> _connOn = <int>{};
+
   Timer? _secTimer;
   Timer? _revealTimer;
   final List<Timer> _timers = [];
@@ -134,6 +148,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _transcript = _voiceTranscript;
       _transcriptTitle = _voiceTitle;
       _realTranscript = false;
+      // Reset any real pipeline result from a previous session.
+      _captureId = null;
+      _proposal = null;
+      _realProposal = false;
+      _pipelineStarted = false;
     });
     unawaited(_beginRecording());
     _secTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _sec++));
@@ -201,28 +220,145 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _view = 'proc';
       _steps = 0;
     });
-    // Stop + transcribe the real recording in the background while the
-    // "Understanding" steps animate; the result (if any) overrides the
-    // transcript before the review screen appears. Best-effort — never blocks.
-    unawaited(_finishRecording());
+    // Animate the three "Understanding" steps. The review transition is NOT tied
+    // to these timers anymore — it is driven by `_driveVoiceUnderstanding` below
+    // so the real pipeline (which runs concurrently) can populate the review.
     for (var k = 0; k < 3; k++) {
       _timers.add(Timer(Duration(milliseconds: 500 + k * 650), () => setState(() => _steps = k + 1)));
     }
-    _timers.add(Timer(const Duration(milliseconds: 500 + 3 * 650 + 500), () => setState(() => _view = 'review')));
+    unawaited(_driveVoiceUnderstanding());
+  }
+
+  /// Voice path: stop + transcribe the recording, run the real ingest pipeline
+  /// on the resulting transcript, then show the review. Keeps the "Understanding"
+  /// animation visible for at least its natural length and never longer than the
+  /// pipeline's own timeout. Any failure leaves the simulated transcript/chips in
+  /// place and still lands on the review — the flow can never break here.
+  Future<void> _driveVoiceUnderstanding() async {
+    // Minimum on-screen time so the animation always plays through.
+    final minShown = Future<void>.delayed(
+      const Duration(milliseconds: 500 + 3 * 650 + 500),
+    );
+    // Transcribe first (best-effort — may leave the simulated transcript), then
+    // feed the final transcript text into the shared real pipeline.
+    await _finishRecording();
+    await _runPipeline(_transcript);
+    await minShown;
+    if (!mounted || _view != 'proc') return;
+    setState(() => _view = 'review');
+  }
+
+  /// Run the REAL capture ingest pipeline for [text] and, on full success,
+  /// record the live capture id + extracted proposal so the review renders
+  /// genuine data and "Add to memory" can approve() it.
+  ///
+  /// This method NEVER throws and NEVER surfaces an error. It silently leaves
+  /// `_realProposal` false — falling the whole flow back to the simulated chips
+  /// and the one-shot `createNote` — for ANY of:
+  ///   • empty/blank input text,
+  ///   • `createTextCapture` or `streamCapture` throwing (offline, auth, 4xx/5xx),
+  ///   • the stream taking longer than the 12s timeout,
+  ///   • the stream emitting an error or a clarification-only result
+  ///     (time / intent / entity-equivalence — we don't build those sub-flows),
+  ///   • the stream ending in a non-approval state, and
+  ///   • a proposal that carries no usable display content.
+  Future<void> _runPipeline(String text) async {
+    if (_pipelineStarted) return;
+    _pipelineStarted = true;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return;
+    final services = AppScope.servicesOf(context);
+    try {
+      final capture = await services.captureRepository.createTextCapture(trimmed);
+      final captureId = capture.captureId;
+
+      // Seed from the create response if it already carries a proposal.
+      Map<String, dynamic>? proposalJson = capture.proposal;
+      var clarificationOnly = false;
+      var streamOk = true;
+
+      try {
+        await for (final event in services.captureRepository
+            .streamCapture(captureId)
+            .timeout(const Duration(seconds: 12))) {
+          switch (event.event) {
+            case 'proposal':
+              proposalJson = event.data;
+            case 'error':
+              streamOk = false;
+            // Any clarification path means the pipeline wants a sub-flow we
+            // deliberately do not build — treat as a fallback trigger.
+            case 'clarification':
+            case 'question_answer':
+            case 'time_clarification':
+            case 'entity_clarification':
+              clarificationOnly = true;
+            case 'done':
+              final state = event.data['state']?.toString();
+              // Only a clean awaiting_approval is a real, approvable result.
+              if (state != null && state != 'awaiting_approval') {
+                clarificationOnly = true;
+              }
+          }
+        }
+      } on TimeoutException {
+        streamOk = false;
+      }
+
+      if (!streamOk || clarificationOnly || proposalJson == null) return;
+
+      final display = resolveProposalDisplay(proposalJson);
+      if (!display.hasContent) return;
+
+      if (!mounted) return;
+      setState(() {
+        _captureId = captureId;
+        _proposal = display;
+        _realProposal = true;
+        // Default every extracted connection row to selected.
+        _connOn
+          ..clear()
+          ..addAll(List<int>.generate(display.relatedLabels.length, (i) => i));
+      });
+    } catch (_) {
+      // Best-effort — keep the simulated flow. Never surface a hard error.
+      _captureId = null;
+      _realProposal = false;
+    }
   }
 
   String get _time =>
       '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
 
-  /// Confirm the review: persist the understood transcript as a real note
-  /// memory, create the reminder (if its toggle is on), and show the "kept in
-  /// memory" screen. Both writes are fire-and-forget and best-effort so the
-  /// confirmation is instant and still shows even when offline.
+  /// Confirm the review: persist the memory, create the reminder (if its toggle
+  /// is on), and show the "kept in memory" screen. The persist is fire-and-forget
+  /// and best-effort so the confirmation is instant and still shows even offline.
+  ///
+  /// When a REAL proposal was extracted, this approves the live capture into the
+  /// knowledge graph (the genuine ingest path). Otherwise it falls back to the
+  /// one-shot note write, exactly like before.
   void _addToMemory() {
     final services = AppScope.servicesOf(context);
-    unawaited(_persistNote(services, title: _transcriptTitle, content: _transcript));
+    final captureId = _captureId;
+    if (_realProposal && captureId != null) {
+      unawaited(_approveCapture(services, captureId));
+    } else {
+      unawaited(_persistNote(services, title: _transcriptTitle, content: _transcript));
+    }
     if (_remind) unawaited(_createReminder(services));
     setState(() => _view = 'added');
+  }
+
+  /// Approve the live capture, promoting the extracted proposal into the graph.
+  /// Best-effort: a failure (offline, auth, expired capture) falls back to a
+  /// one-shot note write so the capture is still kept.
+  Future<void> _approveCapture(MiraServices services, String captureId) async {
+    try {
+      await services.captureRepository.approve(captureId);
+    } catch (_) {
+      // The real approve failed after the fact — still keep the memory.
+      await _persistNote(services, title: _transcriptTitle, content: _transcript);
+    }
   }
 
   /// Create a real note memory in the backend library. Best-effort: a failure
@@ -256,10 +392,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   // ── quick entry modes ───────────────────────────────────────────────
   /// Type a note and add it to memory. Pauses the voice simulation, collects
-  /// text via a bottom sheet, persists it as a real note, then shows "kept".
+  /// text via a bottom sheet, then runs the REAL ingest pipeline on it — showing
+  /// the "Understanding" animation and a review of the genuinely extracted
+  /// entities/connections. If the pipeline is unavailable it silently falls back
+  /// to the review with simulated chips (persisted on confirm via `createNote`).
   Future<void> _openTextEntry() async {
     _clearTimers();
-    final services = AppScope.servicesOf(context);
     final text = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -277,8 +415,38 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       return;
     }
     final trimmed = text.trim();
-    unawaited(_persistNote(services, title: _titleFrom(trimmed), content: trimmed));
-    setState(() => _view = 'added');
+    // The typed text becomes the "understood" content and the reminder/fallback
+    // note source. It reads as a real transcript (no John/Friday markup).
+    setState(() {
+      _transcript = trimmed;
+      _transcriptTitle = _titleFrom(trimmed);
+      _realTranscript = true;
+      _captureId = null;
+      _proposal = null;
+      _realProposal = false;
+      _pipelineStarted = false;
+      _view = 'proc';
+      _steps = 0;
+    });
+    unawaited(_driveTextUnderstanding(trimmed));
+  }
+
+  /// Text path: animate "Understanding" while the real pipeline runs on [text],
+  /// then show the review. Mirrors `_driveVoiceUnderstanding` without the STT
+  /// step. Never blocks the animation past the pipeline timeout and never throws.
+  Future<void> _driveTextUnderstanding(String text) async {
+    final minShown = Future<void>.delayed(
+      const Duration(milliseconds: 500 + 3 * 650 + 500),
+    );
+    for (var k = 0; k < 3; k++) {
+      _timers.add(Timer(Duration(milliseconds: 500 + k * 650), () {
+        if (mounted && _view == 'proc') setState(() => _steps = k + 1);
+      }));
+    }
+    await _runPipeline(text);
+    await minShown;
+    if (!mounted || _view != 'proc') return;
+    setState(() => _view = 'review');
   }
 
   /// Paste a URL (with an optional title) and import it as a real link memory.
@@ -530,6 +698,100 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     );
   }
 
+  /// The text shown in the "Mira understood this" card. Prefers the real
+  /// proposal's understood title (falling back to its summary), then the
+  /// transcript, so genuine extraction is reflected verbatim.
+  String get _understoodText {
+    final proposal = _proposal;
+    if (_realProposal && proposal != null) {
+      if (proposal.title.trim().isNotEmpty) return proposal.title.trim();
+      if (proposal.summary.trim().isNotEmpty) return proposal.summary.trim();
+    }
+    return _transcript;
+  }
+
+  /// The "Details Mira extracted" chips. Real proposal → genuine detail labels
+  /// (deadline + extracted insights, de-duplicated, capped); otherwise the
+  /// design's illustrative 👤/📅/# chips. Always ends with the "+ Add" chip.
+  Widget _detailChips() {
+    final labels = _realProposal ? _extractedDetailLabels() : const <String>[];
+    final chips = <Widget>[];
+    if (_realProposal) {
+      for (final label in labels) {
+        chips.add(_EChip(label));
+      }
+    } else {
+      chips.addAll(const [
+        _EChip('👤 John'),
+        _EChip('📅 Friday'),
+        _EChip('# contract'),
+      ]);
+    }
+    chips.add(const _EChip('+ Add', add: true));
+    return Wrap(spacing: 8, runSpacing: 8, children: chips);
+  }
+
+  /// Genuine detail labels for the real proposal: the resolved deadline first,
+  /// then the extracted insight labels (roles / task titles / evidence). Trimmed,
+  /// de-duplicated, and capped so the review stays tidy.
+  List<String> _extractedDetailLabels() {
+    final proposal = _proposal;
+    if (proposal == null) return const [];
+    final out = <String>[];
+    void add(String value) {
+      final v = value.trim();
+      if (v.isNotEmpty && !out.contains(v)) out.add(v);
+    }
+
+    if (proposal.deadline.isNotEmpty) add('📅 ${proposal.deadline}');
+    for (final label in proposal.insightLabels) {
+      add(label);
+    }
+    // Keep the source content out of the chips when it's just the whole
+    // understood sentence repeated back.
+    out.removeWhere((l) => l == _understoodText.trim());
+    return out.take(6).toList();
+  }
+
+  /// The "Connect to existing memory" section. Real proposal → one toggleable
+  /// row per extracted related node/relationship (omitted entirely when there
+  /// are none). Otherwise the design's three illustrative connection rows.
+  List<Widget> _connectSection() {
+    if (_realProposal) {
+      final related = _proposal?.relatedLabels ?? const <String>[];
+      if (related.isEmpty) return const [];
+      final rows = <Widget>[_fieldLabel('Connect to existing memory')];
+      for (var i = 0; i < related.length; i++) {
+        if (i > 0) rows.add(const SizedBox(height: 8));
+        final on = _connOn.contains(i);
+        rows.add(
+          _connRow(
+            '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+            related[i],
+            'Related memory',
+            on,
+            () => setState(() {
+              if (on) {
+                _connOn.remove(i);
+              } else {
+                _connOn.add(i);
+              }
+            }),
+          ),
+        );
+      }
+      return rows;
+    }
+    return [
+      _fieldLabel('Connect to existing memory'),
+      _connRow('<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>', 'Meeting with John', 'Calendar · Tomorrow, 3:00 PM', _conn1, () => setState(() => _conn1 = !_conn1)),
+      const SizedBox(height: 8),
+      _connRow('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 'Contract draft v2', 'Note · Captured 2h ago', _conn2, () => setState(() => _conn2 = !_conn2)),
+      const SizedBox(height: 8),
+      _connRow('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', 'John Carter', 'Person · 6 linked memories', _conn3, () => setState(() => _conn3 = !_conn3)),
+    ];
+  }
+
   // ── review ──────────────────────────────────────────────────────────
   Widget _review() {
     return Column(
@@ -552,7 +814,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _typeChip('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 'Task'),
+                          // Real proposal → the auto-detected node type; else the
+                          // design's default "Task".
+                          _typeChip(
+                            '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+                            _realProposal && (_proposal?.nodeType.isNotEmpty ?? false)
+                                ? _proposal!.nodeType
+                                : 'Task',
+                          ),
                           Row(
                             children: [
                               const RdIcon('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', size: 13, stroke: '#8A8B92', strokeWidth: 2),
@@ -563,11 +832,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Real transcript → show it verbatim; simulated → keep the
+                      // Real transcript OR a real extracted proposal → show the
+                      // understood text verbatim; pure simulation → keep the
                       // design's highlighted John/Friday markup.
-                      if (_realTranscript)
+                      if (_realTranscript || _realProposal)
                         Text(
-                          _transcript,
+                          _understoodText,
                           style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: _ink),
                         )
                       else
@@ -587,22 +857,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                   ),
                 ),
                 _fieldLabel('Details Mira extracted'),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: const [
-                    _EChip('👤 John'),
-                    _EChip('📅 Friday'),
-                    _EChip('# contract'),
-                    _EChip('+ Add', add: true),
-                  ],
-                ),
-                _fieldLabel('Connect to existing memory'),
-                _connRow('<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>', 'Meeting with John', 'Calendar · Tomorrow, 3:00 PM', _conn1, () => setState(() => _conn1 = !_conn1)),
-                const SizedBox(height: 8),
-                _connRow('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 'Contract draft v2', 'Note · Captured 2h ago', _conn2, () => setState(() => _conn2 = !_conn2)),
-                const SizedBox(height: 8),
-                _connRow('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', 'John Carter', 'Person · 6 linked memories', _conn3, () => setState(() => _conn3 = !_conn3)),
+                _detailChips(),
+                ..._connectSection(),
                 const SizedBox(height: 14),
                 GestureDetector(
                   onTap: () => setState(() => _remind = !_remind),
