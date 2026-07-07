@@ -5,9 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
+import 'package:mira_app/models/api/collection_models.dart';
 
 import '../theme/rd_colors.dart';
 import '../widgets/rd_bottom_nav.dart';
+import '../widgets/rd_collection_picker.dart';
 import '../widgets/rd_icon.dart';
 
 /// Memory detail — the pushed view you reach by tapping a memory. Shows the
@@ -20,6 +22,7 @@ class RdMemoryScreen extends StatefulWidget {
     super.key,
     required this.go,
     required this.onBack,
+    this.id,
     this.isVoice = false,
     this.title,
     this.body,
@@ -29,6 +32,11 @@ class RdMemoryScreen extends StatefulWidget {
   final RdGo go;
   final VoidCallback onBack;
   final bool isVoice;
+
+  /// The tapped memory's library-item id, used to reach the backend for edit /
+  /// delete / add-to-collection. Null when opened from a sample (e.g. Home), in
+  /// which case those actions stay optimistic (local-only) with just a toast.
+  final String? id;
 
   /// The tapped memory's title/body when opened from a list; falls back to the
   /// sample content when absent.
@@ -126,6 +134,35 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     }
   }
 
+  /// Floating SnackBar toast — mirrors `RdLibraryScreen._toast` so lifecycle
+  /// feedback (Pinned / added to collection …) reads the same across screens.
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: RdColors.ink,
+          content: Text(
+            message,
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+          ),
+        ),
+      );
+  }
+
+  // Pin is client-only for now — there is no backend pin flag yet, so the
+  // toggle just flips local state and confirms with a toast.
+  void _togglePin() {
+    final next = !_pinned;
+    setState(() {
+      _pinned = next;
+      _menu = false;
+    });
+    _toast(next ? 'Pinned' : 'Unpinned');
+  }
+
   String _fmt(double s) =>
       '${(s ~/ 60)}:${(s % 60).floor().toString().padLeft(2, '0')}';
 
@@ -141,16 +178,83 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   }
 
   void _saveEdit() {
+    final nextTitle =
+        _titleCtl.text.trim().isEmpty ? _title : _titleCtl.text.trim();
     setState(() {
-      _title = _titleCtl.text.trim().isEmpty ? _title : _titleCtl.text.trim();
+      _title = nextTitle;
       _body = _bodyCtl.text.trim().isEmpty ? _body : _bodyCtl.text.trim();
       _editing = false;
       _edited = true;
       _saved = true;
     });
+    // Best-effort persistence of the new title. `widget.id` may be a library
+    // item (not a graph capture), so failures are ignored — the local edit and
+    // the "re-read" toast already reflect the change.
+    unawaited(_persistTitle(nextTitle));
     Future.delayed(const Duration(milliseconds: 2800), () {
       if (mounted) setState(() => _saved = false);
     });
+  }
+
+  Future<void> _persistTitle(String title) async {
+    final id = widget.id;
+    if (id == null) return;
+    try {
+      await AppScope.servicesOf(context).graphRepository.patchCaptureTitle(id, title);
+    } catch (_) {
+      // Ignore — the id may not be a graph capture, or the backend is offline.
+    }
+  }
+
+  /// Confirmed delete — best-effort remove from the Library, then leave to it.
+  /// The navigation happens regardless so the flow stays consistent even when
+  /// the id is a sample (null) or the backend is unreachable.
+  Future<void> _deleteMemory() async {
+    setState(() => _confirm = false);
+    final id = widget.id;
+    if (id != null) {
+      try {
+        await AppScope.servicesOf(context).libraryRepository.delete(id);
+      } catch (_) {
+        // Ignore — leave to the Library either way.
+      }
+    }
+    if (!mounted) return;
+    widget.go('library');
+  }
+
+  /// "Add to collection" — pick an existing collection or create one, then add
+  /// this memory to it via `collectionsRepository.addItems`. Guards a null id
+  /// (sample memory): the picker still opens, but the add is skipped.
+  Future<void> _addToCollection() async {
+    setState(() => _menu = false);
+    final services = AppScope.servicesOf(context);
+    List<MemoryCollection> collections = const [];
+    try {
+      collections = await services.collectionsRepository.list();
+    } catch (_) {
+      // Fall back to an empty list — the user can still create a new one.
+    }
+    if (!mounted) return;
+    final choice = await showModalBottomSheet<RdColChoice>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => RdCollectionPickerSheet(collections: collections),
+    );
+    if (choice == null || !mounted) return;
+    final id = widget.id;
+    try {
+      final target = choice.collection ??
+          await services.collectionsRepository.create(name: choice.name!);
+      if (id != null) {
+        await services.collectionsRepository.addItems(target.id, [id]);
+      }
+      if (!mounted) return;
+      _toast('Added to “${target.name}”');
+    } catch (_) {
+      _toast('Couldn’t add to collection. Check your connection.');
+    }
   }
 
   @override
@@ -177,7 +281,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               ],
             ),
             if (_menu) _menuOverlay(),
-            if (_saved) _toast(),
+            if (_saved) _savedToast(),
             if (_confirm) _deleteSheet(),
           ],
         ),
@@ -210,7 +314,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           _iconBtn(
             '<path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>',
             active: _pinned,
-            onTap: () => setState(() => _pinned = !_pinned),
+            // Filled pin when pinned (mirrors the design's fill="currentColor").
+            fill: _pinned ? '#14328C' : 'none',
+            onTap: _togglePin,
           ),
           const SizedBox(width: 6),
           _iconBtn(
@@ -224,14 +330,22 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     );
   }
 
-  Widget _iconBtn(String icon, {required VoidCallback onTap, bool active = false, double strokeWidth = 1.75}) {
+  Widget _iconBtn(String icon,
+      {required VoidCallback onTap,
+      bool active = false,
+      double strokeWidth = 1.75,
+      String fill = 'none'}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 40,
         height: 40,
         alignment: Alignment.center,
-        child: RdIcon(icon, size: 20, stroke: active ? '#14328C' : '#45464E', strokeWidth: strokeWidth),
+        child: RdIcon(icon,
+            size: 20,
+            stroke: active ? '#14328C' : '#45464E',
+            strokeWidth: strokeWidth,
+            fill: fill),
       ),
     );
   }
@@ -751,9 +865,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _menuItem('<path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>', _pinned ? 'Unpin' : 'Pin to top', () => setState(() { _pinned = !_pinned; _menu = false; })),
+                  _menuItem('<path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>', _pinned ? 'Unpin' : 'Pin to top', _togglePin),
                   _menuItem('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 'Edit note', _startEdit),
-                  _menuItem('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/>', 'Add to collection', () { setState(() => _menu = false); widget.go('library'); }),
+                  _menuItem('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/>', 'Add to collection', _addToCollection),
                   const Padding(padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5), child: Divider(height: 1, color: _line)),
                   _menuItem('<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>', 'Delete memory', () => setState(() { _menu = false; _confirm = true; }), danger: true),
                 ],
@@ -782,7 +896,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     );
   }
 
-  Widget _toast() {
+  // The rich "Mira re-read this" confirmation from the design — a positioned
+  // overlay pill, distinct from the plain [_toast] SnackBar used elsewhere.
+  Widget _savedToast() {
     return Positioned(
       left: 0,
       right: 0,
@@ -860,10 +976,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                   ),
                   const SizedBox(height: 22),
                   GestureDetector(
-                    onTap: () {
-                      setState(() => _confirm = false);
-                      widget.go('library');
-                    },
+                    onTap: _deleteMemory,
                     child: Container(
                       width: double.infinity,
                       height: 52,

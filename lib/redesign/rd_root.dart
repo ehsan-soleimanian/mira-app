@@ -96,6 +96,7 @@ class _RdRootState extends State<RdRoot> {
         return RdMemoryScreen(
           go: _go,
           onBack: _back,
+          id: a?.id,
           isVoice: a?.isVoice ?? false,
           title: a?.title,
           body: a?.body,
