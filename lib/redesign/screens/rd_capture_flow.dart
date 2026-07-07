@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/app/mira_services.dart';
+import 'package:mira_app/features/capture/media/capture_media_picker.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 
 import '../theme/rd_colors.dart';
@@ -14,8 +16,13 @@ import '../widgets/rd_orb.dart';
 
 /// Capture flow — the voice path: listen (live transcript with entities) →
 /// understanding → review & confirm → kept. Faithful to the voice branch of
-/// `capture.jsx` (`.rd-captureflow`). The photo / screenshot / link entry
-/// modes are deferred; this is the primary capture experience.
+/// `capture.jsx` (`.rd-captureflow`), this is the primary capture experience.
+///
+/// Alongside the voice path, the listen screen offers three quick entry modes
+/// that persist a real memory to the backend library: type a note, paste a
+/// link, or pick a photo. The voice review's "Add to memory" also persists the
+/// understood transcript as a real note (best-effort) in addition to creating
+/// the optional reminder.
 class RdCaptureFlow extends StatefulWidget {
   const RdCaptureFlow({super.key, required this.go});
 
@@ -47,6 +54,13 @@ const _tokens = [
   _Tok('contract', mark: true, chip: '# contract'), _Tok('terms'), _Tok('and'),
   _Tok('send'), _Tok('the'), _Tok('signed'), _Tok('copy.'),
 ];
+
+/// The full sentence Mira "understood" from the simulated voice capture. Shared
+/// as the source of truth for the review UI, the persisted memory content, and
+/// the reminder title so they never drift apart.
+const _voiceTranscript =
+    'Call John before Friday to confirm the contract terms and send the signed copy.';
+const _voiceTitle = 'Call John before Friday';
 
 class _RdCaptureFlowState extends State<RdCaptureFlow> {
   String _view = 'listen';
@@ -121,23 +135,140 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   String get _time =>
       '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
 
-  /// Confirm the review: create the reminder (if its toggle is on) and show the
-  /// "kept in memory" screen. The reminder create is fire-and-forget so the
-  /// confirmation is instant.
+  /// Confirm the review: persist the understood transcript as a real note
+  /// memory, create the reminder (if its toggle is on), and show the "kept in
+  /// memory" screen. Both writes are fire-and-forget and best-effort so the
+  /// confirmation is instant and still shows even when offline.
   void _addToMemory() {
-    if (_remind) unawaited(_createReminder());
+    final services = AppScope.servicesOf(context);
+    unawaited(_persistNote(services, title: _voiceTitle, content: _voiceTranscript));
+    if (_remind) unawaited(_createReminder(services));
     setState(() => _view = 'added');
   }
 
-  Future<void> _createReminder() async {
+  /// Create a real note memory in the backend library. Best-effort: a failure
+  /// (offline, auth) is swallowed so the capture UX still completes.
+  Future<void> _persistNote(
+    MiraServices services, {
+    required String title,
+    required String content,
+  }) async {
     try {
-      final services = AppScope.servicesOf(context);
+      await services.libraryRepository.createNote(title: title, content: content);
+    } catch (_) {
+      // Best-effort — the capture is still shown as kept.
+    }
+  }
+
+  Future<void> _createReminder(MiraServices services) async {
+    try {
       await RemindersRepository(apiClient: services.apiClient).create(
         title: 'Call John before Friday to confirm the contract terms',
       );
     } catch (_) {
       // Best-effort — the capture is still kept.
     }
+  }
+
+  // ── quick entry modes ───────────────────────────────────────────────
+  /// Type a note and add it to memory. Pauses the voice simulation, collects
+  /// text via a bottom sheet, persists it as a real note, then shows "kept".
+  Future<void> _openTextEntry() async {
+    _clearTimers();
+    final services = AppScope.servicesOf(context);
+    final text = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _ComposeSheet(
+        title: 'Type a note',
+        hint: 'What do you want to remember?',
+        icon: RdIcons.pencil,
+        multiline: true,
+      ),
+    );
+    if (!mounted) return;
+    if (text == null || text.trim().isEmpty) {
+      _startListen();
+      return;
+    }
+    final trimmed = text.trim();
+    unawaited(_persistNote(services, title: _titleFrom(trimmed), content: trimmed));
+    setState(() => _view = 'added');
+  }
+
+  /// Paste a URL (with an optional title) and import it as a real link memory.
+  Future<void> _openLinkEntry() async {
+    _clearTimers();
+    final services = AppScope.servicesOf(context);
+    final result = await showModalBottomSheet<_LinkInput>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _LinkSheet(),
+    );
+    if (!mounted) return;
+    final url = result?.url.trim() ?? '';
+    if (url.isEmpty) {
+      _startListen();
+      return;
+    }
+    unawaited(_persistLink(services, url: url, title: result?.title));
+    setState(() => _view = 'added');
+  }
+
+  /// Pick a photo from the gallery and upload it as a real image memory.
+  Future<void> _pickPhoto() async {
+    _clearTimers();
+    final services = AppScope.servicesOf(context);
+    PickedCaptureMedia? media;
+    try {
+      media = await createCaptureMediaPicker().pickGalleryImage();
+    } catch (_) {
+      media = null;
+    }
+    if (!mounted) return;
+    if (media == null) {
+      _startListen();
+      return;
+    }
+    unawaited(_persistMedia(services, media));
+    setState(() => _view = 'added');
+  }
+
+  Future<void> _persistLink(
+    MiraServices services, {
+    required String url,
+    String? title,
+  }) async {
+    try {
+      await services.libraryRepository.importLink(url: url, title: title);
+    } catch (_) {
+      // Best-effort — the capture is still shown as kept.
+    }
+  }
+
+  Future<void> _persistMedia(
+    MiraServices services,
+    PickedCaptureMedia media,
+  ) async {
+    try {
+      await services.libraryRepository.uploadBytes(
+        bytes: media.bytes,
+        filename: media.filename,
+        mimeType: media.mimeType,
+      );
+    } catch (_) {
+      // Best-effort — the capture is still shown as kept.
+    }
+  }
+
+  /// Derive a short title from free text: first line, clipped to ~60 chars.
+  String _titleFrom(String text) {
+    final firstLine = text.split('\n').first.trim();
+    final base = firstLine.isEmpty ? text.trim() : firstLine;
+    if (base.length <= 60) return base;
+    return '${base.substring(0, 57).trimRight()}…';
   }
 
   @override
@@ -235,6 +366,18 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           ),
         ),
         const Spacer(),
+        // Quick entry modes — each persists a real memory to the library.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _entryChip(RdIcons.pencil, 'Type', _openTextEntry),
+            const SizedBox(width: 10),
+            _entryChip(RdIcons.linkChain, 'Link', _openLinkEntry),
+            const SizedBox(width: 10),
+            _entryChip(RdIcons.photo, 'Photo', _pickPhoto),
+          ],
+        ),
+        const SizedBox(height: 22),
         const _Waveform(),
         const SizedBox(height: 24),
         Row(
@@ -596,6 +739,29 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     );
   }
 
+  /// A pill button for the alternative capture entry modes on the listen screen.
+  Widget _entryChip(String icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: _line, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RdIcon(icon, size: 15, stroke: '#6B6C73', strokeWidth: 1.9),
+            const SizedBox(width: 7),
+            Text(label, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _ink)),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _graphDot(double size, bool hub) {
     return Container(
       width: size,
@@ -698,4 +864,254 @@ class _WaveformState extends State<_Waveform> with SingleTickerProviderStateMixi
       ),
     );
   }
+}
+
+/// Result of the link-entry sheet: a URL plus an optional display title.
+class _LinkInput {
+  const _LinkInput({required this.url, this.title});
+  final String url;
+  final String? title;
+}
+
+/// Bottom sheet that collects free text (a note) and returns it on "Add".
+/// Styled to match the capture flow — soft card surface, navy CTA.
+class _ComposeSheet extends StatefulWidget {
+  const _ComposeSheet({
+    required this.title,
+    required this.hint,
+    required this.icon,
+    this.multiline = false,
+  });
+
+  final String title;
+  final String hint;
+  final String icon;
+  final bool multiline;
+
+  @override
+  State<_ComposeSheet> createState() => _ComposeSheetState();
+}
+
+class _ComposeSheetState extends State<_ComposeSheet> {
+  final _controller = TextEditingController();
+  bool _canSubmit = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() {
+      final can = _controller.text.trim().isNotEmpty;
+      if (can != _canSubmit) setState(() => _canSubmit = can);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SheetShell(
+      icon: widget.icon,
+      title: widget.title,
+      children: [
+        TextField(
+          controller: _controller,
+          autofocus: true,
+          maxLines: widget.multiline ? 5 : 1,
+          minLines: widget.multiline ? 3 : 1,
+          textInputAction:
+              widget.multiline ? TextInputAction.newline : TextInputAction.done,
+          style: GoogleFonts.vazirmatn(fontSize: 15, height: 1.5, color: _ink),
+          decoration: _fieldDecoration(widget.hint),
+        ),
+        const SizedBox(height: 14),
+        _SheetSubmit(
+          label: 'Add to memory',
+          enabled: _canSubmit,
+          onTap: () => Navigator.of(context).pop(_controller.text),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bottom sheet that collects a URL and an optional title for a link memory.
+class _LinkSheet extends StatefulWidget {
+  const _LinkSheet();
+
+  @override
+  State<_LinkSheet> createState() => _LinkSheetState();
+}
+
+class _LinkSheetState extends State<_LinkSheet> {
+  final _urlController = TextEditingController();
+  final _titleController = TextEditingController();
+  bool _canSubmit = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlController.addListener(() {
+      final can = _looksLikeUrl(_urlController.text);
+      if (can != _canSubmit) setState(() => _canSubmit = can);
+    });
+  }
+
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _titleController.dispose();
+    super.dispose();
+  }
+
+  bool _looksLikeUrl(String value) {
+    final v = value.trim();
+    return v.contains('.') && !v.contains(' ') && v.length > 3;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SheetShell(
+      icon: RdIcons.linkChain,
+      title: 'Add a link',
+      children: [
+        TextField(
+          controller: _urlController,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          textInputAction: TextInputAction.next,
+          style: GoogleFonts.vazirmatn(fontSize: 15, color: _ink),
+          decoration: _fieldDecoration('https://…'),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _titleController,
+          textInputAction: TextInputAction.done,
+          style: GoogleFonts.vazirmatn(fontSize: 15, color: _ink),
+          decoration: _fieldDecoration('Title (optional)'),
+        ),
+        const SizedBox(height: 14),
+        _SheetSubmit(
+          label: 'Add to memory',
+          enabled: _canSubmit,
+          onTap: () => Navigator.of(context).pop(
+            _LinkInput(
+              url: _urlController.text,
+              title: _titleController.text.trim().isEmpty
+                  ? null
+                  : _titleController.text.trim(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Shared rounded-top sheet chrome: grab handle, header with icon, and a
+/// keyboard-aware padded body.
+class _SheetShell extends StatelessWidget {
+  const _SheetShell({
+    required this.icon,
+    required this.title,
+    required this.children,
+  });
+
+  final String icon;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: RdColors.bg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(100)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(color: _periSoft, borderRadius: BorderRadius.circular(10)),
+                  child: Center(child: RdIcon(icon, size: 18, stroke: '#14328C', strokeWidth: 1.8)),
+                ),
+                const SizedBox(width: 11),
+                Text(title, style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: _ink)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The navy "Add to memory" button used across the entry sheets.
+class _SheetSubmit extends StatelessWidget {
+  const _SheetSubmit({
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 150),
+        opacity: enabled ? 1 : 0.45,
+        child: Container(
+          height: 52,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: _navy, borderRadius: BorderRadius.circular(14)),
+          child: Text(label, style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+        ),
+      ),
+    );
+  }
+}
+
+InputDecoration _fieldDecoration(String hint) {
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: _faint),
+    filled: true,
+    fillColor: _card,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _line, width: 1),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: _peri, width: 1.5),
+    ),
+  );
 }
