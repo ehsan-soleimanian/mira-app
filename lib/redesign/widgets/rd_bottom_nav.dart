@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:mira_app/l10n/app_localizations.dart';
+
 import '../theme/rd_theme.dart';
 import '../theme/rd_typography.dart';
 import 'rd_icon.dart';
@@ -26,6 +28,31 @@ class RdMemoryArg {
   final bool isVoice;
 }
 
+/// Carries onboarding context (email, display name, optional first capture)
+/// across the first-run flow screens.
+class RdOnboardingArg {
+  const RdOnboardingArg({
+    this.email,
+    this.displayName,
+    this.firstCaptureText,
+  });
+
+  final String? email;
+  final String? displayName;
+  final String? firstCaptureText;
+
+  RdOnboardingArg copyWith({
+    String? email,
+    String? displayName,
+    String? firstCaptureText,
+  }) =>
+      RdOnboardingArg(
+        email: email ?? this.email,
+        displayName: displayName ?? this.displayName,
+        firstCaptureText: firstCaptureText ?? this.firstCaptureText,
+      );
+}
+
 /// The shared bottom navigation used by every tab-rooted screen (Home, Daily
 /// Brief, Library, Canvas). Home / Library on the left, Canvas / Brief on the
 /// right, with the floating capture mic centred over the gap. [active] is the
@@ -38,6 +65,7 @@ class RdBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SizedBox(
       height: 96,
       child: Stack(
@@ -51,26 +79,26 @@ class RdBottomNav extends StatelessWidget {
               children: [
                 _NavItem(
                   icon: RdIcons.navHome,
-                  label: 'Home',
+                  label: l10n.rdNavHome,
                   active: active == 'home',
                   onTap: () => go('home'),
                 ),
                 _NavItem(
                   icon: RdIcons.navLibrary,
-                  label: 'Library',
+                  label: l10n.rdNavLibrary,
                   active: active == 'library',
                   onTap: () => go('library'),
                 ),
                 const SizedBox(width: 64),
                 _NavItem(
                   icon: RdIcons.navCanvas,
-                  label: 'Canvas',
+                  label: l10n.rdNavCanvas,
                   active: active == 'canvas',
                   onTap: () => go('canvas'),
                 ),
                 _NavItem(
                   icon: RdIcons.navBrief,
-                  label: 'Brief',
+                  label: l10n.rdNavBrief,
                   active: active == 'daily',
                   onTap: () => go('daily'),
                 ),

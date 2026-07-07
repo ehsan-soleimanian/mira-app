@@ -662,4 +662,104 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get libraryMeetingPasteAction => 'وارد کردن یادداشت جلسه';
+
+  @override
+  String get rdNavHome => 'خانه';
+
+  @override
+  String get rdNavLibrary => 'کتابخانه';
+
+  @override
+  String get rdNavCanvas => 'بوم';
+
+  @override
+  String get rdNavBrief => 'خلاصه';
+
+  @override
+  String get rdGreetingMorning => 'صبح بخیر';
+
+  @override
+  String get rdGreetingAfternoon => 'عصر بخیر';
+
+  @override
+  String get rdGreetingEvening => 'شب بخیر';
+
+  @override
+  String get rdHomeMemoryReady => 'حافظه‌ات\nآرام و آماده است';
+
+  @override
+  String get rdHomeComposerHint => 'هر چیزی بنویس یا بگو…';
+
+  @override
+  String get rdWaitingSectionTitle => 'منتظر لحظه مناسب';
+
+  @override
+  String get rdRecentlyCaptured => 'اخیراً ثبت‌شده';
+
+  @override
+  String get rdSeeAll => 'مشاهده همه';
+
+  @override
+  String get rdRemindersLink => 'یادآورها';
+
+  @override
+  String get rdSnoozeUndo => 'بازگردانی';
+
+  @override
+  String get rdSnoozeInHour => 'یک ساعت دیگر';
+
+  @override
+  String get rdSnoozeEvening => 'امشب';
+
+  @override
+  String get rdSnoozeTomorrow => 'فردا';
+
+  @override
+  String get rdSnoozeNextWeek => 'هفته آینده';
+
+  @override
+  String get rdWhenMomentRight => 'وقتی لحظه مناسب برسد';
+
+  @override
+  String rdWhenNextSee(String person) {
+    return 'وقتی دوباره $person را ببینی';
+  }
+
+  @override
+  String get rdListenTitle => 'دارم گوش می‌دهم…';
+
+  @override
+  String get rdListenSubtitle => 'طبیعی حرف بزن — میرا یادداشت می‌کند';
+
+  @override
+  String get rdListenTapToStop => 'برای توقف بزن';
+
+  @override
+  String get rdCanvasBoard => 'بورد';
+
+  @override
+  String get rdCanvasClusters => 'خوشه‌ها';
+
+  @override
+  String get rdCanvasMap => 'نقشه';
+
+  @override
+  String rdClusterMemories(int count) {
+    return '$count خاطره';
+  }
+
+  @override
+  String get rdOnboardingWelcome => 'میرا.\nذهن دوم تو.';
+
+  @override
+  String get rdOnboardingSignIn => 'ورود';
+
+  @override
+  String get rdOnboardingContinueGoogle => 'ادامه با گوگل';
+
+  @override
+  String get rdOnboardingSkip => 'رد کردن';
+
+  @override
+  String get rdOnboardingLater => 'بعداً انجام می‌دهم';
 }

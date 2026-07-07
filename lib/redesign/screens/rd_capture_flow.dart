@@ -11,6 +11,7 @@ import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
+import 'package:mira_app/models/api/capture_models.dart';
 
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -87,6 +88,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   // finish. Null until the first listen session begins.
   VoiceRecorderPort? _recorder;
   bool _recorderActive = false;
+  StreamSubscription<CaptureStreamEvent>? _realtimeSub;
+  bool _useRealtimePath = false;
+  Completer<int>? _durationCompleter;
 
   // ── real capture ingest pipeline ────────────────────────────────────
   // When the real backend pipeline succeeds, these hold the live capture id and
@@ -118,7 +122,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     for (final t in _timers) {
       t.cancel();
     }
-    // Best-effort teardown of the mic so a disposed screen never holds the mic.
+    _realtimeSub?.cancel();
+    _realtimeSub = null;
+    _useRealtimePath = false;
     final recorder = _recorder;
     if (recorder != null) {
       unawaited(recorder.cancel().catchError((_) {}));
@@ -165,18 +171,74 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     });
   }
 
-  /// Start a REAL device-mic recording for this listen session. The recorder
-  /// requests mic permission itself and, on web/desktop/denied/hardware
-  /// failure, silently records in its own simulated mode. Either way this never
-  /// throws and never blocks the animation — worst case `_recorderActive` stays
-  /// false and finish falls back to the simulated transcript.
+  /// Start recording — tries realtime voice first, then batch file capture.
   Future<void> _beginRecording() async {
+    final services = AppScope.servicesOf(context);
+    final recorder = _recorder ??= createVoiceRecorder();
+
     try {
-      final recorder = _recorder ??= createVoiceRecorder();
+      _durationCompleter = Completer<int>();
+      final session =
+          await services.captureRepository.startRealtimeVoiceSession();
+      final started = await recorder.startRealtime();
+      final audioStream = recorder.realtimeAudioStream;
+      if (started && audioStream != null) {
+        _useRealtimePath = true;
+        _recorderActive = true;
+        _realtimeSub = services.captureRepository
+            .streamRealtimeVoiceEvents(session)
+            .listen(_onRealtimeEvent, onError: (_) {});
+        unawaited(
+          services.captureRepository
+              .sendRealtimeVoiceAudio(
+                session: session,
+                audioStream: audioStream,
+                durationMs: _durationCompleter!.future,
+              )
+              .catchError((_) {}),
+        );
+        return;
+      }
+    } catch (_) {
+      _useRealtimePath = false;
+    }
+
+    try {
       final started = await recorder.start();
       if (mounted) _recorderActive = started;
     } catch (_) {
       _recorderActive = false;
+    }
+  }
+
+  void _onRealtimeEvent(CaptureStreamEvent event) {
+    if (!mounted) return;
+    switch (event.event) {
+      case 'transcript_delta':
+      case 'transcript_final':
+        final text = (event.data['text'] as String? ?? '').trim();
+        if (text.isEmpty) return;
+        setState(() {
+          _transcript = text;
+          _transcriptTitle = _titleFrom(text);
+          if (event.event == 'transcript_final') _realTranscript = true;
+        });
+      case 'capture_created':
+        final id = event.data['captureId'] as String?;
+        if (id != null && id.isNotEmpty) {
+          _captureId = id;
+          _pipelineStarted = true;
+        }
+      case 'proposal':
+        final display = resolveProposalDisplay(event.data);
+        if (display.hasContent) {
+          setState(() {
+            _proposal = display;
+            _realProposal = true;
+          });
+        }
+      default:
+        break;
     }
   }
 
@@ -188,11 +250,17 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     final recorder = _recorder;
     if (recorder == null || !_recorderActive) return;
     _recorderActive = false;
-    // Capture services before any await so no BuildContext is used across an
-    // async gap.
     final services = AppScope.servicesOf(context);
     try {
       final result = await recorder.stop();
+      if (_durationCompleter != null && !_durationCompleter!.isCompleted) {
+        _durationCompleter!.complete(result.duration.inMilliseconds);
+      }
+      await _realtimeSub?.cancel();
+      _realtimeSub = null;
+
+      if (_useRealtimePath && _realTranscript) return;
+
       final path = result.filePath;
       if (result.simulated || path == null || path.isEmpty) return;
 
@@ -208,9 +276,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
         _transcriptTitle = _titleFrom(text);
         _realTranscript = true;
       });
-    } catch (_) {
-      // Best-effort — keep the simulated transcript and complete the flow.
-    }
+    } catch (_) {}
   }
 
   void _toProc() {
@@ -241,7 +307,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     // Transcribe first (best-effort — may leave the simulated transcript), then
     // feed the final transcript text into the shared real pipeline.
     await _finishRecording();
-    await _runPipeline(_transcript);
+    if (!(_useRealtimePath && _captureId != null && _realProposal)) {
+      await _runPipeline(_transcript);
+    }
     await minShown;
     if (!mounted || _view != 'proc') return;
     setState(() => _view = 'review');

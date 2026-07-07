@@ -247,5 +247,47 @@
   },
   "libraryMeetingImportTitle": "Meetings",
   "libraryMeetingImportBody": "Record a live meeting or paste the transcript, decisions, and notes into Library.",
-  "libraryMeetingPasteAction": "Paste meeting notes"
+  "libraryMeetingPasteAction": "Paste meeting notes",
+  "rdNavHome": "Home",
+  "rdNavLibrary": "Library",
+  "rdNavCanvas": "Canvas",
+  "rdNavBrief": "Brief",
+  "rdGreetingMorning": "Good morning",
+  "rdGreetingAfternoon": "Good afternoon",
+  "rdGreetingEvening": "Good evening",
+  "rdHomeMemoryReady": "Your memory is\nquiet and ready",
+  "rdHomeComposerHint": "Type or say anything…",
+  "rdWaitingSectionTitle": "WAITING FOR THE RIGHT MOMENT",
+  "rdRecentlyCaptured": "RECENTLY CAPTURED",
+  "rdSeeAll": "See all",
+  "rdRemindersLink": "Reminders",
+  "rdSnoozeUndo": "Undo",
+  "rdSnoozeInHour": "In an hour",
+  "rdSnoozeEvening": "This evening",
+  "rdSnoozeTomorrow": "Tomorrow",
+  "rdSnoozeNextWeek": "Next week",
+  "rdWhenMomentRight": "When the moment is right",
+  "rdWhenNextSee": "When you next see {person}",
+  "@rdWhenNextSee": {
+    "placeholders": {
+      "person": {"type": "String"}
+    }
+  },
+  "rdListenTitle": "I'm listening…",
+  "rdListenSubtitle": "Speak naturally — Mira is taking notes",
+  "rdListenTapToStop": "TAP TO STOP",
+  "rdCanvasBoard": "Board",
+  "rdCanvasClusters": "Clusters",
+  "rdCanvasMap": "Map",
+  "rdClusterMemories": "{count} memories",
+  "@rdClusterMemories": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "rdOnboardingWelcome": "Mira.\nYour second mind.",
+  "rdOnboardingSignIn": "Sign in",
+  "rdOnboardingContinueGoogle": "Continue with Google",
+  "rdOnboardingSkip": "Skip",
+  "rdOnboardingLater": "I'll do it later"
 }

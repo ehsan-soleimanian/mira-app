@@ -1269,6 +1269,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paste meeting notes'**
   String get libraryMeetingPasteAction;
+
+  /// No description provided for @rdNavHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get rdNavHome;
+
+  /// No description provided for @rdNavLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get rdNavLibrary;
+
+  /// No description provided for @rdNavCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get rdNavCanvas;
+
+  /// No description provided for @rdNavBrief.
+  ///
+  /// In en, this message translates to:
+  /// **'Brief'**
+  String get rdNavBrief;
+
+  /// No description provided for @rdGreetingMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get rdGreetingMorning;
+
+  /// No description provided for @rdGreetingAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get rdGreetingAfternoon;
+
+  /// No description provided for @rdGreetingEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get rdGreetingEvening;
+
+  /// No description provided for @rdHomeMemoryReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Your memory is\nquiet and ready'**
+  String get rdHomeMemoryReady;
+
+  /// No description provided for @rdHomeComposerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type or say anything…'**
+  String get rdHomeComposerHint;
+
+  /// No description provided for @rdWaitingSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'WAITING FOR THE RIGHT MOMENT'**
+  String get rdWaitingSectionTitle;
+
+  /// No description provided for @rdRecentlyCaptured.
+  ///
+  /// In en, this message translates to:
+  /// **'RECENTLY CAPTURED'**
+  String get rdRecentlyCaptured;
+
+  /// No description provided for @rdSeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get rdSeeAll;
+
+  /// No description provided for @rdRemindersLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get rdRemindersLink;
+
+  /// No description provided for @rdSnoozeUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get rdSnoozeUndo;
+
+  /// No description provided for @rdSnoozeInHour.
+  ///
+  /// In en, this message translates to:
+  /// **'In an hour'**
+  String get rdSnoozeInHour;
+
+  /// No description provided for @rdSnoozeEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'This evening'**
+  String get rdSnoozeEvening;
+
+  /// No description provided for @rdSnoozeTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get rdSnoozeTomorrow;
+
+  /// No description provided for @rdSnoozeNextWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Next week'**
+  String get rdSnoozeNextWeek;
+
+  /// No description provided for @rdWhenMomentRight.
+  ///
+  /// In en, this message translates to:
+  /// **'When the moment is right'**
+  String get rdWhenMomentRight;
+
+  /// No description provided for @rdWhenNextSee.
+  ///
+  /// In en, this message translates to:
+  /// **'When you next see {person}'**
+  String rdWhenNextSee(String person);
+
+  /// No description provided for @rdListenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m listening…'**
+  String get rdListenTitle;
+
+  /// No description provided for @rdListenSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak naturally — Mira is taking notes'**
+  String get rdListenSubtitle;
+
+  /// No description provided for @rdListenTapToStop.
+  ///
+  /// In en, this message translates to:
+  /// **'TAP TO STOP'**
+  String get rdListenTapToStop;
+
+  /// No description provided for @rdCanvasBoard.
+  ///
+  /// In en, this message translates to:
+  /// **'Board'**
+  String get rdCanvasBoard;
+
+  /// No description provided for @rdCanvasClusters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clusters'**
+  String get rdCanvasClusters;
+
+  /// No description provided for @rdCanvasMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map'**
+  String get rdCanvasMap;
+
+  /// No description provided for @rdClusterMemories.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} memories'**
+  String rdClusterMemories(int count);
+
+  /// No description provided for @rdOnboardingWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira.\nYour second mind.'**
+  String get rdOnboardingWelcome;
+
+  /// No description provided for @rdOnboardingSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get rdOnboardingSignIn;
+
+  /// No description provided for @rdOnboardingContinueGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get rdOnboardingContinueGoogle;
+
+  /// No description provided for @rdOnboardingSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get rdOnboardingSkip;
+
+  /// No description provided for @rdOnboardingLater.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ll do it later'**
+  String get rdOnboardingLater;
 }
 
 class _AppLocalizationsDelegate

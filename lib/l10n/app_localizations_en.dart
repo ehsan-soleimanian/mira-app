@@ -661,4 +661,104 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryMeetingPasteAction => 'Paste meeting notes';
+
+  @override
+  String get rdNavHome => 'Home';
+
+  @override
+  String get rdNavLibrary => 'Library';
+
+  @override
+  String get rdNavCanvas => 'Canvas';
+
+  @override
+  String get rdNavBrief => 'Brief';
+
+  @override
+  String get rdGreetingMorning => 'Good morning';
+
+  @override
+  String get rdGreetingAfternoon => 'Good afternoon';
+
+  @override
+  String get rdGreetingEvening => 'Good evening';
+
+  @override
+  String get rdHomeMemoryReady => 'Your memory is\nquiet and ready';
+
+  @override
+  String get rdHomeComposerHint => 'Type or say anything…';
+
+  @override
+  String get rdWaitingSectionTitle => 'WAITING FOR THE RIGHT MOMENT';
+
+  @override
+  String get rdRecentlyCaptured => 'RECENTLY CAPTURED';
+
+  @override
+  String get rdSeeAll => 'See all';
+
+  @override
+  String get rdRemindersLink => 'Reminders';
+
+  @override
+  String get rdSnoozeUndo => 'Undo';
+
+  @override
+  String get rdSnoozeInHour => 'In an hour';
+
+  @override
+  String get rdSnoozeEvening => 'This evening';
+
+  @override
+  String get rdSnoozeTomorrow => 'Tomorrow';
+
+  @override
+  String get rdSnoozeNextWeek => 'Next week';
+
+  @override
+  String get rdWhenMomentRight => 'When the moment is right';
+
+  @override
+  String rdWhenNextSee(String person) {
+    return 'When you next see $person';
+  }
+
+  @override
+  String get rdListenTitle => 'I\'m listening…';
+
+  @override
+  String get rdListenSubtitle => 'Speak naturally — Mira is taking notes';
+
+  @override
+  String get rdListenTapToStop => 'TAP TO STOP';
+
+  @override
+  String get rdCanvasBoard => 'Board';
+
+  @override
+  String get rdCanvasClusters => 'Clusters';
+
+  @override
+  String get rdCanvasMap => 'Map';
+
+  @override
+  String rdClusterMemories(int count) {
+    return '$count memories';
+  }
+
+  @override
+  String get rdOnboardingWelcome => 'Mira.\nYour second mind.';
+
+  @override
+  String get rdOnboardingSignIn => 'Sign in';
+
+  @override
+  String get rdOnboardingContinueGoogle => 'Continue with Google';
+
+  @override
+  String get rdOnboardingSkip => 'Skip';
+
+  @override
+  String get rdOnboardingLater => 'I\'ll do it later';
 }

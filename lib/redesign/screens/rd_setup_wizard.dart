@@ -15,9 +15,12 @@ import 'rd_home_screen.dart';
 /// coach-mark tour over the real Home. Faithful to `setupwizard.jsx` (`.wz-*`).
 /// The collected model is local; it's persisted to the profile once wired.
 class RdSetupWizard extends StatefulWidget {
-  const RdSetupWizard({super.key, required this.go});
+  const RdSetupWizard({super.key, required this.go, this.initialDisplayName});
 
   final RdGo go;
+
+  /// Name collected on the Details step — pre-fills the wizard address field.
+  final String? initialDisplayName;
 
   @override
   State<RdSetupWizard> createState() => _RdSetupWizardState();
@@ -58,6 +61,15 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
   Timer? _weaveTimer;
 
   String get _step => _steps[_i];
+
+  @override
+  void initState() {
+    super.initState();
+    final name = widget.initialDisplayName?.trim();
+    if (name != null && name.isNotEmpty) {
+      _nameCtl.text = name;
+    }
+  }
 
   @override
   void dispose() {

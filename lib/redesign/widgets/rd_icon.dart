@@ -97,6 +97,10 @@ abstract final class RdIcons {
 
   // Library
   static const search = '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>';
+  static const bell =
+      '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>';
+  static const moon =
+      '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
   static const photo =
       '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/>';
   static const linkChain =

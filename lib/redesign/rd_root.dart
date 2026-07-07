@@ -85,13 +85,27 @@ class _RdRootState extends State<RdRoot> {
       case 'email':
         return RdEmailCodeScreen(go: _go, email: arg is String ? arg : null);
       case 'details':
-        return RdDetailsScreen(go: _go, email: arg is String ? arg : null);
+        final ob = arg is RdOnboardingArg ? arg : null;
+        return RdDetailsScreen(
+          go: _go,
+          email: ob?.email ?? (arg is String ? arg : null),
+          onboarding: ob,
+        );
       case 'remember':
-        return RdRememberScreen(go: _go);
+        return RdRememberScreen(
+          go: _go,
+          onboarding: arg is RdOnboardingArg ? arg : null,
+        );
       case 'understood':
-        return RdUnderstoodScreen(go: _go);
+        return RdUnderstoodScreen(
+          go: _go,
+          onboarding: arg is RdOnboardingArg ? arg : null,
+        );
       case 'wizard':
-        return RdSetupWizard(go: _go);
+        return RdSetupWizard(
+          go: _go,
+          initialDisplayName: arg is RdOnboardingArg ? arg.displayName : null,
+        );
       case 'account':
         return RdAccountScreen(go: _go, onBack: _back);
       case 'notifications':

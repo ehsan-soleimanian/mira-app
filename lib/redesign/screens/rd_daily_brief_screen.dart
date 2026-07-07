@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
+import 'package:mira_app/models/api/daily_brief_models.dart';
 import 'package:mira_app/models/api/daily_update_models.dart';
 import 'package:mira_app/models/api/reminder_models.dart';
 import 'package:mira_app/models/api/resurfaced_models.dart';
@@ -40,6 +41,12 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   List<DailyUpdateItem>? _items;
 
+  /// Rich brief from `GET /daily-brief` when available.
+  DailyBriefResponse? _brief;
+
+  /// Task rows parsed from the brief `needs_you` section (id → item map).
+  List<Map<String, dynamic>> _briefTasks = const [];
+
   /// Overdue reminders (past their `remindAt`), newest-overdue first. Null until
   /// the first load resolves; empty once loaded when nothing is overdue.
   List<Reminder>? _overdue;
@@ -68,18 +75,39 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       final first = user.displayName.trim().split(' ').first;
       if (mounted && first.isNotEmpty) setState(() => _name = first);
     } catch (_) {}
+
     try {
-      final update = await services.dailyBriefRepository.fetchDailyUpdate();
-      if (mounted) setState(() => _items = update.items);
-    } catch (_) {}
-    try {
-      final resurfaced =
-          await services.dailyBriefRepository.fetchResurfaced();
-      if (mounted) setState(() => _resurfaced = resurfaced);
+      final brief = await services.dailyBriefRepository.fetchDailyBrief();
+      if (mounted) {
+        setState(() {
+          _brief = brief;
+          _briefTasks = brief.section('needs_you')?.items ?? const [];
+          final resurfacedSection = brief.section('resurfaced');
+          if (resurfacedSection != null && resurfacedSection.items.isNotEmpty) {
+            _resurfaced = resurfacedSection.items
+                .map(
+                  (m) => ResurfacedItem(
+                    id: m['id'] as String? ?? '',
+                    title: m['title'] as String? ?? 'Memory',
+                    reason: m['reason'] as String? ?? 'Recent memory',
+                  ),
+                )
+                .toList();
+          }
+        });
+      }
     } catch (_) {
-      // Feed unreachable — leave `_resurfaced` null so the section shows the
-      // designed sample cards instead of an empty gap.
+      try {
+        final update = await services.dailyBriefRepository.fetchDailyUpdate();
+        if (mounted) setState(() => _items = update.items);
+      } catch (_) {}
+      try {
+        final resurfaced =
+            await services.dailyBriefRepository.fetchResurfaced();
+        if (mounted) setState(() => _resurfaced = resurfaced);
+      } catch (_) {}
     }
+
     try {
       final reminders = await RemindersRepository(apiClient: services.apiClient)
           .list(done: false);
@@ -89,18 +117,27 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
           .toList()
         ..sort((a, b) => a.remindAt!.compareTo(b.remindAt!));
       if (mounted) setState(() => _overdue = overdue);
-    } catch (_) {
-      // Backend unreachable — leave the section hidden rather than guessing.
-    }
+    } catch (_) {}
   }
 
   Future<void> _toggleTask(String id, bool done) async {
+    if (!done) return;
+    setState(() {
+      _briefTasks = _briefTasks.where((t) => t['id'] != id).toList();
+      _items = _items?.where((t) => t.id != id).toList();
+    });
     try {
       final services = AppScope.servicesOf(context);
-      await services.graphRepository.updateTaskStatus(id, done ? 'DONE' : 'OPEN');
-    } catch (_) {
-      // Best-effort — the checkbox already reflects the change locally.
-    }
+      if (_brief != null) {
+        await services.dailyBriefRepository.recordAction(
+          itemId: id,
+          action: 'done',
+          itemKind: 'task',
+        );
+      } else {
+        await services.graphRepository.updateTaskStatus(id, 'DONE');
+      }
+    } catch (_) {}
   }
 
   /// Snooze an overdue reminder to tomorrow — drop it from the list optimistically
@@ -154,21 +191,105 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   List<Widget> _bodyChildren() {
-    // Before either feed resolves, keep the full designed mock so the screen
-    // reads well while loading / offline.
-    if (_items == null && _overdue == null) return _mockChildren();
+    if (_items == null && _overdue == null && _brief == null) {
+      return _mockChildren();
+    }
 
     final items = _items ?? const <DailyUpdateItem>[];
-    final tasks = items.where(_isTask).toList();
+    final tasks = _briefTasks.isNotEmpty
+        ? null
+        : items.where(_isTask).toList();
     final recent = items.where((i) => !_isTask(i)).toList();
     final overdue = _overdue ?? const <Reminder>[];
 
-    // Empty day — nothing needs the user, nothing waiting, nothing recent.
-    if (tasks.isEmpty && recent.isEmpty && overdue.isEmpty) {
+    final hasBriefTasks = _briefTasks.isNotEmpty;
+    final hasLegacyTasks = tasks != null && tasks.isNotEmpty;
+
+    if (!hasBriefTasks &&
+        !hasLegacyTasks &&
+        recent.isEmpty &&
+        overdue.isEmpty &&
+        (_brief?.state == 'empty')) {
       return [_header(), _EmptyState(onCapture: () => widget.go('capture'))];
     }
 
-    return _liveChildren(tasks: tasks, recent: recent, overdue: overdue);
+    if (!hasBriefTasks && !hasLegacyTasks && recent.isEmpty && overdue.isEmpty) {
+      if (_brief?.state == 'empty') {
+        return [_header(), _EmptyState(onCapture: () => widget.go('capture'))];
+      }
+      if (items.isEmpty && _brief == null) {
+        return [_header(), _EmptyState(onCapture: () => widget.go('capture'))];
+      }
+    }
+
+    if (hasBriefTasks) {
+      return _briefLiveChildren(overdue: overdue);
+    }
+
+    return _liveChildren(
+      tasks: tasks ?? const [],
+      recent: recent,
+      overdue: overdue,
+    );
+  }
+
+  List<Widget> _briefLiveChildren({required List<Reminder> overdue}) {
+    return [
+      _header(),
+      if (_brief != null && _brief!.summary.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(26, 0, 26, 12),
+          child: Text(
+            _brief!.summary,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 14,
+              height: 1.5,
+              color: context.rd.muted,
+            ),
+          ),
+        ),
+      if (overdue.isNotEmpty) ...[
+        _OverdueSummary(),
+        _OverdueHeader(count: overdue.length),
+        for (final r in overdue)
+          _OverdueCard(
+            when: _overdueWhen(r.remindAt),
+            title: r.title.trim().isEmpty ? 'Reminder' : r.title,
+            onSnooze: () => _snoozeReminder(r),
+            onDone: () => _completeReminder(r),
+          ),
+      ],
+      if (_briefTasks.isNotEmpty) ...[
+        _SectionHeader(
+          icon: RdIcons.checkCircle,
+          label: 'NEEDS YOU',
+          count:
+              '${_briefTasks.length} ${_briefTasks.length == 1 ? 'task' : 'tasks'}',
+        ),
+        for (final t in _briefTasks)
+          _TaskCard(
+            title: t['title'] as String? ?? 'Task',
+            due: _briefTaskDue(t),
+            onToggle: (done) => _toggleTask(t['id'] as String? ?? '', done),
+          ),
+      ],
+      ..._resurfacedChildren(),
+      _dbEnd(),
+    ];
+  }
+
+  static String _briefTaskDue(Map<String, dynamic> task) {
+    final dueText = task['dueText'] as String?;
+    if (dueText != null && dueText.trim().isNotEmpty) return dueText;
+    final dueAt = task['dueAt'];
+    if (dueAt is String) {
+      final dt = DateTime.tryParse(dueAt)?.toLocal();
+      if (dt != null) {
+        return 'Due ${dt.month}/${dt.day}';
+      }
+    }
+    if (task['overdue'] == true) return 'Overdue';
+    return 'Open';
   }
 
   List<Widget> _liveChildren({

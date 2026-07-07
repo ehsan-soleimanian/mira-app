@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mira_app/l10n/app_localizations.dart';
+
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
@@ -42,6 +44,7 @@ class _RdListenScreenState extends State<RdListenScreen> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
@@ -73,18 +76,18 @@ class _RdListenScreenState extends State<RdListenScreen> {
             const RdOrb(size: 145),
             const SizedBox(height: 34),
             Text(
-              'I’m listening…',
+              l10n.rdListenTitle,
               style: GoogleFonts.dosis(fontSize: 34, fontWeight: FontWeight.w700, color: rd.ink),
             ),
             const SizedBox(height: 12),
             Text(
-              'Speak naturally — Mira is taking notes',
+              l10n.rdListenSubtitle,
               textAlign: TextAlign.center,
               style: GoogleFonts.dosis(fontSize: 18, fontWeight: FontWeight.w500, color: rd.muted),
             ),
             const Spacer(flex: 3),
             GestureDetector(
-              onTap: () => widget.go('chat'),
+              onTap: () => widget.go('capture'),
               child: Container(
                 width: 72,
                 height: 72,
@@ -111,7 +114,7 @@ class _RdListenScreenState extends State<RdListenScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'TAP TO STOP',
+              l10n.rdListenTapToStop,
               style: GoogleFonts.vazirmatn(fontSize: 10, color: rd.muted, letterSpacing: 0.6),
             ),
             const SizedBox(height: 56),

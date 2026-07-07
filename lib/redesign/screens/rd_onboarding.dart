@@ -5,6 +5,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
+import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
+import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -22,6 +25,21 @@ void _authError(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
   );
+}
+
+/// Best-effort minimal onboarding completion so skip/later paths still mark the
+/// user as onboarded on the backend.
+Future<void> _submitMinimalOnboarding(
+  BuildContext context, {
+  String? displayName,
+}) async {
+  try {
+    await AppScope.servicesOf(context).onboardingRepository.submitSetup({
+      if (displayName != null && displayName.trim().isNotEmpty)
+        'displayName': displayName.trim(),
+      'completeOnboarding': true,
+    });
+  } catch (_) {}
 }
 
 /// The peri CTA fill (`_ObVariant.peri`) is a fixed brand accent — white text
@@ -56,6 +74,7 @@ class RdSplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
@@ -66,7 +85,7 @@ class RdSplashScreen extends StatelessWidget {
             children: [
               const Spacer(flex: 5),
               Text(
-                'Mira. Your\nsecond mind.',
+                l10n.rdOnboardingWelcome,
                 style: GoogleFonts.dosis(
                   fontSize: 32,
                   fontWeight: FontWeight.w700,
@@ -159,7 +178,8 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
           await services.authRepository.signInWithGoogle(idToken: idToken);
       if (mounted) {
         // New Google users still run first-run setup; returning users go home.
-        widget.go(session.user.onboardingCompleted ? 'home' : 'details');
+        widget.go(session.user.onboardingCompleted ? 'home' : 'details',
+            arg: RdOnboardingArg(email: session.user.email));
       }
     } catch (_) {
       if (mounted) _authError(context, 'Google sign-in failed.');
@@ -171,6 +191,7 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
@@ -200,7 +221,7 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
               ),
               const _OrDivider(),
               _ObButton(
-                label: 'Continue with Google',
+                label: l10n.rdOnboardingContinueGoogle,
                 variant: _ObVariant.social,
                 leading: const _GoogleIcon(),
                 onTap: _google,
@@ -343,7 +364,10 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
           .verifyEmailCode(email: email, code: _code.trim());
       if (!mounted) return;
       // Returning users (already onboarded) skip straight into the app.
-      widget.go(user.onboardingCompleted ? 'home' : 'details', arg: email);
+      widget.go(
+        user.onboardingCompleted ? 'home' : 'details',
+        arg: RdOnboardingArg(email: email),
+      );
     } catch (_) {
       if (mounted) _authError(context, 'That code did not match. Try again.');
     } finally {
@@ -443,10 +467,16 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
 
 // ── 5. Details ─────────────────────────────────────────────────────────
 class RdDetailsScreen extends StatefulWidget {
-  const RdDetailsScreen({super.key, required this.go, this.email});
+  const RdDetailsScreen({
+    super.key,
+    required this.go,
+    this.email,
+    this.onboarding,
+  });
 
   final RdGo go;
   final String? email;
+  final RdOnboardingArg? onboarding;
 
   @override
   State<RdDetailsScreen> createState() => _RdDetailsScreenState();
@@ -456,14 +486,28 @@ class _RdDetailsScreenState extends State<RdDetailsScreen> {
   final _name = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    final preset = widget.onboarding?.displayName;
+    if (preset != null && preset.isNotEmpty) {
+      _name.text = preset;
+    }
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     super.dispose();
   }
 
-  // The name is confirmed and persisted in the setup wizard's onboarding POST;
-  // here we just collect it and move on.
-  void _next() => widget.go('remember');
+  void _next() {
+    final name = _name.text.trim();
+    final base = widget.onboarding ?? RdOnboardingArg(email: widget.email);
+    widget.go(
+      'remember',
+      arg: base.copyWith(displayName: name.isEmpty ? null : name),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -488,9 +532,10 @@ class _RdDetailsScreenState extends State<RdDetailsScreen> {
 
 // ── 6. Remember (record moment) ────────────────────────────────────────
 class RdRememberScreen extends StatefulWidget {
-  const RdRememberScreen({super.key, required this.go});
+  const RdRememberScreen({super.key, required this.go, this.onboarding});
 
   final RdGo go;
+  final RdOnboardingArg? onboarding;
 
   @override
   State<RdRememberScreen> createState() => _RdRememberScreenState();
@@ -498,29 +543,86 @@ class RdRememberScreen extends StatefulWidget {
 
 class _RdRememberScreenState extends State<RdRememberScreen> {
   bool _recording = false;
+  bool _recorderActive = false;
+  bool _busy = false;
   int _sec = 0;
   Timer? _timer;
+  VoiceRecorderPort? _recorder;
+  String? _transcript;
 
   @override
   void dispose() {
     _timer?.cancel();
+    final recorder = _recorder;
+    if (recorder != null) {
+      unawaited(recorder.cancel().catchError((_) {}));
+      if (recorder is DeviceVoiceRecorder) recorder.dispose();
+    }
     super.dispose();
   }
 
-  void _start() {
+  RdOnboardingArg get _ob => widget.onboarding ?? const RdOnboardingArg();
+
+  Future<void> _start() async {
     setState(() {
       _recording = true;
       _sec = 0;
+      _transcript = null;
     });
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      setState(() => _sec++);
+      if (mounted) setState(() => _sec++);
     });
+    try {
+      final recorder = _recorder ??= createVoiceRecorder();
+      final started = await recorder.start();
+      if (mounted) _recorderActive = started;
+    } catch (_) {
+      _recorderActive = false;
+    }
   }
 
-  void _stop() {
+  Future<void> _stop() async {
     _timer?.cancel();
-    setState(() => _recording = false);
-    widget.go('understood');
+    setState(() {
+      _recording = false;
+      _busy = true;
+    });
+    final recorder = _recorder;
+    if (recorder != null && _recorderActive) {
+      _recorderActive = false;
+      try {
+        final services = AppScope.servicesOf(context);
+        final result = await recorder.stop();
+        final path = result.filePath;
+        if (!result.simulated && path != null && path.isNotEmpty) {
+          final transcript = await services.captureRepository.transcribeVoice(
+            durationMs: result.duration.inMilliseconds,
+            audioPath: path,
+          );
+          final text = transcript.text.trim();
+          if (text.isNotEmpty) _transcript = text;
+        }
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    widget.go(
+      'understood',
+      arg: _ob.copyWith(firstCaptureText: _transcript),
+    );
+  }
+
+  Future<void> _skipLater() async {
+    await _submitMinimalOnboarding(
+      context,
+      displayName: _ob.displayName,
+    );
+    if (!mounted) return;
+    widget.go('wizard', arg: _ob);
+  }
+
+  void _nextWithoutRecording() {
+    widget.go('understood', arg: _ob);
   }
 
   String get _time =>
@@ -529,6 +631,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
@@ -566,7 +669,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
               ),
               const Spacer(),
               if (_recording) ...[
-                _ObStopButton(onTap: _stop),
+                _ObStopButton(onTap: () { if (!_busy) unawaited(_stop()); }),
                 const SizedBox(height: 14),
                 Text(
                   _time,
@@ -597,19 +700,21 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
                   ),
                 ),
                 const SizedBox(height: 22),
-                _RecordButton(onTap: _start),
+                _RecordButton(onTap: () { if (!_busy) unawaited(_start()); }),
               ],
               const Spacer(),
               _ObButton(
                 label: 'Next',
                 variant: _ObVariant.peri,
-                onTap: () => widget.go('understood'),
+                loading: _busy,
+                onTap: _busy ? () {} : _nextWithoutRecording,
               ),
               const SizedBox(height: 12),
               _ObButton(
-                label: 'I’ll do it later',
+                label: l10n.rdOnboardingLater,
                 variant: _ObVariant.ghost,
-                onTap: () => widget.go('home'),
+                loading: _busy,
+                onTap: _busy ? () {} : () => unawaited(_skipLater()),
               ),
               const SizedBox(height: 40),
             ],
@@ -622,13 +727,24 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
 
 // ── 7. Understood ──────────────────────────────────────────────────────
 class RdUnderstoodScreen extends StatelessWidget {
-  const RdUnderstoodScreen({super.key, required this.go});
+  const RdUnderstoodScreen({super.key, required this.go, this.onboarding});
 
   final RdGo go;
+  final RdOnboardingArg? onboarding;
+
+  Future<void> _skipHome(BuildContext context) async {
+    await _submitMinimalOnboarding(
+      context,
+      displayName: onboarding?.displayName,
+    );
+    if (context.mounted) go('home');
+  }
 
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final ob = onboarding ?? const RdOnboardingArg();
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
@@ -671,13 +787,13 @@ class RdUnderstoodScreen extends StatelessWidget {
               _ObButton(
                 label: 'Next',
                 variant: _ObVariant.navy,
-                onTap: () => go('wizard'),
+                onTap: () => go('wizard', arg: ob),
               ),
               const SizedBox(height: 12),
               _ObButton(
-                label: 'I’ll do it later',
+                label: l10n.rdOnboardingLater,
                 variant: _ObVariant.ghost,
-                onTap: () => go('home'),
+                onTap: () => _skipHome(context),
               ),
               const SizedBox(height: 40),
             ],

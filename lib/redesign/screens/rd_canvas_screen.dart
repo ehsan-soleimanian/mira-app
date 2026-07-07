@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/workspace/canvas_repository.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/graph_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
@@ -40,7 +41,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   /// from `graphRepository.fetchGraph` (`/v2/graph`) and laid out client-side.
   List<_GNode>? _mapNodes;
   List<List<String>> _mapEdges = const [];
+  List<_ClusterSpec> _clusters = _sampleClusters;
+  String? _mapFocusNodeId;
   String _mapContext = 'Your memory · 34 memories · 61 connections';
+  String _clusterContext = '6 clusters · 34 memories';
   bool _loaded = false;
 
   // ── Board (persisted, multi-board) ──────────────────────────────────────
@@ -83,12 +87,16 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       final services = AppScope.servicesOf(context);
       final graph = await services.graphRepository.fetchGraph();
       final (nodes, edges) = _mapGraphToNodes(graph);
+      final clusters = _buildClustersFromNodes(nodes, edges);
       if (!mounted || nodes.isEmpty) return;
       setState(() {
         _mapNodes = nodes;
         _mapEdges = edges;
+        _clusters = clusters.isEmpty ? _sampleClusters : clusters;
         _mapContext =
             'Your memory · ${nodes.length} memories · ${edges.length} connections';
+        _clusterContext =
+            '${_clusters.length} clusters · ${nodes.length} memories';
       });
     } catch (_) {
       // Backend unreachable — keep the designed sample graph.
@@ -205,31 +213,52 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     }
   }
 
+  void _openCluster(_ClusterSpec cluster) {
+    final focus = cluster.nodeIds.isNotEmpty ? cluster.nodeIds.first : null;
+    setState(() {
+      _mode = 'map';
+      _mapFocusNodeId = focus;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
     final live = _mapNodes != null;
-    final context_ = _mode == 'board' ? _boardContext : _mapContext;
+    final context_ = switch (_mode) {
+      'board' => _boardContext,
+      'clusters' => _clusterContext,
+      _ => _mapContext,
+    };
 
     return Scaffold(
       backgroundColor: rd.bg,
       body: Stack(
         children: [
           Positioned.fill(
-            child: _mode == 'board'
-                ? _BoardView(
-                    // Re-key on epoch so switching boards rebuilds fresh
-                    // interaction state that re-reads the selected board.
-                    key: ValueKey('board-$_boardEpoch-${_activeBoardId ?? ''}'),
-                    board: _activeBoard,
-                    repository: _boards.isEmpty ? null : _canvasRepo,
-                    onContext: _onBoardContext,
-                  )
-                : _MapView(
-                    key: ValueKey(live ? 'map-live' : 'map-sample'),
-                    nodes: _mapNodes ?? _graphNodes,
-                    edges: live ? _mapEdges : _graphEdges,
+            child: switch (_mode) {
+              'board' => _BoardView(
+                  key: ValueKey('board-$_boardEpoch-${_activeBoardId ?? ''}'),
+                  board: _activeBoard,
+                  repository: _boards.isEmpty ? null : _canvasRepo,
+                  onContext: _onBoardContext,
+                ),
+              'clusters' => _ClusterOverview(
+                  key: ValueKey('clusters-${_clusters.length}'),
+                  clusters: _clusters,
+                  onOpen: _openCluster,
+                ),
+              _ => _MapView(
+                  key: ValueKey(
+                    live
+                        ? 'map-live-${_mapFocusNodeId ?? ''}'
+                        : 'map-sample-${_mapFocusNodeId ?? ''}',
                   ),
+                  nodes: _mapNodes ?? _graphNodes,
+                  edges: live ? _mapEdges : _graphEdges,
+                  initialSelectedId: _mapFocusNodeId,
+                ),
+            },
           ),
           // mode toggle + context (top)
           Positioned(
@@ -312,6 +341,7 @@ class _ModeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -322,9 +352,11 @@ class _ModeToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _seg(context, 'board', RdIcons.grid4, 'Board'),
+          _seg(context, 'board', RdIcons.grid4, l10n.rdCanvasBoard),
           const SizedBox(width: 3),
-          _seg(context, 'map', RdIcons.navCanvas, 'Map'),
+          _seg(context, 'clusters', RdIcons.people, l10n.rdCanvasClusters),
+          const SizedBox(width: 3),
+          _seg(context, 'map', RdIcons.navCanvas, l10n.rdCanvasMap),
         ],
       ),
     );
@@ -758,15 +790,313 @@ String _shortGLabel(String s) {
   return '${clean.substring(0, 15).trimRight()}…';
 }
 
+// ── Cluster overview ──────────────────────────────────────────────────
+
+class _ClusterPalette {
+  const _ClusterPalette(this.bg, this.ring, this.fg);
+  final Color bg;
+  final Color ring;
+  final Color fg;
+}
+
+const _clusterPalettes = <String, _ClusterPalette>{
+  'navy': _ClusterPalette(Color(0xFFE4EAF6), Color(0xFF14328C), Color(0xFF14328C)),
+  'peri': _ClusterPalette(Color(0xFFE7E9F5), Color(0xFF7E8BC9), Color(0xFF46508C)),
+  'rose': _ClusterPalette(Color(0xFFF3E4E6), Color(0xFFC27E88), Color(0xFF8E4650)),
+  'teal': _ClusterPalette(Color(0xFFDEECEC), Color(0xFF5E9B9B), Color(0xFF2C5E5E)),
+  'amber': _ClusterPalette(Color(0xFFF4EBDA), Color(0xFFC79A54), Color(0xFF8A6420)),
+  'plum': _ClusterPalette(Color(0xFFECE4F0), Color(0xFF9A7BB0), Color(0xFF5E3E77)),
+};
+
+class _ClusterSpec {
+  const _ClusterSpec({
+    required this.id,
+    required this.name,
+    required this.count,
+    required this.colorKey,
+    required this.type,
+    required this.x,
+    required this.y,
+    required this.nodeIds,
+  });
+
+  final String id;
+  final String name;
+  final int count;
+  final String colorKey;
+  final _GType type;
+  final double x;
+  final double y;
+  final List<String> nodeIds;
+}
+
+const _sampleClusters = <_ClusterSpec>[
+  _ClusterSpec(
+    id: 'work',
+    name: 'Work & clients',
+    count: 9,
+    colorKey: 'navy',
+    type: _GType.task,
+    x: 116,
+    y: 148,
+    nodeIds: [],
+  ),
+  _ClusterSpec(
+    id: 'someday',
+    name: 'Someday',
+    count: 3,
+    colorKey: 'peri',
+    type: _GType.idea,
+    x: 300,
+    y: 106,
+    nodeIds: [],
+  ),
+  _ClusterSpec(
+    id: 'maya',
+    name: 'Maya & music',
+    count: 8,
+    colorKey: 'rose',
+    type: _GType.person,
+    x: 300,
+    y: 288,
+    nodeIds: [],
+  ),
+  _ClusterSpec(
+    id: 'coast',
+    name: 'The coast trip',
+    count: 6,
+    colorKey: 'teal',
+    type: _GType.idea,
+    x: 132,
+    y: 352,
+    nodeIds: [],
+  ),
+  _ClusterSpec(
+    id: 'books',
+    name: 'Books & ideas',
+    count: 5,
+    colorKey: 'amber',
+    type: _GType.book,
+    x: 318,
+    y: 476,
+    nodeIds: [],
+  ),
+  _ClusterSpec(
+    id: 'family',
+    name: 'Family',
+    count: 3,
+    colorKey: 'plum',
+    type: _GType.person,
+    x: 88,
+    y: 522,
+    nodeIds: [],
+  ),
+];
+
+const _clusterColorKeys = ['navy', 'peri', 'rose', 'teal', 'amber', 'plum'];
+
+const _clusterLayout = <Offset>[
+  Offset(116, 148),
+  Offset(300, 106),
+  Offset(300, 288),
+  Offset(132, 352),
+  Offset(318, 476),
+  Offset(88, 522),
+  Offset(200, 220),
+  Offset(360, 400),
+];
+
+List<_ClusterSpec> _buildClustersFromNodes(
+  List<_GNode> nodes,
+  List<List<String>> edges,
+) {
+  if (nodes.isEmpty) return const [];
+
+  final buckets = <String, List<_GNode>>{};
+  for (final n in nodes) {
+    final key = switch (n.type) {
+      _GType.person => 'person:${n.label.toLowerCase()}',
+      _GType.topic => 'topic:${n.label.toLowerCase()}',
+      _GType.task => 'type:tasks',
+      _GType.book => 'type:books',
+      _GType.event => 'type:events',
+      _ => 'type:notes',
+    };
+    buckets.putIfAbsent(key, () => []).add(n);
+  }
+
+  final sorted = buckets.entries.toList()
+    ..sort((a, b) => b.value.length.compareTo(a.value.length));
+
+  final clusters = <_ClusterSpec>[];
+  for (var i = 0; i < sorted.length && i < 8; i++) {
+    final entry = sorted[i];
+    final group = entry.value;
+    final first = group.first;
+    final name = switch (first.type) {
+      _GType.person => first.label,
+      _GType.topic => first.label,
+      _GType.task => 'Tasks',
+      _GType.book => 'Books & ideas',
+      _GType.event => 'Events',
+      _ => 'Notes & memories',
+    };
+    final pos = _clusterLayout[i % _clusterLayout.length];
+    clusters.add(
+      _ClusterSpec(
+        id: 'c$i',
+        name: name,
+        count: group.length,
+        colorKey: _clusterColorKeys[i % _clusterColorKeys.length],
+        type: first.type,
+        x: pos.dx,
+        y: pos.dy,
+        nodeIds: group.map((n) => n.id).toList(),
+      ),
+    );
+  }
+  return clusters;
+}
+
+class _ClusterOverview extends StatefulWidget {
+  const _ClusterOverview({
+    super.key,
+    required this.clusters,
+    required this.onOpen,
+  });
+
+  final List<_ClusterSpec> clusters;
+  final ValueChanged<_ClusterSpec> onOpen;
+
+  @override
+  State<_ClusterOverview> createState() => _ClusterOverviewState();
+}
+
+class _ClusterOverviewState extends State<_ClusterOverview> {
+  Offset _pan = const Offset(8, 40);
+
+  double _diameter(_ClusterSpec c) => 82 + c.count * 8;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    return GestureDetector(
+      onPanUpdate: (d) => setState(() => _pan += d.delta),
+      child: ClipRect(
+        child: Transform.translate(
+          offset: _pan,
+          child: SizedBox(
+            width: 480,
+            height: 820,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                for (final c in widget.clusters) ...[
+                  Positioned(
+                    left: c.x - _diameter(c) / 2,
+                    top: c.y - _diameter(c) / 2,
+                    child: _ClusterBubble(
+                      cluster: c,
+                      diameter: _diameter(c),
+                      onTap: () => widget.onOpen(c),
+                    ),
+                  ),
+                  Positioned(
+                    left: c.x - 72,
+                    top: c.y + _diameter(c) / 2 + 12,
+                    width: 144,
+                    child: Column(
+                      children: [
+                        Text(
+                          c.name,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: rd.ink,
+                          ),
+                        ),
+                        Text(
+                          l10n.rdClusterMemories(c.count),
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 11,
+                            color: rd.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ClusterBubble extends StatelessWidget {
+  const _ClusterBubble({
+    required this.cluster,
+    required this.diameter,
+    required this.onTap,
+  });
+
+  final _ClusterSpec cluster;
+  final double diameter;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette =
+        _clusterPalettes[cluster.colorKey] ?? _clusterPalettes['navy']!;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: palette.bg,
+          border: Border.all(color: palette.ring, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: palette.ring.withValues(alpha: 0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            '${cluster.count}',
+            style: GoogleFonts.vazirmatn(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: palette.fg,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _MapView extends StatefulWidget {
   const _MapView({
     super.key,
     this.nodes = _graphNodes,
     this.edges = _graphEdges,
+    this.initialSelectedId,
   });
 
   final List<_GNode> nodes;
   final List<List<String>> edges;
+  final String? initialSelectedId;
 
   @override
   State<_MapView> createState() => _MapViewState();
@@ -797,6 +1127,18 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
       adj[e[1]]!.add(e[0]);
     }
     return adj;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final id = widget.initialSelectedId;
+    if (id != null && _byId.containsKey(id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _select(id, MediaQuery.sizeOf(context).width);
+      });
+    }
   }
 
   @override

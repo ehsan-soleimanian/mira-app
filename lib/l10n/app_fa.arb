@@ -198,5 +198,47 @@
   },
   "libraryMeetingImportTitle": "جلسه‌ها",
   "libraryMeetingImportBody": "جلسه را زنده ضبط کنید یا متن، تصمیم‌ها و یادداشت‌های آن را وارد کتابخانه کنید.",
-  "libraryMeetingPasteAction": "وارد کردن یادداشت جلسه"
+  "libraryMeetingPasteAction": "وارد کردن یادداشت جلسه",
+  "rdNavHome": "خانه",
+  "rdNavLibrary": "کتابخانه",
+  "rdNavCanvas": "بوم",
+  "rdNavBrief": "خلاصه",
+  "rdGreetingMorning": "صبح بخیر",
+  "rdGreetingAfternoon": "عصر بخیر",
+  "rdGreetingEvening": "شب بخیر",
+  "rdHomeMemoryReady": "حافظه‌ات\nآرام و آماده است",
+  "rdHomeComposerHint": "هر چیزی بنویس یا بگو…",
+  "rdWaitingSectionTitle": "منتظر لحظه مناسب",
+  "rdRecentlyCaptured": "اخیراً ثبت‌شده",
+  "rdSeeAll": "مشاهده همه",
+  "rdRemindersLink": "یادآورها",
+  "rdSnoozeUndo": "بازگردانی",
+  "rdSnoozeInHour": "یک ساعت دیگر",
+  "rdSnoozeEvening": "امشب",
+  "rdSnoozeTomorrow": "فردا",
+  "rdSnoozeNextWeek": "هفته آینده",
+  "rdWhenMomentRight": "وقتی لحظه مناسب برسد",
+  "rdWhenNextSee": "وقتی دوباره {person} را ببینی",
+  "@rdWhenNextSee": {
+    "placeholders": {
+      "person": {"type": "String"}
+    }
+  },
+  "rdListenTitle": "دارم گوش می‌دهم…",
+  "rdListenSubtitle": "طبیعی حرف بزن — میرا یادداشت می‌کند",
+  "rdListenTapToStop": "برای توقف بزن",
+  "rdCanvasBoard": "بورد",
+  "rdCanvasClusters": "خوشه‌ها",
+  "rdCanvasMap": "نقشه",
+  "rdClusterMemories": "{count} خاطره",
+  "@rdClusterMemories": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "rdOnboardingWelcome": "میرا.\nذهن دوم تو.",
+  "rdOnboardingSignIn": "ورود",
+  "rdOnboardingContinueGoogle": "ادامه با گوگل",
+  "rdOnboardingSkip": "رد کردن",
+  "rdOnboardingLater": "بعداً انجام می‌دهم"
 }
