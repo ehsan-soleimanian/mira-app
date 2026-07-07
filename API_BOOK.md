@@ -110,6 +110,13 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/reminders/{id}` | `reminders_repository.dart` | Get one reminder |
 | `PATCH` | `/reminders/{id}` | `reminders_repository.dart` | Toggle done / reschedule / edit title |
 | `DELETE` | `/reminders/{id}` | `reminders_repository.dart` | Delete a reminder |
+| `GET` | `/collections` | `collections_repository.dart` | List collections (with item counts) |
+| `POST` | `/collections` | `collections_repository.dart` | Create a collection |
+| `GET` | `/collections/{id}` | `collections_repository.dart` | Get a collection + its memory ids |
+| `PATCH` | `/collections/{id}` | `collections_repository.dart` | Rename / change icon |
+| `DELETE` | `/collections/{id}` | `collections_repository.dart` | Delete a collection |
+| `POST` | `/collections/{id}/items` | `collections_repository.dart` | Add memories (by id) to a collection |
+| `DELETE` | `/collections/{id}/items/{memory_id}` | `collections_repository.dart` | Remove a memory from a collection |
 | `POST` | `/waitlist` | Landing (Next.js) | Waitlist signup — public, no auth |
 
 ---
@@ -123,9 +130,10 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 5. [Workspace Library & Connectors](#workspace-library--connectors)
 6. [Waitlist (Landing)](#waitlist-landing)
 7. [Reminders](#reminders)
-8. [Super Admin](#super-admin)
-9. [Flutter integration notes](#flutter-integration-notes)
-10. [Planned — Phase 4+](#planned--phase-4)
+8. [Collections](#collections)
+9. [Super Admin](#super-admin)
+10. [Flutter integration notes](#flutter-integration-notes)
+11. [Planned — Phase 4+](#planned--phase-4)
 
 App-facing routes summary: [App endpoints (quick reference)](#app-endpoints-quick-reference).
 
@@ -1720,6 +1728,81 @@ Partial update — only fields present in the body are changed. Commonly used to
 
 ### Delete reminder
 `DELETE /reminders/{id}` — User Bearer. **Response** `204` · **404** when not found.
+
+---
+
+## Collections
+
+User-curated groupings of memories the Library surfaces as "Mira grouped for you" (People, Coast trip, Work). All routes require a **user Bearer** token. Stored relationally in MariaDB; membership references memories by their opaque **library-item id**, so a collection can hold any memory the client can address. Powers the Library collections strip and the selection → "Add to collection" action.
+
+### Create collection
+`POST /collections`
+
+```json
+{ "name": "Coast trip", "icon": "beach" }
+```
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `name` | string | yes | 1–200 chars |
+| `icon` | string \| null | no | ≤ 64 chars; the client maps it to an icon |
+
+**Response** `201`
+```json
+{
+  "id": "uuid",
+  "name": "Coast trip",
+  "icon": "beach",
+  "item_count": 0,
+  "created_at": "2026-07-07T12:00:00+00:00",
+  "updated_at": "2026-07-07T12:00:00+00:00"
+}
+```
+**422** on validation error (empty or over-long name).
+
+### List collections
+`GET /collections` — User Bearer. Query: `limit` (default 100, max 500), `offset` (default 0). Newest first; each item includes its derived `item_count`.
+
+**Response** `200`
+```json
+{
+  "count": 1,
+  "items": [
+    { "id": "uuid", "name": "Work", "icon": null, "item_count": 41,
+      "created_at": "…", "updated_at": "…" }
+  ]
+}
+```
+
+### Get collection
+`GET /collections/{id}` — User Bearer. Returns the collection plus the ids of the memories it holds (newest first), or **404** when not found or not owned.
+```json
+{
+  "id": "uuid", "name": "People", "icon": "people", "item_count": 2,
+  "created_at": "…", "updated_at": "…",
+  "memory_ids": ["mem-a", "mem-b"]
+}
+```
+
+### Update collection
+`PATCH /collections/{id}` — Partial update (rename or change icon).
+```json
+{ "name": "Q3 launch", "icon": "rocket" }
+```
+**Response** `200` (updated collection) · **404** when not found · **422** on validation error.
+
+### Delete collection
+`DELETE /collections/{id}` — User Bearer. Deletes the collection and its memberships (the memories themselves stay). **Response** `204` · **404** when not found.
+
+### Add memories to a collection
+`POST /collections/{id}/items`
+```json
+{ "memory_ids": ["library-item-id-1", "library-item-id-2"] }
+```
+Idempotent per id (re-adding an existing member is a no-op); up to 200 ids per call. **Response** `200` — the collection with its refreshed `item_count`. **404** when not owned.
+
+### Remove a memory from a collection
+`DELETE /collections/{id}/items/{memory_id}` — User Bearer. **Response** `200` (collection with refreshed `item_count`) · **404** when not owned.
 
 ---
 

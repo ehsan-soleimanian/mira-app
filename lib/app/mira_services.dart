@@ -11,6 +11,7 @@ import 'package:mira_app/features/graph/graph_repository.dart';
 import 'package:mira_app/features/settings/settings_repository.dart';
 import 'package:mira_app/features/workspace/assistant_repository.dart';
 import 'package:mira_app/features/workspace/canvas_repository.dart';
+import 'package:mira_app/features/workspace/collections_repository.dart';
 import 'package:mira_app/features/workspace/library_repository.dart';
 import 'package:mira_app/features/workspace/plugin_repository.dart';
 import 'package:mira_app/features/workspace/publish_repository.dart';
@@ -32,6 +33,7 @@ class MiraServices {
     required this.settingsRepository,
     required this.appReleaseRepository,
     required this.libraryRepository,
+    required this.collectionsRepository,
     required this.assistantRepository,
     required this.spaceRepository,
     required this.canvasRepository,
@@ -63,6 +65,7 @@ class MiraServices {
     final settingsRepository = SettingsRepository(apiClient: apiClient);
     final appReleaseRepository = AppReleaseRepository(apiClient: apiClient);
     final libraryRepository = LibraryRepository(apiClient: apiClient);
+    final collectionsRepository = CollectionsRepository(apiClient: apiClient);
     final assistantRepository = AssistantRepository(apiClient: apiClient);
     final spaceRepository = SpaceRepository(apiClient: apiClient);
     final canvasRepository = CanvasRepository(apiClient: apiClient);
@@ -81,6 +84,7 @@ class MiraServices {
       settingsRepository: settingsRepository,
       appReleaseRepository: appReleaseRepository,
       libraryRepository: libraryRepository,
+      collectionsRepository: collectionsRepository,
       assistantRepository: assistantRepository,
       spaceRepository: spaceRepository,
       canvasRepository: canvasRepository,
@@ -101,6 +105,7 @@ class MiraServices {
   final SettingsRepository settingsRepository;
   final AppReleaseRepository appReleaseRepository;
   final LibraryRepository libraryRepository;
+  final CollectionsRepository collectionsRepository;
   final AssistantRepository assistantRepository;
   final SpaceRepository spaceRepository;
   final CanvasRepository canvasRepository;

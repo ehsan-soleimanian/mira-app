@@ -25,6 +25,11 @@ class LibraryRepository {
         .toList();
   }
 
+  /// Delete a library item (memory). Backend: `DELETE /library/items/{id}`.
+  Future<void> delete(String itemId) async {
+    await _dio.delete<void>('/library/items/$itemId');
+  }
+
   Future<LibrarySearchResponse> searchV2({
     String query = '',
     String? type,

@@ -49,7 +49,7 @@ Personal AI memory assistant UI — capture, daily brief, settings, graph (plann
 |------|-------|
 | Package | `mira_app` |
 | SDK | Dart `^3.12.1` |
-| UI | Material + Figma-aligned design system (`components/`, `theme/`) |
+| UI | Self-contained **redesign** system under `lib/redesign/` (`redesign/theme/` tokens, `redesign/widgets/`); built from `design/*.html`+`.jsx` |
 | Fonts | `google_fonts` |
 | SVG | `flutter_svg` |
 | HTTP | `dio` + `flutter_secure_storage` |
@@ -59,52 +59,60 @@ Personal AI memory assistant UI — capture, daily brief, settings, graph (plann
 
 ```
 lib/
-├── main.dart                      # App entry, theme, MiraServices bootstrap
-├── app/                           # AppScope, DI shell
+├── main.dart                      # Entry → boots RdRoot with redesign ThemeData + MiraServices
+├── app/
+│   ├── app_scope.dart             # InheritedWidget DI (themeController + services)
+│   └── mira_services.dart         # DI container: ApiClient + every repository (moved out of capture/)
 ├── core/
 │   ├── api/                       # ApiClient (dio, 401 refresh)
-│   ├── auth/                      # AuthRepository, TokenStorage
-│   └── config/                    # ApiConfig, dev machine override
-├── features/
-│   ├── auth/
-│   │   ├── auth_gate.dart         # Home vs OnboardingFlow bootstrap
-│   │   ├── onboarding_flow.dart   # Coordinator (steps 1–5)
-│   │   ├── onboarding_flow_step.dart
-│   │   ├── onboarding_repository.dart
-│   │   ├── screens/               # welcome, auth, your details, first capture, processing
-│   │   └── widgets/               # auth_step_widgets, onboarding_flow_scaffold
-│   ├── capture/                   # CaptureRepository, flow controller, sheets, Android shared import
-│   ├── graph/                     # GraphRepository, radial layout, MemoryGraphScreen
-│   └── workspace/                 # Library/Assistant/Plugin/Canvas/Publish repositories
-├── models/
-│   ├── api/                       # auth_models, capture_models
-│   └── daily_brief_models.dart    # UI models (daily brief still mock)
-├── screens/                       # home, daily_brief, settings, catalog, workspace surfaces
-├── components/                    # atoms / molecules / organisms (Figma)
-└── theme/                         # colors, typography, tokens
-test/
-└── widget_test.dart               # Component catalog smoke test
+│   ├── auth/                      # AuthRepository, TokenStorage, GoogleSignIn
+│   ├── config/                    # ApiConfig, dev endpoint resolver
+│   ├── notifications/             # NotificationService
+│   └── update/                    # AppReleaseRepository
+├── redesign/                      # ── THE APP (new UI, from design/*.html+.jsx) ──
+│   ├── rd_root.dart               # Router: go(screen); 4 tabs reset, others push/pop
+│   ├── redesign_app.dart          # Alt entry host (main_redesign.dart)
+│   ├── redesign_boot.dart         # Service bootstrap for the alt entry
+│   ├── theme/                     # rd_colors, rd_typography
+│   ├── widgets/                   # rd_icon, rd_orb, rd_bottom_nav
+│   └── screens/                   # 11 screens (home, daily_brief, library, memory, capture_flow,
+│                                  #   chat, canvas, listen, settings, onboarding, setup_wizard)
+├── features/                      # ── DATA LAYER ONLY (old UI removed) ──
+│   ├── auth/                      # onboarding_repository
+│   ├── capture/                   # capture_repository + voice/ engine + utils (UI deleted)
+│   ├── daily_brief/               # daily_brief_repository
+│   ├── graph/  graph_v2/          # graph_repository, layout + physics models
+│   ├── reminders/                 # reminders_repository (→ /reminders)
+│   ├── settings/                  # settings_repository
+│   └── workspace/                 # library / assistant / canvas / space / plugin / publish repos
+├── models/api/                    # auth, capture, daily-brief, reminder, workspace models
+└── l10n/                          # app_en / app_fa
+test/                              # data + model + logic tests (widget tests removed)
 ```
 
 ### Current State
 
-| Area | Status |
-|------|--------|
-| **Auth** | `OnboardingFlow` (welcome → email → invite? → OTP → your details → first capture → processing blur); no step counter; `GET /auth/config` before auth |
-| **Capture** | Text + voice (long-press) + bubble workflow; SSE → approval; voice failure recovery in-place |
-| **Home** | Figma UI + composer bar; shows GraphRAG answer when returned |
-| **Daily Brief** | UI complete; **mock data** (`DailyBriefData.initialItems()`) |
-| **Settings** | UI shell |
-| **Graph screen** | `MemoryGraphScreen` — radial graph from `GET /v2/graph`; node tap → blurred bottom sheet with mutations |
-| **Daily Brief tasks** | Checkbox calls `PATCH /v2/tasks/{id}` via `GraphRepository.updateTaskStatus` |
-| **Library/Search** | `LibraryScreen` lists library objects, asks assistant across them, opens item detail, and shows Fabric-style **Add anything** import hub |
-| **Semantic Library** | `POST /library/search-v2` returns chunk-level matches/snippets; assistant responses include `sourceCitations` while keeping legacy `citations` |
-| **Reader/Annotations** | Item detail loads chunks + annotations; users can annotate transcript/text chunks via `/library/items/{id}/annotations` |
-| **Meeting Notes** | Library screen can import pasted meeting transcripts through `POST /library/meetings`; media meeting uploads are backend-supported |
-| **Import Hub** | `GET /library/import-sources`; sources include PDFs, links, Markdown, text, HTML, JSON, CSV, EPUB, DOCX, PPTX, notes, meeting notes, media files, local files, YouTube/TikTok/Reels, WhatsApp/Telegram/Bale exports |
-| **Connectors** | `ConnectorMarketplaceScreen`; only real provider connectors live here. WhatsApp/Telegram/Bale are not plugins; manual exports live in Import Hub |
-| **Canvas** | `CanvasWorkspaceScreen`; pan/zoom board with sticky notes, text boxes, versioned library/item/chunk/embed references, shapes, arrows, auto-save to `/canvas/{id}` |
-| **Media-to-text** | Library media items show thumbnail, extraction state, retry, timestamp transcript chunks, source action, and Canvas-ready media metadata |
+The app **is** the redesign under `lib/redesign/` (11 screens built from `design/*.html`+`.jsx`). The legacy UI — `lib/theme`, `lib/screens`, `lib/components`, and the old feature `screens/`+`widgets/` — has been **removed**; `main.dart` boots `RdRoot` directly. Screens reach data via `AppScope.servicesOf(context)` → `MiraServices` (in `lib/app/mira_services.dart`), each with a designed sample fallback.
+
+**Screen ↔ backend wiring (audit):**
+
+| Screen (`lib/redesign/screens/`) | Backend calls | Status |
+|------|------|--------|
+| `rd_home_screen` | `GET /me`, `GET /v2/daily-update` | ✅ live read + sample fallback |
+| `rd_daily_brief_screen` | `GET /me`, `/v2/daily-update`, `PATCH /v2/tasks/{id}` | ✅ live read + task-toggle write |
+| `rd_library_screen` | `GET /library/items`, `GET/POST /collections`, `POST /collections/{id}/items`, `DELETE /library/items/{id}` | ✅ live read; **collections** strip (tap → filter to members) + multi-select bulk actions (add-to-collection + delete wired; pin/archive optimistic) |
+| `rd_memory_screen` | `POST /reminders` | ⚠️ reminder write only; insight/connections sample (needs `GET /v2/captures/{id}`) |
+| `rd_capture_flow` | `POST /reminders` | ⚠️ reminder write only; voice capture **simulated** (`POST /voice/realtime` + SSE exist, unused) |
+| `rd_chat_screen` | `POST /reminders` | ⚠️ reminder write only; chat **simulated** (`POST /assistant/run` exists, unused) |
+| `rd_canvas_screen` | — | ❌ sample; `GET /v2/canvas`, `/graph` exist |
+| `rd_settings` | — | ❌ sample; `/settings`, `/notification-settings`, `/me` exist |
+| `rd_onboarding` | — | ❌ navigation only; `/auth/*` (register/login/config) exist |
+| `rd_setup_wizard` | — | ❌ sample; `POST /auth/onboarding/setup` exists |
+| `rd_listen_screen` | — | ❌ simulated voice; `POST /voice/realtime` + SSE exist |
+
+**Takeaway:** the backend already covers essentially every current screen — the remaining work is **Flutter wiring**, not missing endpoints. Repositories built in `MiraServices` but not yet used by any screen: `assistant`, `canvas`, `space`, `onboarding`, `settings`, `capture`, `plugin`, `publish`, `appRelease`. Genuine backend gaps are small: no UI lists reminders (`GET /reminders` unused), and Memory enrichment needs the library-item-id → graph-node-id resolution.
+
+**New in `new-feature` branch:** the **Collections** feature — relational MariaDB CRUD at `/collections` (create · list · detail · rename · delete · add-items · remove-item, user-scoped, 11 integration tests), a Flutter `CollectionsRepository` + `MemoryCollection` models, and Library wiring: the "Mira grouped for you" strip is live (tap a card → filter to its members) and multi-select **Add to collection** + **Delete** hit the backend (pin/archive are optimistic pending backend flags). Implements the new design's Library grouping + bulk-select workflow end-to-end.
 
 ### Commands
 

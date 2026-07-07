@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
 import '../theme/rd_colors.dart';
@@ -30,6 +31,13 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   bool _selecting = false;
   final Set<String> _selected = {};
 
+  /// User collections from the backend (null until loaded / unreachable).
+  List<MemoryCollection>? _cols;
+
+  /// When a collection card is opened, the Library filters to its members.
+  Set<String>? _colFilterIds;
+  String? _colFilterName;
+
   /// Live items from the backend; null until the first load. Falls back to the
   /// sample set when the backend is unreachable.
   List<_LibMem>? _items;
@@ -45,13 +53,19 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Future<void> _load() async {
+    final services = AppScope.servicesOf(context);
     try {
-      final services = AppScope.servicesOf(context);
       final items = await services.libraryRepository.list();
       final mapped = items.map(_toLibMem).toList();
       if (mounted) setState(() => _items = mapped);
     } catch (_) {
       // Backend unreachable — keep the sample library.
+    }
+    try {
+      final cols = await services.collectionsRepository.list();
+      if (mounted) setState(() => _cols = cols);
+    } catch (_) {
+      // Keep the sample collections.
     }
   }
 
@@ -136,16 +150,19 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   List<_LibMem> get _visible {
     final source = _items ?? _mems;
     final q = _query.trim().toLowerCase();
+    final colIds = _colFilterIds;
     return source.where((m) {
+      final matchesCollection = colIds == null || colIds.contains(m.id);
       final matchesFilter = _filter == 'all' || m.type.id == _filter;
       final matchesQuery = q.isEmpty ||
           m.searchText.contains(q) ||
           m.title.toLowerCase().contains(q);
-      return matchesFilter && matchesQuery;
+      return matchesCollection && matchesFilter && matchesQuery;
     }).toList();
   }
 
-  bool get _searching => _query.trim().isNotEmpty || _filter != 'all';
+  bool get _searching =>
+      _query.trim().isNotEmpty || _filter != 'all' || _colFilterIds != null;
 
   void _onMemTap(_LibMem m) {
     if (_selecting) {
@@ -188,6 +205,95 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         ..clear()
         ..addAll(allSelected ? const [] : ids);
     });
+  }
+
+  void _toast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: RdColors.ink,
+          content: Text(
+            message,
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+          ),
+        ),
+      );
+  }
+
+  /// "Collection" action — pick an existing collection or create one, then add
+  /// the selected memories to it via `collectionsRepository.addItems`.
+  Future<void> _addSelectedToCollection() async {
+    final ids = _selected.toList();
+    if (ids.isEmpty) return;
+    final services = AppScope.servicesOf(context);
+    final choice = await showModalBottomSheet<_ColChoice>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) =>
+          _CollectionPickerSheet(collections: _cols ?? const []),
+    );
+    if (choice == null || !mounted) return;
+    try {
+      final target = choice.collection ??
+          await services.collectionsRepository.create(name: choice.name!);
+      final updated =
+          await services.collectionsRepository.addItems(target.id, ids);
+      final refreshed = await services.collectionsRepository.list();
+      if (!mounted) return;
+      setState(() => _cols = refreshed);
+      _exitSelect();
+      _toast('Added ${ids.length} to “${updated.name}”');
+    } catch (_) {
+      _toast('Couldn’t add to collection. Check your connection.');
+    }
+  }
+
+  /// "Delete" action — remove the selected memories via `libraryRepository.delete`
+  /// (optimistically dropped from the list first for a responsive feel).
+  Future<void> _deleteSelected() async {
+    final ids = _selected.toList();
+    if (ids.isEmpty) return;
+    final services = AppScope.servicesOf(context);
+    setState(() {
+      _items =
+          (_items ?? _mems).where((m) => !_selected.contains(m.id)).toList();
+    });
+    _exitSelect();
+    var failed = 0;
+    for (final id in ids) {
+      try {
+        await services.libraryRepository.delete(id);
+      } catch (_) {
+        failed++;
+      }
+    }
+    _toast(failed == 0
+        ? '${ids.length} ${ids.length == 1 ? "memory" : "memories"} deleted'
+        : 'Deleted ${ids.length - failed} of ${ids.length}');
+  }
+
+  // Pin / Archive are optimistic (client-side) for now — their backend flags
+  // land in a follow-up; Collection + Delete above are fully wired.
+  void _pinSelected() {
+    final n = _selected.length;
+    if (n == 0) return;
+    _exitSelect();
+    _toast('Pinned $n ${n == 1 ? "memory" : "memories"}');
+  }
+
+  void _archiveSelected() {
+    final ids = _selected.toList();
+    if (ids.isEmpty) return;
+    setState(() {
+      _items =
+          (_items ?? _mems).where((m) => !_selected.contains(m.id)).toList();
+    });
+    _exitSelect();
+    _toast('Archived ${ids.length} ${ids.length == 1 ? "memory" : "memories"}');
   }
 
   @override
@@ -442,6 +548,8 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                     ? [
                         const TextSpan(text: 'No matches'),
                         if (q.isNotEmpty) TextSpan(text: ' for “$q”'),
+                        if (_colFilterName != null)
+                          TextSpan(text: ' in ${_colFilterName!}'),
                       ]
                     : [
                         TextSpan(
@@ -453,6 +561,8 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                         ),
                         TextSpan(text: count == 1 ? ' memory' : ' memories'),
                         if (q.isNotEmpty) TextSpan(text: ' for “$q”'),
+                        if (_colFilterName != null)
+                          TextSpan(text: ' in ${_colFilterName!}'),
                       ],
                 style: GoogleFonts.vazirmatn(fontSize: 13, color: RdColors.muted),
               ),
@@ -462,6 +572,8 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             onTap: () => setState(() {
               _query = '';
               _filter = 'all';
+              _colFilterIds = null;
+              _colFilterName = null;
               _searchCtl.clear();
             }),
             child: Text(
@@ -513,7 +625,39 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     );
   }
 
+  static const _colPalettes = [
+    [Color(0xFFEEF1FA), Color(0xFFE3E8F6)],
+    [Color(0xFFF0EEF7), Color(0xFFE8E3F2)],
+    [Color(0xFFEAF1EE), Color(0xFFDFEDE6)],
+  ];
+
   Widget _collections() {
+    final cols = _cols;
+    if (cols == null || cols.isEmpty) return _sampleCollections();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(26, 0, 26, 4),
+      child: Row(
+        children: [
+          for (var i = 0; i < cols.length; i++) ...[
+            if (i > 0) const SizedBox(width: 12),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _openCollection(cols[i]),
+              child: _CollectionCard(
+                icon: _iconForCollection(cols[i].icon),
+                name: cols[i].name,
+                count: _countLabel(cols[i].itemCount),
+                colors: _colPalettes[i % _colPalettes.length],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _sampleCollections() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(26, 0, 26, 4),
@@ -542,6 +686,43 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         ],
       ),
     );
+  }
+
+  static String _countLabel(int n) => '$n ${n == 1 ? "memory" : "memories"}';
+
+  static String _iconForCollection(String? icon) {
+    switch ((icon ?? '').toLowerCase()) {
+      case 'people':
+      case 'person':
+        return RdIcons.people;
+      case 'work':
+      case 'briefcase':
+        return RdIcons.work;
+      case 'pin':
+      case 'trip':
+      case 'beach':
+      case 'travel':
+        return RdIcons.pin;
+      default:
+        return RdIcons.folder;
+    }
+  }
+
+  Future<void> _openCollection(MemoryCollection c) async {
+    try {
+      final detail =
+          await AppScope.servicesOf(context).collectionsRepository.get(c.id);
+      if (!mounted) return;
+      setState(() {
+        _colFilterIds = detail.memoryIds.toSet();
+        _colFilterName = c.name;
+        _query = '';
+        _filter = 'all';
+        _searchCtl.clear();
+      });
+    } catch (_) {
+      _toast('Couldn’t open “${c.name}”.');
+    }
   }
 
   // ── list scaffolding ────────────────────────────────────────────────
@@ -663,14 +844,30 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
       ),
       child: Row(
         children: [
-          _SelAction(icon: RdIcons.folder, label: 'Collection', enabled: enabled),
-          _SelAction(icon: RdIcons.pushpin, label: 'Pin', enabled: enabled),
-          _SelAction(icon: RdIcons.archive, label: 'Archive', enabled: enabled),
+          _SelAction(
+            icon: RdIcons.folder,
+            label: 'Collection',
+            enabled: enabled,
+            onTap: _addSelectedToCollection,
+          ),
+          _SelAction(
+            icon: RdIcons.pushpin,
+            label: 'Pin',
+            enabled: enabled,
+            onTap: _pinSelected,
+          ),
+          _SelAction(
+            icon: RdIcons.archive,
+            label: 'Archive',
+            enabled: enabled,
+            onTap: _archiveSelected,
+          ),
           _SelAction(
             icon: RdIcons.trash,
             label: 'Delete',
             enabled: enabled,
             danger: true,
+            onTap: _deleteSelected,
           ),
         ],
       ),
@@ -1142,12 +1339,14 @@ class _SelAction extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.enabled,
+    this.onTap,
     this.danger = false,
   });
 
   final String icon;
   final String label;
   final bool enabled;
+  final VoidCallback? onTap;
   final bool danger;
 
   @override
@@ -1155,35 +1354,257 @@ class _SelAction extends StatelessWidget {
     final color = danger ? const Color(0xFFC0492A) : RdColors.muted;
     final iconColor = danger ? '#C0492A' : '#14328C';
     return Expanded(
-      child: Opacity(
-        opacity: enabled ? 1 : 0.4,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(13),
-                color: RdColors.card,
-                border: Border.all(color: RdColors.line, width: 1),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? onTap : null,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.4,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(13),
+                  color: RdColors.card,
+                  border: Border.all(color: RdColors.line, width: 1),
+                ),
+                child: Center(
+                  child: RdIcon(icon, size: 20, stroke: iconColor, strokeWidth: 1.7),
+                ),
               ),
-              child: Center(
-                child: RdIcon(icon, size: 20, stroke: iconColor, strokeWidth: 1.7),
+              const SizedBox(height: 5),
+              Text(
+                label,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The user's pick from the "add to collection" sheet: an existing collection,
+/// or a request to create a new one named [name].
+class _ColChoice {
+  const _ColChoice.existing(this.collection) : name = null;
+  const _ColChoice.create(this.name) : collection = null;
+
+  final MemoryCollection? collection;
+  final String? name;
+}
+
+/// Bottom sheet that lists the user's collections and offers to create a new
+/// one, returning a [_ColChoice] via `Navigator.pop`.
+class _CollectionPickerSheet extends StatefulWidget {
+  const _CollectionPickerSheet({required this.collections});
+
+  final List<MemoryCollection> collections;
+
+  @override
+  State<_CollectionPickerSheet> createState() => _CollectionPickerSheetState();
+}
+
+class _CollectionPickerSheetState extends State<_CollectionPickerSheet> {
+  final TextEditingController _newCtl = TextEditingController();
+  bool _creating = false;
+
+  @override
+  void dispose() {
+    _newCtl.dispose();
+    super.dispose();
+  }
+
+  void _submitNew() {
+    final name = _newCtl.text.trim();
+    if (name.isEmpty) return;
+    Navigator.of(context).pop(_ColChoice.create(name));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: RdColors.bg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 12,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: RdColors.line,
+                borderRadius: BorderRadius.circular(100),
               ),
             ),
-            const SizedBox(height: 5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Add to collection',
+            style: GoogleFonts.dosis(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: RdColors.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_creating)
+            _newRow()
+          else ...[
+            if (widget.collections.isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [for (final c in widget.collections) _row(c)],
+                  ),
+                ),
+              ),
+            _createRow(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _row(MemoryCollection c) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => Navigator.of(context).pop(_ColChoice.existing(c)),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: RdColors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: RdColors.line, width: 1),
+        ),
+        child: Row(
+          children: [
+            const RdIcon(RdIcons.folder, size: 18, stroke: '#14328C', strokeWidth: 1.8),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                c.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: RdColors.ink,
+                ),
+              ),
+            ),
             Text(
-              label,
+              '${c.itemCount}',
+              style: GoogleFonts.vazirmatn(fontSize: 12.5, color: RdColors.faint),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _createRow() {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _creating = true),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+        child: Row(
+          children: [
+            Text(
+              '+',
+              style: GoogleFonts.dosis(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: RdColors.peri,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'New collection',
               style: GoogleFonts.vazirmatn(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: color,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: RdColors.peri,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _newRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: RdColors.card,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: RdColors.line, width: 1),
+            ),
+            child: Center(
+              child: TextField(
+                controller: _newCtl,
+                autofocus: true,
+                cursorColor: RdColors.navy,
+                style: GoogleFonts.vazirmatn(fontSize: 15, color: RdColors.ink),
+                decoration: InputDecoration(
+                  isCollapsed: true,
+                  border: InputBorder.none,
+                  hintText: 'Collection name',
+                  hintStyle:
+                      GoogleFonts.vazirmatn(fontSize: 15, color: RdColors.faint),
+                ),
+                onSubmitted: (_) => _submitNew(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: _submitNew,
+          child: Container(
+            height: 48,
+            width: 48,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: RdColors.navy,
+            ),
+            child: const Center(
+              child: RdIcon(
+                RdIcons.checkThick,
+                size: 18,
+                stroke: '#FFFFFF',
+                strokeWidth: 2.6,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
