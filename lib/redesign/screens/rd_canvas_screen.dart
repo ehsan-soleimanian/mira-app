@@ -3,6 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/models/api/graph_models.dart';
+
 import '../theme/rd_colors.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
@@ -24,18 +27,57 @@ class RdCanvasScreen extends StatefulWidget {
 class _RdCanvasScreenState extends State<RdCanvasScreen> {
   String _mode = 'board';
 
+  /// Live memory graph for Map mode; null → use the designed sample. Loaded
+  /// from `graphRepository.fetchGraph` (`/v2/graph`) and laid out client-side.
+  List<_GNode>? _mapNodes;
+  List<List<String>> _mapEdges = const [];
+  String _mapContext = 'Your memory · 34 memories · 61 connections';
+  bool _loaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loaded) {
+      _loaded = true;
+      _loadGraph();
+    }
+  }
+
+  Future<void> _loadGraph() async {
+    try {
+      final services = AppScope.servicesOf(context);
+      final graph = await services.graphRepository.fetchGraph();
+      final (nodes, edges) = _mapGraphToNodes(graph);
+      if (!mounted || nodes.isEmpty) return;
+      setState(() {
+        _mapNodes = nodes;
+        _mapEdges = edges;
+        _mapContext =
+            'Your memory · ${nodes.length} memories · ${edges.length} connections';
+      });
+    } catch (_) {
+      // Backend unreachable — keep the designed sample graph.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final context_ = _mode == 'board'
-        ? 'Coast trip · 8 memories'
-        : 'Your memory · 34 memories · 61 connections';
+    final live = _mapNodes != null;
+    final context_ =
+        _mode == 'board' ? 'Coast trip · 8 memories' : _mapContext;
 
     return Scaffold(
       backgroundColor: RdColors.bg,
       body: Stack(
         children: [
           Positioned.fill(
-            child: _mode == 'board' ? const _BoardView() : const _MapView(),
+            child: _mode == 'board'
+                ? const _BoardView()
+                : _MapView(
+                    key: ValueKey(live ? 'map-live' : 'map-sample'),
+                    nodes: _mapNodes ?? _graphNodes,
+                    edges: live ? _mapEdges : _graphEdges,
+                  ),
           ),
           // mode toggle + context (top)
           Positioned(
@@ -226,8 +268,107 @@ String _gTypeIcon(_GType t) {
   }
 }
 
+/// Maps a live memory [GraphResponse] into the Map view's node/edge model,
+/// laying nodes out in a deterministic sunflower spiral (higher-degree hubs
+/// nearer the centre) since the backend layout is optional. Bounded to keep
+/// the graph legible on a phone.
+(List<_GNode>, List<List<String>>) _mapGraphToNodes(GraphResponse g) {
+  final nodes = g.nodes.take(40).toList();
+  final ids = {for (final n in nodes) n.id};
+  final edges = <List<String>>[];
+  for (final e in g.edges) {
+    if (e.sourceId != e.targetId &&
+        ids.contains(e.sourceId) &&
+        ids.contains(e.targetId)) {
+      edges.add([e.sourceId, e.targetId]);
+    }
+  }
+  final degree = {for (final n in nodes) n.id: 0};
+  for (final e in edges) {
+    degree[e[0]] = (degree[e[0]] ?? 0) + 1;
+    degree[e[1]] = (degree[e[1]] ?? 0) + 1;
+  }
+  final sorted = [...nodes]
+    ..sort((a, b) => (degree[b.id] ?? 0).compareTo(degree[a.id] ?? 0));
+  const cx = 240.0;
+  const cy = 400.0;
+  const goldenAngle = 2.399963229728653;
+  final out = <_GNode>[];
+  for (var i = 0; i < sorted.length; i++) {
+    final n = sorted[i];
+    final r = 36.0 * math.sqrt(i.toDouble());
+    final angle = i * goldenAngle;
+    final deg = degree[n.id] ?? 0;
+    final type = _gTypeForNode(n);
+    final label = _shortGLabel(n.title.isEmpty ? n.summary : n.title);
+    out.add(_GNode(
+      id: n.id,
+      x: cx + r * math.cos(angle),
+      y: cy + r * math.sin(angle),
+      disc: deg >= 5 ? 68 : (deg >= 2 ? 52 : 44),
+      type: type,
+      label: label,
+      typ: _gTypeLabelFor(type),
+      sub: n.summary.trim().isEmpty
+          ? '$deg linked ${deg == 1 ? "memory" : "memories"}.'
+          : n.summary,
+      initial: type == _GType.person && label.isNotEmpty
+          ? label.substring(0, 1).toUpperCase()
+          : null,
+    ));
+  }
+  return (out, edges);
+}
+
+_GType _gTypeForNode(GraphNode n) {
+  final t = '${n.entityType ?? ''} ${n.nodeType}'.toLowerCase();
+  if (t.contains('person') || t.contains('people')) return _GType.person;
+  if (t.contains('task') || t.contains('reminder') || t.contains('todo')) {
+    return _GType.task;
+  }
+  if (t.contains('event') || t.contains('meeting')) return _GType.event;
+  if (t.contains('book')) return _GType.book;
+  if (t.contains('idea')) return _GType.idea;
+  if (t.contains('topic') || t.contains('tag') || t.contains('theme')) {
+    return _GType.topic;
+  }
+  return _GType.note;
+}
+
+String _gTypeLabelFor(_GType t) {
+  switch (t) {
+    case _GType.person:
+      return 'Person';
+    case _GType.task:
+      return 'Task';
+    case _GType.event:
+      return 'Event';
+    case _GType.note:
+      return 'Note';
+    case _GType.book:
+      return 'Book';
+    case _GType.idea:
+      return 'Idea';
+    case _GType.topic:
+      return 'Topic';
+  }
+}
+
+String _shortGLabel(String s) {
+  final clean = s.trim().replaceAll('\n', ' ');
+  if (clean.length <= 16) return clean;
+  return '${clean.substring(0, 15).trimRight()}…';
+}
+
 class _MapView extends StatefulWidget {
-  const _MapView();
+  const _MapView({
+    super.key,
+    this.nodes = _graphNodes,
+    this.edges = _graphEdges,
+  });
+
+  final List<_GNode> nodes;
+  final List<List<String>> edges;
 
   @override
   State<_MapView> createState() => _MapViewState();
@@ -236,7 +377,7 @@ class _MapView extends StatefulWidget {
 class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin {
   static const _initialPan = Offset(30, 96);
 
-  late final Map<String, _GNode> _byId = {for (final n in _graphNodes) n.id: n};
+  late final Map<String, _GNode> _byId = {for (final n in widget.nodes) n.id: n};
   late final Map<String, List<String>> _adj = _buildAdjacency();
 
   String? _selected;
@@ -252,8 +393,8 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
   Animation<Offset>? _panAnim;
 
   Map<String, List<String>> _buildAdjacency() {
-    final adj = {for (final n in _graphNodes) n.id: <String>[]};
-    for (final e in _graphEdges) {
+    final adj = {for (final n in widget.nodes) n.id: <String>[]};
+    for (final e in widget.edges) {
       adj[e[0]]!.add(e[1]);
       adj[e[1]]!.add(e[0]);
     }
@@ -314,12 +455,12 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                           child: CustomPaint(
                             painter: _EdgePainter(
                               nodes: _byId,
-                              edges: _graphEdges,
+                              edges: widget.edges,
                               selected: _selected,
                             ),
                           ),
                         ),
-                        for (final n in _graphNodes)
+                        for (final n in widget.nodes)
                           Positioned(
                             left: n.x,
                             top: n.y,
