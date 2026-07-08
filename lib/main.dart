@@ -10,6 +10,7 @@ import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/config/api_endpoint_resolver.dart';
 import 'package:mira_app/app/mira_services.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
+import 'package:mira_app/core/update/app_update_listener.dart';
 import 'package:mira_app/redesign/rd_root.dart';
 import 'package:mira_app/redesign/theme/rd_colors.dart';
 import 'package:mira_app/redesign/theme/rd_theme.dart';
@@ -104,7 +105,7 @@ class MiraApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
-            home: RdRoot(initial: initial),
+            home: AppUpdateListener(child: RdRoot(initial: initial)),
           );
         },
       ),
