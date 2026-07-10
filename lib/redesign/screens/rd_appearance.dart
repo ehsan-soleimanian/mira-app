@@ -26,6 +26,14 @@ const List<Color> _accents = [
   Color(0xFFA65C86),
 ];
 
+/// Human names for each accent, in the same order.
+const List<String> _accentNames = ['Periwinkle', 'Sage', 'Clay', 'Plum'];
+
+String _accentNameFor(Color c) {
+  final i = _accents.indexWhere((a) => a == c);
+  return i == -1 ? 'Custom' : _accentNames[i];
+}
+
 /// Text-size steps mapped to their scale factors (S / M / L).
 const List<(String, double)> _textSizes = [
   ('S', 0.9),
@@ -62,37 +70,86 @@ class RdAppearanceScreen extends StatelessWidget {
       children: [
         _ApSection(
           label: 'Theme',
-          child: _ApSegmented(
-            options: const ['System', 'Light', 'Dark'],
-            selected: switch (theme.preference) {
-              MiraThemePreference.system => 0,
-              MiraThemePreference.light => 1,
-              MiraThemePreference.dark => 2,
-            },
-            onSelected: (i) => theme.setPreference(switch (i) {
-              1 => MiraThemePreference.light,
-              2 => MiraThemePreference.dark,
-              _ => MiraThemePreference.system,
-            }),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ApSegmented(
+                options: const ['System', 'Light', 'Dark'],
+                selected: switch (theme.preference) {
+                  MiraThemePreference.system => 0,
+                  MiraThemePreference.light => 1,
+                  MiraThemePreference.dark => 2,
+                },
+                onSelected: (i) => theme.setPreference(switch (i) {
+                  1 => MiraThemePreference.light,
+                  2 => MiraThemePreference.dark,
+                  _ => MiraThemePreference.system,
+                }),
+              ),
+              if (_isDark(context)) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Dark mode is on — tuned for calm, low-light reading.',
+                  style: GoogleFonts.vazirmatn(
+                      fontSize: 12.5, color: context.rd.muted),
+                ),
+              ],
+            ],
           ),
         ),
         _ApSection(
           label: 'Accent color',
-          child: _ApSwatchRow(
-            colors: _accents,
-            selected: theme.accent,
-            onSelected: theme.setAccent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ApSwatchRow(
+                colors: _accents,
+                selected: theme.accent,
+                onSelected: theme.setAccent,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _accentNameFor(theme.accent),
+                style: GoogleFonts.vazirmatn(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: context.rd.muted),
+              ),
+            ],
           ),
         ),
         _ApSection(
           label: 'Text size',
-          child: _ApSegmented(
-            options: [for (final s in _textSizes) s.$1],
-            selected: () {
-              final i = _textSizes.indexWhere((s) => s.$2 == theme.textScale);
-              return i == -1 ? 1 : i;
-            }(),
-            onSelected: (i) => theme.setTextScale(_textSizes[i].$2),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ApSegmented(
+                options: const ['Small', 'Default', 'Large'],
+                selected: () {
+                  final i =
+                      _textSizes.indexWhere((s) => s.$2 == theme.textScale);
+                  return i == -1 ? 1 : i;
+                }(),
+                onSelected: (i) => theme.setTextScale(_textSizes[i].$2),
+              ),
+              const SizedBox(height: 14),
+              // Live preview — the whole screen is already scaled by the global
+              // textScaler, so this line grows/shrinks as you change the size.
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: context.rd.bg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.rd.line, width: 1),
+                ),
+                child: Text(
+                  'The coast trip is coming together.',
+                  style: GoogleFonts.vazirmatn(
+                      fontSize: 15, height: 1.4, color: context.rd.ink),
+                ),
+              ),
+            ],
           ),
         ),
         _ApSection(
