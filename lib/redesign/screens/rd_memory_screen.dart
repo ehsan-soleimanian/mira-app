@@ -76,6 +76,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   bool _confirm = false;
   bool _sharing = false;
   bool _linkCopied = false;
+  bool _deleting = false;
   bool _editing = false;
   bool _edited = false;
   bool _saved = false;
@@ -89,6 +90,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   late String _body = widget.body ?? (widget.isVoice ? _voiceBody : _noteBody);
   late final TextEditingController _titleCtl = TextEditingController();
   late final TextEditingController _bodyCtl = TextEditingController();
+  final FocusNode _bodyFocus = FocusNode();
   final Set<int> _fixed = {};
 
   // Real data pulled from `GET /v2/captures/{id}` when [widget.id] is a graph
@@ -126,6 +128,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     _tick?.cancel();
     _titleCtl.dispose();
     _bodyCtl.dispose();
+    _bodyFocus.dispose();
     super.dispose();
   }
 
@@ -429,19 +432,18 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   /// The navigation happens regardless so the flow stays consistent even when
   /// the id is a sample (null) or the backend is unreachable.
   Future<void> _deleteMemory() async {
-    setState(() => _confirm = false);
+    // Play the fold-away, drop from the store + backend, then leave to Library.
+    setState(() {
+      _confirm = false;
+      _deleting = true;
+    });
     final id = widget.id;
     if (id != null) {
       final services = AppScope.servicesOf(context);
-      // Drop from the shared store first so the Library reflects the delete the
-      // moment we land back on it.
       services.memoryStore.removeLocal(id);
-      try {
-        await services.libraryRepository.delete(id);
-      } catch (_) {
-        // Ignore — leave to the Library either way.
-      }
+      services.libraryRepository.delete(id).ignore();
     }
+    await Future<void>.delayed(const Duration(milliseconds: 460));
     if (!mounted) return;
     widget.go('library');
   }
@@ -488,20 +490,29 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         bottom: false,
         child: Stack(
           children: [
-            Column(
-              children: [
-                _head(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(26, 6, 26, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: _content(),
+            AnimatedScale(
+              duration: const Duration(milliseconds: 420),
+              curve: Curves.easeInCubic,
+              scale: _deleting ? 0.92 : 1,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 420),
+                opacity: _deleting ? 0 : 1,
+                child: Column(
+                  children: [
+                    _head(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(26, 6, 26, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: _content(),
+                        ),
+                      ),
                     ),
-                  ),
+                    _actionBar(),
+                  ],
                 ),
-                _actionBar(),
-              ],
+              ),
             ),
             if (_menu) _menuOverlay(),
             if (_saved) _savedToast(),
@@ -684,6 +695,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         if (widget.isVoice) _flags(),
         TextField(
           controller: _bodyCtl,
+          focusNode: _bodyFocus,
           cursorColor: rd.navy,
           maxLines: widget.isVoice ? 7 : 5,
           minLines: widget.isVoice ? 7 : 5,
@@ -700,6 +712,19 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         ),
       ],
     );
+  }
+
+  /// Tapping a flagged word focuses the transcript and selects that word (if
+  /// present) so it can be corrected, then marks it checked.
+  void _jumpToWord(int i, String word) {
+    setState(() => _fixed.add(i));
+    _bodyFocus.requestFocus();
+    final text = _bodyCtl.text;
+    final idx = text.toLowerCase().indexOf(word.toLowerCase());
+    if (idx != -1) {
+      _bodyCtl.selection =
+          TextSelection(baseOffset: idx, extentOffset: idx + word.length);
+    }
   }
 
   Widget _flags() {
@@ -726,7 +751,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           ),
           for (var i = 0; i < words.length; i++)
             GestureDetector(
-              onTap: () => setState(() => _fixed.add(i)),
+              onTap: () => _jumpToWord(i, words[i]),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
                 decoration: BoxDecoration(
@@ -778,6 +803,11 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     return Text(_body, style: GoogleFonts.vazirmatn(fontSize: 15.5, height: 1.62, color: rd.ink));
   }
 
+  /// Scrub the voice player to a fraction of its length (tap / drag the wave).
+  void _seek(double fraction) {
+    setState(() => _pos = fraction.clamp(0.0, 1.0) * _clip);
+  }
+
   Widget _player() {
     final rd = context.rd;
     return Container(
@@ -803,23 +833,33 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: SizedBox(
-              height: 48,
-              child: Row(
-                children: [
-                  for (var i = 0; i < _wave.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 2.5),
-                    Expanded(
-                      child: Container(
-                        height: 18 + _wave[i] * 30,
-                        decoration: BoxDecoration(
-                          color: (i + 0.5) / _wave.length <= _pos / _clip ? rd.peri : rd.line,
-                          borderRadius: BorderRadius.circular(2),
+            child: LayoutBuilder(
+              builder: (context, c) => GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: (d) => _seek(d.localPosition.dx / c.maxWidth),
+                onHorizontalDragUpdate: (d) =>
+                    _seek(d.localPosition.dx / c.maxWidth),
+                child: SizedBox(
+                  height: 48,
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < _wave.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 2.5),
+                        Expanded(
+                          child: Container(
+                            height: 18 + _wave[i] * 30,
+                            decoration: BoxDecoration(
+                              color: (i + 0.5) / _wave.length <= _pos / _clip
+                                  ? rd.peri
+                                  : rd.line,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
-                ],
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
