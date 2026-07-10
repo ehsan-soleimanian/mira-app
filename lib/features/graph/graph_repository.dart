@@ -106,4 +106,15 @@ class GraphRepository {
   Future<void> rejectAssertion(String assertionId) async {
     await _dio.post<void>('/v2/assertions/$assertionId/reject');
   }
+
+  /// Merges the [sourceId] entity into [targetId] (source is absorbed). Used by
+  /// the memory Map's "merge duplicate" action. Throws on 404 (unknown entity).
+  Future<void> mergeEntities({
+    required String sourceId,
+    required String targetId,
+  }) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/v2/entities/$sourceId/merge/$targetId',
+    );
+  }
 }

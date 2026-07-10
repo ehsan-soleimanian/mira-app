@@ -59,6 +59,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   /// its interaction state re-reads the freshly selected board.
   int _boardEpoch = 0;
 
+  /// Bumped whenever the live graph reloads (e.g. after a merge) so the
+  /// `_MapView` key flips and its derived adjacency/index rebuild from scratch.
+  int _mapEpoch = 0;
+
   /// Board-level context label (title · N cards), reported up from the live
   /// `_BoardView` so the top pill mirrors what's on screen.
   String _boardContext = 'Coast trip · 8 memories';
@@ -97,9 +101,36 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
             'Your memory · ${nodes.length} memories · ${edges.length} connections';
         _clusterContext =
             '${_clusters.length} clusters · ${nodes.length} memories';
+        _mapEpoch++; // force the map to rebuild from the fresh graph
       });
     } catch (_) {
       // Backend unreachable — keep the designed sample graph.
+    }
+  }
+
+  void _mapToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: context.rd.ink,
+        content: Text(message,
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white)),
+      ));
+  }
+
+  /// Merges [sourceId] into [targetId] on the real knowledge graph, then reloads
+  /// so the absorbed node disappears. Best-effort with a toast either way.
+  Future<void> _mergeEntities(String sourceId, String targetId) async {
+    try {
+      await AppScope.servicesOf(context)
+          .graphRepository
+          .mergeEntities(sourceId: sourceId, targetId: targetId);
+      _mapToast('Memories merged');
+      await _loadGraph();
+    } catch (_) {
+      _mapToast('Couldn’t merge those');
     }
   }
 
@@ -251,12 +282,13 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
               _ => _MapView(
                   key: ValueKey(
                     live
-                        ? 'map-live-${_mapFocusNodeId ?? ''}'
+                        ? 'map-live-$_mapEpoch-${_mapFocusNodeId ?? ''}'
                         : 'map-sample-${_mapFocusNodeId ?? ''}',
                   ),
                   nodes: _mapNodes ?? _graphNodes,
                   edges: live ? _mapEdges : _graphEdges,
                   initialSelectedId: _mapFocusNodeId,
+                  onMerge: live ? _mergeEntities : null,
                 ),
             },
           ),
@@ -1092,11 +1124,16 @@ class _MapView extends StatefulWidget {
     this.nodes = _graphNodes,
     this.edges = _graphEdges,
     this.initialSelectedId,
+    this.onMerge,
   });
 
   final List<_GNode> nodes;
   final List<List<String>> edges;
   final String? initialSelectedId;
+
+  /// Merges the first entity id into the second on the real graph. Null for the
+  /// offline sample (nothing to persist).
+  final void Function(String source, String target)? onMerge;
 
   @override
   State<_MapView> createState() => _MapViewState();
@@ -1270,6 +1307,15 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                     onFocus: _selected == null
                         ? null
                         : () => _focusOn(_selected!, width),
+                    onMerge: (widget.onMerge == null || _selected == null)
+                        ? null
+                        : (sourceId) => widget.onMerge!(sourceId, _selected!),
+                    mergeCandidates: widget.onMerge == null
+                        ? const []
+                        : [
+                            for (final n in widget.nodes)
+                              if (n.id != _selected) n
+                          ],
                   ),
                 ),
                 // Focus pill (fixed) — tap to leave Focus mode.
@@ -1525,6 +1571,8 @@ class _DetailPanel extends StatelessWidget {
     required this.onClose,
     required this.onSelectConnected,
     this.onFocus,
+    this.onMerge,
+    this.mergeCandidates = const [],
   });
 
   final _GNode? node;
@@ -1535,6 +1583,13 @@ class _DetailPanel extends StatelessWidget {
   /// Enter Focus mode on this node (isolate it + its neighbours). Null hides
   /// the button.
   final VoidCallback? onFocus;
+
+  /// Merge a duplicate entity (its id) into this node on the real graph. Null
+  /// hides the button (offline sample).
+  final ValueChanged<String>? onMerge;
+
+  /// Other nodes offered as merge targets.
+  final List<_GNode> mergeCandidates;
 
   @override
   Widget build(BuildContext context) {
@@ -1549,6 +1604,95 @@ class _DetailPanel extends StatelessWidget {
           duration: const Duration(milliseconds: 300),
           opacity: showing ? 1 : 0,
           child: node == null ? const SizedBox.shrink() : _card(context, node!),
+        ),
+      ),
+    );
+  }
+
+  void _openMergePicker(BuildContext context, _GNode current) {
+    final rd = context.rd;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints:
+            BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.6),
+        decoration: BoxDecoration(
+            color: rd.card,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26))),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+                child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                        color: rd.line,
+                        borderRadius: BorderRadius.circular(100)))),
+            Text('Merge into “${current.label}”',
+                style: GoogleFonts.dosis(
+                    fontSize: 18, fontWeight: FontWeight.w700, color: rd.ink)),
+            const SizedBox(height: 2),
+            Text('Pick the duplicate to fold in — it keeps every connection.',
+                style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final c in mergeCandidates)
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(ctx).pop();
+                        onMerge?.call(c.id);
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 7),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                  color: rd.periSoft,
+                                  borderRadius: BorderRadius.circular(10)),
+                              child: Center(
+                                  child: RdIcon(_gTypeIcon(c.type),
+                                      size: 17,
+                                      stroke: '#14328C',
+                                      strokeWidth: 1.8)),
+                            ),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(c.label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.vazirmatn(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: rd.ink)),
+                                  Text(c.typ,
+                                      style: GoogleFonts.vazirmatn(
+                                          fontSize: 11.5, color: rd.muted)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1685,6 +1829,38 @@ class _DetailPanel extends StatelessWidget {
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: rd.navy)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (onMerge != null && mergeCandidates.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: GestureDetector(
+                onTap: () => _openMergePicker(context, n),
+                child: Container(
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: rd.card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: rd.line, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      RdIcon(
+                          '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3M9 12h6"/>',
+                          size: 15,
+                          color: rd.muted,
+                          strokeWidth: 2),
+                      const SizedBox(width: 7),
+                      Text('Merge a duplicate',
+                          style: GoogleFonts.vazirmatn(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: rd.muted)),
                     ],
                   ),
                 ),
