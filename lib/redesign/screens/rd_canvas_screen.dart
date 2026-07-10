@@ -257,11 +257,80 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       ),
     );
     if (result == null || !mounted) return;
-    if (result.createNew) {
-      await _createBoard();
-    } else if (result.boardId != null) {
-      _switchBoard(result.boardId!);
+    switch (result.action) {
+      case _SwitcherAction.create:
+        await _createBoard();
+      case _SwitcherAction.rename:
+        await _renameBoard(result.boardId!, result.title ?? '');
+      case _SwitcherAction.archive:
+        await _archiveBoard(result.boardId!);
+      case _SwitcherAction.select:
+        _switchBoard(result.boardId!);
     }
+  }
+
+  /// Rename a board via a small dialog, then persist + reload the board list.
+  Future<void> _renameBoard(String id, String currentTitle) async {
+    final controller = TextEditingController(text: currentTitle);
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final rd = ctx.rd;
+        return AlertDialog(
+          backgroundColor: rd.card,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Rename board',
+              style: GoogleFonts.dosis(
+                  fontSize: 18, fontWeight: FontWeight.w700, color: rd.ink)),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (v) => Navigator.of(ctx).pop(v),
+            style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
+            decoration: InputDecoration(
+              hintText: 'Board name',
+              hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
+              enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: rd.line, width: 1)),
+              focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: rd.navy, width: 1.4)),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text('Cancel',
+                  style: GoogleFonts.vazirmatn(color: rd.muted)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(controller.text),
+              child: Text('Save',
+                  style: GoogleFonts.vazirmatn(
+                      color: rd.navy, fontWeight: FontWeight.w600)),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    final trimmed = newTitle?.trim() ?? '';
+    if (trimmed.isEmpty || !mounted) return;
+    try {
+      await _canvasRepo.update(id, title: trimmed);
+    } catch (_) {}
+    await _loadBoards();
+  }
+
+  /// Archive (delete) a board, then reload — the active board is re-picked.
+  Future<void> _archiveBoard(String id) async {
+    try {
+      await _canvasRepo.delete(id);
+    } catch (_) {}
+    if (mounted) await _loadBoards();
   }
 
   void _openCluster(_ClusterSpec cluster) {
@@ -522,14 +591,30 @@ class _BoardSwitcherButton extends StatelessWidget {
 
 /// What the switcher popover returns: either a board to switch to, or the
 /// intent to create a new board.
-class _SwitcherResult {
-  const _SwitcherResult.select(this.boardId) : createNew = false;
-  const _SwitcherResult.create()
-      : boardId = null,
-        createNew = true;
+enum _SwitcherAction { select, create, rename, archive }
 
+class _SwitcherResult {
+  const _SwitcherResult.select(String this.boardId)
+      : action = _SwitcherAction.select,
+        title = null;
+  const _SwitcherResult.create()
+      : action = _SwitcherAction.create,
+        boardId = null,
+        title = null;
+
+  /// Rename requested — [title] carries the current title to prefill the editor.
+  const _SwitcherResult.rename(String this.boardId, String this.title)
+      : action = _SwitcherAction.rename;
+  const _SwitcherResult.archive(String this.boardId)
+      : action = _SwitcherAction.archive,
+        title = null;
+
+  final _SwitcherAction action;
   final String? boardId;
-  final bool createNew;
+  final String? title;
+
+  // Back-compat for the existing `createNew` check.
+  bool get createNew => action == _SwitcherAction.create;
 }
 
 /// Compact popover listing the user's boards (check on the active one) with a
@@ -664,7 +749,32 @@ class _BoardSwitcherSheet extends StatelessWidget {
                 ],
               ),
             ),
-            if (active)
+            GestureDetector(
+              onTap: () => Navigator.of(context)
+                  .pop(_SwitcherResult.rename(b.id, b.title)),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: RdIcon(
+                    '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+                    size: 15,
+                    color: rd.muted,
+                    strokeWidth: 1.9),
+              ),
+            ),
+            if (boards.length > 1)
+              GestureDetector(
+                onTap: () => Navigator.of(context)
+                    .pop(_SwitcherResult.archive(b.id)),
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: RdIcon('<path d="M6 6l12 12M18 6 6 18"/>',
+                      size: 15, color: rd.faint, strokeWidth: 2),
+                ),
+              ),
+            if (active) ...[
+              const SizedBox(width: 2),
               Container(
                 width: 22,
                 height: 22,
@@ -677,6 +787,7 @@ class _BoardSwitcherSheet extends StatelessWidget {
                       size: 11, stroke: '#FFFFFF', strokeWidth: 3),
                 ),
               ),
+            ],
           ],
         ),
       ),

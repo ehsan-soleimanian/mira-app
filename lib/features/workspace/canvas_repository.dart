@@ -46,4 +46,9 @@ class CanvasRepository {
     );
     return CanvasDto.fromJson(response.data!);
   }
+
+  /// Deletes a board. Returns normally on 204; throws on 404 (unknown board).
+  Future<void> delete(String id) async {
+    await _dio.delete<void>('/canvas/$id');
+  }
 }
