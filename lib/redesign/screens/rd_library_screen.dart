@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/app/memory_store.dart';
+import 'package:mira_app/features/capture/capture_repository.dart';
+import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
+import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
@@ -43,6 +48,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   /// Archived view: shows only archived memories with a Restore action.
   bool _archivedView = false;
+  bool _collectionsGridView = false;
   List<_LibMem>? _archivedItems;
 
   /// Live items, derived from the shared [MemoryStore]; null until the first
@@ -110,6 +116,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
       metaType: _typeLabelFor(type),
       metaTime: _relativeTime(item.createdAt),
       searchText: '${item.title} ${item.summary}'.toLowerCase(),
+      pinned: (item.metadata['pinned'] as bool?) ?? false,
     );
   }
 
@@ -420,31 +427,62 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   /// "Delete" action — remove the selected memories via `libraryRepository.delete`
   /// (optimistically dropped from the list first for a responsive feel).
-  Future<void> _deleteSelected() async {
-    final ids = _selected.toList();
+  /// Removes the selected memories from the browse list with an Undo affordance.
+  /// The backend change (and shared-store drop) is deferred until the Undo
+  /// window closes, so "Undo" is lossless — nothing is committed if you tap it.
+  void _undoableRemove({
+    required Set<String> ids,
+    required String verb,
+    required Future<void> Function() commit,
+  }) {
     if (ids.isEmpty) return;
-    final services = AppScope.servicesOf(context);
-    setState(() {
-      _items =
-          (_items ?? _mems).where((m) => !_selected.contains(m.id)).toList();
-    });
-    // Drop from the shared store too, so the removal holds when the Library
-    // re-maps from the cache (e.g. on the next visit).
-    for (final id in ids) {
-      services.memoryStore.removeLocal(id);
-    }
+    final before = List<_LibMem>.of(_items ?? _mems);
+    setState(() => _items = before.where((m) => !ids.contains(m.id)).toList());
     _exitSelect();
-    var failed = 0;
-    for (final id in ids) {
-      try {
-        await services.libraryRepository.delete(id);
-      } catch (_) {
-        failed++;
-      }
-    }
-    _toast(failed == 0
-        ? '${ids.length} ${ids.length == 1 ? "memory" : "memories"} deleted'
-        : 'Deleted ${ids.length - failed} of ${ids.length}');
+    final n = ids.length;
+    var undone = false;
+    final controller = ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar();
+    controller
+        .showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: context.rd.ink,
+            content: Text(
+              '$verb $n ${n == 1 ? "memory" : "memories"}',
+              style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+            ),
+            action: SnackBarAction(
+              label: 'Undo',
+              textColor: Colors.white,
+              onPressed: () {
+                undone = true;
+                if (mounted) setState(() => _items = before);
+              },
+            ),
+          ),
+        )
+        .closed
+        .then((_) {
+      if (!undone) commit().ignore();
+    });
+  }
+
+  Future<void> _deleteSelected() async {
+    final services = AppScope.servicesOf(context);
+    final ids = _selected.toSet();
+    _undoableRemove(
+      ids: ids,
+      verb: 'Deleted',
+      commit: () async {
+        for (final id in ids) {
+          services.memoryStore.removeLocal(id);
+          try {
+            await services.libraryRepository.delete(id);
+          } catch (_) {}
+        }
+      },
+    );
   }
 
   /// "Pin" action — flag the selected memories via bulk-actions (best-effort).
@@ -463,23 +501,20 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   /// "Archive" action — archive via bulk-actions and drop from the browse list
   /// (archived items move to the Archived view).
   Future<void> _archiveSelected() async {
-    final ids = _selected.toList();
-    if (ids.isEmpty) return;
     final services = AppScope.servicesOf(context);
-    setState(() {
-      _items =
-          (_items ?? _mems).where((m) => !_selected.contains(m.id)).toList();
-    });
-    // Archived items leave the browse list — drop them from the shared store so
-    // they stay gone when the Library re-maps from the cache.
-    for (final id in ids) {
-      services.memoryStore.removeLocal(id);
-    }
-    _exitSelect();
-    try {
-      await services.libraryRepository.bulkAction(ids, 'archive');
-    } catch (_) {}
-    _toast('Archived ${ids.length} ${ids.length == 1 ? "memory" : "memories"}');
+    final ids = _selected.toSet();
+    _undoableRemove(
+      ids: ids,
+      verb: 'Archived',
+      commit: () async {
+        for (final id in ids) {
+          services.memoryStore.removeLocal(id);
+        }
+        try {
+          await services.libraryRepository.bulkAction(ids.toList(), 'archive');
+        } catch (_) {}
+      },
+    );
   }
 
   /// Open the Archived view — loads archived items (`?includeArchived`) and
@@ -618,6 +653,88 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     );
   }
 
+  /// "See all" collections — a grid of every collection plus the Archived
+  /// entry (mirrors the design's `view === "collections"` sub-view).
+  Widget _collectionsScaffold() {
+    final rd = context.rd;
+    final cols = _cols ?? const [];
+    return Scaffold(
+      backgroundColor: rd.bg,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 26, 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _collectionsGridView = false),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: RdIcon(RdIcons.chevronLeft,
+                          size: 22, color: rd.ink, strokeWidth: 1.8),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Collections',
+                    style: GoogleFonts.dosis(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: rd.ink),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.35,
+                children: [
+                  for (var i = 0; i < cols.length; i++)
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        setState(() => _collectionsGridView = false);
+                        _openCollection(cols[i]);
+                      },
+                      child: _CollectionCard(
+                        icon: _iconForCollection(cols[i].icon),
+                        name: cols[i].name,
+                        count: _countLabel(cols[i].itemCount),
+                        colors: _colPalettes[i % _colPalettes.length],
+                        expand: true,
+                      ),
+                    ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      setState(() => _collectionsGridView = false);
+                      _openArchived();
+                    },
+                    child: const _CollectionCard(
+                      icon: RdIcons.archive,
+                      name: 'Archived',
+                      count: 'Out of the way',
+                      colors: [Color(0xFFF1F1F4), Color(0xFFE7E7EC)],
+                      expand: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _archivedTile(_LibMem m) {
     final rd = context.rd;
     return Container(
@@ -683,6 +800,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   Widget build(BuildContext context) {
     final rd = context.rd;
     if (_archivedView) return _archivedScaffold();
+    if (_collectionsGridView) return _collectionsScaffold();
     final visible = _visible;
     final days = <String>[];
     for (final m in visible) {
@@ -892,25 +1010,46 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: rd.periSoft,
-            ),
-            child: const Center(
-              child: RdIcon(
-                RdIcons.mic,
-                size: 15,
-                stroke: '#14328C',
-                strokeWidth: 1.9,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _voiceSearch,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: rd.periSoft,
+              ),
+              child: const Center(
+                child: RdIcon(
+                  RdIcons.mic,
+                  size: 15,
+                  stroke: '#14328C',
+                  strokeWidth: 1.9,
+                ),
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Voice search — record a phrase, transcribe it, and drop it into the query.
+  Future<void> _voiceSearch() async {
+    final services = AppScope.servicesOf(context);
+    final text = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: false,
+      builder: (_) => _VoiceSearchSheet(captureRepository: services.captureRepository),
+    );
+    if (text != null && text.trim().isNotEmpty && mounted) {
+      setState(() {
+        _query = text.trim();
+        _searchCtl.text = text.trim();
+      });
+    }
   }
 
   // ── filter chips ────────────────────────────────────────────────────
@@ -1023,12 +1162,16 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               ),
             ],
           ),
-          Text(
-            'See all',
-            style: GoogleFonts.vazirmatn(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: rd.peri,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _collectionsGridView = true),
+            child: Text(
+              'See all',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: rd.peri,
+              ),
             ),
           ),
         ],
@@ -1320,6 +1463,7 @@ class _LibMem {
     required this.metaTime,
     required this.searchText,
     this.links = 0,
+    this.pinned = false,
   });
 
   final String id;
@@ -1331,6 +1475,7 @@ class _LibMem {
   final String metaTime;
   final String searchText;
   final int links;
+  final bool pinned;
 }
 
 const _mems = <_LibMem>[
@@ -1498,7 +1643,18 @@ class _MemTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _title(rd),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (mem.pinned)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2, right: 5),
+                          child: RdIcon(RdIcons.pushpin,
+                              size: 12, color: rd.peri, strokeWidth: 2),
+                        ),
+                      Expanded(child: _title(rd)),
+                    ],
+                  ),
                   const SizedBox(height: 3),
                   Text(
                     mem.sub,
@@ -1615,6 +1771,132 @@ class _MemTile extends StatelessWidget {
   }
 }
 
+/// Voice-search sheet — records a phrase, transcribes it, and returns the text.
+class _VoiceSearchSheet extends StatefulWidget {
+  const _VoiceSearchSheet({required this.captureRepository});
+
+  final CaptureRepository captureRepository;
+
+  @override
+  State<_VoiceSearchSheet> createState() => _VoiceSearchSheetState();
+}
+
+class _VoiceSearchSheetState extends State<_VoiceSearchSheet> {
+  final VoiceRecorderPort _recorder = createVoiceRecorder();
+  bool _busy = false;
+  int _sec = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_recorder.start());
+    _timer = Timer.periodic(
+        const Duration(seconds: 1), (_) => setState(() => _sec++));
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    if (_recorder.isRecording) {
+      unawaited(_recorder.cancel().catchError((_) {}));
+    }
+    final r = _recorder;
+    if (r is DeviceVoiceRecorder) r.dispose();
+    super.dispose();
+  }
+
+  Future<void> _stop() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    _timer?.cancel();
+    try {
+      final result = await _recorder.stop();
+      final path = result.filePath;
+      var text = '';
+      if (!result.simulated && path != null && path.isNotEmpty) {
+        final transcript = await widget.captureRepository.transcribeVoice(
+          durationMs: result.duration.inMilliseconds,
+          audioPath: path,
+        );
+        text = transcript.text.trim();
+      }
+      if (mounted) Navigator.of(context).pop(text.isEmpty ? null : text);
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop(null);
+    }
+  }
+
+  String get _time =>
+      '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Container(
+      decoration: BoxDecoration(
+        color: rd.card,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 30),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 22),
+            decoration: BoxDecoration(
+                color: rd.line, borderRadius: BorderRadius.circular(100)),
+          ),
+          GestureDetector(
+            onTap: _stop,
+            child: Container(
+              width: 78,
+              height: 78,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: rd.navy,
+                boxShadow: [
+                  BoxShadow(
+                      color: rd.navy.withValues(alpha: 0.3),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8)),
+                ],
+              ),
+              child: _busy
+                  ? const Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white)),
+                      ),
+                    )
+                  : const Center(
+                      child: RdIcon(RdIcons.mic,
+                          size: 30, stroke: '#FFFFFF', strokeWidth: 1.9)),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            _busy ? 'Searching…' : 'Listening… tap to search',
+            style: GoogleFonts.vazirmatn(
+                fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _busy ? 'Turning your words into a search' : _time,
+            style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Check extends StatelessWidget {
   const _Check({required this.selected});
 
@@ -1704,7 +1986,12 @@ class _CollectionCard extends StatelessWidget {
     required this.name,
     required this.count,
     required this.colors,
+    this.expand = false,
   });
+
+  /// When true the card fills its parent (grid cell) instead of the fixed
+  /// 150-wide peek size.
+  final bool expand;
 
   final String icon;
   final String name;
@@ -1714,7 +2001,7 @@ class _CollectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 150,
+      width: expand ? double.infinity : 150,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
@@ -1727,6 +2014,7 @@ class _CollectionCard extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
         children: [
           Container(
             width: 38,
@@ -1739,7 +2027,7 @@ class _CollectionCard extends StatelessWidget {
               child: RdIcon(icon, size: 20, stroke: '#14328C', strokeWidth: 1.8),
             ),
           ),
-          const SizedBox(height: 40),
+          expand ? const Spacer() : const SizedBox(height: 40),
           Text(
             name,
             style: GoogleFonts.dosis(
