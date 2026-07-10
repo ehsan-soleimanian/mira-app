@@ -1821,6 +1821,9 @@ class _BoardViewState extends State<_BoardView> {
   /// edge and clears this.
   String? _connectSource;
 
+  /// In move-mode, the card tapped to select it — reveals a delete (×) affordance.
+  String? _selectedCard;
+
   /// User-created connections. Seeded from the board's persisted edges.
   late List<_BoardEdge> _edges;
 
@@ -1923,7 +1926,11 @@ class _BoardViewState extends State<_BoardView> {
   }
 
   void _onCardTap(String id) {
-    if (!_connectMode) return;
+    if (!_connectMode) {
+      // Move-mode: tap selects (revealing delete); tap again deselects.
+      setState(() => _selectedCard = _selectedCard == id ? null : id);
+      return;
+    }
     var created = false;
     setState(() {
       if (_connectSource == null) {
@@ -1944,11 +1951,79 @@ class _BoardViewState extends State<_BoardView> {
     if (created) _scheduleSave();
   }
 
+  /// Removes a card (and any edges touching it), persists, and offers Undo.
+  void _deleteCard(String id) {
+    final idx = _cards.indexWhere((c) => c.id == id);
+    if (idx == -1) return;
+    final removedCard = _cards[idx];
+    final removedPos = _positions[id];
+    final removedEdges =
+        _edges.where((e) => e.from == id || e.to == id).toList();
+    setState(() {
+      _cards = _cards.where((c) => c.id != id).toList();
+      _edges = _edges.where((e) => e.from != id && e.to != id).toList();
+      _positions.remove(id);
+      _selectedCard = null;
+    });
+    widget.onContext(_boardTitle, _cards.length);
+    _scheduleSave();
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: context.rd.ink,
+          content: Text('Card removed',
+              style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white)),
+          action: SnackBarAction(
+            label: 'Undo',
+            textColor: Colors.white,
+            onPressed: () {
+              if (!mounted) return;
+              setState(() {
+                _cards = [..._cards, removedCard];
+                if (removedPos != null) _positions[id] = removedPos;
+                _edges = [..._edges, ...removedEdges];
+              });
+              widget.onContext(_boardTitle, _cards.length);
+              _scheduleSave();
+            },
+          ),
+        ),
+      );
+  }
+
   void _exitConnect() {
     setState(() {
       _tool = 0;
       _connectSource = null;
     });
+  }
+
+  /// The red × shown on a selected card to delete it.
+  Widget _cardDelete(String id) {
+    return GestureDetector(
+      onTap: () => _deleteCard(id),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFFC0392B),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
+          ],
+        ),
+        child: const Center(
+          child: RdIcon('<path d="M6 6l12 12M18 6 6 18"/>',
+              size: 14, stroke: '#FFFFFF', strokeWidth: 2.6),
+        ),
+      ),
+    );
   }
 
   /// Drops a fresh note card at [scenePoint] (board coordinates) while the
@@ -2113,16 +2188,25 @@ class _BoardViewState extends State<_BoardView> {
                             Positioned(
                               left: _positions[c.id]!.dx,
                               top: _positions[c.id]!.dy,
-                              child: _DraggableCard(
-                                spec: c,
-                                lifted: _draggingId == c.id,
-                                isSource: _connectSource == c.id,
-                                connectMode: _connectMode,
-                                onPanStart: () => _onCardDragStart(c.id),
-                                onPanUpdate: (delta) =>
-                                    _onCardDragUpdate(c.id, delta),
-                                onPanEnd: _onCardDragEnd,
-                                onTap: () => _onCardTap(c.id),
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  _DraggableCard(
+                                    spec: c,
+                                    lifted: _draggingId == c.id,
+                                    isSource: _connectSource == c.id,
+                                    connectMode: _connectMode,
+                                    selected: _selectedCard == c.id,
+                                    onPanStart: () => _onCardDragStart(c.id),
+                                    onPanUpdate: (delta) =>
+                                        _onCardDragUpdate(c.id, delta),
+                                    onPanEnd: _onCardDragEnd,
+                                    onTap: () => _onCardTap(c.id),
+                                  ),
+                                  if (_selectedCard == c.id && !_connectMode)
+                                    Positioned(
+                                        top: -9, right: -9, child: _cardDelete(c.id)),
+                                ],
                               ),
                             ),
                         ],
@@ -2142,6 +2226,7 @@ class _BoardViewState extends State<_BoardView> {
                   _tool = i;
                   // Leaving connect-mode drops any pending source.
                   if (i != _connectTool) _connectSource = null;
+                  _selectedCard = null; // switching tools clears selection
                 }),
               ),
             ),
@@ -2247,12 +2332,14 @@ class _DraggableCard extends StatelessWidget {
     required this.onPanUpdate,
     required this.onPanEnd,
     required this.onTap,
+    this.selected = false,
   });
 
   final _CardSpec spec;
   final bool lifted;
   final bool isSource;
   final bool connectMode;
+  final bool selected;
   final VoidCallback onPanStart;
   final ValueChanged<Offset> onPanUpdate;
   final VoidCallback onPanEnd;
@@ -2275,7 +2362,7 @@ class _DraggableCard extends StatelessWidget {
           child: _BoardCard(
             spec: spec,
             lifted: lifted,
-            highlighted: isSource,
+            highlighted: isSource || selected,
           ),
         ),
       ),
