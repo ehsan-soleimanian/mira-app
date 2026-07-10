@@ -1,13 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/app/memory_store.dart';
-import 'package:mira_app/features/capture/capture_repository.dart';
-import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
-import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
@@ -16,6 +11,7 @@ import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_collection_picker.dart';
 import '../widgets/rd_icon.dart';
+import '../widgets/rd_voice_capture_sheet.dart';
 
 /// Library — browse every captured memory: search, type filters, Mira's
 /// collections, and a day-grouped list. Long-press a memory to enter
@@ -1042,7 +1038,11 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: false,
-      builder: (_) => _VoiceSearchSheet(captureRepository: services.captureRepository),
+      builder: (_) => RdVoiceCaptureSheet(
+        captureRepository: services.captureRepository,
+        prompt: 'Listening… tap to search',
+        busyLabel: 'Searching…',
+      ),
     );
     if (text != null && text.trim().isNotEmpty && mounted) {
       setState(() {
@@ -1767,132 +1767,6 @@ class _MemTile extends StatelessWidget {
           ),
         ],
       ],
-    );
-  }
-}
-
-/// Voice-search sheet — records a phrase, transcribes it, and returns the text.
-class _VoiceSearchSheet extends StatefulWidget {
-  const _VoiceSearchSheet({required this.captureRepository});
-
-  final CaptureRepository captureRepository;
-
-  @override
-  State<_VoiceSearchSheet> createState() => _VoiceSearchSheetState();
-}
-
-class _VoiceSearchSheetState extends State<_VoiceSearchSheet> {
-  final VoiceRecorderPort _recorder = createVoiceRecorder();
-  bool _busy = false;
-  int _sec = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_recorder.start());
-    _timer = Timer.periodic(
-        const Duration(seconds: 1), (_) => setState(() => _sec++));
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    if (_recorder.isRecording) {
-      unawaited(_recorder.cancel().catchError((_) {}));
-    }
-    final r = _recorder;
-    if (r is DeviceVoiceRecorder) r.dispose();
-    super.dispose();
-  }
-
-  Future<void> _stop() async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    _timer?.cancel();
-    try {
-      final result = await _recorder.stop();
-      final path = result.filePath;
-      var text = '';
-      if (!result.simulated && path != null && path.isNotEmpty) {
-        final transcript = await widget.captureRepository.transcribeVoice(
-          durationMs: result.duration.inMilliseconds,
-          audioPath: path,
-        );
-        text = transcript.text.trim();
-      }
-      if (mounted) Navigator.of(context).pop(text.isEmpty ? null : text);
-    } catch (_) {
-      if (mounted) Navigator.of(context).pop(null);
-    }
-  }
-
-  String get _time =>
-      '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return Container(
-      decoration: BoxDecoration(
-        color: rd.card,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 30),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 22),
-            decoration: BoxDecoration(
-                color: rd.line, borderRadius: BorderRadius.circular(100)),
-          ),
-          GestureDetector(
-            onTap: _stop,
-            child: Container(
-              width: 78,
-              height: 78,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: rd.navy,
-                boxShadow: [
-                  BoxShadow(
-                      color: rd.navy.withValues(alpha: 0.3),
-                      blurRadius: 24,
-                      offset: const Offset(0, 8)),
-                ],
-              ),
-              child: _busy
-                  ? const Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white)),
-                      ),
-                    )
-                  : const Center(
-                      child: RdIcon(RdIcons.mic,
-                          size: 30, stroke: '#FFFFFF', strokeWidth: 1.9)),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            _busy ? 'Searching…' : 'Listening… tap to search',
-            style: GoogleFonts.vazirmatn(
-                fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _busy ? 'Turning your words into a search' : _time,
-            style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import 'package:mira_app/models/api/reminder_models.dart';
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
+import '../widgets/rd_voice_capture_sheet.dart';
 
 /// Reminders — a pushed screen listing everything the user asked Mira to hold
 /// onto. Reminders load from `RemindersRepository` (`/reminders`); the full set
@@ -124,8 +125,16 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
           onDone: () => _markDone(r),
           onSnooze: () => _snooze(r),
           onDelete: () => _delete(r),
+          onOpenSource: r.sourceNodeId == null ? null : () => _openSource(r),
         ),
     ];
+  }
+
+  /// Opens the memory a reminder was created from.
+  void _openSource(Reminder r) {
+    final id = r.sourceNodeId;
+    if (id == null) return;
+    widget.go('memory', arg: RdMemoryArg(id: id, title: r.title));
   }
 
   void _toast(String message) {
@@ -145,33 +154,72 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
       );
   }
 
-  /// Mark a reminder done — flip it optimistically (it moves to the Done group)
-  /// and push the flag best-effort.
-  Future<void> _markDone(Reminder r) async {
-    setState(() => _replace(r, done: true));
-    _toast('Marked done');
+  void _toastUndo(String message, VoidCallback onUndo) {
+    if (!mounted) return;
+    final rd = context.rd;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: rd.ink,
+          content: Text(
+            message,
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+          ),
+          action: SnackBarAction(
+            label: 'Undo',
+            textColor: Colors.white,
+            onPressed: onUndo,
+          ),
+        ),
+      );
+  }
+
+  /// Best-effort push of a done flag after an optimistic flip.
+  Future<void> _pushDone(Reminder r, bool done) async {
     try {
       final services = AppScope.servicesOf(context);
       await RemindersRepository(apiClient: services.apiClient)
-          .update(r.id, done: true);
-    } catch (_) {
-      // Optimistic — the card already moved locally.
-    }
+          .update(r.id, done: done);
+    } catch (_) {}
   }
 
-  /// Snooze a reminder to tomorrow — bump its `remindAt` optimistically and push
-  /// the new time best-effort.
+  /// Mark a reminder done — optimistic, with Undo.
+  Future<void> _markDone(Reminder r) async {
+    setState(() => _replace(r, done: true));
+    _pushDone(r, true).ignore();
+    _toastUndo('Marked done', () {
+      setState(() => _replace(r, done: false));
+      _pushDone(r, false).ignore();
+    });
+  }
+
+  /// Bring a completed reminder back onto the list (tap its check).
+  void _uncomplete(Reminder r) {
+    setState(() => _replace(r, done: false));
+    _pushDone(r, false).ignore();
+    _toast('Back on your list');
+  }
+
+  /// Snooze a reminder to tomorrow — optimistic, with Undo restoring the time.
   Future<void> _snooze(Reminder r) async {
+    final prev = r.remindAt;
     final next = DateTime.now().add(const Duration(days: 1));
     setState(() => _replace(r, remindAt: next));
-    _toast('Snoozed until tomorrow');
     try {
       final services = AppScope.servicesOf(context);
       await RemindersRepository(apiClient: services.apiClient)
           .update(r.id, remindAt: next);
-    } catch (_) {
-      // Optimistic — the card already updated locally.
-    }
+    } catch (_) {}
+    _toastUndo('Snoozed until tomorrow', () {
+      if (prev == null) return;
+      setState(() => _replace(r, remindAt: prev));
+      final services = AppScope.servicesOf(context);
+      RemindersRepository(apiClient: services.apiClient)
+          .update(r.id, remindAt: prev)
+          .ignore();
+    });
   }
 
   /// Delete a reminder — drop it optimistically and push the delete best-effort.
@@ -274,6 +322,9 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
                     _ReminderCard(
                       reminder: r,
                       onDelete: () => _delete(r),
+                      onUncomplete: () => _uncomplete(r),
+                      onOpenSource:
+                          r.sourceNodeId == null ? null : () => _openSource(r),
                     ),
                 ],
               ],
@@ -469,12 +520,20 @@ class _ReminderCard extends StatelessWidget {
     this.onDone,
     this.onSnooze,
     required this.onDelete,
+    this.onUncomplete,
+    this.onOpenSource,
   });
 
   final Reminder reminder;
   final VoidCallback? onDone;
   final VoidCallback? onSnooze;
   final VoidCallback onDelete;
+
+  /// Tapping a done reminder's check brings it back onto the list.
+  final VoidCallback? onUncomplete;
+
+  /// Opens the memory this reminder was created from (a source chip appears).
+  final VoidCallback? onOpenSource;
 
   @override
   Widget build(BuildContext context) {
@@ -498,9 +557,10 @@ class _ReminderCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Leading Done toggle for open reminders; a filled check for done ones.
+          // Leading Done toggle for open reminders; tap a done reminder's
+          // filled check to bring it back onto the list.
           GestureDetector(
-            onTap: onDone,
+            onTap: done ? onUncomplete : onDone,
             behavior: HitTestBehavior.opaque,
             child: Container(
               width: 24,
@@ -559,6 +619,29 @@ class _ReminderCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                ],
+                if (onOpenSource != null) ...[
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: onOpenSource,
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        RdIcon(RdIcons.link,
+                            size: 12, color: rd.muted, strokeWidth: 2),
+                        const SizedBox(width: 5),
+                        Text('From a memory',
+                            style: GoogleFonts.vazirmatn(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                                color: rd.muted)),
+                        const SizedBox(width: 3),
+                        RdIcon('<path d="M9 6l6 6-6 6"/>',
+                            size: 11, color: rd.faint, strokeWidth: 2),
+                      ],
+                    ),
                   ),
                 ],
                 if (!done && (onSnooze != null || onDone != null)) ...[
@@ -696,6 +779,21 @@ class _ComposeSheetState extends State<_ComposeSheet> {
     super.dispose();
   }
 
+  /// Dictate the reminder title by voice — records, transcribes, fills the field.
+  Future<void> _dictate() async {
+    final text = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RdVoiceCaptureSheet(
+        captureRepository: AppScope.servicesOf(context).captureRepository,
+        busyLabel: 'Transcribing…',
+      ),
+    );
+    if (text != null && text.trim().isNotEmpty && mounted) {
+      setState(() => _title.text = text.trim());
+    }
+  }
+
   DateTime? _resolve() {
     final now = DateTime.now();
     switch (_when) {
@@ -792,6 +890,20 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(color: rd.navy, width: 1.4)),
+                suffixIconConstraints:
+                    const BoxConstraints(minWidth: 46, minHeight: 46),
+                suffixIcon: GestureDetector(
+                  onTap: _dictate,
+                  behavior: HitTestBehavior.opaque,
+                  child: Center(
+                    widthFactor: 1,
+                    child: RdIcon(
+                        '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/>',
+                        size: 18,
+                        color: rd.peri,
+                        strokeWidth: 1.9),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 18),
