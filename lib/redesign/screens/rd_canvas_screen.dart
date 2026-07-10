@@ -2044,11 +2044,148 @@ class _BoardViewState extends State<_BoardView> {
     setState(() {
       _cards = [..._cards, spec];
       _positions[id] = Offset(spec.left, spec.top);
-      // Leave add-mode after placing, matching a one-shot "drop" gesture.
+      // Leave add-mode after placing, matching a one-shot "drop" gesture, and
+      // select the new card so its edit / delete affordances show at once.
       _tool = 0;
+      _selectedCard = id;
     });
     widget.onContext(_boardTitle, _cards.length);
     _scheduleSave();
+    // Auto-open the editor on the fresh card (design auto-focuses its title).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _editCard(id);
+    });
+  }
+
+  /// The navy pencil shown on a selected card to edit its title / note.
+  Widget _cardEdit(String id) {
+    return GestureDetector(
+      onTap: () => _editCard(id),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: context.rd.navy,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 2)),
+          ],
+        ),
+        child: const Center(
+          child: RdIcon(
+              '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+              size: 13,
+              stroke: '#FFFFFF',
+              strokeWidth: 2),
+        ),
+      ),
+    );
+  }
+
+  /// Edit a card's title + note inline via a small sheet, then persist.
+  Future<void> _editCard(String id) async {
+    final card = _cards.firstWhere((c) => c.id == id);
+    final titleCtl = TextEditingController(text: card.title);
+    final subCtl = TextEditingController(text: card.sub ?? '');
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final rd = context.rd;
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+                color: rd.card,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(26))),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                    child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                            color: rd.line,
+                            borderRadius: BorderRadius.circular(100)))),
+                Text('Edit card',
+                    style: GoogleFonts.dosis(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                        color: rd.ink)),
+                const SizedBox(height: 12),
+                _editField(titleCtl, 'Title', autofocus: true),
+                const SizedBox(height: 10),
+                _editField(subCtl, 'Note (optional)'),
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => Navigator.of(ctx).pop(true),
+                  child: Container(
+                    height: 50,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                        color: rd.navy,
+                        borderRadius: BorderRadius.circular(14)),
+                    child: Text('Save',
+                        style: GoogleFonts.vazirmatn(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (saved == true && mounted) {
+      final t = titleCtl.text.trim();
+      final s = subCtl.text.trim();
+      setState(() {
+        _cards = _cards
+            .map((c) => c.id == id
+                ? c.copyWith(
+                    title: t.isEmpty ? c.title : t, sub: s.isEmpty ? null : s)
+                : c)
+            .toList();
+      });
+      _scheduleSave();
+    }
+    titleCtl.dispose();
+    subCtl.dispose();
+  }
+
+  Widget _editField(TextEditingController ctl, String hint,
+      {bool autofocus = false}) {
+    final rd = context.rd;
+    return TextField(
+      controller: ctl,
+      autofocus: autofocus,
+      style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
+        filled: true,
+        fillColor: rd.bg,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: rd.line, width: 1)),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: rd.navy, width: 1.4)),
+      ),
+    );
   }
 
   String get _boardTitle =>
@@ -2203,9 +2340,12 @@ class _BoardViewState extends State<_BoardView> {
                                     onPanEnd: _onCardDragEnd,
                                     onTap: () => _onCardTap(c.id),
                                   ),
-                                  if (_selectedCard == c.id && !_connectMode)
+                                  if (_selectedCard == c.id && !_connectMode) ...[
                                     Positioned(
                                         top: -9, right: -9, child: _cardDelete(c.id)),
+                                    Positioned(
+                                        top: -9, left: -9, child: _cardEdit(c.id)),
+                                  ],
                                 ],
                               ),
                             ),
@@ -2714,6 +2854,18 @@ class _CardSpec {
 
   /// Optional memory reference — set when this card mirrors a memory node.
   final String? memId;
+
+  _CardSpec copyWith({String? title, String? sub, String? tag}) => _CardSpec(
+        id: id,
+        kind: kind,
+        left: left,
+        top: top,
+        rotation: rotation,
+        title: title ?? this.title,
+        sub: sub ?? this.sub,
+        tag: tag ?? this.tag,
+        memId: memId,
+      );
 
   /// Approximate rendered size per card kind — used to derive card centres for
   /// connect-mode edges. Widths mirror the layout constants in `_BoardCard`;
