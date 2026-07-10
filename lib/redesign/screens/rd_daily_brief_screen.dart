@@ -51,6 +51,10 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   /// the first load resolves; empty once loaded when nothing is overdue.
   List<Reminder>? _overdue;
 
+  /// Timeless reminders (no `remindAt`) — the "waiting for the right moment"
+  /// section, capped for the Brief.
+  List<Reminder> _waiting = const [];
+
   /// "Mira resurfaced" items from `/v2/resurfaced`. Null until the first load
   /// resolves or if the call failed; empty once loaded when the feed is empty.
   /// In both the null and empty cases the section falls back to sample cards.
@@ -116,7 +120,14 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
           .where((r) => r.remindAt != null && r.remindAt!.isBefore(now))
           .toList()
         ..sort((a, b) => a.remindAt!.compareTo(b.remindAt!));
-      if (mounted) setState(() => _overdue = overdue);
+      final waiting =
+          reminders.where((r) => r.remindAt == null).take(3).toList();
+      if (mounted) {
+        setState(() {
+          _overdue = overdue;
+          _waiting = waiting;
+        });
+      }
     } catch (_) {}
   }
 
@@ -140,40 +151,156 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     } catch (_) {}
   }
 
-  /// Snooze an overdue reminder to tomorrow — drop it from the list optimistically
-  /// and push the new `remindAt` best-effort.
+  /// Snooze an overdue reminder to tomorrow — optimistic, with Undo restoring it
+  /// to its original overdue time.
   Future<void> _snoozeReminder(Reminder reminder) async {
+    final before = List<Reminder>.of(_overdue ?? const []);
     setState(() =>
-        _overdue = (_overdue ?? []).where((r) => r.id != reminder.id).toList());
-    _toast('Snoozed until tomorrow');
-    try {
-      final services = AppScope.servicesOf(context);
-      await RemindersRepository(apiClient: services.apiClient).update(
-        reminder.id,
-        remindAt: DateTime.now().add(const Duration(days: 1)),
-      );
-    } catch (_) {
-      // The card is already gone locally; a failed sync just means it may
-      // reappear on the next load.
-    }
+        _overdue = before.where((r) => r.id != reminder.id).toList());
+    _pushRemindAt(reminder.id, DateTime.now().add(const Duration(days: 1)));
+    _toastUndo('Snoozed until tomorrow', () {
+      setState(() => _overdue = before);
+      final original = reminder.remindAt;
+      if (original != null) _pushRemindAt(reminder.id, original);
+    });
   }
 
-  /// Mark an overdue reminder done — drop it from the list optimistically and
-  /// push the flag best-effort.
+  /// Mark an overdue reminder done — optimistic, with Undo.
   Future<void> _completeReminder(Reminder reminder) async {
+    final before = List<Reminder>.of(_overdue ?? const []);
     setState(() =>
-        _overdue = (_overdue ?? []).where((r) => r.id != reminder.id).toList());
-    _toast('Done');
-    try {
-      final services = AppScope.servicesOf(context);
-      await RemindersRepository(apiClient: services.apiClient)
-          .update(reminder.id, done: true);
-    } catch (_) {
-      // Optimistic — the card is already gone locally.
-    }
+        _overdue = before.where((r) => r.id != reminder.id).toList());
+    _pushDone(reminder.id, true);
+    _toastUndo('Done', () {
+      setState(() => _overdue = before);
+      _pushDone(reminder.id, false);
+    });
   }
 
-  void _toast(String message) {
+  /// Snoozes every overdue reminder to tomorrow at once ("Clear all"), with Undo.
+  void _clearAllOverdue() {
+    final before = List<Reminder>.of(_overdue ?? const []);
+    if (before.isEmpty) return;
+    setState(() => _overdue = const []);
+    final next = DateTime.now().add(const Duration(days: 1));
+    for (final r in before) {
+      _pushRemindAt(r.id, next);
+    }
+    _toastUndo('Cleared — Mira will ask again later', () {
+      setState(() => _overdue = before);
+      for (final r in before) {
+        if (r.remindAt != null) _pushRemindAt(r.id, r.remindAt!);
+      }
+    });
+  }
+
+  void _pushRemindAt(String id, DateTime at) {
+    final services = AppScope.servicesOf(context);
+    RemindersRepository(apiClient: services.apiClient)
+        .update(id, remindAt: at)
+        .ignore();
+  }
+
+  void _pushDone(String id, bool done) {
+    final services = AppScope.servicesOf(context);
+    RemindersRepository(apiClient: services.apiClient)
+        .update(id, done: done)
+        .ignore();
+  }
+
+  /// The "waiting for the right moment" section — timeless reminders that link
+  /// through to the full Reminders screen.
+  List<Widget> _waitingBlock() {
+    if (_waiting.isEmpty) return const [];
+    final rd = context.rd;
+    return [
+      _SectionHeader(
+        icon: RdIcons.dueClock,
+        label: 'WAITING FOR THE RIGHT MOMENT',
+        count: '${_waiting.length}',
+      ),
+      for (final r in _waiting)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+          child: GestureDetector(
+            onTap: () => widget.go('reminders'),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: rd.card,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: rd.line, width: 1),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                          shape: BoxShape.circle, color: Color(0xFFC1876F))),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      r.title.trim().isEmpty ? 'A reminder' : r.title.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.vazirmatn(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: rd.ink),
+                    ),
+                  ),
+                  RdIcon('<path d="M9 6l6 6-6 6"/>',
+                      size: 14, color: rd.faint, strokeWidth: 2),
+                ],
+              ),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  /// Footer under the overdue list: Clear-all + a link to the full Reminders.
+  Widget _overdueFooter() {
+    final rd = context.rd;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: _clearAllOverdue,
+            behavior: HitTestBehavior.opaque,
+            child: Text('Clear all',
+                style: GoogleFonts.vazirmatn(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: rd.muted)),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => widget.go('reminders'),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('See all reminders',
+                    style: GoogleFonts.vazirmatn(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: rd.navy)),
+                const SizedBox(width: 4),
+                RdIcon('<path d="M9 6l6 6-6 6"/>',
+                    size: 12, color: rd.navy, strokeWidth: 2),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toastUndo(String message, VoidCallback onUndo) {
     if (!mounted) return;
     final rd = context.rd;
     ScaffoldMessenger.of(context)
@@ -185,6 +312,11 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
           content: Text(
             message,
             style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+          ),
+          action: SnackBarAction(
+            label: 'Undo',
+            textColor: Colors.white,
+            onPressed: onUndo,
           ),
         ),
       );
@@ -258,7 +390,9 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             onSnooze: () => _snoozeReminder(r),
             onDone: () => _completeReminder(r),
           ),
+        _overdueFooter(),
       ],
+      ..._waitingBlock(),
       if (_briefTasks.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.checkCircle,
@@ -311,7 +445,9 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             onSnooze: () => _snoozeReminder(r),
             onDone: () => _completeReminder(r),
           ),
+        _overdueFooter(),
       ],
+      ..._waitingBlock(),
       if (tasks.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.checkCircle,
