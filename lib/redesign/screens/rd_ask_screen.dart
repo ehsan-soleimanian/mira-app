@@ -480,7 +480,17 @@ class _RdAskScreenState extends State<RdAskScreen> {
       'link' => 'Link',
       _ => 'Note',
     };
-    return kind;
+    return '$kind · ${_relTime(item.createdAt)}';
+  }
+
+  static String _relTime(DateTime dt) {
+    final d = DateTime.now().difference(dt);
+    if (d.inMinutes < 1) return 'now';
+    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+    if (d.inHours < 24) return '${d.inHours}h ago';
+    if (d.inDays == 1) return 'yesterday';
+    if (d.inDays < 7) return '${d.inDays}d ago';
+    return '${dt.month}/${dt.day}';
   }
 
   static String _typeIcon(String type) {
