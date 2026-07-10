@@ -119,6 +119,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   PickedCaptureMedia? _pendingMedia; // held for photo/screenshot confirm
   String? _pendingUrl; // held for link confirm
   String? _pendingTitle;
+  // People chosen in the "Notify people" sheet (link review). Client-only —
+  // there is no notify backend, so this is reflected in the confirmation copy.
+  final Set<String> _notify = <String>{};
 
   Timer? _secTimer;
   Timer? _revealTimer;
@@ -950,6 +953,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       }
       return rows;
     }
+    // Photo / screenshot / link → "Suggested actions" instead of the voice-note
+    // connection rows.
+    if (_kind == 'photo' || _kind == 'screenshot' || _kind == 'link') {
+      return _suggestedActions();
+    }
     return [
       _fieldLabel('Connect to existing memory'),
       _connRow('<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>', 'Meeting with John', 'Calendar · Tomorrow, 3:00 PM', _conn1, () => setState(() => _conn1 = !_conn1)),
@@ -958,6 +966,250 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       const SizedBox(height: 8),
       _connRow('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', 'John Carter', 'Person · 6 linked memories', _conn3, () => setState(() => _conn3 = !_conn3)),
     ];
+  }
+
+  /// The number of connections/actions currently toggled on — drives the
+  /// dynamic "Add · linking N" confirm-button label.
+  int get _linkCount => _realProposal
+      ? _connOn.length
+      : [_conn1, _conn2, _conn3].where((x) => x).length;
+
+  /// Kind-aware reminder line for the bottom reminder card.
+  String get _reminderText {
+    switch (_kind) {
+      case 'link':
+        return 'Read it later — remind me this weekend';
+      case 'photo':
+      case 'screenshot':
+        return 'Remind me about this later';
+      default:
+        return 'Remind me Thursday morning, a day before it’s due';
+    }
+  }
+
+  /// "Suggested actions" for photo / screenshot / link, plus (for link) the
+  /// Notify-people section. Toggles reuse the three connection flags.
+  List<Widget> _suggestedActions() {
+    const calendar =
+        '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>';
+    const topic = '<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/>';
+    const person =
+        '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>';
+    final List<(String, String, String)> rows;
+    if (_kind == 'link') {
+      rows = const [
+        (topic, 'Add to a topic', 'Group with related memories'),
+        (person, 'Share with a friend', 'Mira suggests Maya'),
+      ];
+    } else {
+      rows = const [
+        (calendar, 'Add to calendar', 'From the details Mira read'),
+        (topic, 'Add to a topic', 'Group with related memories'),
+        (person, 'Invite someone', 'Mira suggests Maya'),
+      ];
+    }
+    final on = [_conn1, _conn2, _conn3];
+    final toggles = <VoidCallback>[
+      () => setState(() => _conn1 = !_conn1),
+      () => setState(() => _conn2 = !_conn2),
+      () => setState(() => _conn3 = !_conn3),
+    ];
+    final out = <Widget>[_fieldLabel('Suggested actions')];
+    for (var i = 0; i < rows.length; i++) {
+      if (i > 0) out.add(const SizedBox(height: 8));
+      out.add(_connRow(rows[i].$1, rows[i].$2, rows[i].$3, on[i], toggles[i]));
+    }
+    if (_kind == 'link') out.addAll(_notifySection());
+    return out;
+  }
+
+  List<Widget> _notifySection() {
+    final rd = context.rd;
+    final label = _notify.isEmpty
+        ? 'Let someone know'
+        : (_notify.length == 1
+            ? 'Notifying ${_notify.first.split(' ').first}'
+            : 'Notifying ${_notify.length} people');
+    final sub = _notify.isEmpty
+        ? 'Mira suggests Maya — she likes live jazz'
+        : _notify.map((n) => n.split(' ').first).join(', ');
+    return [
+      const SizedBox(height: 14),
+      _fieldLabel('Notify people'),
+      GestureDetector(
+        onTap: _openNotifyPicker,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+              color: rd.card,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: rd.line, width: 1)),
+          child: Row(
+            children: [
+              RdIcon(
+                  '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+                  size: 18,
+                  color: rd.peri,
+                  strokeWidth: 1.8),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: GoogleFonts.vazirmatn(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: rd.ink)),
+                    const SizedBox(height: 2),
+                    Text(sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.vazirmatn(
+                            fontSize: 11.5, color: rd.muted)),
+                  ],
+                ),
+              ),
+              RdIcon('<path d="m9 18 6-6-6-6"/>',
+                  size: 16, color: rd.faint, strokeWidth: 2),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  static Color _hexColor(String hex) =>
+      Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
+
+  Future<void> _openNotifyPicker() async {
+    const people = <(String, String, String, String)>[
+      ('Maya Chen', 'Likes live jazz', '#7E8BC9', 'M'),
+      ('John Reyes', 'Contract · frequent', '#1F8A5B', 'J'),
+      ('Sara Lin', 'Partner', '#C97A54', 'S'),
+      ('Devon Park', 'Went to Blue Note together', '#5B8CC9', 'D'),
+    ];
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          final rd = context.rd;
+          return Container(
+            decoration: BoxDecoration(
+                color: rd.card,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(26))),
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                    child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                            color: rd.line,
+                            borderRadius: BorderRadius.circular(100)))),
+                Text('Notify people',
+                    style: GoogleFonts.dosis(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w700,
+                        color: rd.ink)),
+                const SizedBox(height: 2),
+                Text('Who should Mira share this with?',
+                    style:
+                        GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted)),
+                const SizedBox(height: 12),
+                for (final p in people)
+                  _notifyOpt(p.$1, p.$2, p.$3, p.$4, setSheet),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: () => Navigator.of(ctx).pop(),
+                  child: Container(
+                    height: 50,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                        color: rd.navy,
+                        borderRadius: BorderRadius.circular(14)),
+                    child: Text('Done',
+                        style: GoogleFonts.vazirmatn(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    if (mounted) setState(() {}); // reflect the new selection on the trigger
+  }
+
+  Widget _notifyOpt(String name, String sub, String tint, String initial,
+      void Function(void Function()) setSheet) {
+    final rd = context.rd;
+    final on = _notify.contains(name);
+    return GestureDetector(
+      onTap: () {
+        on ? _notify.remove(name) : _notify.add(name);
+        setSheet(() {});
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration:
+                  BoxDecoration(shape: BoxShape.circle, color: _hexColor(tint)),
+              child: Text(initial,
+                  style: GoogleFonts.vazirmatn(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      style: GoogleFonts.vazirmatn(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: rd.ink)),
+                  Text(sub,
+                      style: GoogleFonts.vazirmatn(
+                          fontSize: 11.5, color: rd.muted)),
+                ],
+              ),
+            ),
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: on ? rd.navy : Colors.transparent,
+                border: on ? null : Border.all(color: rd.faint, width: 1.6),
+              ),
+              child: on
+                  ? const Center(
+                      child: RdIcon('<path d="m5 12 5 5 9-11"/>',
+                          size: 13, stroke: '#FFFFFF', strokeWidth: 3))
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── change type ─────────────────────────────────────────────────────
@@ -1333,15 +1585,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                         RdIcon('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M12 2h0M9 2h6"/>', size: 20, color: rd.peri, strokeWidth: 1.8),
                         const SizedBox(width: 11),
                         Expanded(
-                          child: Text.rich(
-                            TextSpan(
-                              children: [
-                                const TextSpan(text: 'Remind me '),
-                                TextSpan(text: 'Thursday morning', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
-                                const TextSpan(text: ', a day before it’s due'),
-                              ],
-                              style: GoogleFonts.vazirmatn(fontSize: 13, height: 1.4, color: rd.peri),
-                            ),
+                          child: Text(
+                            _reminderText,
+                            style: GoogleFonts.vazirmatn(fontSize: 13, height: 1.4, fontWeight: FontWeight.w600, color: rd.peri),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1360,6 +1606,28 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   }
 
   // ── added ───────────────────────────────────────────────────────────
+  /// The confirmation sentence, reflecting the real connection count, whether a
+  /// reminder was set, and who (if anyone) will be notified.
+  String get _addedSummary {
+    final parts = <String>[];
+    final n = _linkCount;
+    if (n > 0) parts.add('linked to $n ${n == 1 ? 'memory' : 'memories'}');
+    if (_remind) parts.add('has a reminder');
+    if (_notify.isNotEmpty) {
+      final who = _notify.length == 1
+          ? _notify.first.split(' ').first
+          : '${_notify.length} people';
+      parts.add('$who will be notified');
+    }
+    if (parts.isEmpty) {
+      return 'Kept safely. Mira will bring it back at the right time.';
+    }
+    final joined = parts.length == 1
+        ? parts.first
+        : '${parts.sublist(0, parts.length - 1).join(', ')} and ${parts.last}';
+    return 'It’s $joined. Mira will bring it back at the right time.';
+  }
+
   Widget _added() {
     final rd = context.rd;
     return Center(
@@ -1381,16 +1649,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             const SizedBox(height: 24),
             Text('Kept in memory', style: GoogleFonts.dosis(fontSize: 28, fontWeight: FontWeight.w700, color: rd.ink)),
             const SizedBox(height: 10),
-            Text.rich(
-              TextSpan(
-                children: [
-                  const TextSpan(text: 'Linked to '),
-                  TextSpan(text: '2 memories', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w600, color: rd.ink)),
-                  const TextSpan(text: ' and 1 reminder. Mira will bring it back at the right time.'),
-                ],
-                style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: rd.muted),
-              ),
+            Text(
+              _addedSummary,
               textAlign: TextAlign.center,
+              style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: rd.muted),
             ),
             const SizedBox(height: 28),
             Row(
@@ -1471,9 +1733,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               child: Container(
                 height: 52,
                 alignment: Alignment.center,
-                // Fixed navy CTA.
+                // Fixed navy CTA. Label reflects how many connections/actions
+                // are toggled on (design's "Add · linking N").
                 decoration: BoxDecoration(color: rd.navy, borderRadius: BorderRadius.circular(14)),
-                child: Text('Add to memory', style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                child: Text(
+                  _linkCount > 0 ? 'Add · linking $_linkCount' : 'Add to memory',
+                  style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
+                ),
               ),
             ),
           ),
