@@ -78,17 +78,41 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
       );
   }
 
-  /// Best-effort "free up space": clears archived captures. There is no backend
-  /// route wired for this yet, so it optimistically drops the sample's archived
-  /// bytes from the "other" bucket and confirms with a toast.
+  /// "Free up space": permanently deletes archived captures. Loads the archived
+  /// items (`?includeArchived`, flagged in metadata), bulk-deletes them via
+  /// `/library/items/bulk-actions`, then refreshes the usage bar and reports how
+  /// much was reclaimed.
   Future<void> _clearArchived() async {
     if (_clearing) return;
     setState(() => _clearing = true);
-    // Simulate the round-trip so the row shows its working state briefly.
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    if (!mounted) return;
-    setState(() => _clearing = false);
-    _toast('Cleared archived items');
+    try {
+      final repo = AppScope.servicesOf(context).libraryRepository;
+      final items = await repo.list(includeArchived: true);
+      final archived = items
+          .where((i) => (i.metadata['archived'] as bool?) ?? false)
+          .toList();
+      if (archived.isEmpty) {
+        if (mounted) {
+          setState(() => _clearing = false);
+          _toast('No archived items to clear');
+        }
+        return;
+      }
+      final bytes = archived.fold<int>(0, (sum, i) => sum + (i.sizeBytes ?? 0));
+      await repo.bulkAction(archived.map((i) => i.id).toList(), 'delete');
+      await _load(); // pull the new usage so the bar/breakdown update
+      if (mounted) {
+        setState(() => _clearing = false);
+        final freed = bytes > 0 ? ' · ${_bytesHuman(bytes)} freed' : '';
+        _toast(
+            'Cleared ${archived.length} archived item${archived.length == 1 ? '' : 's'}$freed');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _clearing = false);
+        _toast('Couldn’t clear archived items');
+      }
+    }
   }
 
   @override
