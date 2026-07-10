@@ -33,7 +33,7 @@ class DailyBriefRepository {
       'itemKind': itemKind,
       if (snoozeUntil != null)
         'snoozeUntil': snoozeUntil.toUtc().toIso8601String(),
-      if (note != null) 'note': note,
+      'note': ?note,
     };
     final response = await _dio.post<Map<String, dynamic>>(
       '/daily-brief/items/$itemId/actions',
