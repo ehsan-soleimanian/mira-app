@@ -121,6 +121,7 @@ class GraphEdge {
     this.kind,
     this.confidence,
     this.evidenceCount,
+    this.assertionIds = const [],
   });
 
   factory GraphEdge.fromJson(Map<String, dynamic> json) => GraphEdge(
@@ -133,6 +134,11 @@ class GraphEdge {
     confidence: (json['confidence'] as num?)?.toDouble(),
     evidenceCount:
         json['evidenceCount'] as int? ?? json['evidence_count'] as int?,
+    assertionIds:
+        ((json['assertionIds'] ?? json['assertion_ids']) as List<dynamic>? ??
+                const [])
+            .map((e) => e.toString())
+            .toList(),
   );
 
   final String id;
@@ -142,6 +148,9 @@ class GraphEdge {
   final String? kind;
   final double? confidence;
   final int? evidenceCount;
+
+  /// Assertions backing this materialised edge — rejected to "unlink" it.
+  final List<String> assertionIds;
 }
 
 class GraphIngestResponse {

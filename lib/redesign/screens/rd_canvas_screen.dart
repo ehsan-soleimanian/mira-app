@@ -63,6 +63,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   /// `_MapView` key flips and its derived adjacency/index rebuild from scratch.
   int _mapEpoch = 0;
 
+  /// Assertions backing each live edge, keyed "a|b" (both directions) — used to
+  /// "unlink" a connection by rejecting them.
+  Map<String, List<String>> _mapEdgeAssertions = const {};
+
   /// Board-level context label (title · N cards), reported up from the live
   /// `_BoardView` so the top pill mirrors what's on screen.
   String _boardContext = 'Coast trip · 8 memories';
@@ -90,7 +94,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     try {
       final services = AppScope.servicesOf(context);
       final graph = await services.graphRepository.fetchGraph();
-      final (nodes, edges) = _mapGraphToNodes(graph);
+      final (nodes, edges, edgeAssertions) = _mapGraphToNodes(graph);
       final clusters = _buildClustersFromNodes(nodes, edges);
       if (!mounted || nodes.isEmpty) return;
       setState(() {
@@ -101,6 +105,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
             'Your memory · ${nodes.length} memories · ${edges.length} connections';
         _clusterContext =
             '${_clusters.length} clusters · ${nodes.length} memories';
+        _mapEdgeAssertions = edgeAssertions;
         _mapEpoch++; // force the map to rebuild from the fresh graph
       });
     } catch (_) {
@@ -131,6 +136,21 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       await _loadGraph();
     } catch (_) {
       _mapToast('Couldn’t merge those');
+    }
+  }
+
+  /// Unlinks a connection by rejecting the assertions backing it, then reloads.
+  Future<void> _unlinkEdge(List<String> assertionIds) async {
+    if (assertionIds.isEmpty) return;
+    try {
+      final repo = AppScope.servicesOf(context).graphRepository;
+      for (final id in assertionIds) {
+        await repo.rejectAssertion(id);
+      }
+      _mapToast('Connection removed');
+      await _loadGraph();
+    } catch (_) {
+      _mapToast('Couldn’t remove that connection');
     }
   }
 
@@ -289,6 +309,8 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
                   edges: live ? _mapEdges : _graphEdges,
                   initialSelectedId: _mapFocusNodeId,
                   onMerge: live ? _mergeEntities : null,
+                  edgeAssertions: live ? _mapEdgeAssertions : const {},
+                  onUnlink: live ? _unlinkEdge : null,
                 ),
             },
           ),
@@ -734,15 +756,23 @@ String _gTypeIcon(_GType t) {
 /// laying nodes out in a deterministic sunflower spiral (higher-degree hubs
 /// nearer the centre) since the backend layout is optional. Bounded to keep
 /// the graph legible on a phone.
-(List<_GNode>, List<List<String>>) _mapGraphToNodes(GraphResponse g) {
+(List<_GNode>, List<List<String>>, Map<String, List<String>>)
+    _mapGraphToNodes(GraphResponse g) {
   final nodes = g.nodes.take(40).toList();
   final ids = {for (final n in nodes) n.id};
   final edges = <List<String>>[];
+  // Undirected lookup of the assertions backing each edge, keyed "a|b" (both
+  // directions), so the Map can "unlink" a connection by rejecting them.
+  final edgeAssertions = <String, List<String>>{};
   for (final e in g.edges) {
     if (e.sourceId != e.targetId &&
         ids.contains(e.sourceId) &&
         ids.contains(e.targetId)) {
       edges.add([e.sourceId, e.targetId]);
+      if (e.assertionIds.isNotEmpty) {
+        edgeAssertions['${e.sourceId}|${e.targetId}'] = e.assertionIds;
+        edgeAssertions['${e.targetId}|${e.sourceId}'] = e.assertionIds;
+      }
     }
   }
   final degree = {for (final n in nodes) n.id: 0};
@@ -779,7 +809,7 @@ String _gTypeIcon(_GType t) {
           : null,
     ));
   }
-  return (out, edges);
+  return (out, edges, edgeAssertions);
 }
 
 _GType _gTypeForNode(GraphNode n) {
@@ -1125,6 +1155,8 @@ class _MapView extends StatefulWidget {
     this.edges = _graphEdges,
     this.initialSelectedId,
     this.onMerge,
+    this.edgeAssertions = const {},
+    this.onUnlink,
   });
 
   final List<_GNode> nodes;
@@ -1134,6 +1166,12 @@ class _MapView extends StatefulWidget {
   /// Merges the first entity id into the second on the real graph. Null for the
   /// offline sample (nothing to persist).
   final void Function(String source, String target)? onMerge;
+
+  /// Assertions backing each edge, keyed "a|b" (both directions).
+  final Map<String, List<String>> edgeAssertions;
+
+  /// Unlinks a connection by rejecting its backing assertions. Null offline.
+  final void Function(List<String> assertionIds)? onUnlink;
 
   @override
   State<_MapView> createState() => _MapViewState();
@@ -1316,6 +1354,14 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                             for (final n in widget.nodes)
                               if (n.id != _selected) n
                           ],
+                    onUnlink: widget.onUnlink,
+                    connectionAssertions: _selected == null
+                        ? const {}
+                        : {
+                            for (final id in _adj[_selected]!)
+                              id: widget.edgeAssertions['${_selected!}|$id'] ??
+                                  const <String>[],
+                          },
                   ),
                 ),
                 // Focus pill (fixed) — tap to leave Focus mode.
@@ -1573,6 +1619,8 @@ class _DetailPanel extends StatelessWidget {
     this.onFocus,
     this.onMerge,
     this.mergeCandidates = const [],
+    this.onUnlink,
+    this.connectionAssertions = const {},
   });
 
   final _GNode? node;
@@ -1590,6 +1638,13 @@ class _DetailPanel extends StatelessWidget {
 
   /// Other nodes offered as merge targets.
   final List<_GNode> mergeCandidates;
+
+  /// Unlinks a connection by rejecting the assertions backing it. Null hides
+  /// the per-connection × affordance.
+  final ValueChanged<List<String>>? onUnlink;
+
+  /// Assertions backing each connection (connected node id → assertion ids).
+  final Map<String, List<String>> connectionAssertions;
 
   @override
   Widget build(BuildContext context) {
@@ -1912,6 +1967,17 @@ class _DetailPanel extends StatelessWidget {
                             color: rd.ink,
                           ),
                         ),
+                        if (onUnlink != null &&
+                            (connectionAssertions[c.id]?.isNotEmpty ?? false)) ...[
+                          const SizedBox(width: 7),
+                          GestureDetector(
+                            onTap: () =>
+                                onUnlink!(connectionAssertions[c.id]!),
+                            behavior: HitTestBehavior.opaque,
+                            child: RdIcon('<path d="M6 6l12 12M18 6 6 18"/>',
+                                size: 11, color: rd.faint, strokeWidth: 2.4),
+                          ),
+                        ],
                       ],
                     ),
                   ),
