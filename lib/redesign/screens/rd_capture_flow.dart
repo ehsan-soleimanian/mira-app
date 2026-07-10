@@ -113,6 +113,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   String? _typeName;
   String? _typeIcon;
 
+  // What was captured — drives the review's preview header, eyebrow and default
+  // type, and which persist path "Add to memory" takes.
+  String _kind = 'voice'; // voice | text | photo | screenshot | link
+  PickedCaptureMedia? _pendingMedia; // held for photo/screenshot confirm
+  String? _pendingUrl; // held for link confirm
+  String? _pendingTitle;
+
   Timer? _secTimer;
   Timer? _revealTimer;
   final List<Timer> _timers = [];
@@ -166,6 +173,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _proposal = null;
       _realProposal = false;
       _pipelineStarted = false;
+      // Reset non-voice + editable-review state for a fresh session.
+      _kind = 'voice';
+      _pendingMedia = null;
+      _pendingUrl = null;
+      _pendingTitle = null;
+      _chips = null;
+      _typeName = null;
+      _typeIcon = null;
     });
     unawaited(_beginRecording());
     _secTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _sec++));
@@ -414,11 +429,24 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   /// one-shot note write, exactly like before.
   void _addToMemory() {
     final services = AppScope.servicesOf(context);
-    final captureId = _captureId;
-    if (_realProposal && captureId != null) {
-      unawaited(_approveCapture(services, captureId));
-    } else {
-      unawaited(_persistNote(services, title: _transcriptTitle, content: _transcript));
+    switch (_kind) {
+      case 'photo':
+      case 'screenshot':
+        final media = _pendingMedia;
+        if (media != null) unawaited(_persistMedia(services, media));
+      case 'link':
+        final url = _pendingUrl;
+        if (url != null) {
+          unawaited(_persistLink(services, url: url, title: _pendingTitle));
+        }
+      default:
+        final captureId = _captureId;
+        if (_realProposal && captureId != null) {
+          unawaited(_approveCapture(services, captureId));
+        } else {
+          unawaited(
+              _persistNote(services, title: _transcriptTitle, content: _transcript));
+        }
     }
     if (_remind) unawaited(_createReminder(services));
     setState(() => _view = 'added');
@@ -524,10 +552,28 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     setState(() => _view = 'review');
   }
 
-  /// Paste a URL (with an optional title) and import it as a real link memory.
+  /// Drives the "Understanding" animation for the non-voice paths (photo /
+  /// screenshot / link), then lands on the review. No text pipeline runs here —
+  /// media/link are persisted on confirm, so the review is a preview + confirm.
+  void _startUnderstanding() {
+    _clearTimers();
+    setState(() {
+      _view = 'proc';
+      _steps = 0;
+    });
+    for (var k = 0; k < 3; k++) {
+      _timers.add(Timer(Duration(milliseconds: 500 + k * 650),
+          () => mounted ? setState(() => _steps = k + 1) : null));
+    }
+    _timers.add(Timer(const Duration(milliseconds: 500 + 3 * 650 + 500), () {
+      if (mounted && _view == 'proc') setState(() => _view = 'review');
+    }));
+  }
+
+  /// Paste a URL (optional title) → Understanding → review → (confirm) import as
+  /// a real link memory.
   Future<void> _openLinkEntry() async {
     _clearTimers();
-    final services = AppScope.servicesOf(context);
     final result = await showModalBottomSheet<_LinkInput>(
       context: context,
       isScrollControlled: true,
@@ -540,14 +586,18 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _startListen();
       return;
     }
-    unawaited(_persistLink(services, url: url, title: result?.title));
-    setState(() => _view = 'added');
+    setState(() {
+      _kind = 'link';
+      _pendingUrl = url;
+      _pendingTitle = result?.title;
+    });
+    _startUnderstanding();
   }
 
-  /// Pick a photo from the gallery and upload it as a real image memory.
-  Future<void> _pickPhoto() async {
+  /// Pick a photo or screenshot from the gallery → Understanding → review →
+  /// (confirm) upload as a real image memory.
+  Future<void> _pickPhoto({bool screenshot = false}) async {
     _clearTimers();
-    final services = AppScope.servicesOf(context);
     PickedCaptureMedia? media;
     try {
       media = await createCaptureMediaPicker().pickGalleryImage();
@@ -559,8 +609,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _startListen();
       return;
     }
-    unawaited(_persistMedia(services, media));
-    setState(() => _view = 'added');
+    setState(() {
+      _kind = screenshot ? 'screenshot' : 'photo';
+      _pendingMedia = media;
+    });
+    _startUnderstanding();
   }
 
   Future<void> _persistLink(
@@ -695,15 +748,20 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           ),
         ),
         const Spacer(),
-        // Quick entry modes — each persists a real memory to the library.
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        // Quick entry modes — each runs through review, then persists a real
+        // memory to the library on confirm.
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 10,
+          runSpacing: 10,
           children: [
             _entryChip(RdIcons.pencil, 'Type', _openTextEntry),
-            const SizedBox(width: 10),
             _entryChip(RdIcons.linkChain, 'Link', _openLinkEntry),
-            const SizedBox(width: 10),
             _entryChip(RdIcons.photo, 'Photo', _pickPhoto),
+            _entryChip(
+                '<rect x="4" y="3" width="16" height="14" rx="2"/><path d="M8 21h8"/>',
+                'Screenshot',
+                () => _pickPhoto(screenshot: true)),
           ],
         ),
         const SizedBox(height: 22),
@@ -782,6 +840,16 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   /// proposal's understood title (falling back to its summary), then the
   /// transcript, so genuine extraction is reflected verbatim.
   String get _understoodText {
+    if (_kind == 'link') {
+      final t = _pendingTitle?.trim() ?? '';
+      if (t.isNotEmpty) return t;
+      return _pendingUrl ?? 'Saved link';
+    }
+    if (_kind == 'photo' || _kind == 'screenshot') {
+      final noun = _kind == 'screenshot' ? 'screenshot' : 'photo';
+      return 'Mira kept your $noun and will read the details from it when '
+          'they’re needed.';
+    }
     final proposal = _proposal;
     if (_realProposal && proposal != null) {
       if (proposal.title.trim().isNotEmpty) return proposal.title.trim();
@@ -893,11 +961,21 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   }
 
   // ── change type ─────────────────────────────────────────────────────
-  String get _currentTypeLabel =>
-      _typeName ??
-      (_realProposal && (_proposal?.nodeType.isNotEmpty ?? false)
-          ? _proposal!.nodeType
-          : 'Task');
+  String get _currentTypeLabel => _typeName ?? _autoTypeLabel;
+
+  String get _autoTypeLabel {
+    switch (_kind) {
+      case 'link':
+        return 'Link';
+      case 'photo':
+      case 'screenshot':
+        return 'Note';
+      default:
+        return _realProposal && (_proposal?.nodeType.isNotEmpty ?? false)
+            ? _proposal!.nodeType
+            : 'Task';
+    }
+  }
 
   String get _currentTypeIcon => _typeIcon ?? _iconForType(_currentTypeLabel);
 
@@ -1054,9 +1132,127 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     if (value != null) _addChipLabel(value);
   }
 
+  // ── review preview header (photo / screenshot / link) ────────────────
+  String get _reviewEyebrow {
+    switch (_kind) {
+      case 'photo':
+        return 'Mira read your photo';
+      case 'screenshot':
+        return 'Mira read your screenshot';
+      case 'link':
+        return 'Mira read the page';
+      default:
+        return 'Mira understood this';
+    }
+  }
+
+  static String _linkHost(String? url) {
+    if (url == null) return 'link';
+    try {
+      final h = Uri.parse(url).host;
+      return h.isEmpty ? url : h.replaceFirst('www.', '');
+    } catch (_) {
+      return url;
+    }
+  }
+
+  Widget _previewBadge(String label, String icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(100)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          RdIcon(icon, size: 13, stroke: '#FFFFFF', strokeWidth: 1.9),
+          const SizedBox(width: 6),
+          Text(label,
+              style: GoogleFonts.vazirmatn(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white)),
+        ],
+      ),
+    );
+  }
+
+  /// The preview shown atop the review for photo / screenshot / link captures
+  /// (the real picked image, or a link hero). Null for voice / text.
+  Widget? _previewHeader() {
+    final rd = context.rd;
+    if (_kind == 'photo' || _kind == 'screenshot') {
+      final bytes = _pendingMedia?.bytes;
+      final shot = _kind == 'screenshot';
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            SizedBox(
+              height: 150,
+              width: double.infinity,
+              child: bytes != null
+                  ? Image.memory(bytes, fit: BoxFit.cover)
+                  : Container(color: rd.periSoft),
+            ),
+            Positioned(
+              left: 10,
+              top: 10,
+              child: _previewBadge(
+                shot ? 'Screenshot' : 'Photo',
+                shot
+                    ? '<rect x="4" y="3" width="16" height="14" rx="2"/><path d="M8 21h8"/>'
+                    : '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/>',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (_kind == 'link') {
+      return Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF243056), Color(0xFF121A33)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              left: 10,
+              top: 10,
+              child: _previewBadge('Link · ${_linkHost(_pendingUrl)}',
+                  '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>'),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 14,
+              child: Text(_understoodText,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.dosis(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1.1)),
+            ),
+          ],
+        ),
+      );
+    }
+    return null;
+  }
+
   // ── review ──────────────────────────────────────────────────────────
   Widget _review() {
     final rd = context.rd;
+    final preview = _previewHeader();
     return Column(
       children: [
         _reviewTop('Cancel', () => widget.go('home')),
@@ -1066,8 +1262,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _eyebrow('Mira understood this'),
+                _eyebrow(_reviewEyebrow),
                 const SizedBox(height: 12),
+                if (preview != null) ...[
+                  preview,
+                  const SizedBox(height: 14),
+                ],
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(18), border: Border.all(color: rd.line, width: 1)),
@@ -1094,10 +1294,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Real transcript OR a real extracted proposal → show the
-                      // understood text verbatim; pure simulation → keep the
-                      // design's highlighted John/Friday markup.
-                      if (_realTranscript || _realProposal)
+                      // Real transcript / proposal, or any non-voice capture →
+                      // show the understood text verbatim; only the pure voice
+                      // simulation keeps the design's highlighted John/Friday.
+                      if (_realTranscript || _realProposal || _kind != 'voice')
                         Text(
                           _understoodText,
                           style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: rd.ink),
