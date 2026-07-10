@@ -2188,6 +2188,30 @@ class _BoardViewState extends State<_BoardView> {
     );
   }
 
+  /// Accepts Mira's board suggestion — drops the "Blue Note" event card onto the
+  /// board, dismisses the pill, and persists.
+  void _addSuggestion() {
+    final id = 'n${DateTime.now().millisecondsSinceEpoch}_${_newCardSeq++}';
+    final card = _CardSpec(
+      id: id,
+      kind: _CardKind.note,
+      left: 150,
+      top: 360,
+      rotation: -2,
+      tag: 'Event',
+      title: 'Blue Note',
+      sub: 'Fri, Jul 18 · 8 PM · near the coast',
+    );
+    setState(() {
+      _cards = [..._cards, card];
+      _positions[id] = Offset(card.left, card.top);
+      _suggestVisible = false;
+      _selectedCard = id;
+    });
+    widget.onContext(_boardTitle, _cards.length);
+    _scheduleSave();
+  }
+
   String get _boardTitle =>
       _isSample ? 'Coast trip' : (widget.board?.title ?? 'Board');
 
@@ -2405,7 +2429,10 @@ class _BoardViewState extends State<_BoardView> {
                 left: 14,
                 right: 14,
                 bottom: 168,
-                child: _SuggestPill(onDismiss: () => setState(() => _suggestVisible = false)),
+                child: _SuggestPill(
+                  onDismiss: () => setState(() => _suggestVisible = false),
+                  onAdd: _addSuggestion,
+                ),
               ),
           ],
         );
@@ -3410,9 +3437,10 @@ class _ZoomChip extends StatelessWidget {
 }
 
 class _SuggestPill extends StatelessWidget {
-  const _SuggestPill({required this.onDismiss});
+  const _SuggestPill({required this.onDismiss, required this.onAdd});
 
   final VoidCallback onDismiss;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -3466,20 +3494,24 @@ class _SuggestPill extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Container(
-            height: 30,
-            padding: const EdgeInsets.symmetric(horizontal: 13),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Text(
-              'Add',
-              style: GoogleFonts.vazirmatn(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: rd.navy,
+          GestureDetector(
+            onTap: onAdd,
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 13),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Text(
+                'Add',
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: rd.navy,
+                ),
               ),
             ),
           ),
