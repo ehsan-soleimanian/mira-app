@@ -1300,6 +1300,16 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
   String? _focus;
   Offset _pan = _initialPan;
 
+  // Pinch / button zoom (the map was pan-only; the Board already zoomed).
+  double _scale = 1.0;
+  double _scaleStart = 1.0;
+  Offset _panStart = Offset.zero;
+  Offset _focalStart = Offset.zero;
+
+  void _zoomBy(double delta) {
+    setState(() => _scale = (_scale + delta).clamp(0.6, 2.4));
+  }
+
   late final AnimationController _panCtl = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 450),
@@ -1385,16 +1395,27 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
           onTap: () {
             if (_selected != null) _close();
           },
-          onPanStart: (_) => _panCtl.stop(),
-          onPanUpdate: (d) => setState(() => _pan += d.delta),
+          onScaleStart: (d) {
+            _panCtl.stop();
+            _scaleStart = _scale;
+            _panStart = _pan;
+            _focalStart = d.focalPoint;
+          },
+          onScaleUpdate: (d) => setState(() {
+            _scale = (_scaleStart * d.scale).clamp(0.6, 2.4);
+            _pan = _panStart + (d.focalPoint - _focalStart);
+          }),
           child: ClipRect(
             child: Stack(
               children: [
                 Transform.translate(
                   offset: _pan,
-                  child: SizedBox(
-                    width: 480,
-                    height: 820,
+                  child: Transform.scale(
+                    scale: _scale,
+                    alignment: Alignment.center,
+                    child: SizedBox(
+                      width: 480,
+                      height: 820,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -1427,6 +1448,7 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                       ],
                     ),
                   ),
+                  ),
                 ),
                 // hint (fixed)
                 Positioned(
@@ -1441,6 +1463,17 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                     ),
                   ),
                 ),
+                // zoom control (fixed) — hidden while a node's detail panel is up
+                if (_selected == null)
+                  Positioned(
+                    left: 14,
+                    bottom: 116,
+                    child: _ZoomChip(
+                      level: _scale,
+                      onOut: () => _zoomBy(-0.2),
+                      onIn: () => _zoomBy(0.2),
+                    ),
+                  ),
                 // detail panel (fixed)
                 Positioned(
                   left: 14,
