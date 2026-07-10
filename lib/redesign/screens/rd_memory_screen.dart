@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
@@ -72,6 +74,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   bool _reminded = true;
   bool _menu = false;
   bool _confirm = false;
+  bool _sharing = false;
+  bool _linkCopied = false;
   bool _editing = false;
   bool _edited = false;
   bool _saved = false;
@@ -502,6 +506,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             if (_menu) _menuOverlay(),
             if (_saved) _savedToast(),
             if (_confirm) _deleteSheet(),
+            if (_sharing) _shareSheet(),
           ],
         ),
       ),
@@ -1034,7 +1039,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                 const SizedBox(width: 10),
                 _sqButton('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', _startEdit),
                 const SizedBox(width: 10),
-                _sqButton('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>', () {}),
+                _sqButton('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>', _openShare),
               ],
             ),
     );
@@ -1112,6 +1117,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                   _menuItem('<path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>', _pinned ? 'Unpin' : 'Pin to top', _togglePin),
                   _menuItem('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 'Edit note', _startEdit),
                   _menuItem('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/>', 'Add to collection', _addToCollection),
+                  _menuItem('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>', 'Share memory', _openShare),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), child: Divider(height: 1, color: rd.line)),
                   _menuItem('<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>', 'Delete memory', () => setState(() { _menu = false; _confirm = true; }), danger: true),
                 ],
@@ -1175,6 +1181,179 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ── share ─────────────────────────────────────────────────────────────
+  String get _shareText => _body.trim().isEmpty ? _title : '$_title\n\n$_body';
+  String get _shareLink => 'https://miramind.io/m/${widget.id ?? ''}';
+
+  void _openShare() => setState(() {
+        _menu = false;
+        _linkCopied = false;
+        _sharing = true;
+      });
+
+  Future<void> _copyLink() async {
+    await Clipboard.setData(ClipboardData(text: _shareLink));
+    if (mounted) setState(() => _linkCopied = true);
+  }
+
+  Future<void> _copyText() async {
+    await Clipboard.setData(ClipboardData(text: _shareText));
+    if (!mounted) return;
+    setState(() => _sharing = false);
+    _toast('Copied to clipboard');
+  }
+
+  /// Hand off to a real OS app (mail / messaging). Falls back to a toast when no
+  /// handler is installed (e.g. desktop / simulators).
+  Future<void> _shareVia(Uri uri) async {
+    try {
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!mounted) return;
+      if (!ok) {
+        _toast('No app available for that');
+        return;
+      }
+      setState(() => _sharing = false);
+    } catch (_) {
+      if (mounted) _toast('No app available for that');
+    }
+  }
+
+  void _shareMail() => _shareVia(Uri.parse(
+        'mailto:?subject=${Uri.encodeQueryComponent(_title)}'
+        '&body=${Uri.encodeQueryComponent(_shareText)}',
+      ));
+
+  void _shareMessage() =>
+      _shareVia(Uri.parse('sms:?body=${Uri.encodeQueryComponent(_shareText)}'));
+
+  Widget _shareSheet() {
+    final rd = context.rd;
+    return Positioned.fill(
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => setState(() => _sharing = false),
+              child: Container(color: const Color(0x6B111426)),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              decoration: BoxDecoration(
+                color: rd.card,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(26)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                          color: rd.line,
+                          borderRadius: BorderRadius.circular(100)),
+                    ),
+                  ),
+                  Text('Share memory',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.dosis(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: rd.ink)),
+                  const SizedBox(height: 4),
+                  Text('“$_title”',
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+                  const SizedBox(height: 16),
+                  _shareRow(
+                    _linkCopied
+                        ? '<path d="M20 6 9 17l-5-5"/>'
+                        : '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+                    _linkCopied ? 'Link copied' : 'Copy link',
+                    _copyLink,
+                    highlight: _linkCopied,
+                  ),
+                  _shareRow(
+                      '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>',
+                      'Copy as text',
+                      _copyText),
+                  _shareRow(
+                      '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>',
+                      'Email',
+                      _shareMail),
+                  _shareRow(
+                      '<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/>',
+                      'Message',
+                      _shareMessage),
+                  const SizedBox(height: 8),
+                  GestureDetector(
+                    onTap: () => setState(() => _sharing = false),
+                    child: Container(
+                        height: 48,
+                        alignment: Alignment.center,
+                        child: Text('Done',
+                            style: GoogleFonts.vazirmatn(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w600,
+                                color: rd.muted))),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _shareRow(String icon, String label, VoidCallback onTap,
+      {bool highlight = false}) {
+    final rd = context.rd;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: highlight ? _navy : rd.bg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: rd.line, width: 1),
+              ),
+              child: Center(
+                child: RdIcon(icon,
+                    size: 19,
+                    strokeWidth: 1.8,
+                    color: highlight ? Colors.white : rd.ink),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Text(label,
+                style: GoogleFonts.vazirmatn(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: highlight ? rd.navy : rd.ink)),
+          ],
         ),
       ),
     );
