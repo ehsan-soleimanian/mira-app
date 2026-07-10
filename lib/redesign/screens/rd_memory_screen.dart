@@ -1033,7 +1033,15 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                   child: _primaryButton(
                     'Ask Mira about this',
                     '<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/>',
-                    () => widget.go('chat'),
+                    () => widget.go(
+                      'chat',
+                      arg: RdMemoryArg(
+                        id: widget.id,
+                        title: _title,
+                        body: _body,
+                        isVoice: widget.isVoice,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),

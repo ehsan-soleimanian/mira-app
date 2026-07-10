@@ -17,10 +17,25 @@ import '../widgets/rd_icon.dart';
 /// conversation. If the assistant is unreachable, a scripted fallback keeps
 /// the screen readable offline.
 class RdChatScreen extends StatefulWidget {
-  const RdChatScreen({super.key, required this.go, required this.onBack});
+  const RdChatScreen({
+    super.key,
+    required this.go,
+    required this.onBack,
+    this.anchorTitle,
+    this.anchorIsVoice = false,
+    this.anchorId,
+  });
 
   final RdGo go;
   final VoidCallback onBack;
+
+  /// The memory this chat is anchored to (from Memory's "Ask Mira about this").
+  /// When set, the opening line, header anchor, starter chips and backend
+  /// grounding all adapt to it; when null, a scripted showcase conversation is
+  /// shown instead.
+  final String? anchorTitle;
+  final bool anchorIsVoice;
+  final String? anchorId;
 
   @override
   State<RdChatScreen> createState() => _RdChatScreenState();
@@ -153,13 +168,29 @@ const _answers = <String, _Answer>{
 class _RdChatScreenState extends State<RdChatScreen> {
   final _scroll = ScrollController();
   final _draftCtl = TextEditingController();
-  final Set<String> _asked = {_firstQ};
+  late final bool _anchored = widget.anchorTitle != null;
+  late final String _anchorTitle = widget.anchorTitle ?? _anchor;
+  late final bool _anchorIsVoice = widget.anchorIsVoice;
 
-  late final List<_Msg> _msgs = [
-    _Msg.mira(_opening),
-    _Msg.me(_firstQ),
-    _Msg.mira(_answers[_firstQ]!.text, cites: _answers[_firstQ]!.cites, action: _answers[_firstQ]!.action),
-  ];
+  // Anchored chats get generic, memory-agnostic starters + a single opening
+  // line (no fabricated first Q&A); the no-anchor showcase keeps its script.
+  late final List<String> _starterChips = _anchored
+      ? const ['How does this connect?', 'Summarise this', 'Draft a reminder']
+      : _starters;
+  late final Set<String> _asked = _anchored ? <String>{} : {_firstQ};
+
+  late final List<_Msg> _msgs = _anchored
+      ? [_Msg.mira(_openingFor(_anchorTitle))]
+      : [
+          _Msg.mira(_opening),
+          _Msg.me(_firstQ),
+          _Msg.mira(_answers[_firstQ]!.text,
+              cites: _answers[_firstQ]!.cites, action: _answers[_firstQ]!.action),
+        ];
+
+  static String _openingFor(String title) =>
+      'This one’s about “$title.” Ask me anything about it — what’s open, '
+      'how it connects, or I can draft something for you.';
   bool _typing = false;
   bool _remSet = false;
 
@@ -232,7 +263,11 @@ class _RdChatScreenState extends State<RdChatScreen> {
   Future<_Answer> _resolveAnswer(String q) async {
     try {
       final services = AppScope.servicesOf(context);
-      final res = await services.assistantRepository.run(q);
+      final res = await services.assistantRepository.run(
+        q,
+        contextItemIds:
+            widget.anchorId != null ? [widget.anchorId!] : const <String>[],
+      );
       final text = res.answer.trim().isNotEmpty
           ? res.answer.trim()
           : 'I looked, but I don’t have anything on that yet — capture it and I’ll connect it here.';
@@ -260,7 +295,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
     );
     if (key.isNotEmpty) return _answers[key]!;
     return _Answer(
-      'I don’t have anything on that yet — but the moment you capture it, I’ll connect it here. For now, this memory links to the rest of your “$_anchor” thread.',
+      'I don’t have anything on that yet — but the moment you capture it, I’ll connect it here. For now, this memory links to the rest of your “$_anchorTitle” thread.',
       cites: const [_Cite('event', 'Meeting with John', 'Last Thursday')],
     );
   }
@@ -268,7 +303,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
-    final remaining = _starters.where((s) => !_asked.contains(s)).toList();
+    final remaining = _starterChips.where((s) => !_asked.contains(s)).toList();
     final lastIsMira = _msgs.isNotEmpty && _msgs.last.mira && !_typing;
     final hasDraft = _draftCtl.text.trim().isNotEmpty;
 
@@ -337,10 +372,16 @@ class _RdChatScreenState extends State<RdChatScreen> {
                 const SizedBox(height: 3),
                 Row(
                   children: [
-                    const RdIcon('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', size: 12, stroke: '#7E8BC9', strokeWidth: 1.9),
+                    RdIcon(
+                        _anchorIsVoice
+                            ? '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/>'
+                            : '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+                        size: 12,
+                        stroke: '#7E8BC9',
+                        strokeWidth: 1.9),
                     const SizedBox(width: 6),
                     Flexible(
-                      child: Text('About “$_anchor”',
+                      child: Text('About “$_anchorTitle”',
                           overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
                     ),
                   ],

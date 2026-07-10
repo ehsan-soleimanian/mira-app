@@ -127,7 +127,14 @@ class _RdRootState extends State<RdRoot> {
       case 'listen':
         return RdListenScreen(go: _go, onBack: _back);
       case 'chat':
-        return RdChatScreen(go: _go, onBack: _back);
+        final a = arg is RdMemoryArg ? arg : null;
+        return RdChatScreen(
+          go: _go,
+          onBack: _back,
+          anchorTitle: a?.title,
+          anchorIsVoice: a?.isVoice ?? false,
+          anchorId: a?.id,
+        );
       case 'ask':
         return RdAskScreen(go: _go, onBack: _back);
       case 'reminders':
