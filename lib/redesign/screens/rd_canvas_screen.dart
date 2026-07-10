@@ -1109,6 +1109,9 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
   late final Map<String, List<String>> _adj = _buildAdjacency();
 
   String? _selected;
+  // When set, the map isolates this node + its neighbours (Focus mode); a pill
+  // shows to exit. A pure view state — everything else is hidden.
+  String? _focus;
   Offset _pan = _initialPan;
 
   late final AnimationController _panCtl = AnimationController(
@@ -1164,6 +1167,18 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
     _animatePanTo(_initialPan);
   }
 
+  /// Enter Focus mode on [id] — isolates it + its neighbours and centres it.
+  void _focusOn(String id, double width) {
+    final n = _byId[id]!;
+    setState(() => _focus = id);
+    _animatePanTo(Offset(width / 2 - n.x, 220 - n.y));
+  }
+
+  void _exitFocus() {
+    setState(() => _focus = null);
+    _animatePanTo(_initialPan);
+  }
+
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
@@ -1173,6 +1188,11 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
         final near = _selected == null
             ? const <String>{}
             : {_selected!, ..._adj[_selected]!};
+        // Focus mode: only the focused node + its neighbours are shown.
+        final focusSet = _focus == null
+            ? const <String>{}
+            : {_focus!, ..._adj[_focus]!};
+        bool visible(String id) => _focus == null || focusSet.contains(id);
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -1203,19 +1223,21 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                           ),
                         ),
                         for (final n in widget.nodes)
-                          Positioned(
-                            left: n.x,
-                            top: n.y,
-                            child: FractionalTranslation(
-                              translation: const Offset(-0.5, -0.5),
-                              child: _GNodeWidget(
-                                node: n,
-                                selected: _selected == n.id,
-                                dimmed: _selected != null && !near.contains(n.id),
-                                onTap: () => _select(n.id, width),
+                          if (visible(n.id))
+                            Positioned(
+                              left: n.x,
+                              top: n.y,
+                              child: FractionalTranslation(
+                                translation: const Offset(-0.5, -0.5),
+                                child: _GNodeWidget(
+                                  node: n,
+                                  selected: _selected == n.id,
+                                  dimmed:
+                                      _selected != null && !near.contains(n.id),
+                                  onTap: () => _select(n.id, width),
+                                ),
                               ),
                             ),
-                          ),
                       ],
                     ),
                   ),
@@ -1245,8 +1267,55 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                         : _adj[_selected]!.map((id) => _byId[id]!).toList(),
                     onClose: _close,
                     onSelectConnected: (id) => _select(id, width),
+                    onFocus: _selected == null
+                        ? null
+                        : () => _focusOn(_selected!, width),
                   ),
                 ),
+                // Focus pill (fixed) — tap to leave Focus mode.
+                if (_focus != null)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 14,
+                    child: Center(
+                      child: GestureDetector(
+                        onTap: _exitFocus,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: rd.navy,
+                            borderRadius: BorderRadius.circular(100),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: rd.navy.withValues(alpha: 0.3),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4)),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'Focused on ${_byId[_focus]!.label}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.vazirmatn(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const RdIcon('<path d="M6 6l12 12M18 6 6 18"/>',
+                                  size: 14, stroke: '#FFFFFF', strokeWidth: 2.4),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1455,12 +1524,17 @@ class _DetailPanel extends StatelessWidget {
     required this.connected,
     required this.onClose,
     required this.onSelectConnected,
+    this.onFocus,
   });
 
   final _GNode? node;
   final List<_GNode> connected;
   final VoidCallback onClose;
   final ValueChanged<String> onSelectConnected;
+
+  /// Enter Focus mode on this node (isolate it + its neighbours). Null hides
+  /// the button.
+  final VoidCallback? onFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -1585,6 +1659,37 @@ class _DetailPanel extends StatelessWidget {
               ),
             ),
           ),
+          if (onFocus != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: GestureDetector(
+                onTap: onFocus,
+                child: Container(
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: rd.periSoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      RdIcon(
+                          '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+                          size: 15,
+                          color: rd.navy,
+                          strokeWidth: 2),
+                      const SizedBox(width: 7),
+                      Text('Focus this constellation',
+                          style: GoogleFonts.vazirmatn(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: rd.navy)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.only(top: 14, bottom: 8),
             child: Text(
