@@ -105,6 +105,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   // Indices of real connection rows the user has toggled on (all on by default).
   final Set<int> _connOn = <int>{};
 
+  // ── editable review state ───────────────────────────────────────────
+  // Detail chips become user-mutable once edited: null means "render the
+  // computed source"; a non-null list means the user has removed/added chips.
+  List<String>? _chips;
+  // Change-type override — null falls back to the auto-detected / default type.
+  String? _typeName;
+  String? _typeIcon;
+
   Timer? _secTimer;
   Timer? _revealTimer;
   final List<Timer> _timers = [];
@@ -785,22 +793,42 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   /// The "Details Mira extracted" chips. Real proposal → genuine detail labels
   /// (deadline + extracted insights, de-duplicated, capped); otherwise the
   /// design's illustrative 👤/📅/# chips. Always ends with the "+ Add" chip.
-  Widget _detailChips() {
-    final labels = _realProposal ? _extractedDetailLabels() : const <String>[];
-    final chips = <Widget>[];
-    if (_realProposal) {
-      for (final label in labels) {
-        chips.add(_EChip(label));
-      }
-    } else {
-      chips.addAll(const [
-        _EChip('👤 John'),
-        _EChip('📅 Friday'),
-        _EChip('# contract'),
-      ]);
+  /// The detail chips before any edit — real extracted labels, or the design's
+  /// illustrative set for the simulated flow.
+  List<String> _computedChips() => _realProposal
+      ? _extractedDetailLabels()
+      : const ['👤 John', '📅 Friday', '# contract'];
+
+  /// The chips actually shown: the user's edited list once they've touched it,
+  /// otherwise the computed source (so real extraction still flows through).
+  List<String> _currentChips() => _chips ?? _computedChips();
+
+  void _removeChip(int i) {
+    final list = [..._currentChips()]..removeAt(i);
+    setState(() => _chips = list);
+  }
+
+  void _addChipLabel(String raw) {
+    var v = raw.trim();
+    if (v.isEmpty) return;
+    // Prefix a bare word with '#' (matching the design's inline tag editor).
+    if (!RegExp(r'^[#@🎵📅📍👤✈️💺🔖]').hasMatch(v)) {
+      v = '# ${v.replaceFirst(RegExp(r'^#\s*'), '')}';
     }
-    chips.add(const _EChip('+ Add', add: true));
-    return Wrap(spacing: 8, runSpacing: 8, children: chips);
+    setState(() => _chips = [..._currentChips(), v]);
+  }
+
+  Widget _detailChips() {
+    final labels = _currentChips();
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (var i = 0; i < labels.length; i++)
+          _EChip(labels[i], onRemove: () => _removeChip(i)),
+        _EChip('+ Add', add: true, onTap: _openAddTag),
+      ],
+    );
   }
 
   /// Genuine detail labels for the real proposal: the resolved deadline first,
@@ -864,6 +892,168 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     ];
   }
 
+  // ── change type ─────────────────────────────────────────────────────
+  String get _currentTypeLabel =>
+      _typeName ??
+      (_realProposal && (_proposal?.nodeType.isNotEmpty ?? false)
+          ? _proposal!.nodeType
+          : 'Task');
+
+  String get _currentTypeIcon => _typeIcon ?? _iconForType(_currentTypeLabel);
+
+  static String _iconForType(String label) {
+    final l = label.trim().toLowerCase();
+    for (final t in _kCaptureTypes) {
+      if (t.$1.toLowerCase() == l) return t.$2;
+    }
+    // Default (task/pencil) for unknown auto-detected proposal types.
+    return '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>';
+  }
+
+  /// Opens the "Change type" picker (design typeScrim) — tapping a type sets the
+  /// review's type chip. All nine memory types.
+  Future<void> _openTypePicker() async {
+    final rd = context.rd;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        ),
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                    color: rd.line, borderRadius: BorderRadius.circular(100)),
+              ),
+            ),
+            Text('Change type',
+                style: GoogleFonts.dosis(
+                    fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink)),
+            const SizedBox(height: 2),
+            Text('How should Mira file this memory?',
+                style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted)),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [for (final t in _kCaptureTypes) _typeOpt(t.$1, t.$2)],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _typeOpt(String label, String icon) {
+    final rd = context.rd;
+    final cur = _currentTypeLabel.toLowerCase() == label.toLowerCase();
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _typeName = label;
+          _typeIcon = icon;
+        });
+        Navigator.of(context).pop();
+      },
+      child: Container(
+        width: 98,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: cur ? rd.navy.withValues(alpha: 0.08) : rd.bg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: cur ? rd.navy : rd.line, width: cur ? 1.4 : 1),
+        ),
+        child: Column(
+          children: [
+            RdIcon(icon,
+                size: 22, color: cur ? rd.navy : rd.ink, strokeWidth: 1.8),
+            const SizedBox(height: 7),
+            Text(label,
+                style: GoogleFonts.vazirmatn(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: cur ? rd.navy : rd.ink)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Inline "+ Add" tag editor — a small sheet that appends a detail chip.
+  Future<void> _openAddTag() async {
+    final rd = context.rd;
+    final ctl = TextEditingController();
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: BoxDecoration(
+            color: rd.card,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                      color: rd.line, borderRadius: BorderRadius.circular(100)),
+                ),
+              ),
+              Text('Add a detail',
+                  style: GoogleFonts.dosis(
+                      fontSize: 18, fontWeight: FontWeight.w700, color: rd.ink)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctl,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (v) => Navigator.of(ctx).pop(v),
+                style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
+                decoration: InputDecoration(
+                  hintText: '# tag or detail',
+                  hintStyle:
+                      GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
+                  filled: true,
+                  fillColor: rd.bg,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: rd.line, width: 1)),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(color: rd.navy, width: 1.4)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    ctl.dispose();
+    if (value != null) _addChipLabel(value);
+  }
+
   // ── review ──────────────────────────────────────────────────────────
   Widget _review() {
     final rd = context.rd;
@@ -889,18 +1079,17 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                         children: [
                           // Real proposal → the auto-detected node type; else the
                           // design's default "Task".
-                          _typeChip(
-                            '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-                            _realProposal && (_proposal?.nodeType.isNotEmpty ?? false)
-                                ? _proposal!.nodeType
-                                : 'Task',
-                          ),
-                          Row(
-                            children: [
-                              RdIcon('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', size: 13, color: rd.muted, strokeWidth: 2),
-                              const SizedBox(width: 5),
-                              Text('Change type', style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: rd.muted)),
-                            ],
+                          _typeChip(_currentTypeIcon, _currentTypeLabel),
+                          GestureDetector(
+                            onTap: _openTypePicker,
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              children: [
+                                RdIcon('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', size: 13, color: rd.muted, strokeWidth: 2),
+                                const SizedBox(width: 5),
+                                Text('Change type', style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: rd.muted)),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -1216,17 +1405,45 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   Widget _graphLine() => Container(width: 34, height: 1.5, color: context.rd.peri.withValues(alpha: 0.5));
 }
 
+/// The nine memory types offered by the "Change type" picker (design typeScrim),
+/// each paired with its inner SVG glyph.
+const List<(String, String)> _kCaptureTypes = [
+  ('Note',
+      '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>'),
+  ('Task', '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>'),
+  ('Event',
+      '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
+  ('Person',
+      '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'),
+  ('Place',
+      '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>'),
+  ('Link',
+      '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>'),
+  ('Article',
+      '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 0 4 22.5z"/><path d="M8 7h8M8 11h6"/>'),
+  ('Idea',
+      '<path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/>'),
+  ('Travel',
+      '<path d="M17.8 19.2 16 11l3.5-3.5a2.1 2.1 0 0 0-3-3L13 8 4.8 6.2a.5.5 0 0 0-.5.8L8 11l-2 2-3-1-1 1 4 2 2 4 1-1-1-3 2-2 3.5 3.7a.5.5 0 0 0 .8-.5z"/>'),
+];
+
 class _EChip extends StatelessWidget {
-  const _EChip(this.label, {this.add = false});
+  const _EChip(this.label, {this.add = false, this.onRemove, this.onTap});
 
   final String label;
   final bool add;
 
+  /// When set, renders a trailing × that removes the chip.
+  final VoidCallback? onRemove;
+
+  /// When set, the whole chip is tappable (used by the "+ Add" chip).
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    final chip = Container(
+      padding: EdgeInsets.fromLTRB(12, 8, onRemove != null ? 8 : 12, 8),
       decoration: BoxDecoration(
         color: add ? Colors.transparent : rd.card,
         borderRadius: BorderRadius.circular(100),
@@ -1234,11 +1451,28 @@ class _EChip extends StatelessWidget {
       ),
       // The "+ Add" chip sits on the page bg (not periSoft) → rd.peri to stay
       // legible on dark; genuine detail chips use ink text.
-      child: Text(
-        label,
-        style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: add ? rd.peri : rd.ink),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: add ? rd.peri : rd.ink),
+          ),
+          if (onRemove != null) ...[
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: onRemove,
+              behavior: HitTestBehavior.opaque,
+              child: RdIcon('<path d="M6 6l12 12M18 6 6 18"/>', size: 12, color: rd.faint, strokeWidth: 2.4),
+            ),
+          ],
+        ],
       ),
     );
+    if (onTap != null) {
+      return GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: chip);
+    }
+    return chip;
   }
 }
 
