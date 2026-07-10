@@ -42,12 +42,12 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
   bool _faceId = true;
   bool _autoLock = true;
 
-  // Sample fallbacks — used until the real profile loads, or if it can't.
-  static const _sampleName = 'Sara Kim';
-  static const _sampleEmail = 'sara.kim@hey.com';
+  /// Neutral placeholder name shown until the real profile loads, or if it
+  /// can't — never a fabricated identity.
+  static const _placeholderName = 'Your account';
 
   /// The signed-in user from `authRepository.fetchMe()`; null until loaded /
-  /// unreachable, in which case the sample profile shows.
+  /// unreachable, in which case a neutral placeholder shows.
   AuthUser? _user;
   bool _loaded = false;
 
@@ -66,25 +66,25 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
       final user = await AppScope.servicesOf(context).authRepository.fetchMe();
       if (mounted) setState(() => _user = user);
     } catch (_) {
-      // Backend unreachable — keep the sample profile.
+      // Backend unreachable — keep the neutral placeholder, never a fake identity.
     }
   }
 
   String get _name {
     final name = _user?.displayName.trim() ?? '';
-    return name.isEmpty ? _sampleName : name;
+    return name.isEmpty ? _placeholderName : name;
   }
 
   String get _email {
-    final email = _user?.email.trim() ?? '';
-    return email.isEmpty ? _sampleEmail : email;
+    // Empty when the real email hasn't loaded — never a fabricated address.
+    return _user?.email.trim() ?? '';
   }
 
-  /// First-letter initials for the avatar (e.g. "Sara Kim" → "SK").
+  /// First-letter initials for the avatar (e.g. "Ada Lovelace" → "AL").
   String get _initials {
     final parts =
         _name.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
-    if (parts.isEmpty) return 'SK';
+    if (parts.isEmpty) return '';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
     return (parts.first.characters.first + parts.last.characters.first)
         .toUpperCase();

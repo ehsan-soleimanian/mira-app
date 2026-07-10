@@ -11,11 +11,11 @@ import '../widgets/rd_icon.dart';
 
 /// Ask Mira — a calm, memory-grounded chat. Mira answers by drawing on
 /// connected memories, cited inline as small cards. Faithful to `chat.jsx`
-/// (`.rd-chat`), grounded in the "Contract with John" note context. Answers
-/// come from the real assistant (`POST /assistant/run` via
-/// [AssistantRepository]); the compose bar and starter chips drive the
-/// conversation. If the assistant is unreachable, a scripted fallback keeps
-/// the screen readable offline.
+/// (`.rd-chat`). When opened from a memory it is grounded in that memory;
+/// otherwise it opens as a clean, unanchored chat. Answers come from the real
+/// assistant (`POST /assistant/run` via [AssistantRepository]); the compose
+/// bar and starter chips drive the conversation. If the assistant is
+/// unreachable, a neutral apology is shown instead.
 class RdChatScreen extends StatefulWidget {
   const RdChatScreen({
     super.key,
@@ -31,8 +31,7 @@ class RdChatScreen extends StatefulWidget {
 
   /// The memory this chat is anchored to (from Memory's "Ask Mira about this").
   /// When set, the opening line, header anchor, starter chips and backend
-  /// grounding all adapt to it; when null, a scripted showcase conversation is
-  /// shown instead.
+  /// grounding all adapt to it; when null, a clean unanchored chat is shown.
   final String? anchorTitle;
   final bool anchorIsVoice;
   final String? anchorId;
@@ -128,65 +127,35 @@ class _Msg {
 }
 
 class _Answer {
-  const _Answer(this.text, {this.cites = const [], this.action = false});
+  const _Answer(this.text, {this.cites = const []});
   final String text;
   final List<_Cite> cites;
-  final bool action;
+  // Real assistant answers never carry a reminder action; kept for the bubble's
+  // action-button branch, which stays dormant unless a future flow sets it.
+  final bool action = false;
 }
 
-const _anchor = 'Contract with John';
 const _opening =
-    'This one’s about the partnership contract with John. Ask me anything — what’s open, how it connects, or I can draft something for you.';
-const _firstQ = 'What’s still open before Friday?';
-const _starters = ['When did we last talk?', 'What’s the Q3 scope?', 'Draft a reminder'];
-
-const _answers = <String, _Answer>{
-  'What’s still open before Friday?': _Answer(
-    'Two things. Confirm the narrowed Q3 scope with John, and send the signed copy back. The signed PDF is already in your Library from last week’s meeting — so really it’s just the call.',
-    cites: [
-      _Cite('event', 'Meeting with John', 'Last Thursday'),
-      _Cite('photo', 'Signed contract — page 1', 'Photo · read by Mira'),
-    ],
-  ),
-  'When did we last talk?': _Answer(
-    'Last Thursday, in your 2pm meeting. That’s where the partnership scope first came up — you noted John wanted it narrowed to Q3 before signing.',
-    cites: [_Cite('event', 'Meeting with John', 'Thu · 2:00 PM')],
-  ),
-  'Draft a reminder': _Answer(
-    'Here’s a gentle one: “Call John to confirm the Q3 scope — before Friday.” I can add it to Thursday morning so it surfaces in your Brief. Want me to set it?',
-    action: true,
-  ),
-  'What’s the Q3 scope?': _Answer(
-    'From your notes: the partnership narrows to Q3 deliverables only — onboarding and the launch story — with the feature roadmap deferred. John asked to keep it tight before committing.',
-    cites: [
-      _Cite('note', 'Q3 partnership terms', 'Note · 3 days ago'),
-      _Cite('voice', 'Idea for the Q3 launch', 'Voice · 2h ago'),
-    ],
-  ),
-};
+    'Ask me anything about your memories — what you saved, what to follow up on, or I can draft something for you.';
+const _starters = ['What did I save recently?', 'What should I follow up on?', 'Draft a reminder'];
 
 class _RdChatScreenState extends State<RdChatScreen> {
   final _scroll = ScrollController();
   final _draftCtl = TextEditingController();
   late final bool _anchored = widget.anchorTitle != null;
-  late final String _anchorTitle = widget.anchorTitle ?? _anchor;
+  late final String? _anchorTitle = widget.anchorTitle;
   late final bool _anchorIsVoice = widget.anchorIsVoice;
 
-  // Anchored chats get generic, memory-agnostic starters + a single opening
-  // line (no fabricated first Q&A); the no-anchor showcase keeps its script.
+  // Both anchored and unanchored chats get generic, memory-agnostic starters
+  // and a single neutral opening line — no fabricated conversation.
   late final List<String> _starterChips = _anchored
       ? const ['How does this connect?', 'Summarise this', 'Draft a reminder']
       : _starters;
-  late final Set<String> _asked = _anchored ? <String>{} : {_firstQ};
+  final Set<String> _asked = <String>{};
 
-  late final List<_Msg> _msgs = _anchored
-      ? [_Msg.mira(_openingFor(_anchorTitle))]
-      : [
-          _Msg.mira(_opening),
-          _Msg.me(_firstQ),
-          _Msg.mira(_answers[_firstQ]!.text,
-              cites: _answers[_firstQ]!.cites, action: _answers[_firstQ]!.action),
-        ];
+  late final List<_Msg> _msgs = [
+    _Msg.mira(_anchored ? _openingFor(_anchorTitle!) : _opening),
+  ];
 
   static String _openingFor(String title) =>
       'This one’s about “$title.” Ask me anything about it — what’s open, '
@@ -198,10 +167,13 @@ class _RdChatScreenState extends State<RdChatScreen> {
     if (_remSet) return;
     setState(() => _remSet = true);
     try {
+      final lastAsk = _msgs
+          .lastWhere((m) => !m.mira, orElse: () => _Msg.me(''))
+          .text
+          .trim();
+      final title = lastAsk.isNotEmpty ? lastAsk : 'Follow up on this';
       final services = AppScope.servicesOf(context);
-      await RemindersRepository(apiClient: services.apiClient).create(
-        title: 'Call John to confirm the Q3 scope — before Friday',
-      );
+      await RemindersRepository(apiClient: services.apiClient).create(title: title);
     } catch (_) {
       // Best-effort — the confirmation is already shown.
     }
@@ -283,20 +255,15 @@ class _RdChatScreenState extends State<RdChatScreen> {
       // the scripted flow, so real answers never render the reminder button.
       return _Answer(text, cites: cites);
     } catch (_) {
-      return _fallbackAnswer(q);
+      return _fallbackAnswer();
     }
   }
 
-  /// Scripted reply used only when the assistant call fails.
-  _Answer _fallbackAnswer(String q) {
-    final key = _answers.keys.firstWhere(
-      (k) => k.toLowerCase() == q.toLowerCase(),
-      orElse: () => '',
-    );
-    if (key.isNotEmpty) return _answers[key]!;
-    return _Answer(
-      'I don’t have anything on that yet — but the moment you capture it, I’ll connect it here. For now, this memory links to the rest of your “$_anchorTitle” thread.',
-      cites: const [_Cite('event', 'Meeting with John', 'Last Thursday')],
+  /// Neutral reply used only when the assistant call fails — no fabricated
+  /// content or citations.
+  _Answer _fallbackAnswer() {
+    return const _Answer(
+      'I couldn’t reach your memory just now. Try again in a moment.',
     );
   }
 
@@ -381,7 +348,8 @@ class _RdChatScreenState extends State<RdChatScreen> {
                         strokeWidth: 1.9),
                     const SizedBox(width: 6),
                     Flexible(
-                      child: Text('About “$_anchorTitle”',
+                      child: Text(
+                          _anchored ? 'About “${_anchorTitle!}”' : 'Grounded in your memories',
                           overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
                     ),
                   ],
@@ -478,7 +446,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _remSet ? 'Added to Thursday morning' : 'Set this reminder',
+                          _remSet ? 'Reminder added' : 'Set this reminder',
                           style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _remSet ? rd.success : Colors.white),
                         ),
                       ],

@@ -181,7 +181,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   List<_LibMem> get _visible {
-    final source = _items ?? _mems;
+    final source = _items ?? const <_LibMem>[];
     final q = _query.trim().toLowerCase();
     final colIds = _colFilterIds;
     return source.where((m) {
@@ -289,7 +289,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   /// Selected memories resolved to their `_LibMem`s — needed to build board
   /// cards (title / type / summary), taken from the currently-loaded source.
   List<_LibMem> _selectedMems() {
-    final source = _items ?? _mems;
+    final source = _items ?? const <_LibMem>[];
     return source.where((m) => _selected.contains(m.id)).toList();
   }
 
@@ -432,7 +432,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     required Future<void> Function() commit,
   }) {
     if (ids.isEmpty) return;
-    final before = List<_LibMem>.of(_items ?? _mems);
+    final before = List<_LibMem>.of(_items ?? const <_LibMem>[]);
     setState(() => _items = before.where((m) => !ids.contains(m.id)).toList());
     _exitSelect();
     final n = ids.length;
@@ -916,7 +916,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '342 memories, all held safe',
+                      '$_keptCount ${_keptCount == 1 ? 'memory' : 'memories'}, all held safe',
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -1187,7 +1187,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   Widget _collections() {
     final cols = _cols;
-    if (cols == null || cols.isEmpty) return _sampleCollections();
+    if (cols == null || cols.isEmpty) return _emptyCollections();
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(26, 0, 26, 4),
@@ -1211,33 +1211,13 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     );
   }
 
-  Widget _sampleCollections() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(26, 0, 26, 4),
-      child: Row(
-        children: const [
-          _CollectionCard(
-            icon: RdIcons.people,
-            name: 'People',
-            count: '28 memories · 9 people',
-            colors: [Color(0xFFEEF1FA), Color(0xFFE3E8F6)],
-          ),
-          SizedBox(width: 12),
-          _CollectionCard(
-            icon: RdIcons.pin,
-            name: 'Coast trip',
-            count: '14 memories · planning',
-            colors: [Color(0xFFF0EEF7), Color(0xFFE8E3F2)],
-          ),
-          SizedBox(width: 12),
-          _CollectionCard(
-            icon: RdIcons.work,
-            name: 'Work',
-            count: '41 memories · 3 projects',
-            colors: [Color(0xFFEAF1EE), Color(0xFFDFEDE6)],
-          ),
-        ],
+  Widget _emptyCollections() {
+    final rd = context.rd;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(26, 4, 26, 4),
+      child: Text(
+        'No collections yet.',
+        style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.faint),
       ),
     );
   }
@@ -1312,12 +1292,17 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     );
   }
 
+  /// Total memories kept — the real count from the loaded library (0 until
+  /// the first load resolves).
+  int get _keptCount => _items?.length ?? 0;
+
   Widget _end() {
+    if (_keptCount == 0) return const SizedBox.shrink();
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 28, 40, 0),
       child: Text(
-        'You’ve kept 342 memories.\nMira holds them so you don’t have to.',
+        'You’ve kept $_keptCount ${_keptCount == 1 ? 'memory' : 'memories'}.\nMira holds them so you don’t have to.',
         textAlign: TextAlign.center,
         style: GoogleFonts.vazirmatn(
           fontSize: 12.5,
@@ -1462,7 +1447,6 @@ class _LibMem {
     required this.metaType,
     required this.metaTime,
     required this.searchText,
-    this.links = 0,
     this.pinned = false,
   });
 
@@ -1474,85 +1458,8 @@ class _LibMem {
   final String metaType;
   final String metaTime;
   final String searchText;
-  final int links;
   final bool pinned;
 }
-
-const _mems = <_LibMem>[
-  _LibMem(
-    id: 'm0',
-    day: 'Today',
-    type: _MemType.note,
-    title: 'Contract with John',
-    sub:
-        'Needs a call to confirm the terms before Friday. Connects to the meeting note from last week.',
-    metaType: 'Note',
-    metaTime: '2h ago',
-    links: 3,
-    searchText: 'contract with john call confirm terms',
-  ),
-  _LibMem(
-    id: 'm1',
-    day: 'Today',
-    type: _MemType.voice,
-    title: 'Book Maya recommended',
-    sub: '“The Overstory” — a quiet weekend read for the coast trip.',
-    metaType: 'Voice · 0:12',
-    metaTime: 'Today, 8:30 AM',
-    searchText: 'book maya recommended the overstory',
-  ),
-  _LibMem(
-    id: 'm2',
-    day: 'This week',
-    type: _MemType.event,
-    title: 'Blue Note — live jazz',
-    sub: 'Fri, Jul 18 · 8 PM at The Corner Room. From a photo you took.',
-    metaType: 'Event',
-    metaTime: 'Tue',
-    links: 2,
-    searchText: 'blue note live jazz corner room tickets',
-  ),
-  _LibMem(
-    id: 'm3',
-    day: 'This week',
-    type: _MemType.link,
-    title: 'On calm technology',
-    sub: 'Saved article about designing tools that ask for less attention.',
-    metaType: 'Link',
-    metaTime: 'Mon',
-    searchText: 'article calm technology second brain design',
-  ),
-  _LibMem(
-    id: 'm4',
-    day: 'This week',
-    type: _MemType.photo,
-    title: 'Whiteboard sketch',
-    sub: 'Roadmap from the studio session — Mira read the three phases.',
-    metaType: 'Photo',
-    metaTime: 'Mon',
-    searchText: 'whiteboard sketch product roadmap studio',
-  ),
-  _LibMem(
-    id: 'm5',
-    day: 'Earlier',
-    type: _MemType.note,
-    title: 'A quiet weekend on the coast',
-    sub: 'Idea for spring — somewhere slow, near the water.',
-    metaType: 'Note',
-    metaTime: 'Jun 28',
-    searchText: 'idea quiet weekend coast spring',
-  ),
-  _LibMem(
-    id: 'm6',
-    day: 'Earlier',
-    type: _MemType.voice,
-    title: 'Flight SA 482 booked',
-    sub: 'Aug 2 departure. Check-in reminder set for the day before.',
-    metaType: 'Voice · 0:08',
-    metaTime: 'Jun 24',
-    searchText: 'flight sa 482 august trip booking',
-  ),
-];
 
 // Type → icon body + colour treatment for the memory tile's leading square.
 ({String icon, Color bg, String stroke, List<Color>? gradient}) _typeStyle(
@@ -1744,28 +1651,6 @@ class _MemTile extends StatelessWidget {
             style: GoogleFonts.vazirmatn(fontSize: 11.5, color: rd.faint),
           ),
         ),
-        if (mem.links > 0) ...[
-          const SizedBox(width: 8),
-          Container(
-            width: 3,
-            height: 3,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: rd.faint,
-            ),
-          ),
-          const SizedBox(width: 8),
-          RdIcon(RdIcons.link, size: 12, color: rd.peri, strokeWidth: 2),
-          const SizedBox(width: 4),
-          Text(
-            '${mem.links} links',
-            style: GoogleFonts.vazirmatn(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w500,
-              color: rd.peri,
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -2021,6 +1906,8 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final mq = MediaQuery.of(context);
+    final navGap = (mq.viewPadding.bottom - mq.viewInsets.bottom).clamp(0.0, 64.0);
     return Container(
       decoration: BoxDecoration(
         color: rd.bg,
@@ -2030,7 +1917,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
         left: 20,
         right: 20,
         top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: mq.viewInsets.bottom + 24 + navGap,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

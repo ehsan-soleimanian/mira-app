@@ -32,7 +32,7 @@ class RdStorageScreen extends StatefulWidget {
 
 class _RdStorageScreenState extends State<RdStorageScreen> {
   /// Live usage from the backend; null until the first load. Falls back to the
-  /// sample below when unreachable, so the layout is always populated.
+  /// zeroed baseline below when unreachable, so the layout is always populated.
   StorageUsage? _usage;
   bool _loaded = false;
   bool _clearing = false;
@@ -53,12 +53,12 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
           .fetchStorageUsage();
       if (mounted) setState(() => _usage = usage);
     } catch (_) {
-      // Backend unreachable — keep the sample usage.
+      // Backend unreachable — keep the zeroed baseline; never show fake usage.
     }
   }
 
-  /// The usage to render — live once loaded, sample until then.
-  StorageUsage get _source => _usage ?? _sample;
+  /// The usage to render — live once loaded, a zeroed baseline until then.
+  StorageUsage get _source => _usage ?? _empty;
 
   void _toast(String message) {
     if (!mounted) return;
@@ -270,18 +270,19 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
     );
   }
 
-  /// Sample usage — shown until the real figures load, or if they can't. Mirrors
-  /// the endpoint's shape: six categories, always present.
-  static StorageUsage get _sample => const StorageUsage(
-        usedBytes: 1782579200, // ≈ 1.66 GB
-        quotaBytes: 5368709120, // 5 GB
+  /// Zeroed baseline — shown until the real figures load, or if they can't, so
+  /// the layout is populated without ever presenting fabricated usage. Mirrors
+  /// the endpoint's shape: six categories, always present, all empty.
+  static StorageUsage get _empty => const StorageUsage(
+        usedBytes: 0,
+        quotaBytes: 0,
         categories: [
-          StorageCategory(type: 'photos', count: 128, bytes: 1181116006),
-          StorageCategory(type: 'voice', count: 42, bytes: 419430400),
-          StorageCategory(type: 'screenshots', count: 63, bytes: 115343360),
-          StorageCategory(type: 'notes', count: 214, bytes: 41943040),
-          StorageCategory(type: 'links', count: 96, bytes: 12582912),
-          StorageCategory(type: 'other', count: 11, bytes: 12163072),
+          StorageCategory(type: 'photos', count: 0, bytes: 0),
+          StorageCategory(type: 'voice', count: 0, bytes: 0),
+          StorageCategory(type: 'screenshots', count: 0, bytes: 0),
+          StorageCategory(type: 'notes', count: 0, bytes: 0),
+          StorageCategory(type: 'links', count: 0, bytes: 0),
+          StorageCategory(type: 'other', count: 0, bytes: 0),
         ],
       );
 }

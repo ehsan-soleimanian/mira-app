@@ -48,6 +48,9 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final mq = MediaQuery.of(context);
+    // Clear the Android nav bar when the keyboard isn't already covering it.
+    final navGap = (mq.viewPadding.bottom - mq.viewInsets.bottom).clamp(0.0, 64.0);
     return Container(
       decoration: BoxDecoration(
         color: rd.bg,
@@ -57,7 +60,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
         left: 20,
         right: 20,
         top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        bottom: mq.viewInsets.bottom + 24 + navGap,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

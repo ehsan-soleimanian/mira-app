@@ -144,7 +144,7 @@ class RdAppearanceScreen extends StatelessWidget {
                   border: Border.all(color: context.rd.line, width: 1),
                 ),
                 child: Text(
-                  'The coast trip is coming together.',
+                  'Mira keeps your memories clear and readable.',
                   style: GoogleFonts.vazirmatn(
                       fontSize: 15, height: 1.4, color: context.rd.ink),
                 ),

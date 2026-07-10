@@ -44,32 +44,16 @@ const _navy = Color(0xFF14328C);
 bool _isDark(BuildContext context) =>
     Theme.of(context).brightness == Brightness.dark;
 
-class _Tok {
-  const _Tok(this.text, {this.mark = false, this.chip});
-  final String text;
-  final bool mark;
-  final String? chip;
-}
-
-const _tokens = [
-  _Tok('Call'), _Tok('John', mark: true, chip: '👤 John'), _Tok('before'),
-  _Tok('Friday', mark: true, chip: '📅 Friday'), _Tok('to'), _Tok('confirm'), _Tok('the'),
-  _Tok('contract', mark: true, chip: '# contract'), _Tok('terms'), _Tok('and'),
-  _Tok('send'), _Tok('the'), _Tok('signed'), _Tok('copy.'),
-];
-
-/// The full sentence Mira "understood" from a voice capture — used as the
-/// FALLBACK transcript when the real device mic / transcription path is
-/// unavailable (web, desktop, denied permission, or a failed/empty transcribe).
-/// When a real transcript is captured it overrides `_transcript` at runtime.
-const _voiceTranscript =
-    'Call John before Friday to confirm the contract terms and send the signed copy.';
-const _voiceTitle = 'Call John before Friday';
+/// Neutral fallback transcript/title, used only when a real device transcript
+/// is unavailable (web, desktop, denied permission, or a failed/empty
+/// transcribe). Empty on purpose: the listen screen shows the live transcript
+/// streaming from the mic and never fabricates placeholder content.
+const _voiceTranscript = '';
+const _voiceTitle = '';
 
 class _RdCaptureFlowState extends State<RdCaptureFlow> {
   String _view = 'listen';
   int _sec = 0;
-  int _revealed = 0;
   int _steps = 0;
 
   bool _conn1 = true;
@@ -119,12 +103,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   PickedCaptureMedia? _pendingMedia; // held for photo/screenshot confirm
   String? _pendingUrl; // held for link confirm
   String? _pendingTitle;
-  // People chosen in the "Notify people" sheet (link review). Client-only —
-  // there is no notify backend, so this is reflected in the confirmation copy.
-  final Set<String> _notify = <String>{};
 
   Timer? _secTimer;
-  Timer? _revealTimer;
   final List<Timer> _timers = [];
 
   @override
@@ -136,7 +116,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   @override
   void dispose() {
     _secTimer?.cancel();
-    _revealTimer?.cancel();
     for (final t in _timers) {
       t.cancel();
     }
@@ -153,7 +132,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   void _clearTimers() {
     _secTimer?.cancel();
-    _revealTimer?.cancel();
     for (final t in _timers) {
       t.cancel();
     }
@@ -165,9 +143,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     setState(() {
       _view = 'listen';
       _sec = 0;
-      _revealed = 0;
-      // Reset transcript to the simulated default; a real recording (below)
-      // may override it on finish.
+      // Reset transcript to the neutral default; a real recording (below)
+      // overrides it as it streams / on finish.
       _transcript = _voiceTranscript;
       _transcriptTitle = _voiceTitle;
       _realTranscript = false;
@@ -187,14 +164,18 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     });
     unawaited(_beginRecording());
     _secTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _sec++));
-    _revealTimer = Timer.periodic(const Duration(milliseconds: 340), (t) {
-      if (_revealed >= _tokens.length) {
-        t.cancel();
-        _timers.add(Timer(const Duration(milliseconds: 1400), _toProc));
-        return;
+    // Demo auto-advance: on platforms without a real mic (web / desktop /
+    // denied permission) nothing streams and the ✓ is never tapped, so move to
+    // processing after a short window. On a real device a live recording is in
+    // progress — the user taps ✓ to finish and this no-ops.
+    _timers.add(Timer(const Duration(seconds: 6), () {
+      if (mounted &&
+          _view == 'listen' &&
+          !_recorderActive &&
+          !_useRealtimePath) {
+        _toProc();
       }
-      setState(() => _revealed++);
-    });
+    }));
   }
 
   /// Start recording — tries realtime voice first, then batch file capture.
@@ -423,6 +404,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   String get _time =>
       '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
 
+  /// System navigation-bar / gesture inset at the bottom of the window. Modal
+  /// bottom sheets live in their own route (outside this screen's `SafeArea`),
+  /// so their bottom padding must add this or their last row slides under the
+  /// Android nav buttons on phones like Samsung.
+  double get _safeBottom => MediaQuery.of(context).viewPadding.bottom;
+
   /// Confirm the review: persist the memory, create the reminder (if its toggle
   /// is on), and show the "kept in memory" screen. The persist is fire-and-forget
   /// and best-effort so the confirmation is instant and still shows even offline.
@@ -483,11 +470,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   Future<void> _createReminder(MiraServices services) async {
     try {
-      // Use the real transcript as the reminder title when one was captured;
-      // otherwise keep the simulated reminder text the design expects.
-      final title = _realTranscript
-          ? _transcript
-          : 'Call John before Friday to confirm the contract terms';
+      // The reminder title is the real captured content — the extracted title,
+      // else the transcript. Never a fabricated placeholder.
+      final title = _transcriptTitle.trim().isNotEmpty
+          ? _transcriptTitle.trim()
+          : _transcript.trim();
+      if (title.isEmpty) return;
       await RemindersRepository(apiClient: services.apiClient).create(
         title: title,
       );
@@ -716,37 +704,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             children: [
               Text('Listening…', style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: rd.peri)),
               const SizedBox(height: 12),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (var i = 0; i < _revealed && i < _tokens.length; i++)
-                    _tokens[i].mark
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(6)),
-                            // text-on-periSoft → rd.peri (navy vanishes on dark periSoft).
-                            child: Text(_tokens[i].text, style: GoogleFonts.vazirmatn(fontSize: 19, fontWeight: FontWeight.w600, color: rd.peri)),
-                          )
-                        : Text(_tokens[i].text, style: GoogleFonts.vazirmatn(fontSize: 19, color: rd.ink)),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (var i = 0; i < _revealed && i < _tokens.length; i++)
-                    if (_tokens[i].chip != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                        decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(100), border: Border.all(color: rd.peri.withValues(alpha: 0.4), width: 1)),
-                        child: Text(_tokens[i].chip!, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.peri)),
-                      ),
-                ],
-              ),
+              // Live transcript streaming from the mic. Empty until the first
+              // words arrive (or on platforms without a real transcriber).
+              if (_transcript.trim().isNotEmpty)
+                Text(
+                  _transcript,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.vazirmatn(fontSize: 19, height: 1.5, color: rd.ink),
+                ),
             ],
           ),
         ),
@@ -858,17 +823,18 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       if (proposal.title.trim().isNotEmpty) return proposal.title.trim();
       if (proposal.summary.trim().isNotEmpty) return proposal.summary.trim();
     }
-    return _transcript;
+    final t = _transcript.trim();
+    return t.isNotEmpty ? t : 'Your note';
   }
 
   /// The "Details Mira extracted" chips. Real proposal → genuine detail labels
   /// (deadline + extracted insights, de-duplicated, capped); otherwise the
   /// design's illustrative 👤/📅/# chips. Always ends with the "+ Add" chip.
-  /// The detail chips before any edit — real extracted labels, or the design's
-  /// illustrative set for the simulated flow.
-  List<String> _computedChips() => _realProposal
-      ? _extractedDetailLabels()
-      : const ['👤 John', '📅 Friday', '# contract'];
+  /// The detail chips before any edit — the real extracted labels. Empty when
+  /// nothing was extracted (the user can still add their own via "+ Add");
+  /// never fabricated placeholder chips.
+  List<String> _computedChips() =>
+      _realProposal ? _extractedDetailLabels() : const [];
 
   /// The chips actually shown: the user's edited list once they've touched it,
   /// otherwise the computed source (so real extraction still flows through).
@@ -958,14 +924,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     if (_kind == 'photo' || _kind == 'screenshot' || _kind == 'link') {
       return _suggestedActions();
     }
-    return [
-      _fieldLabel('Connect to existing memory'),
-      _connRow('<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>', 'Meeting with John', 'Calendar · Tomorrow, 3:00 PM', _conn1, () => setState(() => _conn1 = !_conn1)),
-      const SizedBox(height: 8),
-      _connRow('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 'Contract draft v2', 'Note · Captured 2h ago', _conn2, () => setState(() => _conn2 = !_conn2)),
-      const SizedBox(height: 8),
-      _connRow('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', 'John Carter', 'Person · 6 linked memories', _conn3, () => setState(() => _conn3 = !_conn3)),
-    ];
+    // No real extraction → no fabricated connection rows. The graph will link
+    // this memory on approval; nothing to show or toggle here.
+    return const [];
   }
 
   /// The number of connections/actions currently toggled on — drives the
@@ -974,7 +935,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       ? _connOn.length
       : [_conn1, _conn2, _conn3].where((x) => x).length;
 
-  /// Kind-aware reminder line for the bottom reminder card.
+  /// Kind-aware reminder line for the bottom reminder card. For voice/text it
+  /// reflects the real extracted deadline when one was found; otherwise a
+  /// neutral prompt — never a fabricated day.
   String get _reminderText {
     switch (_kind) {
       case 'link':
@@ -983,12 +946,15 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       case 'screenshot':
         return 'Remind me about this later';
       default:
-        return 'Remind me Thursday morning, a day before it’s due';
+        final deadline =
+            _realProposal ? (_proposal?.deadline.trim() ?? '') : '';
+        if (deadline.isNotEmpty) return 'Remind me before $deadline';
+        return 'Remind me about this later';
     }
   }
 
-  /// "Suggested actions" for photo / screenshot / link, plus (for link) the
-  /// Notify-people section. Toggles reuse the three connection flags.
+  /// "Suggested actions" for photo / screenshot / link. Generic, non-personal
+  /// prompts — no fabricated contact suggestions (there is no contacts backend).
   List<Widget> _suggestedActions() {
     const calendar =
         '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>';
@@ -999,13 +965,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     if (_kind == 'link') {
       rows = const [
         (topic, 'Add to a topic', 'Group with related memories'),
-        (person, 'Share with a friend', 'Mira suggests Maya'),
+        (person, 'Share it', 'Send to someone who’d care'),
       ];
     } else {
       rows = const [
         (calendar, 'Add to calendar', 'From the details Mira read'),
         (topic, 'Add to a topic', 'Group with related memories'),
-        (person, 'Invite someone', 'Mira suggests Maya'),
+        (person, 'Add the people in it', 'Link the faces Mira sees'),
       ];
     }
     final on = [_conn1, _conn2, _conn3];
@@ -1019,197 +985,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       if (i > 0) out.add(const SizedBox(height: 8));
       out.add(_connRow(rows[i].$1, rows[i].$2, rows[i].$3, on[i], toggles[i]));
     }
-    if (_kind == 'link') out.addAll(_notifySection());
     return out;
-  }
-
-  List<Widget> _notifySection() {
-    final rd = context.rd;
-    final label = _notify.isEmpty
-        ? 'Let someone know'
-        : (_notify.length == 1
-            ? 'Notifying ${_notify.first.split(' ').first}'
-            : 'Notifying ${_notify.length} people');
-    final sub = _notify.isEmpty
-        ? 'Mira suggests Maya — she likes live jazz'
-        : _notify.map((n) => n.split(' ').first).join(', ');
-    return [
-      const SizedBox(height: 14),
-      _fieldLabel('Notify people'),
-      GestureDetector(
-        onTap: _openNotifyPicker,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-          decoration: BoxDecoration(
-              color: rd.card,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: rd.line, width: 1)),
-          child: Row(
-            children: [
-              RdIcon(
-                  '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
-                  size: 18,
-                  color: rd.peri,
-                  strokeWidth: 1.8),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: GoogleFonts.vazirmatn(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: rd.ink)),
-                    const SizedBox(height: 2),
-                    Text(sub,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.vazirmatn(
-                            fontSize: 11.5, color: rd.muted)),
-                  ],
-                ),
-              ),
-              RdIcon('<path d="m9 18 6-6-6-6"/>',
-                  size: 16, color: rd.faint, strokeWidth: 2),
-            ],
-          ),
-        ),
-      ),
-    ];
-  }
-
-  static Color _hexColor(String hex) =>
-      Color(int.parse('FF${hex.replaceFirst('#', '')}', radix: 16));
-
-  Future<void> _openNotifyPicker() async {
-    const people = <(String, String, String, String)>[
-      ('Maya Chen', 'Likes live jazz', '#7E8BC9', 'M'),
-      ('John Reyes', 'Contract · frequent', '#1F8A5B', 'J'),
-      ('Sara Lin', 'Partner', '#C97A54', 'S'),
-      ('Devon Park', 'Went to Blue Note together', '#5B8CC9', 'D'),
-    ];
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) {
-          final rd = context.rd;
-          return Container(
-            decoration: BoxDecoration(
-                color: rd.card,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(26))),
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                    child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 14),
-                        decoration: BoxDecoration(
-                            color: rd.line,
-                            borderRadius: BorderRadius.circular(100)))),
-                Text('Notify people',
-                    style: GoogleFonts.dosis(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        color: rd.ink)),
-                const SizedBox(height: 2),
-                Text('Who should Mira share this with?',
-                    style:
-                        GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted)),
-                const SizedBox(height: 12),
-                for (final p in people)
-                  _notifyOpt(p.$1, p.$2, p.$3, p.$4, setSheet),
-                const SizedBox(height: 10),
-                GestureDetector(
-                  onTap: () => Navigator.of(ctx).pop(),
-                  child: Container(
-                    height: 50,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                        color: rd.navy,
-                        borderRadius: BorderRadius.circular(14)),
-                    child: Text('Done',
-                        style: GoogleFonts.vazirmatn(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-    if (mounted) setState(() {}); // reflect the new selection on the trigger
-  }
-
-  Widget _notifyOpt(String name, String sub, String tint, String initial,
-      void Function(void Function()) setSheet) {
-    final rd = context.rd;
-    final on = _notify.contains(name);
-    return GestureDetector(
-      onTap: () {
-        on ? _notify.remove(name) : _notify.add(name);
-        setSheet(() {});
-      },
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              alignment: Alignment.center,
-              decoration:
-                  BoxDecoration(shape: BoxShape.circle, color: _hexColor(tint)),
-              child: Text(initial,
-                  style: GoogleFonts.vazirmatn(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: GoogleFonts.vazirmatn(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: rd.ink)),
-                  Text(sub,
-                      style: GoogleFonts.vazirmatn(
-                          fontSize: 11.5, color: rd.muted)),
-                ],
-              ),
-            ),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: on ? rd.navy : Colors.transparent,
-                border: on ? null : Border.all(color: rd.faint, width: 1.6),
-              ),
-              child: on
-                  ? const Center(
-                      child: RdIcon('<path d="m5 12 5 5 9-11"/>',
-                          size: 13, stroke: '#FFFFFF', strokeWidth: 3))
-                  : null,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   // ── change type ─────────────────────────────────────────────────────
@@ -1252,7 +1028,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           color: rd.card,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         ),
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+        padding: EdgeInsets.fromLTRB(18, 12, 18, 24 + _safeBottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1335,7 +1111,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             color: rd.card,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
           ),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+          padding: EdgeInsets.fromLTRB(20, 12, 20,
+              22 + math.max(0.0, MediaQuery.of(ctx).viewPadding.bottom - MediaQuery.of(ctx).viewInsets.bottom)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1546,27 +1323,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      // Real transcript / proposal, or any non-voice capture →
-                      // show the understood text verbatim; only the pure voice
-                      // simulation keeps the design's highlighted John/Friday.
-                      if (_realTranscript || _realProposal || _kind != 'voice')
-                        Text(
-                          _understoodText,
-                          style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: rd.ink),
-                        )
-                      else
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              const TextSpan(text: 'Call '),
-                              TextSpan(text: 'John', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
-                              const TextSpan(text: ' before '),
-                              TextSpan(text: 'Friday', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w700)),
-                              const TextSpan(text: ' to confirm the contract terms and send the signed copy.'),
-                            ],
-                            style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: rd.ink),
-                          ),
-                        ),
+                      // The understood text, verbatim from the real transcript /
+                      // extracted proposal (or the link/photo summary).
+                      Text(
+                        _understoodText,
+                        style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: rd.ink),
+                      ),
                     ],
                   ),
                 ),
@@ -1613,12 +1375,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     final n = _linkCount;
     if (n > 0) parts.add('linked to $n ${n == 1 ? 'memory' : 'memories'}');
     if (_remind) parts.add('has a reminder');
-    if (_notify.isNotEmpty) {
-      final who = _notify.length == 1
-          ? _notify.first.split(' ').first
-          : '${_notify.length} people';
-      parts.add('$who will be notified');
-    }
     if (parts.isEmpty) {
       return 'Kept safely. Mira will bring it back at the right time.';
     }
@@ -2173,7 +1929,10 @@ class _SheetShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final mq = MediaQuery.of(context);
+    final bottomInset = mq.viewInsets.bottom;
+    // Clear the nav bar only when the keyboard isn't already covering it.
+    final navGap = math.max(0.0, mq.viewPadding.bottom - bottomInset);
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
@@ -2181,7 +1940,7 @@ class _SheetShell extends StatelessWidget {
           color: rd.bg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
+        padding: EdgeInsets.fromLTRB(22, 12, 22, 22 + navGap),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

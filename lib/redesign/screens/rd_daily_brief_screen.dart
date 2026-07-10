@@ -57,11 +57,15 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   /// "Mira resurfaced" items from `/v2/resurfaced`. Null until the first load
   /// resolves or if the call failed; empty once loaded when the feed is empty.
-  /// In both the null and empty cases the section falls back to sample cards.
+  /// When null or empty the section is hidden entirely (no fabricated cards).
   List<ResurfacedItem>? _resurfaced;
 
   String _name = 'Sara';
   bool _loaded = false;
+
+  /// True once `_load` has finished (success or failure). Distinguishes the
+  /// initial in-flight state from a genuinely empty/failed load.
+  bool _loadDone = false;
 
   @override
   void didChangeDependencies() {
@@ -129,6 +133,8 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         });
       }
     } catch (_) {}
+
+    if (mounted) setState(() => _loadDone = true);
   }
 
   Future<void> _toggleTask(String id, bool done) async {
@@ -324,7 +330,24 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   List<Widget> _bodyChildren() {
     if (_items == null && _overdue == null && _brief == null) {
-      return _mockChildren();
+      // No data yet. While the first load is still in flight, show only the
+      // header (no fabricated content). Once it has finished with nothing to
+      // show — empty or failed — show a calm, neutral empty message.
+      if (!_loadDone) return [_header()];
+      return [
+        _header(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(26, 40, 26, 0),
+          child: Text(
+            'Nothing needs you right now.',
+            style: GoogleFonts.vazirmatn(
+              fontSize: 14.5,
+              height: 1.5,
+              color: context.rd.muted,
+            ),
+          ),
+        ),
+      ];
     }
 
     final items = _items ?? const <DailyUpdateItem>[];
@@ -433,7 +456,6 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }) {
     return [
       _header(),
-      const _Summary(),
       // "Waiting on you" — overdue reminders, each with Snooze / Done.
       if (overdue.isNotEmpty) ...[
         _OverdueSummary(),
@@ -476,19 +498,18 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             sub: o.summary.trim().isEmpty ? o.title : o.summary,
           ),
       ],
-      // "Mira resurfaced" — live items from `/v2/resurfaced` when available,
-      // otherwise the designed SAMPLE content so the section never reads empty.
+      // "Mira resurfaced" — live items from `/v2/resurfaced`. Hidden entirely
+      // when the feed is null (loading/failed) or empty.
       ..._resurfacedChildren(),
       _dbEnd(),
     ];
   }
 
   /// "Mira resurfaced" section. Renders live items from `/v2/resurfaced` when
-  /// the feed returned any; otherwise falls back to the designed sample cards
-  /// (also used while loading / offline, when `_resurfaced` is still null).
+  /// the feed returned any; hidden entirely otherwise (null or empty).
   List<Widget> _resurfacedChildren() {
     final items = _resurfaced ?? const <ResurfacedItem>[];
-    if (items.isEmpty) return _resurfacedSample();
+    if (items.isEmpty) return const [];
 
     return [
       _SectionHeader(
@@ -524,59 +545,6 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     if (when.isNotEmpty) return when;
     final reason = item.reason.trim();
     return reason.isEmpty ? 'Saved to your memory' : reason;
-  }
-
-  /// Designed SAMPLE resurfaced cards (fallback when the live feed is empty or
-  /// unreachable, and during the initial load / offline mock).
-  List<Widget> _resurfacedSample() {
-    return [
-      const _SectionHeader(
-          icon: RdIcons.resurface, label: 'MIRA RESURFACED', count: '2'),
-      _ResCard(
-        icon: RdIcons.vinyl,
-        image: true,
-        why: 'Because the date is close',
-        title: 'Blue Note — Fri, Jul 18',
-        sub:
-            'From a photo you took. Intimate rooms sell out — worth booking this week?',
-        actions: const ['Buy tickets', 'Remind Thursday'],
-      ),
-      const _ResCard(
-        icon: RdIcons.book,
-        why: 'Saved 3 days ago, still unread',
-        title: '“The Overstory”',
-        sub: 'Maya’s recommendation. A quiet weekend read for your coast trip?',
-      ),
-    ];
-  }
-
-  List<Widget> _mockChildren() {
-    return [
-      _header(),
-      const _Summary(),
-      const _SectionHeader(icon: RdIcons.clock, label: 'TODAY', count: '2 events'),
-      const _Rail(),
-      const _SectionHeader(icon: RdIcons.checkCircle, label: 'NEEDS YOU SOON', count: '1 task'),
-      const _TaskCard(title: 'Call John to confirm the contract terms', due: 'Due Friday · 2 days'),
-      const _SectionHeader(icon: RdIcons.resurface, label: 'MIRA RESURFACED', count: '2'),
-      _ResCard(
-        icon: RdIcons.vinyl,
-        image: true,
-        why: 'Because the date is close',
-        title: 'Blue Note — Fri, Jul 18',
-        sub: 'From a photo you took. Intimate rooms sell out — worth booking this week?',
-        actions: const ['Buy tickets', 'Remind Thursday'],
-      ),
-      const _ResCard(
-        icon: RdIcons.book,
-        why: 'Saved 3 days ago, still unread',
-        title: '“The Overstory”',
-        sub: 'Maya’s recommendation. A quiet weekend read for your coast trip?',
-      ),
-      const _SectionHeader(icon: RdIcons.check, label: 'HANDLED QUIETLY'),
-      const _Handled(),
-      _dbEnd(),
-    ];
   }
 
   static bool _isTask(DailyUpdateItem item) {
@@ -765,62 +733,6 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 }
 
-class _Summary extends StatelessWidget {
-  const _Summary();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFEEF1FA), Color(0xFFE7EBF7)],
-        ),
-        border: Border.all(
-          color: const Color(0xFF7E8BC9).withValues(alpha: 0.18),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const RdOrb(size: 40, ring: false),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  const TextSpan(
-                    text:
-                        'Two things need you today, and I brought back a memory that’s about to matter — the ',
-                  ),
-                  TextSpan(
-                    text: 'Blue Note tickets',
-                    style: GoogleFonts.vazirmatn(
-                      fontWeight: FontWeight.w600,
-                      color: RdColors.navy,
-                    ),
-                  ),
-                  const TextSpan(text: ' before they sell out.'),
-                ],
-                style: GoogleFonts.vazirmatn(
-                  fontSize: 14.5,
-                  height: 1.55,
-                  color: const Color(0xFF2B2F45),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.icon, required this.label, this.count});
 
@@ -860,311 +772,6 @@ class _SectionHeader extends StatelessWidget {
                 color: rd.faint,
               ),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Today's timeline — a periwinkle rail threading time-stamped event cards.
-class _Rail extends StatelessWidget {
-  const _Rail();
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 0, 22, 0),
-      child: Stack(
-        children: [
-          Positioned(
-            left: 53,
-            top: 8,
-            bottom: 12,
-            child: Container(
-              width: 1.5,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    rd.periSoft,
-                    rd.peri,
-                    rd.peri,
-                    rd.periSoft,
-                  ],
-                  stops: const [0.0, 0.2, 0.8, 1.0],
-                ),
-              ),
-            ),
-          ),
-          Column(
-            children: [
-              _TimelineEntry(
-                hour: '10',
-                suffix: ':00 AM',
-                child: _EventCard(
-                  title: 'Product review with the team',
-                  sub: '30 min · Studio',
-                ),
-              ),
-              _TimelineEntry(
-                hour: '3',
-                suffix: ':00 PM',
-                now: true,
-                child: _EventCard(
-                  title: 'Meeting with John',
-                  sub: 'The contract call',
-                  prep: true,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimelineEntry extends StatelessWidget {
-  const _TimelineEntry({
-    required this.hour,
-    required this.suffix,
-    required this.child,
-    this.now = false,
-  });
-
-  final String hour;
-  final String suffix;
-  final Widget child;
-  final bool now;
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 44,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 14, right: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    hour,
-                    style: GoogleFonts.vazirmatn(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: rd.muted,
-                      height: 1.2,
-                    ),
-                  ),
-                  Text(
-                    suffix,
-                    style: GoogleFonts.vazirmatn(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w500,
-                      color: rd.faint,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 18,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 18),
-              child: Center(child: _RailNode(now: now)),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(left: 12),
-              child: child,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RailNode extends StatelessWidget {
-  const _RailNode({required this.now});
-
-  final bool now;
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    if (now) {
-      return Container(
-        width: 11,
-        height: 11,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: rd.peri,
-          boxShadow: [BoxShadow(color: rd.periSoft, spreadRadius: 4)],
-        ),
-      );
-    }
-    return Container(
-      width: 11,
-      height: 11,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: rd.peri,
-        boxShadow: [BoxShadow(color: rd.periSoft, spreadRadius: 3)],
-      ),
-      child: Center(
-        child: Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: rd.card,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _EventCard extends StatelessWidget {
-  const _EventCard({required this.title, required this.sub, this.prep = false});
-
-  final String title;
-  final String sub;
-  final bool prep;
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-      decoration: BoxDecoration(
-        color: rd.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: rd.line, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: GoogleFonts.vazirmatn(
-              fontSize: 14.5,
-              fontWeight: FontWeight.w600,
-              color: rd.ink,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              _Pill(
-                icon: RdIcons.calendar,
-                label: 'Event',
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  sub,
-                  style: GoogleFonts.vazirmatn(
-                    fontSize: 12.5,
-                    color: rd.muted,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (prep) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-              decoration: BoxDecoration(
-                // Fixed light periwinkle tint so the navy prep copy stays
-                // legible in dark mode (ambient periSoft flips to dark slate).
-                color: const Color(0xFFEDEFF8),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const RdIcon(
-                    RdIcons.bulb,
-                    size: 15,
-                    stroke: '#14328C',
-                    strokeWidth: 1.8,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          const TextSpan(text: 'Mira: bring the '),
-                          TextSpan(
-                            text: 'signed contract',
-                            style: GoogleFonts.vazirmatn(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const TextSpan(
-                            text: ' — it connects to this meeting.',
-                          ),
-                        ],
-                        style: GoogleFonts.vazirmatn(
-                          fontSize: 12.5,
-                          color: RdColors.navy,
-                          height: 1.35,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({required this.icon, required this.label});
-
-  final String icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        // Fixed light periwinkle tint-badge — navy icon + label read on it in
-        // both themes (ambient periSoft flips to dark slate).
-        color: const Color(0xFFEDEFF8),
-        borderRadius: BorderRadius.circular(100),
-      ),
-      child: Row(
-        children: [
-          RdIcon(icon, size: 11, stroke: '#14328C', strokeWidth: 2),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: GoogleFonts.vazirmatn(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-              color: RdColors.navy,
-            ),
-          ),
         ],
       ),
     );
@@ -1299,7 +906,6 @@ class _ResCard extends StatelessWidget {
     required this.title,
     required this.sub,
     this.image = false,
-    this.actions,
   });
 
   final String icon;
@@ -1307,7 +913,6 @@ class _ResCard extends StatelessWidget {
   final String title;
   final String sub;
   final bool image;
-  final List<String>? actions;
 
   @override
   Widget build(BuildContext context) {
@@ -1356,17 +961,6 @@ class _ResCard extends StatelessWidget {
                     height: 1.4,
                   ),
                 ),
-                if (actions != null) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      _ResButton(label: actions![0], solid: true),
-                      const SizedBox(width: 8),
-                      if (actions!.length > 1)
-                        _ResButton(label: actions![1], solid: false),
-                    ],
-                  ),
-                ],
               ],
             ),
           ),
@@ -1409,138 +1003,6 @@ class _ResIcon extends StatelessWidget {
           strokeWidth: 1.7,
         ),
       ),
-    );
-  }
-}
-
-class _ResButton extends StatelessWidget {
-  const _ResButton({required this.label, required this.solid});
-
-  final String label;
-  final bool solid;
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: solid ? rd.navy : Colors.transparent,
-        borderRadius: BorderRadius.circular(9),
-        border: solid ? null : Border.all(color: rd.line, width: 1),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.vazirmatn(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          color: solid ? Colors.white : rd.muted,
-        ),
-      ),
-    );
-  }
-}
-
-class _Handled extends StatelessWidget {
-  const _Handled();
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(26, 8, 22, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: rd.line, width: 1),
-      ),
-      child: Column(
-        children: [
-          _HandledRow(
-            icon: RdIcons.calendar,
-            boldText: 'Flight SA 482',
-            rest: ' added to your calendar for Aug 2',
-          ),
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            padding: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: rd.line, width: 1)),
-            ),
-            child: _HandledRow(
-              icon: RdIcons.dueClock,
-              rest: 'Check-in reminder set for ',
-              boldTextTrailing: 'Aug 1',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HandledRow extends StatelessWidget {
-  const _HandledRow({
-    required this.icon,
-    this.boldText,
-    this.rest = '',
-    this.boldTextTrailing,
-  });
-
-  final String icon;
-  final String? boldText;
-  final String rest;
-  final String? boldTextTrailing;
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    final baseStyle = GoogleFonts.vazirmatn(
-      fontSize: 12.5,
-      height: 1.4,
-      color: rd.muted,
-    );
-    final boldStyle = GoogleFonts.vazirmatn(
-      fontSize: 12.5,
-      height: 1.4,
-      fontWeight: FontWeight.w600,
-      color: rd.ink,
-    );
-    return Row(
-      children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE9F3EC),
-            borderRadius: BorderRadius.circular(9),
-          ),
-          child: Center(
-            child: RdIcon(
-              icon,
-              size: 16,
-              stroke: '#2E7D4F',
-              strokeWidth: 1.9,
-            ),
-          ),
-        ),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Text.rich(
-            TextSpan(
-              children: [
-                if (boldText != null) TextSpan(text: boldText, style: boldStyle),
-                TextSpan(text: rest),
-                if (boldTextTrailing != null)
-                  TextSpan(text: boldTextTrailing, style: boldStyle),
-              ],
-              style: baseStyle,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

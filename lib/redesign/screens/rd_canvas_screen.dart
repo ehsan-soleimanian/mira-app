@@ -41,10 +41,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   /// from `graphRepository.fetchGraph` (`/v2/graph`) and laid out client-side.
   List<_GNode>? _mapNodes;
   List<List<String>> _mapEdges = const [];
-  List<_ClusterSpec> _clusters = _sampleClusters;
+  List<_ClusterSpec> _clusters = const [];
   String? _mapFocusNodeId;
-  String _mapContext = 'Your memory · 34 memories · 61 connections';
-  String _clusterContext = '6 clusters · 34 memories';
+  String _mapContext = '';
+  String _clusterContext = '';
   bool _loaded = false;
 
   // ── Board (persisted, multi-board) ──────────────────────────────────────
@@ -69,7 +69,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
 
   /// Board-level context label (title · N cards), reported up from the live
   /// `_BoardView` so the top pill mirrors what's on screen.
-  String _boardContext = 'Coast trip · 8 memories';
+  String _boardContext = '';
 
   bool _boardsLoading = true;
 
@@ -100,7 +100,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       setState(() {
         _mapNodes = nodes;
         _mapEdges = edges;
-        _clusters = clusters.isEmpty ? _sampleClusters : clusters;
+        _clusters = clusters;
         _mapContext =
             'Your memory · ${nodes.length} memories · ${edges.length} connections';
         _clusterContext =
@@ -109,7 +109,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
         _mapEpoch++; // force the map to rebuild from the fresh graph
       });
     } catch (_) {
-      // Backend unreachable — keep the designed sample graph.
+      // Backend unreachable — leave the map empty (neutral empty state).
     }
   }
 
@@ -374,8 +374,8 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
                         ? 'map-live-$_mapEpoch-${_mapFocusNodeId ?? ''}'
                         : 'map-sample-${_mapFocusNodeId ?? ''}',
                   ),
-                  nodes: _mapNodes ?? _graphNodes,
-                  edges: live ? _mapEdges : _graphEdges,
+                  nodes: _mapNodes ?? const <_GNode>[],
+                  edges: live ? _mapEdges : const <List<String>>[],
                   initialSelectedId: _mapFocusNodeId,
                   onMerge: live ? _mergeEntities : null,
                   edgeAssertions: live ? _mapEdgeAssertions : const {},
@@ -411,22 +411,25 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 7),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: rd.bg.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                      child: Text(
-                        context_,
-                        style: GoogleFonts.vazirmatn(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: rd.muted,
+                    if (context_.isNotEmpty) ...[
+                      const SizedBox(height: 7),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: rd.bg.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: Text(
+                          context_,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: rd.muted,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -825,25 +828,6 @@ class _GNode {
   final String? initial;
 }
 
-const _graphNodes = <_GNode>[
-  _GNode(id: 'john', x: 150, y: 250, disc: 68, type: _GType.person, label: 'John', initial: 'J', typ: 'Person', sub: '6 linked memories — mostly the contract and your weekly calls.'),
-  _GNode(id: 'contract', x: 92, y: 366, disc: 52, type: _GType.task, label: 'Contract', typ: 'Task', sub: 'Call John before Friday to confirm terms.'),
-  _GNode(id: 'meeting', x: 214, y: 384, disc: 44, type: _GType.event, label: 'Meeting', typ: 'Event', sub: 'Tomorrow · 3:00 PM with John.'),
-  _GNode(id: 'draft', x: 158, y: 158, disc: 44, type: _GType.note, label: 'Draft v2', typ: 'Note', sub: 'Contract draft — captured 2h ago.'),
-  _GNode(id: 'work', x: 236, y: 272, disc: 52, type: _GType.topic, label: 'Work', typ: 'Topic', sub: '12 memories tagged with work.'),
-  _GNode(id: 'maya', x: 300, y: 520, disc: 68, type: _GType.person, label: 'Maya', initial: 'M', typ: 'Person', sub: 'Books, jazz, and weekend plans keep coming back to her.'),
-  _GNode(id: 'book', x: 336, y: 408, disc: 44, type: _GType.book, label: 'The Overstory', typ: 'Book', sub: 'Recommended by Maya — captured by voice yesterday.'),
-  _GNode(id: 'jazz', x: 362, y: 606, disc: 52, type: _GType.topic, label: 'Jazz', typ: 'Topic', sub: '5 memories about live music.'),
-  _GNode(id: 'blue', x: 262, y: 640, disc: 44, type: _GType.event, label: 'Blue Note', typ: 'Event', sub: 'Fri, Jul 18 · 8 PM. From a photo you took.'),
-  _GNode(id: 'coast', x: 186, y: 520, disc: 44, type: _GType.idea, label: 'Coast weekend', typ: 'Idea', sub: 'A quiet weekend on the coast in spring.'),
-];
-
-const _graphEdges = <List<String>>[
-  ['john', 'contract'], ['john', 'meeting'], ['john', 'draft'], ['contract', 'meeting'],
-  ['john', 'work'], ['contract', 'work'], ['draft', 'work'], ['maya', 'book'],
-  ['maya', 'jazz'], ['maya', 'blue'], ['blue', 'jazz'], ['maya', 'coast'], ['coast', 'john'],
-];
-
 String _gTypeIcon(_GType t) {
   switch (t) {
     case _GType.task:
@@ -1003,69 +987,6 @@ class _ClusterSpec {
   final List<String> nodeIds;
 }
 
-const _sampleClusters = <_ClusterSpec>[
-  _ClusterSpec(
-    id: 'work',
-    name: 'Work & clients',
-    count: 9,
-    colorKey: 'navy',
-    type: _GType.task,
-    x: 116,
-    y: 148,
-    nodeIds: [],
-  ),
-  _ClusterSpec(
-    id: 'someday',
-    name: 'Someday',
-    count: 3,
-    colorKey: 'peri',
-    type: _GType.idea,
-    x: 300,
-    y: 106,
-    nodeIds: [],
-  ),
-  _ClusterSpec(
-    id: 'maya',
-    name: 'Maya & music',
-    count: 8,
-    colorKey: 'rose',
-    type: _GType.person,
-    x: 300,
-    y: 288,
-    nodeIds: [],
-  ),
-  _ClusterSpec(
-    id: 'coast',
-    name: 'The coast trip',
-    count: 6,
-    colorKey: 'teal',
-    type: _GType.idea,
-    x: 132,
-    y: 352,
-    nodeIds: [],
-  ),
-  _ClusterSpec(
-    id: 'books',
-    name: 'Books & ideas',
-    count: 5,
-    colorKey: 'amber',
-    type: _GType.book,
-    x: 318,
-    y: 476,
-    nodeIds: [],
-  ),
-  _ClusterSpec(
-    id: 'family',
-    name: 'Family',
-    count: 3,
-    colorKey: 'plum',
-    type: _GType.person,
-    x: 88,
-    y: 522,
-    nodeIds: [],
-  ),
-];
-
 const _clusterColorKeys = ['navy', 'peri', 'rose', 'teal', 'amber', 'plum'];
 
 const _clusterLayout = <Offset>[
@@ -1154,6 +1075,14 @@ class _ClusterOverviewState extends State<_ClusterOverview> {
   Widget build(BuildContext context) {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
+    if (widget.clusters.isEmpty) {
+      return Center(
+        child: Text(
+          'No clusters yet',
+          style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
+        ),
+      );
+    }
     return GestureDetector(
       onPanUpdate: (d) => setState(() => _pan += d.delta),
       child: ClipRect(
@@ -1262,8 +1191,8 @@ class _ClusterBubble extends StatelessWidget {
 class _MapView extends StatefulWidget {
   const _MapView({
     super.key,
-    this.nodes = _graphNodes,
-    this.edges = _graphEdges,
+    this.nodes = const <_GNode>[],
+    this.edges = const <List<String>>[],
     this.initialSelectedId,
     this.onMerge,
     this.edgeAssertions = const {},
@@ -1450,19 +1379,33 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                   ),
                   ),
                 ),
-                // hint (fixed)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 108,
-                  child: IgnorePointer(
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 250),
-                      opacity: _selected == null ? 1 : 0,
-                      child: const Center(child: _GraphHint()),
+                // Neutral empty state when there's no memory graph yet.
+                if (widget.nodes.isEmpty)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Center(
+                        child: Text(
+                          'Your memory graph is empty',
+                          style: GoogleFonts.vazirmatn(
+                              fontSize: 13, color: rd.muted),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                // hint (fixed) — only meaningful when there are nodes to explore
+                if (widget.nodes.isNotEmpty)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 108,
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 250),
+                        opacity: _selected == null ? 1 : 0,
+                        child: const Center(child: _GraphHint()),
+                      ),
+                    ),
+                  ),
                 // zoom control (fixed) — hidden while a node's detail panel is up
                 if (_selected == null)
                   Positioned(
@@ -1819,7 +1762,8 @@ class _DetailPanel extends StatelessWidget {
         decoration: BoxDecoration(
             color: rd.card,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(26))),
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+        padding: EdgeInsets.fromLTRB(
+            18, 12, 18, 20 + MediaQuery.of(ctx).viewPadding.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2184,7 +2128,6 @@ class _BoardViewState extends State<_BoardView> {
   Offset _startFocal = Offset.zero;
 
   int _tool = 0;
-  bool _suggestVisible = true;
 
   /// The board's cards. Seeded from the active board's persisted nodes, or from
   /// the designed sample when the board is empty / unavailable. Mutable so we
@@ -2237,17 +2180,16 @@ class _BoardViewState extends State<_BoardView> {
   /// Builds the initial card/edge state from `widget.board`.
   ///
   /// Fallback policy: when there is **no** active board DTO at all (the boards
-  /// list failed to load, or the backend is unreachable) we show the designed
-  /// sample cards so the board still reads well offline. A real board that
-  /// simply has no nodes yet (e.g. a freshly created board) shows a clean,
-  /// empty canvas rather than the sample. Sample cards are never persisted.
+  /// list failed to load, or the backend is unreachable) we show a clean, empty
+  /// canvas with a neutral empty state rather than any fabricated content. A
+  /// real board that simply has no nodes yet shows the same empty canvas.
   void _hydrateFromBoard() {
     final board = widget.board;
 
     if (board == null) {
-      // Offline / no board — designed sample, display-only.
+      // Offline / no board — empty canvas, nothing persisted.
       _isSample = true;
-      _cards = List<_CardSpec>.from(_boardCards);
+      _cards = <_CardSpec>[];
       _edges = [];
     } else {
       _isSample = false;
@@ -2490,7 +2432,10 @@ class _BoardViewState extends State<_BoardView> {
                 color: rd.card,
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(26))),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 22 +
+                (MediaQuery.of(ctx).viewPadding.bottom -
+                        MediaQuery.of(ctx).viewInsets.bottom)
+                    .clamp(0.0, 64.0)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2574,32 +2519,8 @@ class _BoardViewState extends State<_BoardView> {
     );
   }
 
-  /// Accepts Mira's board suggestion — drops the "Blue Note" event card onto the
-  /// board, dismisses the pill, and persists.
-  void _addSuggestion() {
-    final id = 'n${DateTime.now().millisecondsSinceEpoch}_${_newCardSeq++}';
-    final card = _CardSpec(
-      id: id,
-      kind: _CardKind.note,
-      left: 150,
-      top: 360,
-      rotation: -2,
-      tag: 'Event',
-      title: 'Blue Note',
-      sub: 'Fri, Jul 18 · 8 PM · near the coast',
-    );
-    setState(() {
-      _cards = [..._cards, card];
-      _positions[id] = Offset(card.left, card.top);
-      _suggestVisible = false;
-      _selectedCard = id;
-    });
-    widget.onContext(_boardTitle, _cards.length);
-    _scheduleSave();
-  }
 
-  String get _boardTitle =>
-      _isSample ? 'Coast trip' : (widget.board?.title ?? 'Board');
+  String get _boardTitle => widget.board?.title ?? '';
 
   // ── Persistence ──────────────────────────────────────────────────────────
 
@@ -2642,7 +2563,7 @@ class _BoardViewState extends State<_BoardView> {
       {'a': e.from, 'b': e.to, 'label': e.label};
 
   /// Suggested relation text for a new edge, biased by card content so the
-  /// midpoint pill reads sensibly (e.g. "with Maya", "reminder").
+  /// midpoint pill reads sensibly (e.g. "with someone", "reminder").
   String _relationLabel(String from, String to) {
     final a = _specById(from);
     final b = _specById(to);
@@ -2661,7 +2582,13 @@ class _BoardViewState extends State<_BoardView> {
 
   _CardSpec _specById(String id) => _cards.firstWhere(
         (c) => c.id == id,
-        orElse: () => _boardCards.first,
+        orElse: () => const _CardSpec(
+          id: '',
+          kind: _CardKind.note,
+          left: 0,
+          top: 0,
+          rotation: 0,
+        ),
       );
 
   /// Centre of a card in board coordinates, from its live position + size.
@@ -2723,14 +2650,6 @@ class _BoardViewState extends State<_BoardView> {
                           // midpoint relation-label pills for user edges
                           for (final e in _edges)
                             _relationPill(rd, e),
-                          // The designed "Spring · the coast" frame belongs to
-                          // the sample scene only.
-                          if (_isSample)
-                            Positioned(
-                              left: 150,
-                              top: 250,
-                              child: _Frame(),
-                            ),
                           for (final c in ordered)
                             Positioned(
                               left: _positions[c.id]!.dx,
@@ -2766,6 +2685,19 @@ class _BoardViewState extends State<_BoardView> {
                 ),
               ),
             ),
+            // Neutral empty state when the board has no cards yet.
+            if (_cards.isEmpty)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: Text(
+                      'This board is empty',
+                      style:
+                          GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
+                    ),
+                  ),
+                ),
+              ),
             // right toolbar
             Positioned(
               right: 14,
@@ -2808,17 +2740,6 @@ class _BoardViewState extends State<_BoardView> {
                 right: 14,
                 top: 118,
                 child: _AddBanner(onDone: () => setState(() => _tool = 0)),
-              ),
-            // Mira suggestion (hidden while connecting to keep the flow clear)
-            if (_suggestVisible && !_connectMode)
-              Positioned(
-                left: 14,
-                right: 14,
-                bottom: 168,
-                child: _SuggestPill(
-                  onDismiss: () => setState(() => _suggestVisible = false),
-                  onAdd: _addSuggestion,
-                ),
               ),
           ],
         );
@@ -3188,59 +3109,6 @@ class _BoardEdgePainter extends CustomPainter {
       old.userColor != userColor;
 }
 
-class _Frame extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return SizedBox(
-      width: 360,
-      height: 300,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: rd.peri.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(
-                color: rd.peri.withValues(alpha: 0.28),
-                width: 1.5,
-              ),
-            ),
-          ),
-          Positioned(
-            top: -12,
-            right: 18,
-            child: Container(
-              height: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: rd.peri,
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const RdIcon(RdIcons.pin, size: 12, stroke: '#FFFFFF', strokeWidth: 2),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Spring · the coast',
-                    style: GoogleFonts.vazirmatn(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 enum _CardKind { note, photo, voice, link, sticky, book, person }
 
 class _CardSpec {
@@ -3301,16 +3169,6 @@ class _CardSpec {
     }
   }
 }
-
-const _boardCards = <_CardSpec>[
-  _CardSpec(id: 'coast', kind: _CardKind.note, left: 170, top: 200, rotation: -2, tag: 'Note', title: 'A quiet weekend on the coast', sub: 'Somewhere slow, near the water — spring.'),
-  _CardSpec(id: 'bigsur', kind: _CardKind.photo, left: 360, top: 196, rotation: 2, title: 'Big Sur shoreline'),
-  _CardSpec(id: 'flight', kind: _CardKind.voice, left: 180, top: 400, rotation: -1, tag: 'Voice', title: 'Flight SA 482 · Aug 2', sub: 'Check-in reminder set for Aug 1.'),
-  _CardSpec(id: 'cabin', kind: _CardKind.link, left: 380, top: 392, rotation: 1.5, tag: 'Link', title: 'Cabin by the water', sub: 'Airbnb — saved to compare.'),
-  _CardSpec(id: 'packlist', kind: _CardKind.sticky, left: 190, top: 596, rotation: -2.5, title: 'Pack list'),
-  _CardSpec(id: 'book', kind: _CardKind.book, left: 470, top: 560, rotation: 2, tag: 'Book', title: '“The Overstory”', sub: 'Maya’s rec — a weekend read.'),
-  _CardSpec(id: 'maya', kind: _CardKind.person, left: 560, top: 452, rotation: -1.5, title: 'Maya', sub: 'joining · maybe'),
-];
 
 double _asDouble(Object? v, double fallback) {
   if (v is num) return v.toDouble();
@@ -3546,7 +3404,7 @@ class _BoardCard extends StatelessWidget {
               ),
             ),
             child: Text(
-              'Big Sur · saved photo',
+              spec.sub ?? '',
               style: GoogleFonts.vazirmatn(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -3602,45 +3460,18 @@ class _BoardCard extends StatelessWidget {
               color: const Color(0xFF6A5312),
             ),
           ),
-          _chk('Camera', done: true),
-          _chk('Warm layers'),
-          _chk('The Overstory'),
-        ],
-      ),
-    );
-  }
-
-  Widget _chk(String label, {bool done = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 9),
-      child: Row(
-        children: [
-          Container(
-            width: 15,
-            height: 15,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
-              color: done ? const Color(0xFFC79A2E) : null,
-              border: done
-                  ? null
-                  : Border.all(color: const Color(0x99A08232), width: 1.5),
+          if (spec.sub != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                spec.sub!,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 11.5,
+                  color: const Color(0xFF7A6526),
+                  height: 1.4,
+                ),
+              ),
             ),
-            child: done
-                ? const Center(
-                    child: RdIcon(RdIcons.checkThick,
-                        size: 9, stroke: '#FFFFFF', strokeWidth: 3.4),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: GoogleFonts.vazirmatn(
-              fontSize: 12,
-              color: const Color(0xFF7A6526),
-              decoration: done ? TextDecoration.lineThrough : null,
-            ),
-          ),
         ],
       ),
     );
@@ -3666,7 +3497,7 @@ class _BoardCard extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                'M',
+                spec.title.isNotEmpty ? spec.title[0].toUpperCase() : '?',
                 style: GoogleFonts.dosis(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
@@ -3688,11 +3519,13 @@ class _BoardCard extends StatelessWidget {
                   color: rd.ink,
                 ),
               ),
-              const SizedBox(height: 1),
-              Text(
-                spec.sub!,
-                style: GoogleFonts.vazirmatn(fontSize: 11, color: rd.muted),
-              ),
+              if (spec.sub != null) ...[
+                const SizedBox(height: 1),
+                Text(
+                  spec.sub!,
+                  style: GoogleFonts.vazirmatn(fontSize: 11, color: rd.muted),
+                ),
+              ],
             ],
           ),
         ],
@@ -3822,107 +3655,3 @@ class _ZoomChip extends StatelessWidget {
   }
 }
 
-class _SuggestPill extends StatelessWidget {
-  const _SuggestPill({required this.onDismiss, required this.onAdd});
-
-  final VoidCallback onDismiss;
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141628).withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF141628).withValues(alpha: 0.55),
-            blurRadius: 40,
-            spreadRadius: -16,
-            offset: const Offset(0, 18),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                center: Alignment(-0.28, -0.4),
-                colors: [Color(0xFFAEB9E8), Color(0xFF6472B6)],
-              ),
-            ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Blue Note',
-                    style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w600),
-                  ),
-                  const TextSpan(
-                    text: ' plays near the coast that same weekend. Add it to this board?',
-                  ),
-                ],
-                style: GoogleFonts.vazirmatn(
-                  fontSize: 12.5,
-                  height: 1.4,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: onAdd,
-            behavior: HitTestBehavior.opaque,
-            child: Container(
-              height: 30,
-              padding: const EdgeInsets.symmetric(horizontal: 13),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: Text(
-                'Add',
-                style: GoogleFonts.vazirmatn(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: rd.navy,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onDismiss,
-            child: Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.12),
-              ),
-              child: Center(
-                child: RdIcon(
-                  RdIcons.close,
-                  size: 13,
-                  stroke: '#FFFFFF',
-                  strokeWidth: 2.4,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

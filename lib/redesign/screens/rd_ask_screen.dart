@@ -34,10 +34,10 @@ class _RdAskScreenState extends State<RdAskScreen> {
   static const _arrowRight = '<path d="M5 12h13M13 6l6 6-6 6"/>';
 
   static const _suggestions = [
-    'What did I decide about the coast trip?',
-    "What's still open with John?",
-    'Who recommended The Overstory?',
-    'When is the Blue Note show?',
+    'What did I save recently?',
+    'What should I follow up on?',
+    'Summarise this week',
+    'Find a note by topic',
   ];
 
   final _controller = TextEditingController();

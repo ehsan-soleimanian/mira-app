@@ -65,10 +65,10 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     _SnoozeOption('wk', l10n.rdSnoozeNextWeek, l10n.rdSnoozeNextWeek),
   ];
 
-  String _name = 'Sara';
-  List<RdRecent> _recents = _sampleRecents;
+  String _name = '';
+  List<RdRecent> _recents = const [];
   List<Reminder> _waiting = const [];
-  bool _useSampleWaiting = true;
+  bool _useSampleWaiting = false;
   String? _pickingId;
   ({String id, String label, DateTime? previousRemindAt})? _snoozed;
   Timer? _snoozeHideTimer;
@@ -83,9 +83,16 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (widget.live && !_loaded) {
-      _loaded = true;
+    if (_loaded) return;
+    _loaded = true;
+    if (widget.live) {
       _load();
+    } else {
+      // Tour / preview mode (setup wizard): show the illustrative sample
+      // home behind the coach-marks; the live app never uses these.
+      _name = 'Sara';
+      _recents = _sampleRecents;
+      _waiting = _sampleWaiting;
     }
   }
 
@@ -100,7 +107,7 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     try {
       final update = await services.dailyBriefRepository.fetchDailyUpdate();
       final items = update.items.take(6).map(_toRecent).toList();
-      if (mounted && items.isNotEmpty) setState(() => _recents = items);
+      if (mounted) setState(() => _recents = items);
     } catch (_) {}
 
     try {
@@ -116,8 +123,8 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     } catch (_) {
       if (mounted) {
         setState(() {
-          _waiting = _sampleWaiting;
-          _useSampleWaiting = true;
+          _waiting = const [];
+          _useSampleWaiting = false;
         });
       }
     }
@@ -515,6 +522,9 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
             ],
           ),
           const SizedBox(height: 8),
+          if (_recents.isEmpty)
+            Expanded(child: _recentsEmpty())
+          else
           Expanded(
             child: Stack(
               children: [
@@ -558,6 +568,21 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _recentsEmpty() {
+    final rd = context.rd;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 40),
+        child: Text(
+          'Your recent memories will appear here.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.vazirmatn(
+              fontSize: 13.5, height: 1.5, color: rd.faint),
+        ),
       ),
     );
   }

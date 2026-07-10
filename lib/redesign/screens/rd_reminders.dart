@@ -37,8 +37,8 @@ class RdRemindersScreen extends StatefulWidget {
 }
 
 class _RdRemindersScreenState extends State<RdRemindersScreen> {
-  /// Live reminders from the backend; null until the first load. Falls back to
-  /// the sample set when the backend is unreachable.
+  /// Live reminders from the backend; null until the first load. Renders an
+  /// empty state when the list is empty or the backend is unreachable.
   List<Reminder>? _items;
   bool _loaded = false;
 
@@ -58,12 +58,12 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
           await RemindersRepository(apiClient: services.apiClient).list();
       if (mounted) setState(() => _items = items);
     } catch (_) {
-      // Backend unreachable — keep the sample reminders.
+      // Backend unreachable — leave _items null so the empty state renders.
     }
   }
 
-  /// The reminders to render — live set once loaded, sample set until then.
-  List<Reminder> get _source => _items ?? _sample;
+  /// The reminders to render — live set once loaded, empty until then.
+  List<Reminder> get _source => _items ?? const <Reminder>[];
 
   List<Reminder> get _open =>
       _source.where((r) => !r.done).toList()..sort(_byRemindAt);
@@ -480,35 +480,6 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     );
   }
 
-  // Sample reminders — shown until the real list loads, or if it can't. Times
-  // are anchored to "now" so the relative labels stay sensible.
-  static List<Reminder> get _sample {
-    final now = DateTime.now();
-    Reminder make(
-      String id,
-      String title,
-      bool done, {
-      Duration? offset,
-    }) =>
-        Reminder(
-          id: id,
-          title: title,
-          done: done,
-          remindAt: offset == null ? null : now.add(offset),
-          createdAt: now.subtract(const Duration(days: 1)),
-          updatedAt: now.subtract(const Duration(days: 1)),
-        );
-
-    return [
-      make('s0', 'Call John to confirm the contract terms', false,
-          offset: const Duration(hours: 3)),
-      make('s1', 'Book the coast trip before prices rise', false,
-          offset: const Duration(days: 2)),
-      make('s2', 'Reply to Maya about the book recommendation', false),
-      make('s3', 'Renew the parking permit', true,
-          offset: const Duration(days: -1)),
-    ];
-  }
 }
 
 /// A single reminder card — title, a relative time from `remindAt` when present,
@@ -845,14 +816,16 @@ class _ComposeSheetState extends State<_ComposeSheet> {
   Widget build(BuildContext context) {
     final rd = context.rd;
     final canSet = _title.text.trim().isNotEmpty;
+    final mq = MediaQuery.of(context);
+    final navGap = (mq.viewPadding.bottom - mq.viewInsets.bottom).clamp(0.0, 64.0);
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: mq.viewInsets.bottom),
       child: Container(
         decoration: BoxDecoration(
           color: rd.card,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
         ),
-        padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
+        padding: EdgeInsets.fromLTRB(22, 12, 22, 22 + navGap),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,

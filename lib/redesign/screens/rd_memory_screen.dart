@@ -86,31 +86,22 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   double _speed = 1;
   Timer? _tick;
 
-  late String _title = widget.title ?? (widget.isVoice ? _voiceTitle : _noteTitle);
-  late String _body = widget.body ?? (widget.isVoice ? _voiceBody : _noteBody);
+  late String _title = widget.title ?? 'Untitled memory';
+  late String _body = widget.body ?? '';
   late final TextEditingController _titleCtl = TextEditingController();
   late final TextEditingController _bodyCtl = TextEditingController();
   final FocusNode _bodyFocus = FocusNode();
-  final Set<int> _fixed = {};
 
   // Real data pulled from `GET /v2/captures/{id}` when [widget.id] is a graph
-  // capture. Each stays null until a successful, non-empty fetch — the getters
-  // below fall back to the sample content whenever a field is null, so the
-  // screen still reads well offline or when the id is a library item (404).
+  // capture. Each stays null until a successful, non-empty fetch. When a field
+  // is null (offline, or the id is a library item that 404s) its section is
+  // simply hidden — the screen never shows fabricated content.
   String? _realInsight;
   List<_MemLink>? _realLinks;
   List<_Person>? _realPeople;
   List<String>? _realTags;
 
-  List<_MemLink> get _links =>
-      _realLinks ?? (widget.isVoice ? _voiceLinks : _noteLinks);
-
-  static const _noteTitle = 'Contract with John';
-  static const _noteBody =
-      'Needs a call to confirm the terms before Friday. The signed copy is in the folder from last week’s meeting — John wants the partnership scope narrowed to Q3 first.';
-  static const _voiceTitle = 'Idea for the Q3 launch';
-  static const _voiceBody =
-      'So the thought is — we lead the Q3 launch with the onboarding story, not the feature list. People connect with the calm, not the checklist. Let’s ask design for a quiet hero and pull the three testimonials from last quarter. Circle back with Priya on timing.';
+  List<_MemLink> get _links => _realLinks ?? const [];
 
   static const _wave = [
     .28, .42, .6, .35, .5, .78, .55, .4, .66, .9, .62, .44, .3, .52, .72, .85,
@@ -229,8 +220,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     return 'note';
   }
 
-  /// Turns an entity name into a lowercase single-word hashtag ("Q3 launch" →
-  /// "#q3"). Returns empty when nothing usable remains.
+  /// Turns an entity name into a lowercase single-word hashtag ("Weekly review"
+  /// → "#weekly"). Returns empty when nothing usable remains.
   String _hashTag(String name) {
     final word = name
         .trim()
@@ -365,7 +356,6 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   void _startEdit() {
     _titleCtl.text = _title;
     _bodyCtl.text = _body;
-    _fixed.clear();
     setState(() {
       _playing = false;
       _editing = true;
@@ -604,12 +594,18 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       const SizedBox(height: 14),
       _editing ? _bodyInput() : _capture(),
       const SizedBox(height: 22),
-      _insight(),
-      const SizedBox(height: 26),
-      _connections(),
-      const SizedBox(height: 26),
-      _peopleTags(),
-      const SizedBox(height: 26),
+      if (_realInsight != null) ...[
+        _insight(),
+        const SizedBox(height: 26),
+      ],
+      if (_links.isNotEmpty) ...[
+        _connections(),
+        const SizedBox(height: 26),
+      ],
+      if ((_realPeople?.isNotEmpty ?? false) || (_realTags?.isNotEmpty ?? false)) ...[
+        _peopleTags(),
+        const SizedBox(height: 26),
+      ],
       _source(),
     ];
   }
@@ -692,7 +688,6 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.isVoice) _flags(),
         TextField(
           controller: _bodyCtl,
           focusNode: _bodyFocus,
@@ -711,65 +706,6 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  /// Tapping a flagged word focuses the transcript and selects that word (if
-  /// present) so it can be corrected, then marks it checked.
-  void _jumpToWord(int i, String word) {
-    setState(() => _fixed.add(i));
-    _bodyFocus.requestFocus();
-    final text = _bodyCtl.text;
-    final idx = text.toLowerCase().indexOf(word.toLowerCase());
-    if (idx != -1) {
-      _bodyCtl.selection =
-          TextSelection(baseOffset: idx, extentOffset: idx + word.length);
-    }
-  }
-
-  Widget _flags() {
-    const words = ['testimonials', 'Priya'];
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const RdIcon('<path d="M10.3 3.3 1.8 18a1 1 0 0 0 .87 1.5h18.66a1 1 0 0 0 .87-1.5L13.7 3.3a1 1 0 0 0-1.74 0Z"/><path d="M12 9v4M12 17h0"/>', size: 14, stroke: '#C58E3F', strokeWidth: 1.8),
-              const SizedBox(width: 7),
-              Text(
-                _fixed.length >= words.length
-                    ? 'All checked — thanks'
-                    : '${words.length - _fixed.length} word${words.length - _fixed.length == 1 ? '' : 's'} Mira wasn’t sure of',
-                style: GoogleFonts.vazirmatn(fontSize: 12, color: const Color(0xFF8A6D2F)),
-              ),
-            ],
-          ),
-          for (var i = 0; i < words.length; i++)
-            GestureDetector(
-              onTap: () => _jumpToWord(i, words[i]),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _fixed.contains(i) ? const Color(0xFFE7F3EC) : const Color(0xFFFBF3E4),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  words[i],
-                  style: GoogleFonts.vazirmatn(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: _fixed.contains(i) ? const Color(0xFF1F8A5B) : const Color(0xFF8A6D2F),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
     );
   }
 
@@ -906,10 +842,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           ),
           const SizedBox(height: 11),
           Text(
-            _realInsight ??
-                (widget.isVoice
-                    ? 'You were thinking out loud about the launch. I pulled out three actions — brief design, gather testimonials, check timing with Priya — and linked them to your Q3 plan.'
-                    : 'This looks time-sensitive. I linked it to your meeting with John and the signed contract photo, and set a gentle reminder so it doesn’t slip.'),
+            _realInsight ?? '',
             style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.55, color: const Color(0xFF46485A)),
           ),
           const SizedBox(height: 14),
@@ -931,7 +864,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.isVoice ? '3 actions · added to your list' : 'Reminder · Thursday morning',
+                        Text('Reminder',
                             style: GoogleFonts.vazirmatn(fontSize: 13.5, fontWeight: FontWeight.w600, color: _ink)),
                         const SizedBox(height: 2),
                         Text(
@@ -985,12 +918,10 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   }
 
   Widget _peopleTags() {
-    // Prefer people/tags pulled from the graph; fall back to the sample pair
-    // when the fetch found none (or the id wasn't a graph capture).
-    final people = _realPeople ??
-        [widget.isVoice ? const _Person('P', 'Priya Shah') : const _Person('J', 'John Avery')];
-    final tags = _realTags ??
-        (widget.isVoice ? const ['#q3', '#launch', '#idea'] : const ['#contract', '#partnership', '#q3']);
+    // People/tags come only from the graph; nothing fabricated. This section is
+    // only rendered when at least one of them is present.
+    final people = _realPeople ?? const <_Person>[];
+    final tags = _realTags ?? const <String>[];
     final rd = context.rd;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1507,17 +1438,6 @@ class _MemLink {
   /// that memory. Null for the sample links, which fall back to opening chat.
   final String? id;
 }
-
-const _noteLinks = [
-  _MemLink('event', 'Meeting with John', 'Last Thursday · where this came up', 'Discussed here'),
-  _MemLink('photo', 'Signed contract — page 1', 'Photo · read by Mira', 'Attached'),
-  _MemLink('note', 'Q3 partnership terms', 'Note · 3 days ago', 'Related topic'),
-];
-const _voiceLinks = [
-  _MemLink('event', 'Q3 launch planning', 'Next Tuesday · on your calendar', 'Related event'),
-  _MemLink('note', 'Onboarding story draft', 'Note · last week', 'Builds on'),
-  _MemLink('voice', 'Priya — timing thoughts', 'Voice · 5 days ago', 'Same topic'),
-];
 
 ({Color bg, String stroke, String icon}) _linkStyle(String type) {
   switch (type) {

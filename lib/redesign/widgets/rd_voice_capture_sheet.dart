@@ -86,7 +86,8 @@ class _RdVoiceCaptureSheetState extends State<RdVoiceCaptureSheet> {
         color: rd.card,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 30),
+      padding: EdgeInsets.fromLTRB(
+          24, 14, 24, 30 + MediaQuery.of(context).viewPadding.bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
