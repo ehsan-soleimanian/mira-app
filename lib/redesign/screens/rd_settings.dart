@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/core/membership.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 
 import '../theme/rd_colors.dart';
@@ -60,6 +61,7 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
   }
 
   Future<void> _load() async {
+    unawaited(Membership.ensureLoaded()); // drives the Plan row (Free vs Plus)
     try {
       final user = await AppScope.servicesOf(context).authRepository.fetchMe();
       if (mounted) setState(() => _user = user);
@@ -155,17 +157,25 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
             const _AcRow(icon: '<rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/>', title: 'Change password'),
           ],
         ),
-        _AcSection(
-          label: 'Plan',
-          rows: [
-            _AcRow(
-              icon: '<path d="M3 8l4 3 5-6 5 6 4-3-2 11H5L3 8Z"/>',
-              title: 'Mira Plus',
-              sub: 'Renews Aug 12 · \$8 / month',
-              value: 'Manage',
-              onTap: () => widget.go('paywall'),
-            ),
-          ],
+        // Plan row reflects real (client-side) membership: Free users see an
+        // Upgrade prompt, Plus members see Manage — kept in sync with the
+        // paywall via the shared [Membership] flag.
+        ValueListenableBuilder<bool>(
+          valueListenable: Membership.isPlus,
+          builder: (_, isPlus, _) => _AcSection(
+            label: 'Plan',
+            rows: [
+              _AcRow(
+                icon: '<path d="M3 8l4 3 5-6 5 6 4-3-2 11H5L3 8Z"/>',
+                title: isPlus ? 'Mira Plus' : 'Mira Free',
+                sub: isPlus
+                    ? 'Active · \$8 / month'
+                    : '34 of 2,000 memories used',
+                value: isPlus ? 'Manage' : 'Upgrade',
+                onTap: () => widget.go('paywall'),
+              ),
+            ],
+          ),
         ),
         _AcSection(
           label: 'Preferences',

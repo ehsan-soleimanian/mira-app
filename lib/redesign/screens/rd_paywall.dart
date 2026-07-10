@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mira_app/core/membership.dart';
+
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
@@ -41,6 +43,33 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
   /// The "coming soon" stub every purchase affordance resolves to — makes it
   /// unmistakable this is a placeholder, never a real checkout.
   static const _stubMsg = 'Plus is coming soon — we’ll let you know.';
+
+  @override
+  void initState() {
+    super.initState();
+    _member = Membership.isPlus.value;
+    Membership.ensureLoaded().then((_) {
+      if (mounted) setState(() => _member = Membership.isPlus.value);
+    });
+  }
+
+  /// Start Plus — flips the shared, persisted membership flag so the Account
+  /// plan row updates in lockstep. No real checkout (no billing backend yet).
+  Future<void> _subscribe() async {
+    await Membership.setPlus(true);
+    if (mounted) {
+      setState(() => _member = true);
+      _toast('Welcome to Mira Plus ✨');
+    }
+  }
+
+  Future<void> _cancelPlus() async {
+    await Membership.setPlus(false);
+    if (mounted) {
+      setState(() => _member = false);
+      _toast('Your Plus membership was cancelled.');
+    }
+  }
 
   void _toast(String message) {
     if (!mounted) return;
@@ -213,8 +242,9 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     return _PrimaryButton(
       label: 'Try Plus free for 14 days',
       height: 54,
-      // No-billing stub — never opens a checkout.
-      onTap: () => _toast(_stubMsg),
+      // No real checkout (no billing backend); flips the shared Plus flag so
+      // the member view + Account plan row update.
+      onTap: _subscribe,
     );
   }
 
@@ -475,8 +505,8 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
   Widget _cancel() {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      // No-billing stub — a real build would confirm + call the store here.
-      onTap: () => _toast(_stubMsg),
+      // No real store call; flips the shared Plus flag back to Free.
+      onTap: _cancelPlus,
       child: Container(
         height: 48,
         alignment: Alignment.center,
