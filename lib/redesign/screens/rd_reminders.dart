@@ -81,6 +81,53 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     return at.compareTo(bt);
   }
 
+  DateTime get _startOfTomorrow {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day + 1);
+  }
+
+  // Open reminders partitioned for display. Overdue = past-due; Today = due
+  // before midnight; Upcoming = later; Waiting = no time (person/"right
+  // moment" reminders, which also surface in Home's waiting section).
+  List<Reminder> get _overdue => _open
+      .where((r) => r.remindAt != null && r.remindAt!.isBefore(DateTime.now()))
+      .toList();
+
+  List<Reminder> get _today {
+    final now = DateTime.now();
+    final end = _startOfTomorrow;
+    return _open
+        .where((r) =>
+            r.remindAt != null &&
+            !r.remindAt!.isBefore(now) &&
+            r.remindAt!.isBefore(end))
+        .toList();
+  }
+
+  List<Reminder> get _upcoming {
+    final end = _startOfTomorrow;
+    return _open
+        .where((r) => r.remindAt != null && !r.remindAt!.isBefore(end))
+        .toList();
+  }
+
+  List<Reminder> get _waiting => _open.where((r) => r.remindAt == null).toList();
+
+  /// Builds a titled group of open reminders (empty groups render nothing).
+  List<Widget> _openSection(String label, List<Reminder> items) {
+    if (items.isEmpty) return const [];
+    return [
+      _sectionLabel(label),
+      for (final r in items)
+        _ReminderCard(
+          reminder: r,
+          onDone: () => _markDone(r),
+          onSnooze: () => _snooze(r),
+          onDelete: () => _delete(r),
+        ),
+    ];
+  }
+
   void _toast(String message) {
     if (!mounted) return;
     final rd = context.rd;
@@ -139,6 +186,45 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     }
   }
 
+  /// Opens the compose sheet; on "Set reminder" it creates the reminder.
+  Future<void> _openCompose() async {
+    final result = await showModalBottomSheet<(String, DateTime?)>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _ComposeSheet(),
+    );
+    if (result == null || !mounted) return;
+    await _create(result.$1, result.$2);
+  }
+
+  /// Creates a reminder optimistically (prepended), then reconciles with the
+  /// row the backend returns.
+  Future<void> _create(String title, DateTime? remindAt) async {
+    final now = DateTime.now();
+    final temp = Reminder(
+      id: 'tmp-${now.microsecondsSinceEpoch}',
+      title: title,
+      done: false,
+      remindAt: remindAt,
+      createdAt: now,
+      updatedAt: now,
+    );
+    setState(() => _items = [temp, ..._source]);
+    _toast('Reminder set');
+    try {
+      final services = AppScope.servicesOf(context);
+      final created = await RemindersRepository(apiClient: services.apiClient)
+          .create(title: title, remindAt: remindAt);
+      if (mounted) {
+        setState(() => _items =
+            _source.map((x) => x.id == temp.id ? created : x).toList());
+      }
+    } catch (_) {
+      // Keep the optimistic row — the reminder still reads locally.
+    }
+  }
+
   /// Replace a reminder in the working set with a copy carrying the given
   /// changes (used for optimistic done / snooze updates).
   void _replace(Reminder r, {bool? done, DateTime? remindAt}) {
@@ -178,16 +264,10 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
               if (empty)
                 _emptyState()
               else ...[
-                if (open.isNotEmpty) ...[
-                  _sectionLabel('Upcoming'),
-                  for (final r in open)
-                    _ReminderCard(
-                      reminder: r,
-                      onDone: () => _markDone(r),
-                      onSnooze: () => _snooze(r),
-                      onDelete: () => _delete(r),
-                    ),
-                ],
+                ..._openSection('Overdue', _overdue),
+                ..._openSection('Today', _today),
+                ..._openSection('Upcoming', _upcoming),
+                ..._openSection('When the moment’s right', _waiting),
                 if (done.isNotEmpty) ...[
                   _sectionLabel('Done'),
                   for (final r in done)
@@ -232,29 +312,52 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
   Widget _heading(int openCount) {
     final rd = context.rd;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(26, 12, 20, 0),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Reminders',
-            style: GoogleFonts.dosis(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              color: rd.ink,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reminders',
+                  style: GoogleFonts.dosis(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  openCount == 0
+                      ? 'Nothing waiting on you'
+                      : openCount == 1
+                          ? '1 thing Mira is holding for you'
+                          : '$openCount things Mira is holding for you',
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 14,
+                    height: 1.5,
+                    color: rd.muted,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            openCount == 0
-                ? 'Nothing waiting on you'
-                : openCount == 1
-                    ? '1 thing Mira is holding for you'
-                    : '$openCount things Mira is holding for you',
-            style: GoogleFonts.vazirmatn(
-              fontSize: 14,
-              height: 1.5,
-              color: rd.muted,
+          // Add a reminder — opens the compose sheet.
+          GestureDetector(
+            onTap: _openCompose,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: rd.navy,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Center(
+                child: RdIcon('<path d="M12 5v14M5 12h14"/>',
+                    size: 22, stroke: '#FFFFFF', strokeWidth: 2.1),
+              ),
             ),
           ),
         ],
@@ -567,3 +670,200 @@ class _CardAction extends StatelessWidget {
 
 /// Danger red for the overdue chip — fixed across themes (never a text tone).
 const _danger = Color(0xFFC0392B);
+
+/// When a new reminder should fire. `someday` maps to a null `remindAt`
+/// (a "when the moment's right" reminder, mirrored in Home's waiting section).
+enum _When { laterToday, thisEvening, tomorrow, nextWeek, someday, custom }
+
+/// Compose sheet for creating a reminder — a title plus a "when" choice, wired
+/// by the caller to `RemindersRepository.create`. Pops `(title, remindAt?)` on
+/// "Set reminder", or null on dismiss.
+class _ComposeSheet extends StatefulWidget {
+  const _ComposeSheet();
+
+  @override
+  State<_ComposeSheet> createState() => _ComposeSheetState();
+}
+
+class _ComposeSheetState extends State<_ComposeSheet> {
+  final _title = TextEditingController();
+  _When _when = _When.laterToday;
+  DateTime? _custom;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    super.dispose();
+  }
+
+  DateTime? _resolve() {
+    final now = DateTime.now();
+    switch (_when) {
+      case _When.laterToday:
+        return now.add(const Duration(hours: 3));
+      case _When.thisEvening:
+        final eve = DateTime(now.year, now.month, now.day, 18);
+        return eve.isAfter(now) ? eve : eve.add(const Duration(days: 1));
+      case _When.tomorrow:
+        return DateTime(now.year, now.month, now.day + 1, 9);
+      case _When.nextWeek:
+        return DateTime(now.year, now.month, now.day + 7, 9);
+      case _When.someday:
+        return null;
+      case _When.custom:
+        return _custom;
+    }
+  }
+
+  Future<void> _pickCustom() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(days: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365 * 3)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
+    );
+    if (!mounted) return;
+    final t = time ?? const TimeOfDay(hour: 9, minute: 0);
+    setState(() {
+      _custom = DateTime(date.year, date.month, date.day, t.hour, t.minute);
+      _when = _When.custom;
+    });
+  }
+
+  String _customLabel() {
+    final c = _custom;
+    if (c == null) return 'Pick date & time';
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${two(c.month)}/${two(c.day)} · ${two(c.hour)}:${two(c.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    final canSet = _title.text.trim().isNotEmpty;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        ),
+        padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                    color: rd.line, borderRadius: BorderRadius.circular(100)),
+              ),
+            ),
+            Text('New reminder',
+                style: GoogleFonts.dosis(
+                    fontSize: 20, fontWeight: FontWeight.w700, color: rd.ink)),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _title,
+              autofocus: true,
+              onChanged: (_) => setState(() {}),
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.done,
+              style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
+              decoration: InputDecoration(
+                hintText: 'Remind me to…',
+                hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
+                filled: true,
+                fillColor: rd.bg,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: rd.line, width: 1)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: rd.navy, width: 1.4)),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text('WHEN',
+                style: GoogleFonts.vazirmatn(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                    color: rd.faint)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _chip('Later today', _when == _When.laterToday,
+                    () => setState(() => _when = _When.laterToday)),
+                _chip('This evening', _when == _When.thisEvening,
+                    () => setState(() => _when = _When.thisEvening)),
+                _chip('Tomorrow', _when == _When.tomorrow,
+                    () => setState(() => _when = _When.tomorrow)),
+                _chip('Next week', _when == _When.nextWeek,
+                    () => setState(() => _when = _When.nextWeek)),
+                _chip('When the moment’s right', _when == _When.someday,
+                    () => setState(() => _when = _When.someday)),
+                _chip(_customLabel(), _when == _When.custom, _pickCustom),
+              ],
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: canSet
+                  ? () =>
+                      Navigator.of(context).pop((_title.text.trim(), _resolve()))
+                  : null,
+              child: Opacity(
+                opacity: canSet ? 1 : 0.45,
+                child: Container(
+                  height: 52,
+                  width: double.infinity,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                      color: rd.navy, borderRadius: BorderRadius.circular(14)),
+                  child: Text('Set reminder',
+                      style: GoogleFonts.vazirmatn(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(String label, bool active, VoidCallback onTap) {
+    final rd = context.rd;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: active ? rd.navy : rd.bg,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(color: active ? rd.navy : rd.line, width: 1),
+        ),
+        child: Text(label,
+            style: GoogleFonts.vazirmatn(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: active ? Colors.white : rd.ink)),
+      ),
+    );
+  }
+}
