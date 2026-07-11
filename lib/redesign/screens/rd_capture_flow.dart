@@ -104,6 +104,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   PickedCaptureMedia? _pendingMedia; // held for photo/screenshot confirm
   String? _pendingUrl; // held for link confirm
   String? _pendingTitle;
+  String _linkCrawlState = 'idle'; // idle | ready | metadata_only | failed
+  String? _linkCrawlMethod;
+  bool _savingLink = false;
 
   Timer? _secTimer;
   final List<Timer> _timers = [];
@@ -173,6 +176,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _pendingMedia = null;
       _pendingUrl = null;
       _pendingTitle = null;
+      _linkCrawlState = 'idle';
+      _linkCrawlMethod = null;
+      _savingLink = false;
       _chips = null;
       _typeName = null;
       _typeIcon = null;
@@ -434,10 +440,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
         final media = _pendingMedia;
         if (media != null) unawaited(_persistMedia(services, media));
       case 'link':
-        final url = _pendingUrl;
-        if (url != null) {
-          unawaited(_persistLink(services, url: url, title: _pendingTitle));
+        final captureId = _captureId;
+        if (_realProposal && captureId != null) {
+          unawaited(_confirmLinkMemory(services, captureId));
         }
+        return;
       default:
         final captureId = _captureId;
         if (_realProposal && captureId != null) {
@@ -451,12 +458,34 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     setState(() => _view = 'added');
   }
 
+  Future<void> _confirmLinkMemory(MiraServices services, String captureId) async {
+    if (_savingLink) return;
+    setState(() => _savingLink = true);
+    try {
+      await services.captureRepository.approve(captureId, title: _pendingTitle);
+      await services.memoryStore.load(force: true);
+      if (_remind) await _createReminder(services);
+      if (!mounted) return;
+      setState(() {
+        _savingLink = false;
+        _view = 'added';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _savingLink = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.rdCaptureLinkSaveFailed)),
+      );
+    }
+  }
+
   /// Approve the live capture, promoting the extracted proposal into the graph.
   /// Best-effort: a failure (offline, auth, expired capture) falls back to a
   /// one-shot note write so the capture is still kept.
   Future<void> _approveCapture(MiraServices services, String captureId) async {
     try {
       await services.captureRepository.approve(captureId);
+      await services.memoryStore.load(force: true);
     } catch (_) {
       // The real approve failed after the fact — still keep the memory.
       await _persistNote(services, title: _transcriptTitle, content: _transcript);
@@ -563,9 +592,128 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     setState(() => _view = 'review');
   }
 
-  /// Drives the "Understanding" animation for the non-voice paths (photo /
-  /// screenshot / link), then lands on the review. No text pipeline runs here —
-  /// media/link are persisted on confirm, so the review is a preview + confirm.
+  /// Crawl a link, wait for its real Graph V2 proposal, and only then show review.
+  Future<void> _driveLinkUnderstanding() async {
+    _clearTimers();
+    setState(() {
+      _view = 'proc';
+      _steps = 0;
+      _captureId = null;
+      _proposal = null;
+      _realProposal = false;
+      _pipelineStarted = true;
+      _linkCrawlState = 'idle';
+      _linkCrawlMethod = null;
+    });
+    for (var k = 0; k < 3; k++) {
+      _timers.add(Timer(Duration(milliseconds: 500 + k * 650), () {
+        if (mounted && _view == 'proc') setState(() => _steps = k + 1);
+      }));
+    }
+    final minShown = Future<void>.delayed(
+      const Duration(milliseconds: 500 + 3 * 650 + 500),
+    );
+    final succeeded = await _runLinkPipeline();
+    await minShown;
+    if (!mounted || _view != 'proc') return;
+    setState(() => _view = succeeded ? 'review' : 'link_error');
+  }
+
+  Future<bool> _runLinkPipeline() async {
+    final url = _pendingUrl?.trim() ?? '';
+    if (url.isEmpty) return false;
+    final services = AppScope.servicesOf(context);
+    final metadata = <String, dynamic>{};
+    Map<String, dynamic>? proposalJson;
+    String? captureId;
+
+    void absorb(CaptureResponse capture) {
+      captureId = capture.captureId;
+      metadata.addAll(capture.sourceMetadata);
+      proposalJson ??= capture.proposal;
+    }
+
+    try {
+      final created = await services.captureRepository.createLinkCapture(
+        url: url,
+        title: _pendingTitle,
+      );
+      absorb(created);
+
+      if (proposalJson == null) {
+        try {
+          await for (final event in services.captureRepository
+              .streamCapture(created.captureId)
+              .timeout(const Duration(seconds: 15))) {
+            if (event.event == 'proposal') proposalJson = event.data;
+          }
+        } on TimeoutException {
+          // A fast worker can publish before SSE subscribes; poll below.
+        }
+      }
+
+      for (var attempt = 0; proposalJson == null && attempt < 5; attempt++) {
+        final current = await services.captureRepository.getCapture(created.captureId);
+        absorb(current);
+        if (proposalJson == null) {
+          await Future<void>.delayed(const Duration(milliseconds: 700));
+        }
+      }
+
+      final proposal = proposalJson;
+      if (proposal == null) {
+        if (mounted) setState(() => _captureId = captureId);
+        return false;
+      }
+      final source = proposal['source'];
+      if (source is Map<String, dynamic>) metadata.addAll(source);
+      final display = resolveProposalDisplay(proposal);
+      if (!display.hasContent) return false;
+
+      final scraped = metadata['is_scraped_url'] == true ||
+          metadata['isScrapedUrl'] == true;
+      final method = metadata['link_extraction_method']?.toString();
+      final scrapedTitle = metadata['scraped_title']?.toString().trim() ?? '';
+      if ((_pendingTitle?.trim().isEmpty ?? true) && scrapedTitle.isNotEmpty) {
+        _pendingTitle = scrapedTitle;
+      }
+      if (!mounted) return false;
+      setState(() {
+        _captureId = captureId;
+        _proposal = display;
+        _realProposal = true;
+        _linkCrawlState = scraped ? 'ready' : 'metadata_only';
+        _linkCrawlMethod = method;
+        _connOn
+          ..clear()
+          ..addAll(List<int>.generate(display.relatedLabels.length, (i) => i));
+      });
+      return true;
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _captureId = captureId;
+          _realProposal = false;
+          _linkCrawlState = 'failed';
+        });
+      }
+      return false;
+    }
+  }
+
+  Future<void> _retryLink() async {
+    final captureId = _captureId;
+    if (captureId != null) {
+      try {
+        await AppScope.servicesOf(context).captureRepository.dismiss(captureId);
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    unawaited(_driveLinkUnderstanding());
+  }
+
+  /// Drives the preview-only understanding animation for photo/screenshot.
+  /// Links use `_driveLinkUnderstanding`, which waits for a real crawl/proposal.
   void _startUnderstanding() {
     _clearTimers();
     setState(() {
@@ -601,8 +749,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _kind = 'link';
       _pendingUrl = url;
       _pendingTitle = result?.title;
+      _linkCrawlState = 'idle';
+      _linkCrawlMethod = null;
     });
-    _startUnderstanding();
+    unawaited(_driveLinkUnderstanding());
   }
 
   /// Pick a photo or screenshot from the gallery → Understanding → review →
@@ -625,22 +775,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _pendingMedia = media;
     });
     _startUnderstanding();
-  }
-
-  Future<void> _persistLink(
-    MiraServices services, {
-    required String url,
-    String? title,
-  }) async {
-    try {
-      final item = await services.libraryRepository.importLink(
-        url: url,
-        title: title,
-      );
-      services.memoryStore.upsertLocal(item);
-    } catch (_) {
-      // Best-effort — the capture is still shown as kept.
-    }
   }
 
   Future<void> _persistMedia(
@@ -690,6 +824,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
         return _shotPick();
       case 'link_capture':
         return _linkCapture();
+      case 'link_error':
+        return _linkError();
       case 'proc':
         return _proc();
       case 'review':
@@ -742,9 +878,64 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           _kind = 'link';
           _pendingUrl = url;
           _pendingTitle = title;
+          _linkCrawlState = 'idle';
+          _linkCrawlMethod = null;
         });
-        _startUnderstanding();
+        unawaited(_driveLinkUnderstanding());
       },
+    );
+  }
+
+  Widget _linkError() {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      children: [
+        _reviewTop(l10n.rdCaptureCancel, () => widget.go('home')),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(color: rd.periSoft, shape: BoxShape.circle),
+                    child: Center(child: RdIcon(RdIcons.linkChain, size: 28, color: rd.peri)),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    l10n.rdCaptureLinkFailedTitle,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dosis(fontSize: 25, fontWeight: FontWeight.w700, color: rd.ink),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    l10n.rdCaptureLinkFailedBody,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.55, color: rd.muted),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: _retryLink,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: rd.navy,
+                      minimumSize: const Size(210, 52),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text(
+                      l10n.rdCaptureLinkRetry,
+                      style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1424,6 +1615,46 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     return null;
   }
 
+  Widget _linkCrawlStatus(AppLocalizations l10n) {
+    final rd = context.rd;
+    final ready = _linkCrawlState == 'ready';
+    final label = ready
+        ? l10n.rdCaptureLinkCrawlReady(
+            (_linkCrawlMethod ?? 'reader').replaceAll('_', ' '),
+          )
+        : l10n.rdCaptureLinkMetadataOnly;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: ready ? rd.periSoft : rd.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ready ? rd.peri : rd.line),
+      ),
+      child: Row(
+        children: [
+          RdIcon(
+            ready ? RdIcons.check : RdIcons.linkChain,
+            size: 18,
+            color: ready ? rd.peri : rd.muted,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                height: 1.45,
+                fontWeight: FontWeight.w500,
+                color: ready ? rd.peri : rd.muted,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── review ──────────────────────────────────────────────────────────
   Widget _review() {
     final rd = context.rd;
@@ -1442,6 +1673,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 const SizedBox(height: 12),
                 if (preview != null) ...[
                   preview,
+                  const SizedBox(height: 14),
+                ],
+                if (_kind == 'link') ...[
+                  _linkCrawlStatus(l10n),
                   const SizedBox(height: 14),
                 ],
                 Container(
@@ -1635,17 +1870,23 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           const SizedBox(width: 10),
           Expanded(
             child: GestureDetector(
-              onTap: _addToMemory,
+              onTap: _savingLink ? null : _addToMemory,
               child: Container(
                 height: 52,
                 alignment: Alignment.center,
                 // Fixed navy CTA. Label reflects how many connections/actions
                 // are toggled on (design's "Add · linking N").
                 decoration: BoxDecoration(color: rd.navy, borderRadius: BorderRadius.circular(14)),
-                child: Text(
-                  _linkCount > 0 ? l10n.rdCaptureAddLinking(_linkCount) : l10n.rdCaptureAddToMemory,
-                  style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
-                ),
+                child: _savingLink
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : Text(
+                        _linkCount > 0 ? l10n.rdCaptureAddLinking(_linkCount) : l10n.rdCaptureAddToMemory,
+                        style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
+                      ),
               ),
             ),
           ),

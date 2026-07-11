@@ -31,15 +31,28 @@ class CaptureRepository {
   /// Submit a URL (+ optional note) for Resource-style processing.
   Future<CaptureResponse> createLinkCapture({
     required String url,
+    String? title,
     String? note,
   }) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/link',
       data: {
         'url': url,
+        if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
         if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
         'channel': 'mobile',
       },
+      // Firecrawl may legitimately fall back to a direct reader before the
+      // capture is queued; keep this request above the global 60s ceiling.
+      options: Options(receiveTimeout: const Duration(seconds: 75)),
+    );
+    return CaptureResponse.fromJson(response.data!);
+  }
+
+  /// Fetch the latest durable/transient state when an SSE event was missed.
+  Future<CaptureResponse> getCapture(String captureId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/captures/$captureId',
     );
     return CaptureResponse.fromJson(response.data!);
   }
@@ -320,7 +333,12 @@ class CaptureRepository {
     );
   }
 
-  Future<GraphIngestResponse> approve(String captureId) async {
+  Future<GraphIngestResponse> approve(
+    String captureId, {
+    String? title,
+    String? summary,
+    String? nodeType,
+  }) async {
     if (captureId == CaptureMockData.mockVoiceCaptureResponse().captureId) {
       return const GraphIngestResponse(
         captureId: 'mock-capture',
@@ -328,8 +346,16 @@ class CaptureRepository {
         tasks: ['mock-task-1'],
       );
     }
+    final edits = <String, dynamic>{
+      if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+      if (summary != null && summary.trim().isNotEmpty)
+        'summary': summary.trim(),
+      if (nodeType != null && nodeType.trim().isNotEmpty)
+        'node_type': nodeType.trim(),
+    };
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/$captureId/approve',
+      data: edits.isEmpty ? null : edits,
     );
     return GraphIngestResponse.fromJson(response.data!);
   }

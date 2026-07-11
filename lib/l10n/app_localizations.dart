@@ -2074,6 +2074,48 @@ abstract class AppLocalizations {
   /// **'Mira read the page'**
   String get rdCaptureReadPage;
 
+  /// No description provided for @rdCaptureLinkCrawlReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Page content read with {provider}.'**
+  String rdCaptureLinkCrawlReady(String provider);
+
+  /// No description provided for @rdCaptureLinkMetadataOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'The URL is available, but this page did not expose readable content. Mira will keep it honestly as a link.'**
+  String get rdCaptureLinkMetadataOnly;
+
+  /// No description provided for @rdCaptureLinkFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira couldn\'t read this link'**
+  String get rdCaptureLinkFailedTitle;
+
+  /// No description provided for @rdCaptureLinkFailedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The page may be private, temporarily unavailable, or blocking readers. Nothing has been added to memory yet.'**
+  String get rdCaptureLinkFailedBody;
+
+  /// No description provided for @rdCaptureLinkRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try reading again'**
+  String get rdCaptureLinkRetry;
+
+  /// No description provided for @rdCaptureLinkReadAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Read this link'**
+  String get rdCaptureLinkReadAction;
+
+  /// No description provided for @rdCaptureLinkSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The link is still in review and was not added. Please try again.'**
+  String get rdCaptureLinkSaveFailed;
+
   /// No description provided for @rdCaptureUnderstood.
   ///
   /// In en, this message translates to:

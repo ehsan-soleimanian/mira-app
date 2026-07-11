@@ -31,22 +31,34 @@ class CaptureResponse {
   const CaptureResponse({
     required this.captureId,
     required this.state,
+    this.captureType,
     this.proposal,
     this.answer,
+    this.sourceMetadata = const {},
+    this.createdAt,
   });
 
   factory CaptureResponse.fromJson(Map<String, dynamic> json) =>
       CaptureResponse(
         captureId: json['capture_id'] as String,
         state: json['state'] as String,
+        captureType: json['capture_type'] as String?,
         proposal: json['proposal'] as Map<String, dynamic>?,
         answer: json['answer'] as String?,
+        sourceMetadata:
+            (json['source_metadata'] as Map<String, dynamic>?) ?? const {},
+        createdAt: json['created_at'] == null
+            ? null
+            : DateTime.parse(json['created_at'] as String).toLocal(),
       );
 
   final String captureId;
   final String state;
+  final String? captureType;
   final Map<String, dynamic>? proposal;
   final String? answer;
+  final Map<String, dynamic> sourceMetadata;
+  final DateTime? createdAt;
 }
 
 class MemoryNodeResponse {

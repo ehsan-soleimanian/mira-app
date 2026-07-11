@@ -1090,6 +1090,32 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureReadPage => 'میرا صفحه را خواند';
 
   @override
+  String rdCaptureLinkCrawlReady(String provider) {
+    return 'محتوای صفحه با $provider خوانده شد.';
+  }
+
+  @override
+  String get rdCaptureLinkMetadataOnly =>
+      'آدرس لینک در دسترس است، اما این صفحه متن قابل‌خواندن نداد. میرا آن را صادقانه به‌عنوان لینک نگه می‌دارد.';
+
+  @override
+  String get rdCaptureLinkFailedTitle => 'میرا نتوانست این لینک را بخواند';
+
+  @override
+  String get rdCaptureLinkFailedBody =>
+      'ممکن است صفحه خصوصی، موقتاً خارج از دسترس یا مانع ابزارهای خواندن باشد. هنوز چیزی وارد حافظه نشده است.';
+
+  @override
+  String get rdCaptureLinkRetry => 'دوباره بخوان';
+
+  @override
+  String get rdCaptureLinkReadAction => 'خواندن لینک';
+
+  @override
+  String get rdCaptureLinkSaveFailed =>
+      'لینک هنوز در مرحلهٔ بازبینی است و ذخیره نشد. دوباره تلاش کن.';
+
+  @override
   String get rdCaptureUnderstood => 'میرا فهمید';
 
   @override

@@ -730,12 +730,16 @@ Multipart upload. Image bytes are analyzed via vision (stub metadata or live mod
 ### Create link capture
 `POST /captures/link`
 
-Submit a URL (+ optional note) for Resource-style processing. Page content is not fetched yet; the URL is stored in proposal metadata only.
+Submit a URL (+ optional note) to the transient approval pipeline. The backend
+tries Firecrawl first, falls back to direct readable HTML, and then sends the
+extracted page text through Graph V2. Nothing is stored in Graph or Library
+until `POST /captures/{capture_id}/approve` succeeds.
 
 **Request Body**
 ```json
 {
   "url": "https://example.com/article",
+  "title": "Optional display title",
   "note": "Read later",
   "channel": "mobile"
 }
@@ -744,10 +748,16 @@ Submit a URL (+ optional note) for Resource-style processing. Page content is no
 | Field | Type | Rules |
 |-------|------|-------|
 | `url` | string | required, max 2048 — `https://` added when scheme omitted |
+| `title` | string | optional, max 500; applied to the Library card after approval |
 | `note` | string | optional, max 2000 |
 | `channel` | string | optional, default `mobile` |
 
-**Response** `202` — `capture_type: "link"`, proposal `node_type: "Resource"`.
+**Response** `202` — `capture_type: "link"`. `source_metadata` reports `url`,
+`is_scraped_url`, `link_extraction_method`, `scraped_title`, and an optional
+`link_extraction_error`. The response may already contain a proposal; otherwise
+consume SSE or poll `GET /captures/{capture_id}`. After approval, the same
+capture creates both Graph V2 evidence and a Library link card with crawl
+provenance at top-level metadata.
 
 **Errors**: `401` · `422` (`capture_link` off or empty URL) · `404` · `403`
 

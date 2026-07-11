@@ -1091,6 +1091,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureReadPage => 'Mira read the page';
 
   @override
+  String rdCaptureLinkCrawlReady(String provider) {
+    return 'Page content read with $provider.';
+  }
+
+  @override
+  String get rdCaptureLinkMetadataOnly =>
+      'The URL is available, but this page did not expose readable content. Mira will keep it honestly as a link.';
+
+  @override
+  String get rdCaptureLinkFailedTitle => 'Mira couldn\'t read this link';
+
+  @override
+  String get rdCaptureLinkFailedBody =>
+      'The page may be private, temporarily unavailable, or blocking readers. Nothing has been added to memory yet.';
+
+  @override
+  String get rdCaptureLinkRetry => 'Try reading again';
+
+  @override
+  String get rdCaptureLinkReadAction => 'Read this link';
+
+  @override
+  String get rdCaptureLinkSaveFailed =>
+      'The link is still in review and was not added. Please try again.';
+
+  @override
   String get rdCaptureUnderstood => 'Mira understood this';
 
   @override

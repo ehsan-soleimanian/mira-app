@@ -550,8 +550,6 @@ class RdLinkCaptureView extends StatefulWidget {
 class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
   final _url = TextEditingController();
   bool _focused = false;
-  bool _reading = false;
-  bool _showPreview = false;
 
   @override
   void dispose() {
@@ -559,26 +557,10 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
     super.dispose();
   }
 
-  Future<void> _go() async {
+  void _go() {
     final raw = _url.text.trim();
     if (raw.isEmpty) return;
-    setState(() {
-      _reading = true;
-      _showPreview = false;
-    });
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    setState(() {
-      _reading = false;
-      _showPreview = true;
-    });
-  }
-
-  void _submit() {
-    final raw = _url.text.trim();
-    if (raw.isEmpty) return;
-    final l10n = AppLocalizations.of(context)!;
-    widget.onSubmit(raw, l10n.rdCaptureLinkArticleDefault);
+    widget.onSubmit(raw, null);
   }
 
   @override
@@ -670,107 +652,18 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
             ),
           ),
         ),
-        if (_reading)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(26, 16, 26, 0),
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFF141828).withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(100),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 15,
-                    height: 15,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: rd.navy),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    l10n.rdCaptureLinkReading,
-                    style: GoogleFonts.vazirmatn(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w500,
-                      color: rd.navy,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        if (_showPreview)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(26, 24, 26, 0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: rd.card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: rd.line),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 150,
-                    decoration: const BoxDecoration(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF243056), Color(0xFF121A33)],
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _url.text.replaceFirst(RegExp(r'^https?://'), '').split('/').first,
-                          style: GoogleFonts.vazirmatn(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: rd.muted,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          l10n.rdCaptureLinkArticleDefault,
-                          style: GoogleFonts.dosis(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            color: rd.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          l10n.rdCaptureLinkArticleSub,
-                          style: GoogleFonts.vazirmatn(
-                            fontSize: 13,
-                            height: 1.5,
-                            color: rd.muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
         const Spacer(),
         Padding(
           padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
           child: FilledButton(
-            onPressed: _showPreview ? _submit : null,
+            onPressed: canGo ? _go : null,
             style: FilledButton.styleFrom(
               backgroundColor: rd.navy,
               minimumSize: const Size.fromHeight(54),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
             child: Text(
-              l10n.rdCaptureContinue,
+              l10n.rdCaptureLinkReadAction,
               style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
