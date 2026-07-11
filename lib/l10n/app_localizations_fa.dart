@@ -954,4 +954,348 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get rdPaywallDemoPlus => 'عضو پلاس';
+
+  @override
+  String get rdCaptureListening => 'در حال گوش دادن…';
+
+  @override
+  String get rdCaptureEntryType => 'متن';
+
+  @override
+  String get rdCaptureEntryLink => 'لینک';
+
+  @override
+  String get rdCaptureEntryPhoto => 'عکس';
+
+  @override
+  String get rdCaptureTapWhenFinished => 'وقتی تمام شد ✓ بزن';
+
+  @override
+  String get rdCaptureUnderstanding => 'در حال فهمیدن';
+
+  @override
+  String get rdCaptureStepTranscribe => 'تبدیل گفتارت به متن';
+
+  @override
+  String get rdCaptureStepRecognise => 'شناسایی نوع و جزئیات';
+
+  @override
+  String get rdCaptureStepConnections => 'یافتن ارتباط‌ها در حافظه';
+
+  @override
+  String get rdCaptureSavedLink => 'لینک ذخیره‌شده';
+
+  @override
+  String get rdCaptureKeptPhoto =>
+      'میرا عکست را نگه داشت و وقتی لازم باشد جزئیاتش را می‌خواند.';
+
+  @override
+  String get rdCaptureKeptScreenshot =>
+      'میرا اسکرین‌شات را نگه داشت و وقتی لازم باشد جزئیاتش را می‌خواند.';
+
+  @override
+  String get rdCaptureYourNote => 'یادداشت تو';
+
+  @override
+  String get rdCaptureConnectMemory => 'وصل به خاطرهٔ موجود';
+
+  @override
+  String get rdCaptureRelatedMemory => 'خاطرهٔ مرتبط';
+
+  @override
+  String get rdCaptureSuggestedActions => 'اقدام‌های پیشنهادی';
+
+  @override
+  String get rdCaptureRemindWeekend => 'بعداً بخوان — آخر هفته یادآوری کن';
+
+  @override
+  String get rdCaptureRemindLater => 'بعداً یادآوری کن';
+
+  @override
+  String rdCaptureRemindBefore(String deadline) {
+    return 'قبل از $deadline یادآوری کن';
+  }
+
+  @override
+  String get rdCaptureActionAddTopic => 'افزودن به موضوع';
+
+  @override
+  String get rdCaptureActionAddTopicSub => 'گروه‌بندی با خاطرات مرتبط';
+
+  @override
+  String get rdCaptureActionShare => 'اشتراک‌گذاری';
+
+  @override
+  String get rdCaptureActionShareSub => 'برای کسی که اهمیت دارد بفرست';
+
+  @override
+  String get rdCaptureActionCalendar => 'افزودن به تقویم';
+
+  @override
+  String get rdCaptureActionCalendarSub => 'از جزئیاتی که میرا خواند';
+
+  @override
+  String get rdCaptureActionAddPeople => 'افزودن افراد داخلش';
+
+  @override
+  String get rdCaptureActionAddPeopleSub =>
+      'وصل کردن چهره‌هایی که میرا می‌بیند';
+
+  @override
+  String get rdCaptureChangeType => 'تغییر نوع';
+
+  @override
+  String get rdCaptureFilePrompt => 'میرا این را چطور باید بایگانی کند؟';
+
+  @override
+  String get rdCaptureAddDetail => 'افزودن جزئیات';
+
+  @override
+  String get rdCaptureAddDetailHint => '# برچسب یا جزئیات';
+
+  @override
+  String get rdCaptureReadPhoto => 'میرا عکست را خواند';
+
+  @override
+  String get rdCaptureReadScreenshot => 'میرا اسکرین‌شات را خواند';
+
+  @override
+  String get rdCaptureReadPage => 'میرا صفحه را خواند';
+
+  @override
+  String get rdCaptureUnderstood => 'میرا فهمید';
+
+  @override
+  String get rdCaptureReview => 'بازبینی';
+
+  @override
+  String get rdCaptureCancel => 'لغو';
+
+  @override
+  String get rdCaptureDiscard => 'دور انداختن';
+
+  @override
+  String get rdCaptureDone => 'تمام';
+
+  @override
+  String get rdCaptureKeptTitle => 'در حافظه ماند';
+
+  @override
+  String get rdCaptureKeptSafe =>
+      'ایمن نگه داشته شد. میرا در زمان مناسب برمی‌گرداند.';
+
+  @override
+  String rdCaptureKeptJoined(String details) {
+    return '$details. میرا در زمان مناسب برمی‌گرداند.';
+  }
+
+  @override
+  String get rdCaptureAddToMemory => 'افزودن به حافظه';
+
+  @override
+  String rdCaptureAddLinking(int count) {
+    return 'افزودن · وصل $count';
+  }
+
+  @override
+  String get rdCaptureDetailsExtracted => 'جزئیاتی که میرا استخراج کرد';
+
+  @override
+  String get rdCaptureTypeNote => 'یادداشت';
+
+  @override
+  String get rdCaptureTypeTask => 'کار';
+
+  @override
+  String get rdCaptureTypeEvent => 'رویداد';
+
+  @override
+  String get rdCaptureTypePerson => 'شخص';
+
+  @override
+  String get rdCaptureTypePlace => 'مکان';
+
+  @override
+  String get rdCaptureTypeLink => 'لینک';
+
+  @override
+  String get rdCaptureTypeArticle => 'مقاله';
+
+  @override
+  String get rdCaptureTypeIdea => 'ایده';
+
+  @override
+  String get rdCaptureTypeTravel => 'سفر';
+
+  @override
+  String get rdCaptureTypeSheetTitle => 'نوشتن یادداشت';
+
+  @override
+  String get rdCaptureTypeSheetHint => 'چه چیزی را می‌خواهی به خاطر بسپاری؟';
+
+  @override
+  String get rdCaptureLinkSheetTitle => 'افزودن لینک';
+
+  @override
+  String get rdCaptureLinkTitleOptional => 'عنوان (اختیاری)';
+
+  @override
+  String get rdCaptureUrlHint => 'https://…';
+
+  @override
+  String rdCaptureLinkBadge(String host) {
+    return 'لینک · $host';
+  }
+
+  @override
+  String rdCaptureLinkedMemories(int count) {
+    return 'وصل به $count خاطره';
+  }
+
+  @override
+  String get rdCaptureHasReminder => 'یادآور دارد';
+
+  @override
+  String get rdCapturePhotoFrameHint => 'پوستر، صفحه یا مکان را در کادر بگیر';
+
+  @override
+  String get rdCapturePhotoReading => 'در حال خواندن عکس…';
+
+  @override
+  String get rdCaptureScreenshotReading => 'در حال خواندن اسکرین‌شات…';
+
+  @override
+  String get rdCaptureScreenshotPickTitle => 'یک اسکرین‌شات انتخاب کن';
+
+  @override
+  String get rdCaptureScreenshotPickSub =>
+      'میرا متن و جزئیات را از تصویر می‌خواند';
+
+  @override
+  String get rdCaptureScreenshotUse => 'استفاده از اسکرین‌شات';
+
+  @override
+  String get rdCaptureLinkSaveTitle => 'ذخیرهٔ لینک';
+
+  @override
+  String get rdCaptureLinkSaveSub => 'آدرس را بچسبان — میرا صفحه را می‌خواند';
+
+  @override
+  String get rdCaptureLinkReading => 'در حال خواندن صفحه…';
+
+  @override
+  String get rdCaptureLinkArticleDefault => 'مقاله از لینک';
+
+  @override
+  String get rdCaptureLinkArticleSub =>
+      'میرا متن قابل‌خواندن را استخراج و قابل جستجو نگه می‌دارد.';
+
+  @override
+  String get rdCaptureContinue => 'ادامه';
+
+  @override
+  String get rdOnboardingTagline =>
+      'ذهن دوم. برای وقتی نمی‌خواهی چیزی را فراموش کنی.';
+
+  @override
+  String get rdOnboardingSeeHow => 'ببین چطور کار می‌کند';
+
+  @override
+  String get rdOnboardingAuthInvalidEmail => 'یک ایمیل معتبر وارد کن.';
+
+  @override
+  String get rdOnboardingAuthCodeFailed => 'ارسال کد ممکن نشد. دوباره تلاش کن.';
+
+  @override
+  String get rdOnboardingGoogleFailed => 'ورود با گوگل ناموفق بود.';
+
+  @override
+  String get rdOnboardingAuthTitle => 'ورود یا ثبت‌نام';
+
+  @override
+  String get rdOnboardingEmailHint => 'ایمیلت را وارد کن';
+
+  @override
+  String get rdOnboardingContinue => 'ادامه';
+
+  @override
+  String get rdOnboardingApple => 'ادامه با اپل';
+
+  @override
+  String get rdOnboardingAppleSoon => 'ورود با اپل به‌زودی.';
+
+  @override
+  String get rdOnboardingLegal =>
+      'اگر حساب جدید می‌سازی،\nشرایط و حریم خصوصی اعمال می‌شود.';
+
+  @override
+  String get rdOnboardingInviteRequired =>
+      'برای پیوستن به میرا به کد دعوت نیاز داری.';
+
+  @override
+  String get rdOnboardingInviteHint => 'کد دعوت را وارد کن';
+
+  @override
+  String get rdOnboardingInviteEmpty => 'کد دعوت را وارد کن.';
+
+  @override
+  String get rdOnboardingInviteInvalid => 'این کد دعوت پذیرفته نشد.';
+
+  @override
+  String get rdOnboardingInviteVerifyFailed =>
+      'تأیید کد ممکن نشد. دوباره تلاش کن.';
+
+  @override
+  String get rdOnboardingOtpRequired => 'کدی که ایمیل کردیم را وارد کن.';
+
+  @override
+  String get rdOnboardingOtpMismatch => 'کد مطابقت نداشت. دوباره تلاش کن.';
+
+  @override
+  String get rdOnboardingOtpResent => 'کد جدید فرستادیم.';
+
+  @override
+  String get rdOnboardingOtpResendFailed => 'ارسال مجدد کد ممکن نشد.';
+
+  @override
+  String get rdOnboardingCheckEmail => 'ایمیلت را چک کن';
+
+  @override
+  String get rdOnboardingOtpSent => 'یک کد ۶ رقمی فرستادیم';
+
+  @override
+  String get rdOnboardingOtpResendPrompt => 'کد نرسید؟ ';
+
+  @override
+  String get rdOnboardingResend => 'دوباره بفرست';
+
+  @override
+  String get rdOnboardingEnter => 'ورود';
+
+  @override
+  String get rdOnboardingDetailsTitle => 'مشخصات تو';
+
+  @override
+  String get rdOnboardingDetailsDesc =>
+      'میرا با این نام سلام می‌کند. بعداً در تنظیمات می‌توانی عوضش کنی.';
+
+  @override
+  String get rdOnboardingNameHint => 'نام تو';
+
+  @override
+  String get rdOnboardingRememberTitle =>
+      'چه چیزی را می‌خواهی میرا به خاطر بسپارد؟';
+
+  @override
+  String get rdOnboardingRememberSub =>
+      'هر چیزی که نمی‌خواهی فراموش شود. ایده. کار. لینک. حتی یک حس.';
+
+  @override
+  String get rdOnboardingRememberHint => 'دکمه را بزن و حرف بزن یا بنویس';
+
+  @override
+  String get rdOnboardingNext => 'بعدی';
+
+  @override
+  String get rdOnboardingUnderstoodBrand => 'میرا تو را می‌فهمد';
 }

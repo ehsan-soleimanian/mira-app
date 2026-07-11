@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 
 import '../theme/rd_theme.dart';
 import 'rd_icon.dart';
@@ -47,6 +48,7 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ColoredBox(
       color: const Color(0xFF0D0E12),
       child: Stack(
@@ -145,7 +147,7 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
               right: 0,
               bottom: 176,
               child: Text(
-                'Frame a poster, page, or place',
+                l10n.rdCapturePhotoFrameHint,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
@@ -202,7 +204,7 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
                       ),
                       const SizedBox(width: 9),
                       Text(
-                        'Reading this photo…',
+                        l10n.rdCapturePhotoReading,
                         style: GoogleFonts.vazirmatn(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w500,
@@ -388,20 +390,21 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     if (_scanning) {
-      return const ColoredBox(
-        color: Color(0xFF0D0E12),
+      return ColoredBox(
+        color: const Color(0xFF0D0E12),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 15,
                 height: 15,
                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
               ),
-              SizedBox(height: 12),
-              Text('Reading screenshot…', style: TextStyle(color: Colors.white)),
+              const SizedBox(height: 12),
+              Text(l10n.rdCaptureScreenshotReading, style: const TextStyle(color: Colors.white)),
             ],
           ),
         ),
@@ -427,7 +430,7 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Pick a screenshot',
+                l10n.rdCaptureScreenshotPickTitle,
                 style: GoogleFonts.dosis(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -436,7 +439,7 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
               ),
               const SizedBox(height: 5),
               Text(
-                'Mira reads text and details from your image',
+                l10n.rdCaptureScreenshotPickSub,
                 style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
               ),
             ],
@@ -519,7 +522,7 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
             child: Text(
-              'Use screenshot',
+              l10n.rdCaptureScreenshotUse,
               style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w600),
             ),
           ),
@@ -574,12 +577,14 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
   void _submit() {
     final raw = _url.text.trim();
     if (raw.isEmpty) return;
-    widget.onSubmit(raw, 'Article from link');
+    final l10n = AppLocalizations.of(context)!;
+    widget.onSubmit(raw, l10n.rdCaptureLinkArticleDefault);
   }
 
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     final canGo = _url.text.trim().isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -600,7 +605,7 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Save a link',
+                l10n.rdCaptureLinkSaveTitle,
                 style: GoogleFonts.dosis(
                   fontSize: 26,
                   fontWeight: FontWeight.w700,
@@ -609,7 +614,7 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Paste a URL — Mira reads the page for you',
+                l10n.rdCaptureLinkSaveSub,
                 style: GoogleFonts.vazirmatn(fontSize: 13.5, color: rd.muted),
               ),
             ],
@@ -639,7 +644,7 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
                     onTap: () => setState(() => _focused = true),
                     onTapOutside: (_) => setState(() => _focused = false),
                     decoration: InputDecoration(
-                      hintText: 'https://…',
+                      hintText: l10n.rdCaptureUrlHint,
                       border: InputBorder.none,
                       hintStyle: GoogleFonts.vazirmatn(color: rd.faint, fontSize: 14.5),
                     ),
@@ -684,7 +689,7 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'Reading page…',
+                    l10n.rdCaptureLinkReading,
                     style: GoogleFonts.vazirmatn(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w500,
@@ -731,7 +736,7 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Article from link',
+                          l10n.rdCaptureLinkArticleDefault,
                           style: GoogleFonts.dosis(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
@@ -740,7 +745,7 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Mira will extract the readable text and keep it searchable.',
+                          l10n.rdCaptureLinkArticleSub,
                           style: GoogleFonts.vazirmatn(
                             fontSize: 13,
                             height: 1.5,
@@ -765,7 +770,7 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
             child: Text(
-              'Continue',
+              l10n.rdCaptureContinue,
               style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),

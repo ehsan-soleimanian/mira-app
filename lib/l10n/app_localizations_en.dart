@@ -956,4 +956,353 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdPaywallDemoPlus => 'Plus member';
+
+  @override
+  String get rdCaptureListening => 'Listening…';
+
+  @override
+  String get rdCaptureEntryType => 'Type';
+
+  @override
+  String get rdCaptureEntryLink => 'Link';
+
+  @override
+  String get rdCaptureEntryPhoto => 'Photo';
+
+  @override
+  String get rdCaptureTapWhenFinished => 'Tap ✓ when you\'re finished';
+
+  @override
+  String get rdCaptureUnderstanding => 'Understanding';
+
+  @override
+  String get rdCaptureStepTranscribe => 'Transcribing what you said';
+
+  @override
+  String get rdCaptureStepRecognise => 'Recognising type & details';
+
+  @override
+  String get rdCaptureStepConnections => 'Finding connections in memory';
+
+  @override
+  String get rdCaptureSavedLink => 'Saved link';
+
+  @override
+  String get rdCaptureKeptPhoto =>
+      'Mira kept your photo and will read the details from it when they\'re needed.';
+
+  @override
+  String get rdCaptureKeptScreenshot =>
+      'Mira kept your screenshot and will read the details from it when they\'re needed.';
+
+  @override
+  String get rdCaptureYourNote => 'Your note';
+
+  @override
+  String get rdCaptureConnectMemory => 'Connect to existing memory';
+
+  @override
+  String get rdCaptureRelatedMemory => 'Related memory';
+
+  @override
+  String get rdCaptureSuggestedActions => 'Suggested actions';
+
+  @override
+  String get rdCaptureRemindWeekend => 'Read it later — remind me this weekend';
+
+  @override
+  String get rdCaptureRemindLater => 'Remind me about this later';
+
+  @override
+  String rdCaptureRemindBefore(String deadline) {
+    return 'Remind me before $deadline';
+  }
+
+  @override
+  String get rdCaptureActionAddTopic => 'Add to a topic';
+
+  @override
+  String get rdCaptureActionAddTopicSub => 'Group with related memories';
+
+  @override
+  String get rdCaptureActionShare => 'Share it';
+
+  @override
+  String get rdCaptureActionShareSub => 'Send to someone who\'d care';
+
+  @override
+  String get rdCaptureActionCalendar => 'Add to calendar';
+
+  @override
+  String get rdCaptureActionCalendarSub => 'From the details Mira read';
+
+  @override
+  String get rdCaptureActionAddPeople => 'Add the people in it';
+
+  @override
+  String get rdCaptureActionAddPeopleSub => 'Link the faces Mira sees';
+
+  @override
+  String get rdCaptureChangeType => 'Change type';
+
+  @override
+  String get rdCaptureFilePrompt => 'How should Mira file this memory?';
+
+  @override
+  String get rdCaptureAddDetail => 'Add a detail';
+
+  @override
+  String get rdCaptureAddDetailHint => '# tag or detail';
+
+  @override
+  String get rdCaptureReadPhoto => 'Mira read your photo';
+
+  @override
+  String get rdCaptureReadScreenshot => 'Mira read your screenshot';
+
+  @override
+  String get rdCaptureReadPage => 'Mira read the page';
+
+  @override
+  String get rdCaptureUnderstood => 'Mira understood this';
+
+  @override
+  String get rdCaptureReview => 'Review';
+
+  @override
+  String get rdCaptureCancel => 'Cancel';
+
+  @override
+  String get rdCaptureDiscard => 'Discard';
+
+  @override
+  String get rdCaptureDone => 'Done';
+
+  @override
+  String get rdCaptureKeptTitle => 'Kept in memory';
+
+  @override
+  String get rdCaptureKeptSafe =>
+      'Kept safely. Mira will bring it back at the right time.';
+
+  @override
+  String rdCaptureKeptJoined(String details) {
+    return 'It\'s $details. Mira will bring it back at the right time.';
+  }
+
+  @override
+  String get rdCaptureAddToMemory => 'Add to memory';
+
+  @override
+  String rdCaptureAddLinking(int count) {
+    return 'Add · linking $count';
+  }
+
+  @override
+  String get rdCaptureDetailsExtracted => 'Details Mira extracted';
+
+  @override
+  String get rdCaptureTypeNote => 'Note';
+
+  @override
+  String get rdCaptureTypeTask => 'Task';
+
+  @override
+  String get rdCaptureTypeEvent => 'Event';
+
+  @override
+  String get rdCaptureTypePerson => 'Person';
+
+  @override
+  String get rdCaptureTypePlace => 'Place';
+
+  @override
+  String get rdCaptureTypeLink => 'Link';
+
+  @override
+  String get rdCaptureTypeArticle => 'Article';
+
+  @override
+  String get rdCaptureTypeIdea => 'Idea';
+
+  @override
+  String get rdCaptureTypeTravel => 'Travel';
+
+  @override
+  String get rdCaptureTypeSheetTitle => 'Type a note';
+
+  @override
+  String get rdCaptureTypeSheetHint => 'What do you want to remember?';
+
+  @override
+  String get rdCaptureLinkSheetTitle => 'Add a link';
+
+  @override
+  String get rdCaptureLinkTitleOptional => 'Title (optional)';
+
+  @override
+  String get rdCaptureUrlHint => 'https://…';
+
+  @override
+  String rdCaptureLinkBadge(String host) {
+    return 'Link · $host';
+  }
+
+  @override
+  String rdCaptureLinkedMemories(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count memories',
+      one: '1 memory',
+    );
+    return 'linked to $_temp0';
+  }
+
+  @override
+  String get rdCaptureHasReminder => 'has a reminder';
+
+  @override
+  String get rdCapturePhotoFrameHint => 'Frame a poster, page, or place';
+
+  @override
+  String get rdCapturePhotoReading => 'Reading this photo…';
+
+  @override
+  String get rdCaptureScreenshotReading => 'Reading screenshot…';
+
+  @override
+  String get rdCaptureScreenshotPickTitle => 'Pick a screenshot';
+
+  @override
+  String get rdCaptureScreenshotPickSub =>
+      'Mira reads text and details from your image';
+
+  @override
+  String get rdCaptureScreenshotUse => 'Use screenshot';
+
+  @override
+  String get rdCaptureLinkSaveTitle => 'Save a link';
+
+  @override
+  String get rdCaptureLinkSaveSub =>
+      'Paste a URL — Mira reads the page for you';
+
+  @override
+  String get rdCaptureLinkReading => 'Reading page…';
+
+  @override
+  String get rdCaptureLinkArticleDefault => 'Article from link';
+
+  @override
+  String get rdCaptureLinkArticleSub =>
+      'Mira will extract the readable text and keep it searchable.';
+
+  @override
+  String get rdCaptureContinue => 'Continue';
+
+  @override
+  String get rdOnboardingTagline =>
+      'A second mind. For when you don\'t want to forget anything.';
+
+  @override
+  String get rdOnboardingSeeHow => 'See how it works';
+
+  @override
+  String get rdOnboardingAuthInvalidEmail => 'Enter a valid email address.';
+
+  @override
+  String get rdOnboardingAuthCodeFailed => 'Could not send a code. Try again.';
+
+  @override
+  String get rdOnboardingGoogleFailed => 'Google sign-in failed.';
+
+  @override
+  String get rdOnboardingAuthTitle => 'Login or sign up';
+
+  @override
+  String get rdOnboardingEmailHint => 'Enter your email';
+
+  @override
+  String get rdOnboardingContinue => 'Continue';
+
+  @override
+  String get rdOnboardingApple => 'Continue with Apple';
+
+  @override
+  String get rdOnboardingAppleSoon => 'Apple sign-in is coming soon.';
+
+  @override
+  String get rdOnboardingLegal =>
+      'If you are creating a new account,\nTerms & Conditions and Privacy Policy will apply.';
+
+  @override
+  String get rdOnboardingInviteRequired =>
+      'You need an invite code to join Mira.';
+
+  @override
+  String get rdOnboardingInviteHint => 'Enter your invite code';
+
+  @override
+  String get rdOnboardingInviteEmpty => 'Enter your invite code.';
+
+  @override
+  String get rdOnboardingInviteInvalid => 'That invite code was not accepted.';
+
+  @override
+  String get rdOnboardingInviteVerifyFailed =>
+      'Could not verify the code. Try again.';
+
+  @override
+  String get rdOnboardingOtpRequired => 'Enter the code we emailed you.';
+
+  @override
+  String get rdOnboardingOtpMismatch => 'That code did not match. Try again.';
+
+  @override
+  String get rdOnboardingOtpResent => 'We sent a new code.';
+
+  @override
+  String get rdOnboardingOtpResendFailed => 'Could not resend the code.';
+
+  @override
+  String get rdOnboardingCheckEmail => 'Check your email';
+
+  @override
+  String get rdOnboardingOtpSent => 'We sent you a 6-digit code';
+
+  @override
+  String get rdOnboardingOtpResendPrompt => 'Didn\'t get the code? ';
+
+  @override
+  String get rdOnboardingResend => 'Resend';
+
+  @override
+  String get rdOnboardingEnter => 'Enter';
+
+  @override
+  String get rdOnboardingDetailsTitle => 'Your details';
+
+  @override
+  String get rdOnboardingDetailsDesc =>
+      'This is how Mira will greet you. You can change it later in Settings.';
+
+  @override
+  String get rdOnboardingNameHint => 'Your name';
+
+  @override
+  String get rdOnboardingRememberTitle => 'What do you want Mira to remember?';
+
+  @override
+  String get rdOnboardingRememberSub =>
+      'Anything you don\'t want to forget. An idea. A task. A link. Even a feeling.';
+
+  @override
+  String get rdOnboardingRememberHint => 'Press the button and speak or type';
+
+  @override
+  String get rdOnboardingNext => 'Next';
+
+  @override
+  String get rdOnboardingUnderstoodBrand => 'MIRA understands you';
 }

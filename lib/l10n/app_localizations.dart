@@ -1815,6 +1815,648 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Plus member'**
   String get rdPaywallDemoPlus;
+
+  /// No description provided for @rdCaptureListening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening…'**
+  String get rdCaptureListening;
+
+  /// No description provided for @rdCaptureEntryType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get rdCaptureEntryType;
+
+  /// No description provided for @rdCaptureEntryLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get rdCaptureEntryLink;
+
+  /// No description provided for @rdCaptureEntryPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get rdCaptureEntryPhoto;
+
+  /// No description provided for @rdCaptureTapWhenFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap ✓ when you\'re finished'**
+  String get rdCaptureTapWhenFinished;
+
+  /// No description provided for @rdCaptureUnderstanding.
+  ///
+  /// In en, this message translates to:
+  /// **'Understanding'**
+  String get rdCaptureUnderstanding;
+
+  /// No description provided for @rdCaptureStepTranscribe.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribing what you said'**
+  String get rdCaptureStepTranscribe;
+
+  /// No description provided for @rdCaptureStepRecognise.
+  ///
+  /// In en, this message translates to:
+  /// **'Recognising type & details'**
+  String get rdCaptureStepRecognise;
+
+  /// No description provided for @rdCaptureStepConnections.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding connections in memory'**
+  String get rdCaptureStepConnections;
+
+  /// No description provided for @rdCaptureSavedLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved link'**
+  String get rdCaptureSavedLink;
+
+  /// No description provided for @rdCaptureKeptPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira kept your photo and will read the details from it when they\'re needed.'**
+  String get rdCaptureKeptPhoto;
+
+  /// No description provided for @rdCaptureKeptScreenshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira kept your screenshot and will read the details from it when they\'re needed.'**
+  String get rdCaptureKeptScreenshot;
+
+  /// No description provided for @rdCaptureYourNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Your note'**
+  String get rdCaptureYourNote;
+
+  /// No description provided for @rdCaptureConnectMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to existing memory'**
+  String get rdCaptureConnectMemory;
+
+  /// No description provided for @rdCaptureRelatedMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Related memory'**
+  String get rdCaptureRelatedMemory;
+
+  /// No description provided for @rdCaptureSuggestedActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested actions'**
+  String get rdCaptureSuggestedActions;
+
+  /// No description provided for @rdCaptureRemindWeekend.
+  ///
+  /// In en, this message translates to:
+  /// **'Read it later — remind me this weekend'**
+  String get rdCaptureRemindWeekend;
+
+  /// No description provided for @rdCaptureRemindLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me about this later'**
+  String get rdCaptureRemindLater;
+
+  /// No description provided for @rdCaptureRemindBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me before {deadline}'**
+  String rdCaptureRemindBefore(String deadline);
+
+  /// No description provided for @rdCaptureActionAddTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to a topic'**
+  String get rdCaptureActionAddTopic;
+
+  /// No description provided for @rdCaptureActionAddTopicSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Group with related memories'**
+  String get rdCaptureActionAddTopicSub;
+
+  /// No description provided for @rdCaptureActionShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share it'**
+  String get rdCaptureActionShare;
+
+  /// No description provided for @rdCaptureActionShareSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to someone who\'d care'**
+  String get rdCaptureActionShareSub;
+
+  /// No description provided for @rdCaptureActionCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to calendar'**
+  String get rdCaptureActionCalendar;
+
+  /// No description provided for @rdCaptureActionCalendarSub.
+  ///
+  /// In en, this message translates to:
+  /// **'From the details Mira read'**
+  String get rdCaptureActionCalendarSub;
+
+  /// No description provided for @rdCaptureActionAddPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the people in it'**
+  String get rdCaptureActionAddPeople;
+
+  /// No description provided for @rdCaptureActionAddPeopleSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Link the faces Mira sees'**
+  String get rdCaptureActionAddPeopleSub;
+
+  /// No description provided for @rdCaptureChangeType.
+  ///
+  /// In en, this message translates to:
+  /// **'Change type'**
+  String get rdCaptureChangeType;
+
+  /// No description provided for @rdCaptureFilePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'How should Mira file this memory?'**
+  String get rdCaptureFilePrompt;
+
+  /// No description provided for @rdCaptureAddDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a detail'**
+  String get rdCaptureAddDetail;
+
+  /// No description provided for @rdCaptureAddDetailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'# tag or detail'**
+  String get rdCaptureAddDetailHint;
+
+  /// No description provided for @rdCaptureReadPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira read your photo'**
+  String get rdCaptureReadPhoto;
+
+  /// No description provided for @rdCaptureReadScreenshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira read your screenshot'**
+  String get rdCaptureReadScreenshot;
+
+  /// No description provided for @rdCaptureReadPage.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira read the page'**
+  String get rdCaptureReadPage;
+
+  /// No description provided for @rdCaptureUnderstood.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira understood this'**
+  String get rdCaptureUnderstood;
+
+  /// No description provided for @rdCaptureReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get rdCaptureReview;
+
+  /// No description provided for @rdCaptureCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get rdCaptureCancel;
+
+  /// No description provided for @rdCaptureDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get rdCaptureDiscard;
+
+  /// No description provided for @rdCaptureDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get rdCaptureDone;
+
+  /// No description provided for @rdCaptureKeptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept in memory'**
+  String get rdCaptureKeptTitle;
+
+  /// No description provided for @rdCaptureKeptSafe.
+  ///
+  /// In en, this message translates to:
+  /// **'Kept safely. Mira will bring it back at the right time.'**
+  String get rdCaptureKeptSafe;
+
+  /// No description provided for @rdCaptureKeptJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s {details}. Mira will bring it back at the right time.'**
+  String rdCaptureKeptJoined(String details);
+
+  /// No description provided for @rdCaptureAddToMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to memory'**
+  String get rdCaptureAddToMemory;
+
+  /// No description provided for @rdCaptureAddLinking.
+  ///
+  /// In en, this message translates to:
+  /// **'Add · linking {count}'**
+  String rdCaptureAddLinking(int count);
+
+  /// No description provided for @rdCaptureDetailsExtracted.
+  ///
+  /// In en, this message translates to:
+  /// **'Details Mira extracted'**
+  String get rdCaptureDetailsExtracted;
+
+  /// No description provided for @rdCaptureTypeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get rdCaptureTypeNote;
+
+  /// No description provided for @rdCaptureTypeTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get rdCaptureTypeTask;
+
+  /// No description provided for @rdCaptureTypeEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get rdCaptureTypeEvent;
+
+  /// No description provided for @rdCaptureTypePerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Person'**
+  String get rdCaptureTypePerson;
+
+  /// No description provided for @rdCaptureTypePlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place'**
+  String get rdCaptureTypePlace;
+
+  /// No description provided for @rdCaptureTypeLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get rdCaptureTypeLink;
+
+  /// No description provided for @rdCaptureTypeArticle.
+  ///
+  /// In en, this message translates to:
+  /// **'Article'**
+  String get rdCaptureTypeArticle;
+
+  /// No description provided for @rdCaptureTypeIdea.
+  ///
+  /// In en, this message translates to:
+  /// **'Idea'**
+  String get rdCaptureTypeIdea;
+
+  /// No description provided for @rdCaptureTypeTravel.
+  ///
+  /// In en, this message translates to:
+  /// **'Travel'**
+  String get rdCaptureTypeTravel;
+
+  /// No description provided for @rdCaptureTypeSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a note'**
+  String get rdCaptureTypeSheetTitle;
+
+  /// No description provided for @rdCaptureTypeSheetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you want to remember?'**
+  String get rdCaptureTypeSheetHint;
+
+  /// No description provided for @rdCaptureLinkSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a link'**
+  String get rdCaptureLinkSheetTitle;
+
+  /// No description provided for @rdCaptureLinkTitleOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Title (optional)'**
+  String get rdCaptureLinkTitleOptional;
+
+  /// No description provided for @rdCaptureUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://…'**
+  String get rdCaptureUrlHint;
+
+  /// No description provided for @rdCaptureLinkBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Link · {host}'**
+  String rdCaptureLinkBadge(String host);
+
+  /// No description provided for @rdCaptureLinkedMemories.
+  ///
+  /// In en, this message translates to:
+  /// **'linked to {count, plural, =1{1 memory} other{{count} memories}}'**
+  String rdCaptureLinkedMemories(int count);
+
+  /// No description provided for @rdCaptureHasReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'has a reminder'**
+  String get rdCaptureHasReminder;
+
+  /// No description provided for @rdCapturePhotoFrameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame a poster, page, or place'**
+  String get rdCapturePhotoFrameHint;
+
+  /// No description provided for @rdCapturePhotoReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading this photo…'**
+  String get rdCapturePhotoReading;
+
+  /// No description provided for @rdCaptureScreenshotReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading screenshot…'**
+  String get rdCaptureScreenshotReading;
+
+  /// No description provided for @rdCaptureScreenshotPickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a screenshot'**
+  String get rdCaptureScreenshotPickTitle;
+
+  /// No description provided for @rdCaptureScreenshotPickSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira reads text and details from your image'**
+  String get rdCaptureScreenshotPickSub;
+
+  /// No description provided for @rdCaptureScreenshotUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use screenshot'**
+  String get rdCaptureScreenshotUse;
+
+  /// No description provided for @rdCaptureLinkSaveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a link'**
+  String get rdCaptureLinkSaveTitle;
+
+  /// No description provided for @rdCaptureLinkSaveSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a URL — Mira reads the page for you'**
+  String get rdCaptureLinkSaveSub;
+
+  /// No description provided for @rdCaptureLinkReading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading page…'**
+  String get rdCaptureLinkReading;
+
+  /// No description provided for @rdCaptureLinkArticleDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Article from link'**
+  String get rdCaptureLinkArticleDefault;
+
+  /// No description provided for @rdCaptureLinkArticleSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira will extract the readable text and keep it searchable.'**
+  String get rdCaptureLinkArticleSub;
+
+  /// No description provided for @rdCaptureContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get rdCaptureContinue;
+
+  /// No description provided for @rdOnboardingTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'A second mind. For when you don\'t want to forget anything.'**
+  String get rdOnboardingTagline;
+
+  /// No description provided for @rdOnboardingSeeHow.
+  ///
+  /// In en, this message translates to:
+  /// **'See how it works'**
+  String get rdOnboardingSeeHow;
+
+  /// No description provided for @rdOnboardingAuthInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
+  String get rdOnboardingAuthInvalidEmail;
+
+  /// No description provided for @rdOnboardingAuthCodeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send a code. Try again.'**
+  String get rdOnboardingAuthCodeFailed;
+
+  /// No description provided for @rdOnboardingGoogleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in failed.'**
+  String get rdOnboardingGoogleFailed;
+
+  /// No description provided for @rdOnboardingAuthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Login or sign up'**
+  String get rdOnboardingAuthTitle;
+
+  /// No description provided for @rdOnboardingEmailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email'**
+  String get rdOnboardingEmailHint;
+
+  /// No description provided for @rdOnboardingContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get rdOnboardingContinue;
+
+  /// No description provided for @rdOnboardingApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Apple'**
+  String get rdOnboardingApple;
+
+  /// No description provided for @rdOnboardingAppleSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple sign-in is coming soon.'**
+  String get rdOnboardingAppleSoon;
+
+  /// No description provided for @rdOnboardingLegal.
+  ///
+  /// In en, this message translates to:
+  /// **'If you are creating a new account,\nTerms & Conditions and Privacy Policy will apply.'**
+  String get rdOnboardingLegal;
+
+  /// No description provided for @rdOnboardingInviteRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'You need an invite code to join Mira.'**
+  String get rdOnboardingInviteRequired;
+
+  /// No description provided for @rdOnboardingInviteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your invite code'**
+  String get rdOnboardingInviteHint;
+
+  /// No description provided for @rdOnboardingInviteEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your invite code.'**
+  String get rdOnboardingInviteEmpty;
+
+  /// No description provided for @rdOnboardingInviteInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'That invite code was not accepted.'**
+  String get rdOnboardingInviteInvalid;
+
+  /// No description provided for @rdOnboardingInviteVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not verify the code. Try again.'**
+  String get rdOnboardingInviteVerifyFailed;
+
+  /// No description provided for @rdOnboardingOtpRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code we emailed you.'**
+  String get rdOnboardingOtpRequired;
+
+  /// No description provided for @rdOnboardingOtpMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'That code did not match. Try again.'**
+  String get rdOnboardingOtpMismatch;
+
+  /// No description provided for @rdOnboardingOtpResent.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a new code.'**
+  String get rdOnboardingOtpResent;
+
+  /// No description provided for @rdOnboardingOtpResendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not resend the code.'**
+  String get rdOnboardingOtpResendFailed;
+
+  /// No description provided for @rdOnboardingCheckEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email'**
+  String get rdOnboardingCheckEmail;
+
+  /// No description provided for @rdOnboardingOtpSent.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent you a 6-digit code'**
+  String get rdOnboardingOtpSent;
+
+  /// No description provided for @rdOnboardingOtpResendPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Didn\'t get the code? '**
+  String get rdOnboardingOtpResendPrompt;
+
+  /// No description provided for @rdOnboardingResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend'**
+  String get rdOnboardingResend;
+
+  /// No description provided for @rdOnboardingEnter.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter'**
+  String get rdOnboardingEnter;
+
+  /// No description provided for @rdOnboardingDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your details'**
+  String get rdOnboardingDetailsTitle;
+
+  /// No description provided for @rdOnboardingDetailsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'This is how Mira will greet you. You can change it later in Settings.'**
+  String get rdOnboardingDetailsDesc;
+
+  /// No description provided for @rdOnboardingNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name'**
+  String get rdOnboardingNameHint;
+
+  /// No description provided for @rdOnboardingRememberTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you want Mira to remember?'**
+  String get rdOnboardingRememberTitle;
+
+  /// No description provided for @rdOnboardingRememberSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything you don\'t want to forget. An idea. A task. A link. Even a feeling.'**
+  String get rdOnboardingRememberSub;
+
+  /// No description provided for @rdOnboardingRememberHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Press the button and speak or type'**
+  String get rdOnboardingRememberHint;
+
+  /// No description provided for @rdOnboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get rdOnboardingNext;
+
+  /// No description provided for @rdOnboardingUnderstoodBrand.
+  ///
+  /// In en, this message translates to:
+  /// **'MIRA understands you'**
+  String get rdOnboardingUnderstoodBrand;
 }
 
 class _AppLocalizationsDelegate
