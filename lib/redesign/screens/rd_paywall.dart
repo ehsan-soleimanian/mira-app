@@ -210,11 +210,11 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
         Expanded(
           child: _PlanCard(
             selected: _plan == _Plan.annual,
-            save: '2 months free',
+            save: l10n.rdPaywallPlanSaveBadge,
             name: l10n.rdPaywallPlanAnnual,
             price: '\$6',
-            per: '/mo',
-            note: '\$72 billed yearly',
+            per: l10n.rdPaywallPlanPerMonth,
+            note: l10n.rdPaywallPlanAnnualNote,
             onTap: () => setState(() => _plan = _Plan.annual),
           ),
         ),
@@ -224,7 +224,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
             selected: _plan == _Plan.monthly,
             name: l10n.rdPaywallPlanMonthly,
             price: '\$8',
-            per: '/mo',
+            per: l10n.rdPaywallPlanPerMonth,
             note: l10n.rdPaywallPlanMonthlyNote,
             onTap: () => setState(() => _plan = _Plan.monthly),
           ),
@@ -253,7 +253,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 290),
         child: Text(
-          '$then · cancel anytime.\nNo charge today — we’ll remind you before it ends.',
+          l10n.rdPaywallFinePrint(then),
           textAlign: TextAlign.center,
           style: GoogleFonts.vazirmatn(
             fontSize: 12,
@@ -304,13 +304,13 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
           sub: l10n.rdPaywallActiveSubtitle,
         ),
         const SizedBox(height: 26),
-        _memCard(),
+        _memCard(l10n),
         const SizedBox(height: 18),
-        _usage(),
+        _usage(l10n),
         const SizedBox(height: 26),
-        _perksLabel(),
+        _perksLabel(l10n),
         const SizedBox(height: 10),
-        _perks(),
+        _perks(l10n),
         const SizedBox(height: 26),
         _PrimaryButton(
           label: l10n.rdPaywallManage,
@@ -329,7 +329,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     );
   }
 
-  Widget _memCard() {
+  Widget _memCard(AppLocalizations l10n) {
     final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -340,11 +340,11 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
       ),
       child: Column(
         children: [
-          _memRow('Plan', 'Annual · \$6/mo'),
+          _memRow(l10n.rdPaywallMemPlan, l10n.rdPaywallMemPlanValue),
           Divider(height: 1, thickness: 1, color: rd.line),
-          _memRow('Renews', 'Aug 12, 2025'),
+          _memRow(l10n.rdPaywallMemRenews, l10n.rdPaywallMemRenewsValue),
           Divider(height: 1, thickness: 1, color: rd.line),
-          _memRow('Payment', 'Apple ID'),
+          _memRow(l10n.rdPaywallMemPayment, l10n.rdPaywallMemPaymentValue),
         ],
       ),
     );
@@ -372,7 +372,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     );
   }
 
-  Widget _usage() {
+  Widget _usage(AppLocalizations l10n) {
     final rd = context.rd;
     // Bar track has no palette token: keep the exact light literal, darken for
     // dark mode (mirrors the neutral-track pattern in rd_settings.dart).
@@ -395,31 +395,19 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Memories held',
+                l10n.rdPaywallMemoriesHeld,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   color: rd.ink,
                 ),
               ),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(text: '1,284 '),
-                    TextSpan(
-                      text: '· unlimited',
-                      style: GoogleFonts.vazirmatn(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: rd.success,
-                      ),
-                    ),
-                  ],
-                  style: GoogleFonts.dosis(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: rd.ink,
-                  ),
+              Text(
+                l10n.rdPaywallMemoriesCount('1,284'),
+                style: GoogleFonts.dosis(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: rd.ink,
                 ),
               ),
             ],
@@ -445,7 +433,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
           ),
           const SizedBox(height: 9),
           Text(
-            'Growing calmly. On Free this would have stopped at 2,000.',
+            l10n.rdPaywallMemoriesGrowth,
             style: GoogleFonts.vazirmatn(
               fontSize: 12,
               height: 1.45,
@@ -457,11 +445,11 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     );
   }
 
-  Widget _perksLabel() {
+  Widget _perksLabel(AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(
-        'YOUR PLUS PERKS',
+        l10n.rdPaywallPerksLabel,
         style: GoogleFonts.dosis(
           fontSize: 12.5,
           fontWeight: FontWeight.w700,
@@ -472,27 +460,27 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     );
   }
 
-  Widget _perks() {
+  Widget _perks(AppLocalizations l10n) {
     return Column(
-      children: const [
+      children: [
         _Perk(
           icon:
               '<path d="M4 7c0-1 .9-2 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M4 11h16"/>',
-          title: 'Unlimited memories',
+          title: l10n.rdPaywallPerkUnlimited,
         ),
         _Perk(
           icon:
               '<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="10" r="2.4"/><circle cx="9" cy="18" r="2.4"/><path d="M8 7.5 15.5 9.5M8.5 16 16 11.5"/>',
-          title: 'Full memory graph',
+          title: l10n.rdPaywallPerkGraph,
         ),
         _Perk(
           icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-          title: 'Longer history & 10-min voice',
+          title: l10n.rdPaywallPerkVoice,
         ),
         _Perk(
           icon:
               '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
-          title: 'Unlimited connected apps',
+          title: l10n.rdPaywallPerkConnect,
         ),
       ],
     );

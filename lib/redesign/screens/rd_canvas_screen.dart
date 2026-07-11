@@ -95,17 +95,18 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     try {
       final services = AppScope.servicesOf(context);
       final graph = await services.graphRepository.fetchGraph();
-      final (nodes, edges, edgeAssertions) = _mapGraphToNodes(graph);
-      final clusters = _buildClustersFromNodes(nodes, edges);
+      final l10n = AppLocalizations.of(context)!;
+      final (nodes, edges, edgeAssertions) = _mapGraphToNodes(graph, l10n);
+      final clusters = _buildClustersFromNodes(nodes, edges, l10n);
       if (!mounted || nodes.isEmpty) return;
       setState(() {
         _mapNodes = nodes;
         _mapEdges = edges;
         _clusters = clusters;
         _mapContext =
-            'Your memory · ${nodes.length} memories · ${edges.length} connections';
+            AppLocalizations.of(context)!.rdCanvasMapContext(nodes.length, edges.length);
         _clusterContext =
-            '${_clusters.length} clusters · ${nodes.length} memories';
+            l10n.rdCanvasClusterContext(_clusters.length, nodes.length);
         _mapEdgeAssertions = edgeAssertions;
         _mapEpoch++; // force the map to rebuild from the fresh graph
       });
@@ -133,10 +134,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       await AppScope.servicesOf(context)
           .graphRepository
           .mergeEntities(sourceId: sourceId, targetId: targetId);
-      _mapToast('Memories merged');
+      _mapToast(AppLocalizations.of(context)!.rdCanvasMergeSuccess);
       await _loadGraph();
     } catch (_) {
-      _mapToast('Couldn’t merge those');
+      _mapToast(AppLocalizations.of(context)!.rdCanvasMergeFail);
     }
   }
 
@@ -148,10 +149,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       for (final id in assertionIds) {
         await repo.rejectAssertion(id);
       }
-      _mapToast('Connection removed');
+      _mapToast(AppLocalizations.of(context)!.rdCanvasUnlinkSuccess);
       await _loadGraph();
     } catch (_) {
-      _mapToast('Couldn’t remove that connection');
+      _mapToast(AppLocalizations.of(context)!.rdCanvasUnlinkFail);
     }
   }
 
@@ -167,7 +168,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       final repo = _canvasRepo;
       var boards = await repo.list();
       if (boards.isEmpty) {
-        final created = await repo.create(title: 'My board');
+        final created = await repo.create(title: AppLocalizations.of(context)!.rdCanvasMyBoard);
         boards = [created];
       }
 
@@ -218,7 +219,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   /// Creates a new empty board, appends it, and switches to it.
   Future<void> _createBoard() async {
     try {
-      final created = await _canvasRepo.create(title: 'New board');
+      final created = await _canvasRepo.create(title: AppLocalizations.of(context)!.rdCanvasNewBoard);
       if (!mounted) return;
       setState(() {
         _boards = [..._boards, created];
@@ -239,9 +240,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     setState(() => _boardContext = label);
   }
 
-  static String _boardLabel(String title, int count) {
-    final name = title.trim().isEmpty ? 'Board' : title.trim();
-    return '$name · $count ${count == 1 ? 'card' : 'cards'}';
+  String _boardLabel(String title, int count) {
+    final l10n = AppLocalizations.of(context)!;
+    final name = title.trim().isEmpty ? l10n.rdCanvasBoardDefault : title.trim();
+    return l10n.rdCanvasBoardLabel(name, count);
   }
 
   /// Opens the compact board switcher popover: the board list (check on the
@@ -281,7 +283,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
           backgroundColor: rd.card,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('Rename board',
+          title: Text(AppLocalizations.of(context)!.rdCanvasRenameTitle,
               style: GoogleFonts.dosis(
                   fontSize: 18, fontWeight: FontWeight.w700, color: rd.ink)),
           content: TextField(
@@ -291,7 +293,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
             onSubmitted: (v) => Navigator.of(ctx).pop(v),
             style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
             decoration: InputDecoration(
-              hintText: 'Board name',
+              hintText: AppLocalizations.of(context)!.rdCanvasBoardNameHint,
               hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -304,12 +306,12 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: Text('Cancel',
+              child: Text(AppLocalizations.of(context)!.rdCommonCancel,
                   style: GoogleFonts.vazirmatn(color: rd.muted)),
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(controller.text),
-              child: Text('Save',
+              child: Text(AppLocalizations.of(context)!.rdCommonSave,
                   style: GoogleFonts.vazirmatn(
                       color: rd.navy, fontWeight: FontWeight.w600)),
             ),
@@ -545,7 +547,7 @@ class _BoardSwitcherButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final rd = context.rd;
     final label = (title == null || title!.trim().isEmpty)
-        ? (loading ? 'Loading…' : 'Board')
+        ? (loading ? AppLocalizations.of(context)!.rdCanvasLoading : AppLocalizations.of(context)!.rdCanvasBoardDefault)
         : title!.trim();
     return GestureDetector(
       onTap: loading ? null : onTap,
@@ -662,7 +664,7 @@ class _BoardSwitcherSheet extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                   child: Text(
-                    'BOARDS',
+                    AppLocalizations.of(context)!.rdCanvasBoardsHeader,
                     style: GoogleFonts.vazirmatn(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -697,7 +699,7 @@ class _BoardSwitcherSheet extends StatelessWidget {
                             size: 18, color: rd.peri, strokeWidth: 2),
                         const SizedBox(width: 11),
                         Text(
-                          'New board',
+                          AppLocalizations.of(context)!.rdCanvasNewBoard,
                           style: GoogleFonts.vazirmatn(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w600,
@@ -717,7 +719,7 @@ class _BoardSwitcherSheet extends StatelessWidget {
   }
 
   Widget _row(BuildContext context, RdTheme rd, CanvasDto b, bool active) {
-    final title = b.title.trim().isEmpty ? 'Untitled board' : b.title.trim();
+    final title = b.title.trim().isEmpty ? AppLocalizations.of(context)!.rdCanvasUntitledBoard : b.title.trim();
     final count = b.nodes.length;
     return GestureDetector(
       onTap: () => Navigator.of(context).pop(_SwitcherResult.select(b.id)),
@@ -744,7 +746,7 @@ class _BoardSwitcherSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    '$count ${count == 1 ? 'card' : 'cards'}',
+                    AppLocalizations.of(context)!.rdCanvasCardCount(count),
                     style: GoogleFonts.vazirmatn(
                       fontSize: 11.5,
                       color: rd.muted,
@@ -853,7 +855,7 @@ String _gTypeIcon(_GType t) {
 /// nearer the centre) since the backend layout is optional. Bounded to keep
 /// the graph legible on a phone.
 (List<_GNode>, List<List<String>>, Map<String, List<String>>)
-    _mapGraphToNodes(GraphResponse g) {
+    _mapGraphToNodes(GraphResponse g, AppLocalizations l10n) {
   final nodes = g.nodes.take(40).toList();
   final ids = {for (final n in nodes) n.id};
   final edges = <List<String>>[];
@@ -896,9 +898,9 @@ String _gTypeIcon(_GType t) {
       disc: deg >= 5 ? 68 : (deg >= 2 ? 52 : 44),
       type: type,
       label: label,
-      typ: _gTypeLabelFor(type),
+      typ: _gTypeLabelFor(type, l10n),
       sub: n.summary.trim().isEmpty
-          ? '$deg linked ${deg == 1 ? "memory" : "memories"}.'
+          ? l10n.rdCanvasLinkedCount(deg)
           : n.summary,
       initial: type == _GType.person && label.isNotEmpty
           ? label.substring(0, 1).toUpperCase()
@@ -923,22 +925,22 @@ _GType _gTypeForNode(GraphNode n) {
   return _GType.note;
 }
 
-String _gTypeLabelFor(_GType t) {
+String _gTypeLabelFor(_GType t, AppLocalizations l10n) {
   switch (t) {
     case _GType.person:
-      return 'Person';
+      return l10n.rdCanvasNodePerson;
     case _GType.task:
-      return 'Task';
+      return l10n.rdCanvasNodeTask;
     case _GType.event:
-      return 'Event';
+      return l10n.rdCanvasNodeEvent;
     case _GType.note:
-      return 'Note';
+      return l10n.rdCanvasNodeNote;
     case _GType.book:
-      return 'Book';
+      return l10n.rdCanvasNodeBook;
     case _GType.idea:
-      return 'Idea';
+      return l10n.rdCanvasNodeIdea;
     case _GType.topic:
-      return 'Topic';
+      return l10n.rdCanvasNodeTopic;
   }
 }
 
@@ -1004,6 +1006,7 @@ const _clusterLayout = <Offset>[
 List<_ClusterSpec> _buildClustersFromNodes(
   List<_GNode> nodes,
   List<List<String>> edges,
+  AppLocalizations l10n,
 ) {
   if (nodes.isEmpty) return const [];
 
@@ -1031,10 +1034,10 @@ List<_ClusterSpec> _buildClustersFromNodes(
     final name = switch (first.type) {
       _GType.person => first.label,
       _GType.topic => first.label,
-      _GType.task => 'Tasks',
-      _GType.book => 'Books & ideas',
-      _GType.event => 'Events',
-      _ => 'Notes & memories',
+      _GType.task => l10n.rdCanvasClusterTasks,
+      _GType.book => l10n.rdCanvasClusterBooks,
+      _GType.event => l10n.rdCanvasClusterEvents,
+      _ => l10n.rdCanvasClusterNotes,
     };
     final pos = _clusterLayout[i % _clusterLayout.length];
     clusters.add(
@@ -1079,7 +1082,7 @@ class _ClusterOverviewState extends State<_ClusterOverview> {
     if (widget.clusters.isEmpty) {
       return Center(
         child: Text(
-          'No clusters yet',
+          AppLocalizations.of(context)!.rdCanvasNoClusters,
           style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
         ),
       );
@@ -1386,7 +1389,7 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                     child: IgnorePointer(
                       child: Center(
                         child: Text(
-                          'Your memory graph is empty',
+                          AppLocalizations.of(context)!.rdCanvasGraphEmpty,
                           style: GoogleFonts.vazirmatn(
                               fontSize: 13, color: rd.muted),
                         ),
@@ -1479,7 +1482,7 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                             children: [
                               Flexible(
                                 child: Text(
-                                  'Focused on ${_byId[_focus]!.label}',
+                                  AppLocalizations.of(context)!.rdCanvasFocusedOn(_byId[_focus]!.label),
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.vazirmatn(
                                       fontSize: 13,
@@ -1689,7 +1692,7 @@ class _GraphHint extends StatelessWidget {
           RdIcon(RdIcons.plusCircle, size: 14, color: rd.muted, strokeWidth: 2),
           const SizedBox(width: 7),
           Text(
-            'Tap a memory · drag to explore',
+            AppLocalizations.of(context)!.rdCanvasTapExplore,
             style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted),
           ),
         ],
@@ -1777,11 +1780,11 @@ class _DetailPanel extends StatelessWidget {
                     decoration: BoxDecoration(
                         color: rd.line,
                         borderRadius: BorderRadius.circular(100)))),
-            Text('Merge into “${current.label}”',
+            Text(AppLocalizations.of(context)!.rdCanvasMergeInto(current.label),
                 style: GoogleFonts.dosis(
                     fontSize: 18, fontWeight: FontWeight.w700, color: rd.ink)),
             const SizedBox(height: 2),
-            Text('Pick the duplicate to fold in — it keeps every connection.',
+            Text(AppLocalizations.of(context)!.rdCanvasMergePickDuplicate,
                 style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
             const SizedBox(height: 12),
             Flexible(
@@ -1968,7 +1971,7 @@ class _DetailPanel extends StatelessWidget {
                           color: rd.navy,
                           strokeWidth: 2),
                       const SizedBox(width: 7),
-                      Text('Focus this constellation',
+                      Text(AppLocalizations.of(context)!.rdCanvasFocusConstellation,
                           style: GoogleFonts.vazirmatn(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -2000,7 +2003,7 @@ class _DetailPanel extends StatelessWidget {
                           color: rd.muted,
                           strokeWidth: 2),
                       const SizedBox(width: 7),
-                      Text('Merge a duplicate',
+                      Text(AppLocalizations.of(context)!.rdCanvasMergeDuplicate,
                           style: GoogleFonts.vazirmatn(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -2013,7 +2016,7 @@ class _DetailPanel extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 14, bottom: 8),
             child: Text(
-              'CONNECTED TO ${connected.length}',
+              AppLocalizations.of(context)!.rdCanvasConnectedTo(connected.length),
               style: GoogleFonts.vazirmatn(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -2304,10 +2307,10 @@ class _BoardViewState extends State<_BoardView> {
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: context.rd.ink,
-          content: Text('Card removed',
+          content: Text(AppLocalizations.of(context)!.rdCanvasCardRemoved,
               style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white)),
           action: SnackBarAction(
-            label: 'Undo',
+            label: AppLocalizations.of(context)!.rdCommonUndo,
             textColor: Colors.white,
             onPressed: () {
               if (!mounted) return;
@@ -2368,9 +2371,9 @@ class _BoardViewState extends State<_BoardView> {
       left: scenePoint.dx - 79,
       top: scenePoint.dy - 40,
       rotation: 0,
-      tag: 'Note',
-      title: 'New note',
-      sub: 'Tap to edit later.',
+      tag: AppLocalizations.of(context)!.rdCanvasNodeNote,
+      title: AppLocalizations.of(context)!.rdCanvasNewNoteTitle,
+      sub: AppLocalizations.of(context)!.rdCanvasNewNoteSub,
     );
     setState(() {
       _cards = [..._cards, spec];
@@ -2451,15 +2454,15 @@ class _BoardViewState extends State<_BoardView> {
                         decoration: BoxDecoration(
                             color: rd.line,
                             borderRadius: BorderRadius.circular(100)))),
-                Text('Edit card',
+                Text(AppLocalizations.of(context)!.rdCanvasEditCard,
                     style: GoogleFonts.dosis(
                         fontSize: 19,
                         fontWeight: FontWeight.w700,
                         color: rd.ink)),
                 const SizedBox(height: 12),
-                _editField(titleCtl, 'Title', autofocus: true),
+                _editField(titleCtl, AppLocalizations.of(context)!.rdCanvasEditTitle, autofocus: true),
                 const SizedBox(height: 10),
-                _editField(subCtl, 'Note (optional)'),
+                _editField(subCtl, AppLocalizations.of(context)!.rdCanvasEditNoteOptional),
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () => Navigator.of(ctx).pop(true),
@@ -2469,7 +2472,7 @@ class _BoardViewState extends State<_BoardView> {
                     decoration: BoxDecoration(
                         color: rd.navy,
                         borderRadius: BorderRadius.circular(14)),
-                    child: Text('Save',
+                    child: Text(AppLocalizations.of(context)!.rdCommonSave,
                         style: GoogleFonts.vazirmatn(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -2694,7 +2697,7 @@ class _BoardViewState extends State<_BoardView> {
                 child: IgnorePointer(
                   child: Center(
                     child: Text(
-                      'This board is empty',
+                      AppLocalizations.of(context)!.rdCanvasBoardEmpty,
                       style:
                           GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
                     ),
@@ -2964,8 +2967,8 @@ class _ConnectBanner extends StatelessWidget {
           Expanded(
             child: Text(
               hasSource
-                  ? 'Now tap another card to connect them'
-                  : 'Connect mode · tap two cards to link them',
+                  ? AppLocalizations.of(context)!.rdCanvasConnectTapSecond
+                  : AppLocalizations.of(context)!.rdCanvasConnectMode,
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
@@ -2986,7 +2989,7 @@ class _ConnectBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(9),
               ),
               child: Text(
-                'Done',
+                AppLocalizations.of(context)!.rdCommonDone,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -3032,7 +3035,7 @@ class _AddBanner extends StatelessWidget {
           const SizedBox(width: 11),
           Expanded(
             child: Text(
-              'Add mode · tap anywhere to drop a card',
+              AppLocalizations.of(context)!.rdCanvasAddMode,
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
@@ -3053,7 +3056,7 @@ class _AddBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(9),
               ),
               child: Text(
-                'Done',
+                AppLocalizations.of(context)!.rdCommonDone,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

@@ -1543,4 +1543,1843 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdOnboardingUnderstoodBrand => 'MIRA understands you';
+
+  @override
+  String get rdCommonUndo => 'Undo';
+
+  @override
+  String get rdCommonCancel => 'Cancel';
+
+  @override
+  String get rdCommonSave => 'Save';
+
+  @override
+  String get rdCommonDone => 'Done';
+
+  @override
+  String get rdCommonView => 'View';
+
+  @override
+  String get rdCommonClear => 'Clear';
+
+  @override
+  String get rdCommonAccount => 'Account';
+
+  @override
+  String get rdCommonComingSoon => 'Coming soon';
+
+  @override
+  String get rdCommonSettings => 'Settings';
+
+  @override
+  String get rdCommonConnect => 'Connect';
+
+  @override
+  String get rdCommonConnected => 'Connected';
+
+  @override
+  String get rdCommonManage => 'Manage';
+
+  @override
+  String get rdCommonUpgrade => 'Upgrade';
+
+  @override
+  String get rdCommonAm => 'AM';
+
+  @override
+  String get rdCommonPm => 'PM';
+
+  @override
+  String get rdRootTitleMemory => 'Memory';
+
+  @override
+  String get rdRootTitleCapture => 'Capture';
+
+  @override
+  String get rdRootTitleNotifications => 'Notifications';
+
+  @override
+  String get rdRootTitleConnectedApps => 'Connected apps';
+
+  @override
+  String get rdRootTitleListening => 'Listening';
+
+  @override
+  String get rdRootTitleChat => 'Chat';
+
+  @override
+  String get rdRootTitleSetup => 'Setup';
+
+  @override
+  String get rdAskTitle => 'Ask your memory';
+
+  @override
+  String get rdAskHint => 'Ask across everything…';
+
+  @override
+  String get rdAskSectionTry => 'Try asking';
+
+  @override
+  String get rdAskSectionRecent => 'Recent';
+
+  @override
+  String get rdAskSearching => 'Searching your memory…';
+
+  @override
+  String get rdAskSomethingElse => 'Ask something else';
+
+  @override
+  String get rdAskErrorConnection =>
+      'I couldn\'t reach your memory just now. Check your connection and try again.';
+
+  @override
+  String get rdAskSuggestionRecent => 'What did I save recently?';
+
+  @override
+  String get rdAskSuggestionFollowUp => 'What should I follow up on?';
+
+  @override
+  String get rdAskSuggestionSummariseWeek => 'Summarise this week';
+
+  @override
+  String get rdAskSuggestionFindByTopic => 'Find a note by topic';
+
+  @override
+  String rdAskDrawnFrom(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count memories',
+      one: '1 memory',
+    );
+    return 'Drawn from $_temp0';
+  }
+
+  @override
+  String get rdCollectionAddTitle => 'Add to collection';
+
+  @override
+  String get rdCollectionNew => 'New collection';
+
+  @override
+  String get rdCollectionNameHint => 'Collection name';
+
+  @override
+  String get rdLibraryYourMemory => 'YOUR MEMORY';
+
+  @override
+  String get rdLibraryTitle => 'Library';
+
+  @override
+  String rdLibraryKeptCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count memories, all held safe',
+      one: '1 memory, all held safe',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdLibrarySearchHint => 'Search your memory…';
+
+  @override
+  String get rdLibraryFilterAll => 'All';
+
+  @override
+  String get rdLibraryFilterNotes => 'Notes';
+
+  @override
+  String get rdLibraryFilterVoice => 'Voice';
+
+  @override
+  String get rdLibraryFilterPhotos => 'Photos';
+
+  @override
+  String get rdLibraryFilterLinks => 'Links';
+
+  @override
+  String get rdLibraryFilterEvents => 'Events';
+
+  @override
+  String get rdLibraryNoMatches => 'No matches';
+
+  @override
+  String rdLibrarySearchFor(String query) {
+    return ' for \"$query\"';
+  }
+
+  @override
+  String rdLibrarySearchIn(String name) {
+    return ' in $name';
+  }
+
+  @override
+  String rdLibraryMemoryCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count memories',
+      one: '1 memory',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdLibraryGroupedForYou => 'MIRA GROUPED FOR YOU';
+
+  @override
+  String get rdLibraryNoCollectionsYet => 'No collections yet.';
+
+  @override
+  String get rdLibraryCollections => 'Collections';
+
+  @override
+  String get rdLibraryArchivedTitle => 'Archived';
+
+  @override
+  String get rdLibraryOutOfTheWay => 'Out of the way';
+
+  @override
+  String get rdLibraryArchivedEmpty =>
+      'Nothing archived.\nArchived memories rest here, out of the way.';
+
+  @override
+  String get rdLibraryRestore => 'Restore';
+
+  @override
+  String get rdLibraryDayToday => 'Today';
+
+  @override
+  String get rdLibraryDayThisWeek => 'This week';
+
+  @override
+  String get rdLibraryDayEarlier => 'Earlier';
+
+  @override
+  String get rdLibraryEmptyFilter =>
+      'Nothing here under this filter.\nEverything you capture will settle in quietly.';
+
+  @override
+  String rdLibraryEndMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'You\'ve kept $count memories.\nMira holds them so you don\'t have to.',
+      one: 'You\'ve kept 1 memory.\nMira holds them so you don\'t have to.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdLibrarySelectMemories => 'Select memories';
+
+  @override
+  String rdLibrarySelectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get rdLibrarySelectAll => 'Select all';
+
+  @override
+  String get rdLibraryDeselectAll => 'Deselect all';
+
+  @override
+  String get rdLibraryActionCollection => 'Collection';
+
+  @override
+  String get rdLibraryActionBoard => 'Board';
+
+  @override
+  String get rdLibraryActionPin => 'Pin';
+
+  @override
+  String get rdLibraryActionArchive => 'Archive';
+
+  @override
+  String get rdLibraryActionDelete => 'Delete';
+
+  @override
+  String get rdLibraryUntitled => 'Untitled';
+
+  @override
+  String get rdLibraryTypeVoice => 'Voice';
+
+  @override
+  String get rdLibraryTypeLink => 'Link';
+
+  @override
+  String get rdLibraryTypePhoto => 'Photo';
+
+  @override
+  String get rdLibraryTypeEvent => 'Event';
+
+  @override
+  String get rdLibraryTypeNote => 'Note';
+
+  @override
+  String get rdLibraryTimeJustNow => 'Just now';
+
+  @override
+  String rdLibraryTimeMinutesAgo(int minutes) {
+    return '${minutes}m ago';
+  }
+
+  @override
+  String rdLibraryTimeHoursAgo(int hours) {
+    return '${hours}h ago';
+  }
+
+  @override
+  String get rdLibraryTimeYesterday => 'Yesterday';
+
+  @override
+  String rdLibraryTimeDaysAgo(int days) {
+    return '${days}d ago';
+  }
+
+  @override
+  String rdLibraryTimeDate(int month, int day) {
+    return '$month/$day';
+  }
+
+  @override
+  String rdLibraryAddedToCollection(int count, String name) {
+    return 'Added $count to \"$name\"';
+  }
+
+  @override
+  String get rdLibraryAddToCollectionFailed =>
+      'Couldn\'t add to collection. Check your connection.';
+
+  @override
+  String rdLibraryAddedToBoard(int count, String board) {
+    return 'Added $count to \"$board\"';
+  }
+
+  @override
+  String get rdLibraryAddToBoardFailed =>
+      'Couldn\'t add to board. Check your connection.';
+
+  @override
+  String rdLibraryDeletedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Deleted $count memories',
+      one: 'Deleted 1 memory',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdLibraryArchivedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Archived $count memories',
+      one: 'Archived 1 memory',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdLibraryPinnedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Pinned $count memories',
+      one: 'Pinned 1 memory',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdLibraryRestored(String title) {
+    return 'Restored \"$title\"';
+  }
+
+  @override
+  String rdLibraryCouldntOpenCollection(String name) {
+    return 'Couldn\'t open \"$name\".';
+  }
+
+  @override
+  String get rdLibraryAddToBoard => 'Add to board';
+
+  @override
+  String get rdLibraryUntitledBoard => 'Untitled board';
+
+  @override
+  String rdLibraryCardCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cards',
+      one: '1 card',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdLibraryNewBoard => 'New board';
+
+  @override
+  String get rdLibraryBoardNameHint => 'Board name';
+
+  @override
+  String get rdLibraryFallbackBoard => 'board';
+
+  @override
+  String get rdMemoryConnectedMemory => 'Connected memory';
+
+  @override
+  String get rdMemoryLinked => 'Linked';
+
+  @override
+  String rdMemoryInsightLinked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'linked it to $count related memories',
+      one: 'linked it to 1 related memory',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdMemoryInsightConnected(String names) {
+    return 'connected $names';
+  }
+
+  @override
+  String rdMemoryInsightTagged(String tags) {
+    return 'tagged it $tags';
+  }
+
+  @override
+  String rdMemoryInsightSummary(String details) {
+    return 'I read through this and $details so it stays easy to find.';
+  }
+
+  @override
+  String get rdMemoryPinned => 'Pinned';
+
+  @override
+  String get rdMemoryUnpinned => 'Unpinned';
+
+  @override
+  String rdMemoryVoiceNoteBadge(String duration) {
+    return 'Voice note · $duration';
+  }
+
+  @override
+  String get rdMemoryEditedJustNow => 'Edited just now · today, 4:12 PM';
+
+  @override
+  String get rdMemoryRecordedAgo => 'Recorded 2h ago · today, 4:12 PM';
+
+  @override
+  String get rdMemoryCapturedAgo => 'Captured 2h ago · today, 4:12 PM';
+
+  @override
+  String get rdMemoryEditTranscriptHint =>
+      'Editing the transcript — Mira will re-read it and refresh connections when you save.';
+
+  @override
+  String get rdMemoryEditNoteHint =>
+      'Editing note — Mira will re-read it and refresh connections when you save.';
+
+  @override
+  String get rdMemoryTitleHint => 'Title';
+
+  @override
+  String get rdMemoryTranscriptHint => 'Transcript…';
+
+  @override
+  String get rdMemoryWriteNoteHint => 'Write your note…';
+
+  @override
+  String get rdMemoryTranscribedByMira => 'TRANSCRIBED BY MIRA';
+
+  @override
+  String get rdMemoryMiraNoticed => 'Mira noticed';
+
+  @override
+  String get rdMemoryReminder => 'Reminder';
+
+  @override
+  String get rdMemoryReminderOnBrief => 'On — tracked in your Brief';
+
+  @override
+  String get rdMemoryReminderOnBringUp => 'On — Mira will bring this up';
+
+  @override
+  String get rdMemoryReminderOff => 'Off — tap to remind me';
+
+  @override
+  String get rdMemoryConnectedMemories => 'Connected memories';
+
+  @override
+  String get rdMemorySeeInCanvas => 'See in Canvas';
+
+  @override
+  String get rdMemoryPeopleAndTags => 'People & tags';
+
+  @override
+  String get rdMemorySourceVoice => 'Recorded on Home · iPhone · not shared';
+
+  @override
+  String get rdMemorySourceNote => 'Typed on Home · iPhone · not shared';
+
+  @override
+  String get rdMemorySaveChanges => 'Save changes';
+
+  @override
+  String get rdMemoryAskMiraAboutThis => 'Ask Mira about this';
+
+  @override
+  String get rdMemoryPinToTop => 'Pin to top';
+
+  @override
+  String get rdMemoryUnpin => 'Unpin';
+
+  @override
+  String get rdMemoryEditNote => 'Edit note';
+
+  @override
+  String get rdMemoryShareMemory => 'Share memory';
+
+  @override
+  String get rdMemorySavedTranscript => 'Saved — Mira re-read your transcript';
+
+  @override
+  String get rdMemorySavedNote => 'Saved — Mira re-read this note';
+
+  @override
+  String rdMemoryAddedToCollection(String name) {
+    return 'Added to “$name”';
+  }
+
+  @override
+  String get rdMemoryLinkCopied => 'Link copied';
+
+  @override
+  String get rdMemoryCopyLink => 'Copy link';
+
+  @override
+  String get rdMemoryCopyAsText => 'Copy as text';
+
+  @override
+  String get rdMemoryEmail => 'Email';
+
+  @override
+  String get rdMemoryMessage => 'Message';
+
+  @override
+  String get rdMemoryCopiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String get rdMemoryNoAppAvailable => 'No app available for that';
+
+  @override
+  String rdMemoryDeleteConfirmBody(String title, int connections) {
+    String _temp0 = intl.Intl.pluralLogic(
+      connections,
+      locale: localeName,
+      other: '$connections connections',
+      one: '1 connection',
+    );
+    return '“$title” and its $_temp0 will be removed from your Library. This can\'t be undone.';
+  }
+
+  @override
+  String get rdMemoryKeepIt => 'Keep it';
+
+  @override
+  String get rdChatOpening =>
+      'Ask me anything about your memories — what you saved, what to follow up on, or I can draft something for you.';
+
+  @override
+  String rdChatOpeningAnchored(String title) {
+    return 'This one\'s about “$title.” Ask me anything about it — what\'s open, how it connects, or I can draft something for you.';
+  }
+
+  @override
+  String get rdChatStarterDraftReminder => 'Draft a reminder';
+
+  @override
+  String get rdChatStarterHowConnect => 'How does this connect?';
+
+  @override
+  String get rdChatStarterSummarise => 'Summarise this';
+
+  @override
+  String get rdChatFollowUpDefault => 'Follow up on this';
+
+  @override
+  String get rdChatEmptyAnswer =>
+      'I looked, but I don\'t have anything on that yet — capture it and I\'ll connect it here.';
+
+  @override
+  String get rdChatOfflineFallback =>
+      'I couldn\'t reach your memory just now. Try again in a moment.';
+
+  @override
+  String get rdChatTitle => 'Ask Mira';
+
+  @override
+  String rdChatAboutTitle(String title) {
+    return 'About “$title”';
+  }
+
+  @override
+  String get rdChatGroundedInMemories => 'Grounded in your memories';
+
+  @override
+  String get rdChatFromYourMemories => 'FROM YOUR MEMORIES';
+
+  @override
+  String get rdChatReminderAdded => 'Reminder added';
+
+  @override
+  String get rdChatSetReminder => 'Set this reminder';
+
+  @override
+  String get rdChatComposeHint => 'Ask about your memories…';
+
+  @override
+  String get rdChatCiteVoiceSub => 'Voice · read by Mira';
+
+  @override
+  String get rdChatCitePhotoSub => 'Photo · read by Mira';
+
+  @override
+  String get rdAccountTitle => 'Account';
+
+  @override
+  String get rdAccountPlaceholderName => 'Your account';
+
+  @override
+  String get rdAccountSignedOut => 'Signed out';
+
+  @override
+  String get rdAccountSectionProfile => 'Profile';
+
+  @override
+  String get rdAccountName => 'Name';
+
+  @override
+  String get rdAccountEmail => 'Email';
+
+  @override
+  String get rdAccountPhone => 'Phone';
+
+  @override
+  String get rdAccountSectionSecurity => 'Security';
+
+  @override
+  String get rdAccountFaceIdTitle => 'Face ID unlock';
+
+  @override
+  String get rdAccountFaceIdSub => 'Require Face ID to open Mira';
+
+  @override
+  String get rdAccountAutoLockTitle => 'Auto-lock';
+
+  @override
+  String get rdAccountAutoLockSub => 'Lock after 5 minutes idle';
+
+  @override
+  String get rdAccountChangePassword => 'Change password';
+
+  @override
+  String get rdAccountSectionPlan => 'Plan';
+
+  @override
+  String get rdAccountMiraPlus => 'Mira Plus';
+
+  @override
+  String get rdAccountMiraFree => 'Mira Free';
+
+  @override
+  String get rdAccountPlusActiveSub => 'Active · \$8 / month';
+
+  @override
+  String rdAccountFreeUsageSub(int used, int limit) {
+    return '$used of $limit memories used';
+  }
+
+  @override
+  String get rdAccountSectionPreferences => 'Preferences';
+
+  @override
+  String get rdAccountNotificationsTitle => 'Notifications';
+
+  @override
+  String get rdAccountNotificationsSub => 'Brief, reminders & quiet hours';
+
+  @override
+  String get rdAccountRemindersTitle => 'Reminders';
+
+  @override
+  String get rdAccountRemindersSub => 'Everything Mira is holding for you';
+
+  @override
+  String get rdAccountAppearanceTitle => 'Appearance';
+
+  @override
+  String get rdAccountAppearanceSub => 'Theme, accent, text size & motion';
+
+  @override
+  String get rdAccountConnectedAppsTitle => 'Connected apps';
+
+  @override
+  String get rdAccountConnectedAppsSub => 'Calendar, Notes, Photos & more';
+
+  @override
+  String get rdAccountSectionMemoryData => 'Memory & data';
+
+  @override
+  String get rdAccountExportData => 'Export my data';
+
+  @override
+  String get rdAccountExportDataSub => 'Download everything Mira holds';
+
+  @override
+  String get rdAccountMemoryHistory => 'Memory history';
+
+  @override
+  String get rdAccountMemoryHistorySub => 'See what was captured & when';
+
+  @override
+  String get rdAccountSignOut => 'Sign out';
+
+  @override
+  String get rdAccountDeleteAccount => 'Delete account';
+
+  @override
+  String get rdAccountFootVersion => 'Mira · Version 1.0';
+
+  @override
+  String get rdAccountAllMemoriesSynced => 'All memories synced';
+
+  @override
+  String rdAccountStorageHeadline(int count) {
+    return '$count memories';
+  }
+
+  @override
+  String rdAccountStorageSubline(int limit) {
+    return 'of $limit · plenty of room';
+  }
+
+  @override
+  String get rdNotificationsTitle => 'Notifications';
+
+  @override
+  String get rdNotificationsIntro =>
+      'Mira stays quiet by default — and only speaks up when it truly helps.';
+
+  @override
+  String get rdNotificationsSectionDailyBrief => 'Daily Brief';
+
+  @override
+  String get rdNotificationsMorningBrief => 'Morning brief';
+
+  @override
+  String get rdNotificationsMorningBriefSub =>
+      'A calm summary to start the day';
+
+  @override
+  String get rdNotificationsBriefTime => 'Brief time';
+
+  @override
+  String get rdNotificationsResurfaceMemory => 'Resurface a memory';
+
+  @override
+  String get rdNotificationsResurfaceMemorySub =>
+      'Occasionally revisit something worth holding';
+
+  @override
+  String get rdNotificationsSectionReminders => 'Reminders';
+
+  @override
+  String get rdNotificationsTimeSensitive => 'Time-sensitive reminders';
+
+  @override
+  String get rdNotificationsTimeSensitiveSub =>
+      'Dates, tickets, and things that expire';
+
+  @override
+  String get rdNotificationsGentleNudges => 'Gentle nudges';
+
+  @override
+  String get rdNotificationsGentleNudgesSub =>
+      'Soft prompts for unfinished threads';
+
+  @override
+  String get rdNotificationsSectionCaptures => 'Captures';
+
+  @override
+  String get rdNotificationsConfirmBeforeSaving => 'Confirm before saving';
+
+  @override
+  String get rdNotificationsConfirmBeforeSavingSub =>
+      'Ask before adding a capture to your graph';
+
+  @override
+  String get rdNotificationsWeeklyRecap => 'Weekly recap';
+
+  @override
+  String get rdNotificationsWeeklyRecapSub => 'A Sunday look back at the week';
+
+  @override
+  String get rdNotificationsSectionQuietHours => 'Quiet hours';
+
+  @override
+  String get rdNotificationsQuietHours => 'Quiet hours';
+
+  @override
+  String get rdNotificationsQuietHoursSub =>
+      'Hold all notifications while you rest';
+
+  @override
+  String get rdNotificationsSchedule => 'Schedule';
+
+  @override
+  String get rdNotificationsQuietStartHelp => 'Quiet hours start';
+
+  @override
+  String get rdNotificationsQuietEndHelp => 'Quiet hours end';
+
+  @override
+  String get rdNotificationsSectionDelivery => 'Delivery';
+
+  @override
+  String get rdNotificationsSound => 'Sound';
+
+  @override
+  String get rdNotificationsHaptics => 'Haptics';
+
+  @override
+  String get rdNotificationsFoot => 'Mira notifies you gently, or not at all.';
+
+  @override
+  String get rdConnectedAppsTitle => 'Connected apps';
+
+  @override
+  String get rdConnectedAppsIntro =>
+      'Mira quietly weaves these sources into your memory — nothing leaves without your say.';
+
+  @override
+  String get rdConnectedAppsSectionConnected => 'Connected';
+
+  @override
+  String get rdConnectedAppsCalendar => 'Calendar';
+
+  @override
+  String get rdConnectedAppsCalendarSub => 'Synced 2m ago · feeds your Brief';
+
+  @override
+  String get rdConnectedAppsNotes => 'Notes';
+
+  @override
+  String get rdConnectedAppsNotesSub => 'Synced 1h ago · 128 notes';
+
+  @override
+  String get rdConnectedAppsPhotos => 'Photos';
+
+  @override
+  String get rdConnectedAppsPhotosSub => 'Synced today · screenshots & scans';
+
+  @override
+  String get rdConnectedAppsSectionAvailable => 'Available';
+
+  @override
+  String get rdConnectedAppsGmail => 'Gmail';
+
+  @override
+  String get rdConnectedAppsGmailSub => 'Turn important mail into memories';
+
+  @override
+  String get rdConnectedAppsSafari => 'Safari';
+
+  @override
+  String get rdConnectedAppsSafariSub =>
+      'Save pages & highlights as you browse';
+
+  @override
+  String get rdConnectedAppsReadwise => 'Readwise';
+
+  @override
+  String get rdConnectedAppsReadwiseSub => 'Import book & article highlights';
+
+  @override
+  String get rdConnectedAppsVoiceMemos => 'Voice Memos';
+
+  @override
+  String get rdConnectedAppsVoiceMemosSub =>
+      'Transcribe recordings into your graph';
+
+  @override
+  String get rdConnectedAppsPrivacy =>
+      'Mira only reads what you connect, and processes it privately. Disconnect anytime.';
+
+  @override
+  String rdConnectedAppsFoot(int count) {
+    return '$count sources available to connect';
+  }
+
+  @override
+  String get rdAppearanceTitle => 'Appearance';
+
+  @override
+  String get rdAppearanceIntro =>
+      'Make Mira feel like yours — colour, contrast and calm.';
+
+  @override
+  String get rdAppearanceSectionTheme => 'Theme';
+
+  @override
+  String get rdAppearanceThemeSystem => 'System';
+
+  @override
+  String get rdAppearanceThemeLight => 'Light';
+
+  @override
+  String get rdAppearanceThemeDark => 'Dark';
+
+  @override
+  String get rdAppearanceDarkModeHint =>
+      'Dark mode is on — tuned for calm, low-light reading.';
+
+  @override
+  String get rdAppearanceSectionAccent => 'Accent color';
+
+  @override
+  String get rdAppearanceAccentPeriwinkle => 'Periwinkle';
+
+  @override
+  String get rdAppearanceAccentSage => 'Sage';
+
+  @override
+  String get rdAppearanceAccentClay => 'Clay';
+
+  @override
+  String get rdAppearanceAccentPlum => 'Plum';
+
+  @override
+  String get rdAppearanceAccentCustom => 'Custom';
+
+  @override
+  String get rdAppearanceSectionTextSize => 'Text size';
+
+  @override
+  String get rdAppearanceTextSmall => 'Small';
+
+  @override
+  String get rdAppearanceTextDefault => 'Default';
+
+  @override
+  String get rdAppearanceTextLarge => 'Large';
+
+  @override
+  String get rdAppearancePreviewText =>
+      'Mira keeps your memories clear and readable.';
+
+  @override
+  String get rdAppearanceReduceMotion => 'Reduce motion';
+
+  @override
+  String get rdAppearanceReduceMotionSub =>
+      'Calmer transitions and less movement';
+
+  @override
+  String get rdAppearanceSectionAppIcon => 'App icon';
+
+  @override
+  String get rdAppearanceIconDefault => 'Default';
+
+  @override
+  String get rdAppearanceIconSage => 'Sage';
+
+  @override
+  String get rdAppearanceIconDusk => 'Dusk';
+
+  @override
+  String get rdAppearanceFoot => 'Appearance changes apply instantly.';
+
+  @override
+  String get rdStorageTitle => 'Storage';
+
+  @override
+  String get rdStorageIntro =>
+      'What Mira is holding, and how much room is left.';
+
+  @override
+  String get rdStorageUpdating => 'Updating usage…';
+
+  @override
+  String get rdStorageSectionBreakdown => 'Breakdown';
+
+  @override
+  String get rdStorageSectionManage => 'Manage';
+
+  @override
+  String get rdStorageClearArchived => 'Clear archived';
+
+  @override
+  String get rdStorageClearArchivedSub => 'Remove captures you have archived';
+
+  @override
+  String get rdStorageOffloadCloud => 'Offload originals to cloud';
+
+  @override
+  String get rdStorageOffloadCloudSub =>
+      'Keep full-quality copies in a connected service';
+
+  @override
+  String get rdStorageFoot => 'Mira keeps only what you approve.';
+
+  @override
+  String get rdStorageCategoryPhotos => 'Photos';
+
+  @override
+  String get rdStorageCategoryVoice => 'Voice';
+
+  @override
+  String get rdStorageCategoryScreenshots => 'Screenshots';
+
+  @override
+  String get rdStorageCategoryNotes => 'Notes';
+
+  @override
+  String get rdStorageCategoryLinks => 'Links';
+
+  @override
+  String get rdStorageCategoryOther => 'Other';
+
+  @override
+  String get rdStorageEmpty => 'Empty';
+
+  @override
+  String rdStorageItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdStorageOfQuota(String quota) {
+    return 'of $quota';
+  }
+
+  @override
+  String get rdStorageNoArchived => 'No archived items to clear';
+
+  @override
+  String rdStorageCleared(int count, String freed) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count archived items',
+      one: '1 archived item',
+    );
+    return 'Cleared $_temp0$freed';
+  }
+
+  @override
+  String rdStorageFreedSuffix(String amount) {
+    return ' · $amount freed';
+  }
+
+  @override
+  String get rdStorageClearFailed => 'Couldn\'t clear archived items';
+
+  @override
+  String get rdRemindersTitle => 'Reminders';
+
+  @override
+  String get rdRemindersSubtitleEmpty => 'Nothing waiting on you';
+
+  @override
+  String get rdRemindersSubtitleOne => '1 thing Mira is holding for you';
+
+  @override
+  String rdRemindersSubtitleMany(int count) {
+    return '$count things Mira is holding for you';
+  }
+
+  @override
+  String get rdRemindersSectionOverdue => 'Overdue';
+
+  @override
+  String get rdRemindersSectionToday => 'Today';
+
+  @override
+  String get rdRemindersSectionUpcoming => 'Upcoming';
+
+  @override
+  String get rdRemindersSectionWaiting => 'When the moment\'s right';
+
+  @override
+  String get rdRemindersSectionDone => 'Done';
+
+  @override
+  String get rdRemindersEmptyTitle => 'No reminders yet';
+
+  @override
+  String get rdRemindersEmptyBody =>
+      'Ask Mira to remind you about something,\nand it will settle in here.';
+
+  @override
+  String get rdRemindersMarkedDone => 'Marked done';
+
+  @override
+  String get rdRemindersBackOnList => 'Back on your list';
+
+  @override
+  String get rdRemindersSnoozedTomorrow => 'Snoozed until tomorrow';
+
+  @override
+  String get rdRemindersDeleted => 'Reminder deleted';
+
+  @override
+  String get rdRemindersSet => 'Reminder set';
+
+  @override
+  String get rdRemindersUntitled => 'Untitled reminder';
+
+  @override
+  String get rdRemindersFromMemory => 'From a memory';
+
+  @override
+  String get rdRemindersDone => 'Done';
+
+  @override
+  String get rdRemindersSnooze => 'Snooze';
+
+  @override
+  String get rdRemindersOverdue => 'Overdue';
+
+  @override
+  String rdRemindersOverdueByHours(int hours) {
+    return 'Overdue by ${hours}h';
+  }
+
+  @override
+  String get rdRemindersOverdueSinceYesterday => 'Overdue since yesterday';
+
+  @override
+  String rdRemindersOverdueByDays(int days) {
+    return 'Overdue by ${days}d';
+  }
+
+  @override
+  String get rdRemindersNow => 'Now';
+
+  @override
+  String rdRemindersInMinutes(int minutes) {
+    return 'In ${minutes}m';
+  }
+
+  @override
+  String rdRemindersInHours(int hours) {
+    return 'In ${hours}h';
+  }
+
+  @override
+  String get rdRemindersTomorrow => 'Tomorrow';
+
+  @override
+  String rdRemindersInDays(int days) {
+    return 'In ${days}d';
+  }
+
+  @override
+  String get rdRemindersComposeTitle => 'New reminder';
+
+  @override
+  String get rdRemindersComposeHint => 'Remind me to…';
+
+  @override
+  String get rdRemindersWhenLabel => 'WHEN';
+
+  @override
+  String get rdRemindersLaterToday => 'Later today';
+
+  @override
+  String get rdRemindersThisEvening => 'This evening';
+
+  @override
+  String get rdRemindersNextWeek => 'Next week';
+
+  @override
+  String get rdRemindersPickDateTime => 'Pick date & time';
+
+  @override
+  String get rdRemindersSetReminder => 'Set reminder';
+
+  @override
+  String get rdRemindersTranscribing => 'Transcribing…';
+
+  @override
+  String get rdHomeRecentsEmpty => 'Your recent memories will appear here.';
+
+  @override
+  String get rdHomeRemindAgain => 'Remind again…';
+
+  @override
+  String rdHomeSnoozed(String label) {
+    return 'Snoozed · $label';
+  }
+
+  @override
+  String get rdHomeLaterToday => 'Later today';
+
+  @override
+  String rdHomeInDays(int days) {
+    return 'In $days days';
+  }
+
+  @override
+  String get rdHomeKindNote => 'Note';
+
+  @override
+  String get rdHomeKindVoice => 'Voice';
+
+  @override
+  String rdHomeLinksCount(int count) {
+    return '$count links';
+  }
+
+  @override
+  String rdCanvasMapContext(int memories, int connections) {
+    return 'Your memory · $memories memories · $connections connections';
+  }
+
+  @override
+  String rdCanvasClusterContext(int clusters, int memories) {
+    return '$clusters clusters · $memories memories';
+  }
+
+  @override
+  String get rdCanvasMergeSuccess => 'Memories merged';
+
+  @override
+  String get rdCanvasMergeFail => 'Couldn\'t merge those';
+
+  @override
+  String get rdCanvasUnlinkSuccess => 'Connection removed';
+
+  @override
+  String get rdCanvasUnlinkFail => 'Couldn\'t remove that connection';
+
+  @override
+  String get rdCanvasMyBoard => 'My board';
+
+  @override
+  String get rdCanvasNewBoard => 'New board';
+
+  @override
+  String get rdCanvasBoardDefault => 'Board';
+
+  @override
+  String rdCanvasBoardLabel(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cards',
+      one: '1 card',
+    );
+    return '$name · $_temp0';
+  }
+
+  @override
+  String get rdCanvasRenameTitle => 'Rename board';
+
+  @override
+  String get rdCanvasBoardNameHint => 'Board name';
+
+  @override
+  String get rdCanvasLoading => 'Loading…';
+
+  @override
+  String get rdCanvasBoardsHeader => 'BOARDS';
+
+  @override
+  String get rdCanvasUntitledBoard => 'Untitled board';
+
+  @override
+  String rdCanvasCardCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count cards',
+      one: '1 card',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdCanvasLinkedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'memories',
+      one: 'memory',
+    );
+    return '$count linked $_temp0.';
+  }
+
+  @override
+  String get rdCanvasNodePerson => 'Person';
+
+  @override
+  String get rdCanvasNodeTask => 'Task';
+
+  @override
+  String get rdCanvasNodeEvent => 'Event';
+
+  @override
+  String get rdCanvasNodeNote => 'Note';
+
+  @override
+  String get rdCanvasNodeBook => 'Book';
+
+  @override
+  String get rdCanvasNodeIdea => 'Idea';
+
+  @override
+  String get rdCanvasNodeTopic => 'Topic';
+
+  @override
+  String get rdCanvasClusterTasks => 'Tasks';
+
+  @override
+  String get rdCanvasClusterBooks => 'Books & ideas';
+
+  @override
+  String get rdCanvasClusterEvents => 'Events';
+
+  @override
+  String get rdCanvasClusterNotes => 'Notes & memories';
+
+  @override
+  String get rdCanvasNoClusters => 'No clusters yet';
+
+  @override
+  String get rdCanvasGraphEmpty => 'Your memory graph is empty';
+
+  @override
+  String rdCanvasFocusedOn(String label) {
+    return 'Focused on $label';
+  }
+
+  @override
+  String get rdCanvasTapExplore => 'Tap a memory · drag to explore';
+
+  @override
+  String rdCanvasMergeInto(String label) {
+    return 'Merge into \"$label\"';
+  }
+
+  @override
+  String get rdCanvasMergePickDuplicate =>
+      'Pick the duplicate to fold in — it keeps every connection.';
+
+  @override
+  String get rdCanvasFocusConstellation => 'Focus this constellation';
+
+  @override
+  String get rdCanvasMergeDuplicate => 'Merge a duplicate';
+
+  @override
+  String rdCanvasConnectedTo(int count) {
+    return 'CONNECTED TO $count';
+  }
+
+  @override
+  String get rdCanvasCardRemoved => 'Card removed';
+
+  @override
+  String get rdCanvasNewNoteTitle => 'New note';
+
+  @override
+  String get rdCanvasNewNoteSub => 'Tap to edit later.';
+
+  @override
+  String get rdCanvasEditCard => 'Edit card';
+
+  @override
+  String get rdCanvasEditTitle => 'Title';
+
+  @override
+  String get rdCanvasEditNoteOptional => 'Note (optional)';
+
+  @override
+  String get rdCanvasBoardEmpty => 'This board is empty';
+
+  @override
+  String get rdCanvasConnectTapSecond => 'Now tap another card to connect them';
+
+  @override
+  String get rdCanvasConnectMode => 'Connect mode · tap two cards to link them';
+
+  @override
+  String get rdCanvasAddMode => 'Add mode · tap anywhere to drop a card';
+
+  @override
+  String rdCanvasEdgeWithPerson(String person) {
+    return 'with $person';
+  }
+
+  @override
+  String get rdCanvasEdgeReminder => 'reminder';
+
+  @override
+  String get rdCanvasEdgeToRead => 'to read';
+
+  @override
+  String get rdCanvasEdgeRelated => 'related';
+
+  @override
+  String get rdPaywallPlanSaveBadge => '2 months free';
+
+  @override
+  String get rdPaywallPlanPerMonth => '/mo';
+
+  @override
+  String get rdPaywallPlanAnnualNote => '\$72 billed yearly';
+
+  @override
+  String rdPaywallFinePrint(String then) {
+    return '$then · cancel anytime.\nNo charge today — we\'ll remind you before it ends.';
+  }
+
+  @override
+  String get rdPaywallMemPlan => 'Plan';
+
+  @override
+  String get rdPaywallMemPlanValue => 'Annual · \$6/mo';
+
+  @override
+  String get rdPaywallMemRenews => 'Renews';
+
+  @override
+  String get rdPaywallMemRenewsValue => 'Aug 12, 2025';
+
+  @override
+  String get rdPaywallMemPayment => 'Payment';
+
+  @override
+  String get rdPaywallMemPaymentValue => 'Apple ID';
+
+  @override
+  String get rdPaywallMemoriesHeld => 'Memories held';
+
+  @override
+  String rdPaywallMemoriesCount(String count) {
+    return '$count · unlimited';
+  }
+
+  @override
+  String get rdPaywallMemoriesGrowth =>
+      'Growing calmly. On Free this would have stopped at 2,000.';
+
+  @override
+  String get rdPaywallPerksLabel => 'YOUR PLUS PERKS';
+
+  @override
+  String get rdPaywallPerkUnlimited => 'Unlimited memories';
+
+  @override
+  String get rdPaywallPerkGraph => 'Full memory graph';
+
+  @override
+  String get rdPaywallPerkVoice => 'Longer history & 10-min voice';
+
+  @override
+  String get rdPaywallPerkConnect => 'Unlimited connected apps';
+
+  @override
+  String get rdSetupSkip => 'Skip';
+
+  @override
+  String get rdSetupContinue => 'Continue';
+
+  @override
+  String get rdSetupPickFew => 'Pick a few';
+
+  @override
+  String get rdSetupWelcomeTitle => 'Let\'s set up\nyour second mind.';
+
+  @override
+  String get rdSetupWelcomeDesc =>
+      'A few quick questions so Mira remembers the way you do. About two minutes — and you can change any of it later.';
+
+  @override
+  String get rdSetupBeginSetup => 'Begin setup';
+
+  @override
+  String get rdSetupSkipForNow => 'Skip for now';
+
+  @override
+  String get rdSetupAddressTitle => 'What should Mira\ncall you?';
+
+  @override
+  String get rdSetupAddressDesc =>
+      'This is how your Brief and reminders will greet you.';
+
+  @override
+  String get rdSetupNameHint => 'Your name';
+
+  @override
+  String get rdSetupToneLabel => 'And how should it speak?';
+
+  @override
+  String get rdSetupToneCalm => 'Calm';
+
+  @override
+  String get rdSetupToneCalmSub => 'Gentle, unhurried';
+
+  @override
+  String get rdSetupToneConcise => 'Concise';
+
+  @override
+  String get rdSetupToneConciseSub => 'Short and clear';
+
+  @override
+  String get rdSetupToneWarm => 'Warm';
+
+  @override
+  String get rdSetupToneWarmSub => 'Friendly, personal';
+
+  @override
+  String get rdSetupFocusTitle => 'What matters\nto you?';
+
+  @override
+  String get rdSetupFocusDesc =>
+      'Mira will cluster your memories around these. Choose any that fit.';
+
+  @override
+  String get rdSetupFocusWork => 'Work & projects';
+
+  @override
+  String get rdSetupFocusIdeas => 'Ideas & sparks';
+
+  @override
+  String get rdSetupFocusPeople => 'People';
+
+  @override
+  String get rdSetupFocusReading => 'Reading & links';
+
+  @override
+  String get rdSetupFocusHealth => 'Health';
+
+  @override
+  String get rdSetupFocusMoney => 'Money';
+
+  @override
+  String get rdSetupFocusTravel => 'Travel & places';
+
+  @override
+  String get rdSetupFocusLearning => 'Learning';
+
+  @override
+  String get rdSetupPeopleTitle => 'Who\'s important\nto you?';
+
+  @override
+  String get rdSetupPeopleDesc =>
+      'Mira links what you capture to the people in your life. Add a few — first names are enough.';
+
+  @override
+  String get rdSetupPeopleHint => 'Add a name';
+
+  @override
+  String get rdSetupPeopleEmpty =>
+      'No one yet — Mira will still learn as you capture.';
+
+  @override
+  String get rdSetupRhythmTitle => 'When should your\nBrief arrive?';
+
+  @override
+  String get rdSetupRhythmDesc =>
+      'A calm once-a-day summary of what needs you — nothing more.';
+
+  @override
+  String get rdSetupRhythmMorning => 'Morning';
+
+  @override
+  String get rdSetupRhythmMidday => 'Midday';
+
+  @override
+  String get rdSetupRhythmEvening => 'Evening';
+
+  @override
+  String get rdSetupQuietHours => 'Quiet hours';
+
+  @override
+  String get rdSetupQuietHoursSub => 'No nudges 22:00 – 07:00';
+
+  @override
+  String get rdSetupPrivacyTitle => 'Your memory\nstays yours.';
+
+  @override
+  String get rdSetupPrivacyDesc =>
+      'Before you connect anything, here\'s the promise Mira is built on.';
+
+  @override
+  String get rdSetupPrivacyProcessed => 'Processed privately';
+
+  @override
+  String get rdSetupPrivacyProcessedSub =>
+      'Your captures are analysed on-device whenever possible.';
+
+  @override
+  String get rdSetupPrivacyEncrypted => 'Encrypted end-to-end';
+
+  @override
+  String get rdSetupPrivacyEncryptedSub =>
+      'Only you can read your memories — not even Mira can.';
+
+  @override
+  String get rdSetupPrivacyNeverSold => 'Never sold, ever';
+
+  @override
+  String get rdSetupPrivacyNeverSoldSub =>
+      'We don\'t sell or share your data. No ads, no exceptions.';
+
+  @override
+  String get rdSetupChoicesLabel => 'Your choices';
+
+  @override
+  String get rdSetupSyncDevices => 'Sync across my devices';
+
+  @override
+  String get rdSetupSyncDevicesSub =>
+      'Encrypted backup so your memory follows you.';
+
+  @override
+  String get rdSetupHelpImprove => 'Help improve Mira';
+
+  @override
+  String get rdSetupHelpImproveSub =>
+      'Share anonymous, aggregated usage — never your content.';
+
+  @override
+  String get rdSetupSourcesTitle => 'Connect\nyour world.';
+
+  @override
+  String get rdSetupSourcesDesc =>
+      'Give Mira a head start. It only reads what you connect, and processes it privately.';
+
+  @override
+  String get rdSetupSourceCalendar => 'Calendar';
+
+  @override
+  String get rdSetupSourceCalendarSub => 'Meetings feed your Brief';
+
+  @override
+  String get rdSetupSourceNotes => 'Notes';
+
+  @override
+  String get rdSetupSourceNotesSub => 'Your written thoughts';
+
+  @override
+  String get rdSetupSourcePhotos => 'Photos';
+
+  @override
+  String get rdSetupSourcePhotosSub => 'Screenshots & scans';
+
+  @override
+  String get rdSetupSourceGmail => 'Gmail';
+
+  @override
+  String get rdSetupSourceGmailSub => 'Important mail';
+
+  @override
+  String get rdSetupImportTitle => 'Bring your\nnotes with you.';
+
+  @override
+  String get rdSetupImportDesc =>
+      'Already keep notes elsewhere? Import them once and Mira will weave them into your graph. Nothing is deleted from the original app.';
+
+  @override
+  String rdSetupImportNotesFound(String count) {
+    return '~$count notes found';
+  }
+
+  @override
+  String get rdSetupImportLater => 'You can also import later from Settings.';
+
+  @override
+  String get rdSetupImportBackground =>
+      'Mira will import in the background — you can start using it right away.';
+
+  @override
+  String rdSetupImportCta(String count) {
+    return 'Import $count notes';
+  }
+
+  @override
+  String get rdSetupPermissionsTitle => 'Let Mira\nhelp quietly.';
+
+  @override
+  String get rdSetupPermissionsDesc =>
+      'Two permissions, both optional. Turn off anything, anytime.';
+
+  @override
+  String get rdSetupMicTitle => 'Microphone';
+
+  @override
+  String get rdSetupMicSub => 'So you can speak a memory anytime';
+
+  @override
+  String get rdSetupNotifTitle => 'Notifications';
+
+  @override
+  String get rdSetupNotifSub => 'Only your Brief and reminders you set';
+
+  @override
+  String get rdSetupWeavingTitle => 'Weaving your\nmemory…';
+
+  @override
+  String rdSetupWeavingDesc(String line) {
+    return 'Mira is arranging $line into the shape of your mind.';
+  }
+
+  @override
+  String get rdSetupWeavingPreferences => 'your preferences';
+
+  @override
+  String rdSetupWeavingFocusAreas(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count focus areas',
+      one: '1 focus area',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdSetupWeavingPeople(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdSetupWeavingSources(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sources',
+      one: '1 source',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdSetupWeavingImported(String count) {
+    return '$count imported notes';
+  }
+
+  @override
+  String get rdSetupReadyTitle => 'Your second\nmind is ready.';
+
+  @override
+  String rdSetupReadyDesc(String name) {
+    return 'Everything you capture from here, $name, has a place to live — and a way back to you.';
+  }
+
+  @override
+  String get rdSetupReadyYou => 'you';
+
+  @override
+  String get rdSetupTakeTour => 'Take a quick tour';
+
+  @override
+  String get rdSetupSkipTour => 'Skip the tour';
+
+  @override
+  String get rdSetupTour1Title => 'One place to capture';
+
+  @override
+  String get rdSetupTour1Body =>
+      'Type, speak, or snap a photo — everything you save starts right here.';
+
+  @override
+  String get rdSetupTour2Title => 'Everything lands here';
+
+  @override
+  String get rdSetupTour2Body =>
+      'Each capture joins your timeline, already linked to what it relates to.';
+
+  @override
+  String get rdSetupTour3Title => 'Capture from anywhere';
+
+  @override
+  String get rdSetupTour3Body =>
+      'Tap the mic any time — even mid-conversation — to save a thought in a breath.';
+
+  @override
+  String get rdSetupTour4Title => 'Move around calmly';
+
+  @override
+  String get rdSetupTour4Body =>
+      'Home, Library, Canvas and your Daily Brief all live down here.';
+
+  @override
+  String get rdSetupTourSkip => 'Skip tour';
+
+  @override
+  String get rdSetupTourNext => 'Next';
+
+  @override
+  String get rdSetupTourFinish => 'Finish';
+
+  @override
+  String get rdSetupInviteTitle => 'Give someone a\ncalmer mind.';
+
+  @override
+  String get rdSetupInviteDesc =>
+      'Mira is better with the people you think alongside. Invite a few — they skip the waitlist, and you both get a month of Plus.';
+
+  @override
+  String get rdSetupInviteCodeLabel => 'YOUR INVITE CODE';
+
+  @override
+  String get rdSetupCopy => 'Copy';
+
+  @override
+  String get rdSetupCopied => 'Copied';
+
+  @override
+  String get rdSetupChannelMessages => 'Messages';
+
+  @override
+  String get rdSetupChannelMail => 'Mail';
+
+  @override
+  String get rdSetupChannelCopyLink => 'Copy link';
+
+  @override
+  String get rdSetupShareInvite => 'Share your invite';
+
+  @override
+  String get rdSetupMaybeLater => 'Maybe later';
 }

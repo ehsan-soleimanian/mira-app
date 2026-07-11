@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
 import '../theme/rd_theme.dart';
@@ -33,12 +34,12 @@ class _RdAskScreenState extends State<RdAskScreen> {
       'M18 6l-2.5 2.5M8.5 15.5 6 18"/>';
   static const _arrowRight = '<path d="M5 12h13M13 6l6 6-6 6"/>';
 
-  static const _suggestions = [
-    'What did I save recently?',
-    'What should I follow up on?',
-    'Summarise this week',
-    'Find a note by topic',
-  ];
+  List<String> _suggestions(AppLocalizations l10n) => [
+        l10n.rdAskSuggestionRecent,
+        l10n.rdAskSuggestionFollowUp,
+        l10n.rdAskSuggestionSummariseWeek,
+        l10n.rdAskSuggestionFindByTopic,
+      ];
 
   final _controller = TextEditingController();
   final _focus = FocusNode();
@@ -85,11 +86,11 @@ class _RdAskScreenState extends State<RdAskScreen> {
       });
     } catch (_) {
       if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
       setState(() {
         _answer = _Answer(
           question: q,
-          answer:
-              "I couldn't reach your memory just now. Check your connection and try again.",
+          answer: l10n.rdAskErrorConnection,
           cites: const [],
         );
         _thinking = false;
@@ -122,23 +123,24 @@ class _RdAskScreenState extends State<RdAskScreen> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _header(rd),
+            _header(rd, l10n),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-              child: _field(rd),
+              child: _field(rd, l10n),
             ),
             Expanded(
               child: _thinking
-                  ? _thinkingView(rd)
+                  ? _thinkingView(rd, l10n)
                   : _answer != null
-                      ? _answerView(rd, _answer!)
-                      : _idleView(rd),
+                      ? _answerView(rd, l10n, _answer!)
+                      : _idleView(rd, l10n),
             ),
           ],
         ),
@@ -146,7 +148,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
     );
   }
 
-  Widget _header(RdTheme rd) {
+  Widget _header(RdTheme rd, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 6, 16, 6),
       child: Row(
@@ -162,7 +164,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
           ),
           const SizedBox(width: 4),
           Text(
-            'Ask your memory',
+            l10n.rdAskTitle,
             style: GoogleFonts.dosis(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -174,7 +176,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
     );
   }
 
-  Widget _field(RdTheme rd) {
+  Widget _field(RdTheme rd, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -198,7 +200,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
                 isCollapsed: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 16),
                 border: InputBorder.none,
-                hintText: 'Ask across everything…',
+                hintText: l10n.rdAskHint,
                 hintStyle:
                     GoogleFonts.vazirmatn(fontSize: 14, color: rd.faint),
               ),
@@ -236,15 +238,15 @@ class _RdAskScreenState extends State<RdAskScreen> {
   }
 
   // ── idle: suggestions + recent ─────────────────────────────────────────
-  Widget _idleView(RdTheme rd) {
+  Widget _idleView(RdTheme rd, AppLocalizations l10n) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
       children: [
-        _sectionLabel(rd, 'Try asking'),
-        for (final s in _suggestions) _suggestTile(rd, s),
+        _sectionLabel(rd, l10n.rdAskSectionTry),
+        for (final s in _suggestions(l10n)) _suggestTile(rd, s),
         if (_recent.isNotEmpty) ...[
           const SizedBox(height: 18),
-          _sectionLabel(rd, 'Recent'),
+          _sectionLabel(rd, l10n.rdAskSectionRecent),
           for (final r in _recent) _recentTile(rd, r),
         ],
       ],
@@ -324,7 +326,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
   }
 
   // ── thinking ───────────────────────────────────────────────────────────
-  Widget _thinkingView(RdTheme rd) {
+  Widget _thinkingView(RdTheme rd, AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -332,7 +334,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
           const RdOrb(size: 46),
           const SizedBox(height: 16),
           Text(
-            'Searching your memory…',
+            l10n.rdAskSearching,
             style: GoogleFonts.vazirmatn(fontSize: 13.5, color: rd.muted),
           ),
         ],
@@ -341,7 +343,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
   }
 
   // ── answer ─────────────────────────────────────────────────────────────
-  Widget _answerView(RdTheme rd, _Answer a) {
+  Widget _answerView(RdTheme rd, AppLocalizations l10n, _Answer a) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       children: [
@@ -378,7 +380,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
         if (a.cites.isNotEmpty) ...[
           const SizedBox(height: 22),
           Text(
-            'Drawn from ${a.cites.length} ${a.cites.length == 1 ? 'memory' : 'memories'}',
+            l10n.rdAskDrawnFrom(a.cites.length),
             style: GoogleFonts.vazirmatn(
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
@@ -387,14 +389,14 @@ class _RdAskScreenState extends State<RdAskScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          for (final c in a.cites) _citeCard(rd, c),
+          for (final c in a.cites) _citeCard(rd, l10n, c),
         ],
         const SizedBox(height: 20),
         Center(
           child: GestureDetector(
             onTap: _reset,
             child: Text(
-              'Ask something else',
+              l10n.rdAskSomethingElse,
               style: GoogleFonts.vazirmatn(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
@@ -407,8 +409,8 @@ class _RdAskScreenState extends State<RdAskScreen> {
     );
   }
 
-  Widget _citeCard(RdTheme rd, LibraryItem item) {
-    final sub = _citeSub(item);
+  Widget _citeCard(RdTheme rd, AppLocalizations l10n, LibraryItem item) {
+    final sub = _citeSub(l10n, item);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GestureDetector(
@@ -440,7 +442,7 @@ class _RdAskScreenState extends State<RdAskScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.title.isNotEmpty ? item.title : 'Untitled',
+                      item.title.isNotEmpty ? item.title : l10n.rdLibraryUntitled,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.vazirmatn(
@@ -472,25 +474,25 @@ class _RdAskScreenState extends State<RdAskScreen> {
     );
   }
 
-  String _citeSub(LibraryItem item) {
+  String _citeSub(AppLocalizations l10n, LibraryItem item) {
     final kind = switch (item.type) {
-      'voice' => 'Voice',
-      'event' => 'Event',
-      'photo' || 'image' => 'Photo',
-      'link' => 'Link',
-      _ => 'Note',
+      'voice' => l10n.rdLibraryTypeVoice,
+      'event' => l10n.rdLibraryTypeEvent,
+      'photo' || 'image' => l10n.rdLibraryTypePhoto,
+      'link' => l10n.rdLibraryTypeLink,
+      _ => l10n.rdLibraryTypeNote,
     };
-    return '$kind · ${_relTime(item.createdAt)}';
+    return '$kind · ${_relTime(l10n, item.createdAt)}';
   }
 
-  static String _relTime(DateTime dt) {
+  String _relTime(AppLocalizations l10n, DateTime dt) {
     final d = DateTime.now().difference(dt);
-    if (d.inMinutes < 1) return 'now';
-    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
-    if (d.inHours < 24) return '${d.inHours}h ago';
-    if (d.inDays == 1) return 'yesterday';
-    if (d.inDays < 7) return '${d.inDays}d ago';
-    return '${dt.month}/${dt.day}';
+    if (d.inMinutes < 1) return l10n.rdLibraryTimeJustNow;
+    if (d.inMinutes < 60) return l10n.rdLibraryTimeMinutesAgo(d.inMinutes);
+    if (d.inHours < 24) return l10n.rdLibraryTimeHoursAgo(d.inHours);
+    if (d.inDays == 1) return l10n.rdLibraryTimeYesterday;
+    if (d.inDays < 7) return l10n.rdLibraryTimeDaysAgo(d.inDays);
+    return l10n.rdLibraryTimeDate(dt.month, dt.day);
   }
 
   static String _typeIcon(String type) {

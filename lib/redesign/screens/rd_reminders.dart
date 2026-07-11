@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/reminder_models.dart';
 
 import '../theme/rd_theme.dart';
@@ -154,8 +155,16 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
       );
   }
 
+  /// Resolves legacy English back labels from navigation into localized text.
+  String _resolvedBackLabel(AppLocalizations l10n) {
+    if (widget.backLabel == 'Account') return l10n.rdCommonAccount;
+    if (widget.backLabel == 'Home') return l10n.rdNavHome;
+    return widget.backLabel;
+  }
+
   void _toastUndo(String message, VoidCallback onUndo) {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -168,7 +177,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
             style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
           ),
           action: SnackBarAction(
-            label: 'Undo',
+            label: l10n.rdCommonUndo,
             textColor: Colors.white,
             onPressed: onUndo,
           ),
@@ -187,9 +196,10 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
 
   /// Mark a reminder done — optimistic, with Undo.
   Future<void> _markDone(Reminder r) async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _replace(r, done: true));
     _pushDone(r, true).ignore();
-    _toastUndo('Marked done', () {
+    _toastUndo(l10n.rdRemindersMarkedDone, () {
       setState(() => _replace(r, done: false));
       _pushDone(r, false).ignore();
     });
@@ -199,11 +209,12 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
   void _uncomplete(Reminder r) {
     setState(() => _replace(r, done: false));
     _pushDone(r, false).ignore();
-    _toast('Back on your list');
+    _toast(AppLocalizations.of(context)!.rdRemindersBackOnList);
   }
 
   /// Snooze a reminder to tomorrow — optimistic, with Undo restoring the time.
   Future<void> _snooze(Reminder r) async {
+    final l10n = AppLocalizations.of(context)!;
     final prev = r.remindAt;
     final next = DateTime.now().add(const Duration(days: 1));
     setState(() => _replace(r, remindAt: next));
@@ -212,7 +223,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
       await RemindersRepository(apiClient: services.apiClient)
           .update(r.id, remindAt: next);
     } catch (_) {}
-    _toastUndo('Snoozed until tomorrow', () {
+    _toastUndo(l10n.rdRemindersSnoozedTomorrow, () {
       if (prev == null) return;
       setState(() => _replace(r, remindAt: prev));
       final services = AppScope.servicesOf(context);
@@ -225,7 +236,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
   /// Delete a reminder — drop it optimistically and push the delete best-effort.
   Future<void> _delete(Reminder r) async {
     setState(() => _items = _source.where((x) => x.id != r.id).toList());
-    _toast('Reminder deleted');
+    _toast(AppLocalizations.of(context)!.rdRemindersDeleted);
     try {
       final services = AppScope.servicesOf(context);
       await RemindersRepository(apiClient: services.apiClient).delete(r.id);
@@ -259,7 +270,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
       updatedAt: now,
     );
     setState(() => _items = [temp, ..._source]);
-    _toast('Reminder set');
+    _toast(AppLocalizations.of(context)!.rdRemindersSet);
     try {
       final services = AppScope.servicesOf(context);
       final created = await RemindersRepository(apiClient: services.apiClient)
@@ -293,6 +304,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final open = _open;
     final done = _done;
@@ -307,17 +319,17 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _back(),
-              _heading(open.length),
+              _back(l10n),
+              _heading(l10n, open.length),
               if (empty)
-                _emptyState()
+                _emptyState(l10n)
               else ...[
-                ..._openSection('Overdue', _overdue),
-                ..._openSection('Today', _today),
-                ..._openSection('Upcoming', _upcoming),
-                ..._openSection('When the moment’s right', _waiting),
+                ..._openSection(l10n.rdRemindersSectionOverdue, _overdue),
+                ..._openSection(l10n.rdRemindersSectionToday, _today),
+                ..._openSection(l10n.rdRemindersSectionUpcoming, _upcoming),
+                ..._openSection(l10n.rdRemindersSectionWaiting, _waiting),
                 if (done.isNotEmpty) ...[
-                  _sectionLabel('Done'),
+                  _sectionLabel(l10n.rdRemindersSectionDone),
                   for (final r in done)
                     _ReminderCard(
                       reminder: r,
@@ -335,7 +347,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     );
   }
 
-  Widget _back() {
+  Widget _back(AppLocalizations l10n) {
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 8, 20, 0),
@@ -350,7 +362,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
               RdIcon(RdIcons.chevronLeft, size: 20, color: rd.navy, strokeWidth: 2),
               const SizedBox(width: 3),
               Text(
-                widget.backLabel,
+                _resolvedBackLabel(l10n),
                 style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.navy),
               ),
             ],
@@ -360,7 +372,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     );
   }
 
-  Widget _heading(int openCount) {
+  Widget _heading(AppLocalizations l10n, int openCount) {
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 20, 0),
@@ -372,7 +384,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Reminders',
+                  l10n.rdRemindersTitle,
                   style: GoogleFonts.dosis(
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
@@ -382,10 +394,10 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
                 const SizedBox(height: 4),
                 Text(
                   openCount == 0
-                      ? 'Nothing waiting on you'
+                      ? l10n.rdRemindersSubtitleEmpty
                       : openCount == 1
-                          ? '1 thing Mira is holding for you'
-                          : '$openCount things Mira is holding for you',
+                          ? l10n.rdRemindersSubtitleOne
+                          : l10n.rdRemindersSubtitleMany(openCount),
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14,
                     height: 1.5,
@@ -432,7 +444,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     );
   }
 
-  Widget _emptyState() {
+  Widget _emptyState(AppLocalizations l10n) {
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 60, 40, 0),
@@ -457,7 +469,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
             ),
             const SizedBox(height: 18),
             Text(
-              'No reminders yet',
+              l10n.rdRemindersEmptyTitle,
               style: GoogleFonts.dosis(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -466,7 +478,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Ask Mira to remind you about something,\nand it will settle in here.',
+              l10n.rdRemindersEmptyBody,
               textAlign: TextAlign.center,
               style: GoogleFonts.vazirmatn(
                 fontSize: 13.5,
@@ -508,9 +520,10 @@ class _ReminderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final done = reminder.done;
-    final when = _relativeTime(reminder.remindAt);
+    final when = _relativeTime(l10n, reminder.remindAt);
     final overdue = !done &&
         reminder.remindAt != null &&
         reminder.remindAt!.isBefore(DateTime.now());
@@ -562,7 +575,7 @@ class _ReminderCard extends StatelessWidget {
               children: [
                 Text(
                   reminder.title.trim().isEmpty
-                      ? 'Untitled reminder'
+                      ? l10n.rdRemindersUntitled
                       : reminder.title.trim(),
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14.5,
@@ -603,7 +616,7 @@ class _ReminderCard extends StatelessWidget {
                         RdIcon(RdIcons.link,
                             size: 12, color: rd.muted, strokeWidth: 2),
                         const SizedBox(width: 5),
-                        Text('From a memory',
+                        Text(l10n.rdRemindersFromMemory,
                             style: GoogleFonts.vazirmatn(
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w500,
@@ -622,14 +635,14 @@ class _ReminderCard extends StatelessWidget {
                       if (onDone != null)
                         _CardAction(
                           icon: RdIcons.check,
-                          label: 'Done',
+                          label: l10n.rdRemindersDone,
                           onTap: onDone!,
                         ),
                       if (onSnooze != null) ...[
                         const SizedBox(width: 8),
                         _CardAction(
                           icon: RdIcons.resurface,
-                          label: 'Snooze',
+                          label: l10n.rdRemindersSnooze,
                           onTap: onSnooze!,
                         ),
                       ],
@@ -657,22 +670,22 @@ class _ReminderCard extends StatelessWidget {
 
   /// A human relative label for a reminder time: "Overdue", "In 3h", "Tomorrow",
   /// "In 2d", etc. Null when the reminder has no `remindAt`.
-  static String? _relativeTime(DateTime? at) {
+  static String? _relativeTime(AppLocalizations l10n, DateTime? at) {
     if (at == null) return null;
     final now = DateTime.now();
     final diff = at.difference(now);
     if (diff.isNegative) {
       final ago = now.difference(at);
-      if (ago.inMinutes < 60) return 'Overdue';
-      if (ago.inHours < 24) return 'Overdue by ${ago.inHours}h';
-      if (ago.inDays == 1) return 'Overdue since yesterday';
-      return 'Overdue by ${ago.inDays}d';
+      if (ago.inMinutes < 60) return l10n.rdRemindersOverdue;
+      if (ago.inHours < 24) return l10n.rdRemindersOverdueByHours(ago.inHours);
+      if (ago.inDays == 1) return l10n.rdRemindersOverdueSinceYesterday;
+      return l10n.rdRemindersOverdueByDays(ago.inDays);
     }
-    if (diff.inMinutes < 1) return 'Now';
-    if (diff.inMinutes < 60) return 'In ${diff.inMinutes}m';
-    if (diff.inHours < 24) return 'In ${diff.inHours}h';
-    if (diff.inDays == 1) return 'Tomorrow';
-    if (diff.inDays < 7) return 'In ${diff.inDays}d';
+    if (diff.inMinutes < 1) return l10n.rdRemindersNow;
+    if (diff.inMinutes < 60) return l10n.rdRemindersInMinutes(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.rdRemindersInHours(diff.inHours);
+    if (diff.inDays == 1) return l10n.rdRemindersTomorrow;
+    if (diff.inDays < 7) return l10n.rdRemindersInDays(diff.inDays);
     return '${at.month}/${at.day}';
   }
 }
@@ -757,7 +770,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
       backgroundColor: Colors.transparent,
       builder: (_) => RdVoiceCaptureSheet(
         captureRepository: AppScope.servicesOf(context).captureRepository,
-        busyLabel: 'Transcribing…',
+        busyLabel: AppLocalizations.of(context)!.rdRemindersTranscribing,
       ),
     );
     if (text != null && text.trim().isNotEmpty && mounted) {
@@ -805,15 +818,16 @@ class _ComposeSheetState extends State<_ComposeSheet> {
     });
   }
 
-  String _customLabel() {
+  String _customLabel(AppLocalizations l10n) {
     final c = _custom;
-    if (c == null) return 'Pick date & time';
+    if (c == null) return l10n.rdRemindersPickDateTime;
     String two(int n) => n.toString().padLeft(2, '0');
     return '${two(c.month)}/${two(c.day)} · ${two(c.hour)}:${two(c.minute)}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final canSet = _title.text.trim().isNotEmpty;
     final mq = MediaQuery.of(context);
@@ -839,7 +853,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                     color: rd.line, borderRadius: BorderRadius.circular(100)),
               ),
             ),
-            Text('New reminder',
+            Text(l10n.rdRemindersComposeTitle,
                 style: GoogleFonts.dosis(
                     fontSize: 20, fontWeight: FontWeight.w700, color: rd.ink)),
             const SizedBox(height: 14),
@@ -851,7 +865,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
               textInputAction: TextInputAction.done,
               style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
               decoration: InputDecoration(
-                hintText: 'Remind me to…',
+                hintText: l10n.rdRemindersComposeHint,
                 hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
                 filled: true,
                 fillColor: rd.bg,
@@ -880,7 +894,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
               ),
             ),
             const SizedBox(height: 18),
-            Text('WHEN',
+            Text(l10n.rdRemindersWhenLabel,
                 style: GoogleFonts.vazirmatn(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w700,
@@ -891,17 +905,17 @@ class _ComposeSheetState extends State<_ComposeSheet> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _chip('Later today', _when == _When.laterToday,
+                _chip(l10n.rdRemindersLaterToday, _when == _When.laterToday,
                     () => setState(() => _when = _When.laterToday)),
-                _chip('This evening', _when == _When.thisEvening,
+                _chip(l10n.rdRemindersThisEvening, _when == _When.thisEvening,
                     () => setState(() => _when = _When.thisEvening)),
-                _chip('Tomorrow', _when == _When.tomorrow,
+                _chip(l10n.rdSnoozeTomorrow, _when == _When.tomorrow,
                     () => setState(() => _when = _When.tomorrow)),
-                _chip('Next week', _when == _When.nextWeek,
+                _chip(l10n.rdRemindersNextWeek, _when == _When.nextWeek,
                     () => setState(() => _when = _When.nextWeek)),
-                _chip('When the moment’s right', _when == _When.someday,
+                _chip(l10n.rdWhenMomentRight, _when == _When.someday,
                     () => setState(() => _when = _When.someday)),
-                _chip(_customLabel(), _when == _When.custom, _pickCustom),
+                _chip(_customLabel(l10n), _when == _When.custom, _pickCustom),
               ],
             ),
             const SizedBox(height: 20),
@@ -918,7 +932,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                       color: rd.navy, borderRadius: BorderRadius.circular(14)),
-                  child: Text('Set reminder',
+                  child: Text(l10n.rdRemindersSetReminder,
                       style: GoogleFonts.vazirmatn(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,

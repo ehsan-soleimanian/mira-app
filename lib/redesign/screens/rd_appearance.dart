@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/core/app_theme_controller.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/settings_models.dart';
 
 import '../theme/rd_theme.dart';
@@ -26,28 +27,33 @@ const List<Color> _accents = [
   Color(0xFFA65C86),
 ];
 
-/// Human names for each accent, in the same order.
-const List<String> _accentNames = ['Periwinkle', 'Sage', 'Clay', 'Plum'];
+/// Text-size steps mapped to their scale factors (S / M / L).
+const List<double> _textScales = [0.9, 1.0, 1.15];
 
-String _accentNameFor(Color c) {
+/// App-icon variants — id plus the two gradient stops shown in the swatch.
+const List<({String id, Color a, Color b})> _appIcons = [
+  (id: 'default', a: Color(0xFF9AA6DA), b: Color(0xFF4B5BA6)),
+  (id: 'sage', a: Color(0xFF7FBFA0), b: Color(0xFF2F7D57)),
+  (id: 'dusk', a: Color(0xFF2A2B33), b: Color(0xFF14151A)),
+];
+
+String _accentLabel(AppLocalizations l10n, Color c) {
   final i = _accents.indexWhere((a) => a == c);
-  return i == -1 ? 'Custom' : _accentNames[i];
+  if (i == -1) return l10n.rdAppearanceAccentCustom;
+  return switch (i) {
+    0 => l10n.rdAppearanceAccentPeriwinkle,
+    1 => l10n.rdAppearanceAccentSage,
+    2 => l10n.rdAppearanceAccentClay,
+    3 => l10n.rdAppearanceAccentPlum,
+    _ => l10n.rdAppearanceAccentCustom,
+  };
 }
 
-/// Text-size steps mapped to their scale factors (S / M / L).
-const List<(String, double)> _textSizes = [
-  ('S', 0.9),
-  ('M', 1.0),
-  ('L', 1.15),
-];
-
-/// App-icon variants — a label plus the two gradient stops shown in the swatch.
-/// Only the selected id is persisted; the runtime launcher swap is native.
-const List<({String id, String label, Color a, Color b})> _appIcons = [
-  (id: 'default', label: 'Default', a: Color(0xFF9AA6DA), b: Color(0xFF4B5BA6)),
-  (id: 'sage', label: 'Sage', a: Color(0xFF7FBFA0), b: Color(0xFF2F7D57)),
-  (id: 'dusk', label: 'Dusk', a: Color(0xFF2A2B33), b: Color(0xFF14151A)),
-];
+String _appIconLabel(AppLocalizations l10n, String id) => switch (id) {
+      'sage' => l10n.rdAppearanceIconSage,
+      'dusk' => l10n.rdAppearanceIconDusk,
+      _ => l10n.rdAppearanceIconDefault,
+    };
 
 /// Neutral surfaces here (segmented track) have no palette token — keep the
 /// exact light literal in light mode, and a dark-tuned value otherwise.
@@ -62,19 +68,24 @@ class RdAppearanceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = AppScope.themeOf(context);
     return _ApScaffold(
       onBack: onBack,
-      title: 'Appearance',
-      intro: 'Make Mira feel like yours — colour, contrast and calm.',
+      title: l10n.rdAppearanceTitle,
+      intro: l10n.rdAppearanceIntro,
       children: [
         _ApSection(
-          label: 'Theme',
+          label: l10n.rdAppearanceSectionTheme,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _ApSegmented(
-                options: const ['System', 'Light', 'Dark'],
+                options: [
+                  l10n.rdAppearanceThemeSystem,
+                  l10n.rdAppearanceThemeLight,
+                  l10n.rdAppearanceThemeDark,
+                ],
                 selected: switch (theme.preference) {
                   MiraThemePreference.system => 0,
                   MiraThemePreference.light => 1,
@@ -89,7 +100,7 @@ class RdAppearanceScreen extends StatelessWidget {
               if (_isDark(context)) ...[
                 const SizedBox(height: 10),
                 Text(
-                  'Dark mode is on — tuned for calm, low-light reading.',
+                  l10n.rdAppearanceDarkModeHint,
                   style: GoogleFonts.vazirmatn(
                       fontSize: 12.5, color: context.rd.muted),
                 ),
@@ -98,7 +109,7 @@ class RdAppearanceScreen extends StatelessWidget {
           ),
         ),
         _ApSection(
-          label: 'Accent color',
+          label: l10n.rdAppearanceSectionAccent,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -109,7 +120,7 @@ class RdAppearanceScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                _accentNameFor(theme.accent),
+                _accentLabel(l10n, theme.accent),
                 style: GoogleFonts.vazirmatn(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -119,22 +130,24 @@ class RdAppearanceScreen extends StatelessWidget {
           ),
         ),
         _ApSection(
-          label: 'Text size',
+          label: l10n.rdAppearanceSectionTextSize,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _ApSegmented(
-                options: const ['Small', 'Default', 'Large'],
+                options: [
+                  l10n.rdAppearanceTextSmall,
+                  l10n.rdAppearanceTextDefault,
+                  l10n.rdAppearanceTextLarge,
+                ],
                 selected: () {
                   final i =
-                      _textSizes.indexWhere((s) => s.$2 == theme.textScale);
+                      _textScales.indexWhere((s) => s == theme.textScale);
                   return i == -1 ? 1 : i;
                 }(),
-                onSelected: (i) => theme.setTextScale(_textSizes[i].$2),
+                onSelected: (i) => theme.setTextScale(_textScales[i]),
               ),
               const SizedBox(height: 14),
-              // Live preview — the whole screen is already scaled by the global
-              // textScaler, so this line grows/shrinks as you change the size.
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
@@ -144,7 +157,7 @@ class RdAppearanceScreen extends StatelessWidget {
                   border: Border.all(color: context.rd.line, width: 1),
                 ),
                 child: Text(
-                  'Mira keeps your memories clear and readable.',
+                  l10n.rdAppearancePreviewText,
                   style: GoogleFonts.vazirmatn(
                       fontSize: 15, height: 1.4, color: context.rd.ink),
                 ),
@@ -156,21 +169,21 @@ class RdAppearanceScreen extends StatelessWidget {
           child: _ApToggleRow(
             icon:
                 '<path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M19.1 4.9l-2.8 2.8M7.7 16.3l-2.8 2.8"/>',
-            title: 'Reduce motion',
-            sub: 'Calmer transitions and less movement',
+            title: l10n.rdAppearanceReduceMotion,
+            sub: l10n.rdAppearanceReduceMotionSub,
             on: theme.reduceMotion,
             onTap: () => theme.setReduceMotion(!theme.reduceMotion),
           ),
         ),
         _ApSection(
-          label: 'App icon',
+          label: l10n.rdAppearanceSectionAppIcon,
           child: _ApIconRow(
             options: _appIcons,
             selected: theme.appIcon,
             onSelected: theme.setAppIcon,
           ),
         ),
-        const _ApFoot('Appearance changes apply instantly.'),
+        _ApFoot(l10n.rdAppearanceFoot),
       ],
     );
   }
@@ -192,6 +205,7 @@ class _ApScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Scaffold(
       backgroundColor: rd.bg,
@@ -215,7 +229,7 @@ class _ApScaffold extends StatelessWidget {
                         RdIcon(RdIcons.chevronLeft,
                             size: 20, color: rd.navy, strokeWidth: 2),
                         const SizedBox(width: 3),
-                        Text('Account',
+                        Text(l10n.rdCommonAccount,
                             style: GoogleFonts.vazirmatn(
                                 fontSize: 15, color: rd.navy)),
                       ],
@@ -304,7 +318,6 @@ class _ApSegmented extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
-    // Track has no token: keep the exact light literal, darken for dark mode.
     final trackBg =
         _isDark(context) ? const Color(0xFF2A2B33) : const Color(0xFFEDEDE8);
     return Padding(
@@ -408,12 +421,16 @@ class _Swatch extends StatelessWidget {
         decoration: BoxDecoration(
           color: color,
           shape: BoxShape.circle,
-          // Active swatch reads as ringed: a card-coloured gap then the colour.
           border: active
               ? Border.all(color: ringColor, width: 3)
               : Border.all(color: Colors.transparent, width: 3),
           boxShadow: active
-              ? [BoxShadow(color: color.withValues(alpha: 0.55), blurRadius: 0, spreadRadius: 2)]
+              ? [
+                  BoxShadow(
+                      color: color.withValues(alpha: 0.55),
+                      blurRadius: 0,
+                      spreadRadius: 2)
+                ]
               : null,
         ),
         child: active
@@ -493,8 +510,6 @@ class _ApToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // On-track is brand navy (fixed accent). Off-track has no token: keep the
-    // exact light literal, and use a lifted neutral on dark for contrast.
     final offTrack =
         _isDark(context) ? const Color(0xFF3A3B44) : const Color(0xFFD8D8D2);
     return Container(
@@ -530,12 +545,13 @@ class _ApIconRow extends StatelessWidget {
     required this.onSelected,
   });
 
-  final List<({String id, String label, Color a, Color b})> options;
+  final List<({String id, Color a, Color b})> options;
   final String selected;
   final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -585,7 +601,7 @@ class _ApIconRow extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      opt.label,
+                      _appIconLabel(l10n, opt.id),
                       style: GoogleFonts.vazirmatn(
                         fontSize: 12.5,
                         fontWeight: opt.id == selected

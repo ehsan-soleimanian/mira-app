@@ -1533,4 +1533,1841 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get rdOnboardingUnderstoodBrand => 'میرا تو را می‌فهمد';
+
+  @override
+  String get rdCommonUndo => 'واگرد';
+
+  @override
+  String get rdCommonCancel => 'لغو';
+
+  @override
+  String get rdCommonSave => 'ذخیره';
+
+  @override
+  String get rdCommonDone => 'انجام شد';
+
+  @override
+  String get rdCommonView => 'مشاهده';
+
+  @override
+  String get rdCommonClear => 'پاک کردن';
+
+  @override
+  String get rdCommonAccount => 'حساب';
+
+  @override
+  String get rdCommonComingSoon => 'به‌زودی';
+
+  @override
+  String get rdCommonSettings => 'تنظیمات';
+
+  @override
+  String get rdCommonConnect => 'اتصال';
+
+  @override
+  String get rdCommonConnected => 'متصل';
+
+  @override
+  String get rdCommonManage => 'مدیریت';
+
+  @override
+  String get rdCommonUpgrade => 'ارتقا';
+
+  @override
+  String get rdCommonAm => 'ق.ظ';
+
+  @override
+  String get rdCommonPm => 'ب.ظ';
+
+  @override
+  String get rdRootTitleMemory => 'حافظه';
+
+  @override
+  String get rdRootTitleCapture => 'ثبت';
+
+  @override
+  String get rdRootTitleNotifications => 'اعلان‌ها';
+
+  @override
+  String get rdRootTitleConnectedApps => 'اپ‌های متصل';
+
+  @override
+  String get rdRootTitleListening => 'در حال گوش دادن';
+
+  @override
+  String get rdRootTitleChat => 'گفتگو';
+
+  @override
+  String get rdRootTitleSetup => 'راه‌اندازی';
+
+  @override
+  String get rdAskTitle => 'از حافظه‌ات بپرس';
+
+  @override
+  String get rdAskHint => 'در همه‌چیز جستجو کن…';
+
+  @override
+  String get rdAskSectionTry => 'امتحان کن';
+
+  @override
+  String get rdAskSectionRecent => 'اخیر';
+
+  @override
+  String get rdAskSearching => 'در حال جستجو در حافظه…';
+
+  @override
+  String get rdAskSomethingElse => 'سؤال دیگری بپرس';
+
+  @override
+  String get rdAskErrorConnection =>
+      'الان به حافظه‌ات دسترسی نداشتم. اتصال را چک کن و دوباره تلاش کن.';
+
+  @override
+  String get rdAskSuggestionRecent => 'چی اخیراً ذخیره کردم؟';
+
+  @override
+  String get rdAskSuggestionFollowUp => 'چه چیزهایی را باید پیگیری کنم؟';
+
+  @override
+  String get rdAskSuggestionSummariseWeek => 'این هفته را خلاصه کن';
+
+  @override
+  String get rdAskSuggestionFindByTopic => 'یادداشت را با موضوع پیدا کن';
+
+  @override
+  String rdAskDrawnFrom(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count حافظه',
+      one: '۱ حافظه',
+    );
+    return 'بر اساس $_temp0';
+  }
+
+  @override
+  String get rdCollectionAddTitle => 'افزودن به مجموعه';
+
+  @override
+  String get rdCollectionNew => 'مجموعه جدید';
+
+  @override
+  String get rdCollectionNameHint => 'نام مجموعه';
+
+  @override
+  String get rdLibraryYourMemory => 'حافظهٔ تو';
+
+  @override
+  String get rdLibraryTitle => 'کتابخانه';
+
+  @override
+  String rdLibraryKeptCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count خاطره، همه امن',
+      one: '۱ خاطره، همه امن',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdLibrarySearchHint => 'در حافظه‌ات جستجو کن…';
+
+  @override
+  String get rdLibraryFilterAll => 'همه';
+
+  @override
+  String get rdLibraryFilterNotes => 'یادداشت‌ها';
+
+  @override
+  String get rdLibraryFilterVoice => 'صدا';
+
+  @override
+  String get rdLibraryFilterPhotos => 'عکس‌ها';
+
+  @override
+  String get rdLibraryFilterLinks => 'لینک‌ها';
+
+  @override
+  String get rdLibraryFilterEvents => 'رویدادها';
+
+  @override
+  String get rdLibraryNoMatches => 'نتیجه‌ای نیست';
+
+  @override
+  String rdLibrarySearchFor(String query) {
+    return ' برای «$query»';
+  }
+
+  @override
+  String rdLibrarySearchIn(String name) {
+    return ' در $name';
+  }
+
+  @override
+  String rdLibraryMemoryCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count خاطره',
+      one: '۱ خاطره',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdLibraryGroupedForYou => 'میرا برایت گروه‌بندی کرد';
+
+  @override
+  String get rdLibraryNoCollectionsYet => 'هنوز مجموعه‌ای نیست.';
+
+  @override
+  String get rdLibraryCollections => 'مجموعه‌ها';
+
+  @override
+  String get rdLibraryArchivedTitle => 'بایگانی';
+
+  @override
+  String get rdLibraryOutOfTheWay => 'کنار گذاشته';
+
+  @override
+  String get rdLibraryArchivedEmpty =>
+      'چیزی بایگانی نشده.\nخاطرات بایگانی‌شده اینجا، دور از دید می‌مانند.';
+
+  @override
+  String get rdLibraryRestore => 'بازیابی';
+
+  @override
+  String get rdLibraryDayToday => 'امروز';
+
+  @override
+  String get rdLibraryDayThisWeek => 'این هفته';
+
+  @override
+  String get rdLibraryDayEarlier => 'قبل‌تر';
+
+  @override
+  String get rdLibraryEmptyFilter =>
+      'چیزی با این فیلتر نیست.\nهر چیزی که ثبت کنی، آرام اینجا می‌نشیند.';
+
+  @override
+  String rdLibraryEndMessage(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count خاطره نگه داشته‌ای.\nمیرا نگه می‌دارد تا تو لازم نداشته باشی.',
+      one: '۱ خاطره نگه داشته‌ای.\nمیرا نگه می‌دارد تا تو لازم نداشته باشی.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdLibrarySelectMemories => 'انتخاب خاطرات';
+
+  @override
+  String rdLibrarySelectedCount(int count) {
+    return '$count انتخاب‌شده';
+  }
+
+  @override
+  String get rdLibrarySelectAll => 'انتخاب همه';
+
+  @override
+  String get rdLibraryDeselectAll => 'لغو انتخاب همه';
+
+  @override
+  String get rdLibraryActionCollection => 'مجموعه';
+
+  @override
+  String get rdLibraryActionBoard => 'بورد';
+
+  @override
+  String get rdLibraryActionPin => 'سنجاق';
+
+  @override
+  String get rdLibraryActionArchive => 'بایگانی';
+
+  @override
+  String get rdLibraryActionDelete => 'حذف';
+
+  @override
+  String get rdLibraryUntitled => 'بدون عنوان';
+
+  @override
+  String get rdLibraryTypeVoice => 'صدا';
+
+  @override
+  String get rdLibraryTypeLink => 'لینک';
+
+  @override
+  String get rdLibraryTypePhoto => 'عکس';
+
+  @override
+  String get rdLibraryTypeEvent => 'رویداد';
+
+  @override
+  String get rdLibraryTypeNote => 'یادداشت';
+
+  @override
+  String get rdLibraryTimeJustNow => 'همین الان';
+
+  @override
+  String rdLibraryTimeMinutesAgo(int minutes) {
+    return '$minutes دقیقه پیش';
+  }
+
+  @override
+  String rdLibraryTimeHoursAgo(int hours) {
+    return '$hours ساعت پیش';
+  }
+
+  @override
+  String get rdLibraryTimeYesterday => 'دیروز';
+
+  @override
+  String rdLibraryTimeDaysAgo(int days) {
+    return '$days روز پیش';
+  }
+
+  @override
+  String rdLibraryTimeDate(int month, int day) {
+    return '$month/$day';
+  }
+
+  @override
+  String rdLibraryAddedToCollection(int count, String name) {
+    return '$count مورد به «$name» اضافه شد';
+  }
+
+  @override
+  String get rdLibraryAddToCollectionFailed =>
+      'افزودن به مجموعه ممکن نشد. اتصال را بررسی کن.';
+
+  @override
+  String rdLibraryAddedToBoard(int count, String board) {
+    return '$count مورد به «$board» اضافه شد';
+  }
+
+  @override
+  String get rdLibraryAddToBoardFailed =>
+      'افزودن به بورد ممکن نشد. اتصال را بررسی کن.';
+
+  @override
+  String rdLibraryDeletedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count خاطره حذف شد',
+      one: '۱ خاطره حذف شد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdLibraryArchivedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count خاطره بایگانی شد',
+      one: '۱ خاطره بایگانی شد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdLibraryPinnedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count خاطره سنجاق شد',
+      one: '۱ خاطره سنجاق شد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdLibraryRestored(String title) {
+    return '«$title» بازیابی شد';
+  }
+
+  @override
+  String rdLibraryCouldntOpenCollection(String name) {
+    return 'باز کردن «$name» ممکن نشد.';
+  }
+
+  @override
+  String get rdLibraryAddToBoard => 'افزودن به بورد';
+
+  @override
+  String get rdLibraryUntitledBoard => 'بورد بدون عنوان';
+
+  @override
+  String rdLibraryCardCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count کارت',
+      one: '۱ کارت',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdLibraryNewBoard => 'بورد جدید';
+
+  @override
+  String get rdLibraryBoardNameHint => 'نام بورد';
+
+  @override
+  String get rdLibraryFallbackBoard => 'بورد';
+
+  @override
+  String get rdMemoryConnectedMemory => 'خاطره مرتبط';
+
+  @override
+  String get rdMemoryLinked => 'پیوندخورده';
+
+  @override
+  String rdMemoryInsightLinked(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'به $count خاطره مرتبط وصلش کرد',
+      one: 'به ۱ خاطره مرتبط وصلش کرد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdMemoryInsightConnected(String names) {
+    return '$names را وصل کرد';
+  }
+
+  @override
+  String rdMemoryInsightTagged(String tags) {
+    return 'برچسب $tags زد';
+  }
+
+  @override
+  String rdMemoryInsightSummary(String details) {
+    return 'این را خواندم و $details تا پیدا کردنش آسان بماند.';
+  }
+
+  @override
+  String get rdMemoryPinned => 'سنجاق شد';
+
+  @override
+  String get rdMemoryUnpinned => 'سنجاق برداشته شد';
+
+  @override
+  String rdMemoryVoiceNoteBadge(String duration) {
+    return 'یادداشت صوتی · $duration';
+  }
+
+  @override
+  String get rdMemoryEditedJustNow =>
+      'همین الان ویرایش شد · امروز، ۴:۱۲ بعدازظهر';
+
+  @override
+  String get rdMemoryRecordedAgo => '۲ ساعت پیش ضبط شد · امروز، ۴:۱۲ بعدازظهر';
+
+  @override
+  String get rdMemoryCapturedAgo => '۲ ساعت پیش ثبت شد · امروز، ۴:۱۲ بعدازظهر';
+
+  @override
+  String get rdMemoryEditTranscriptHint =>
+      'در حال ویرایش متن — با ذخیره، میرا دوباره می‌خواند و پیوندها را تازه می‌کند.';
+
+  @override
+  String get rdMemoryEditNoteHint =>
+      'در حال ویرایش یادداشت — با ذخیره، میرا دوباره می‌خواند و پیوندها را تازه می‌کند.';
+
+  @override
+  String get rdMemoryTitleHint => 'عنوان';
+
+  @override
+  String get rdMemoryTranscriptHint => 'متن گفتار…';
+
+  @override
+  String get rdMemoryWriteNoteHint => 'یادداشتت را بنویس…';
+
+  @override
+  String get rdMemoryTranscribedByMira => 'رونویسی‌شده توسط میرا';
+
+  @override
+  String get rdMemoryMiraNoticed => 'میرا متوجه شد';
+
+  @override
+  String get rdMemoryReminder => 'یادآور';
+
+  @override
+  String get rdMemoryReminderOnBrief => 'روشن — در خلاصه روزانه پیگیری می‌شود';
+
+  @override
+  String get rdMemoryReminderOnBringUp => 'روشن — میرا دوباره یادآوری می‌کند';
+
+  @override
+  String get rdMemoryReminderOff => 'خاموش — برای یادآوری بزن';
+
+  @override
+  String get rdMemoryConnectedMemories => 'خاطرات مرتبط';
+
+  @override
+  String get rdMemorySeeInCanvas => 'ببین در بوم';
+
+  @override
+  String get rdMemoryPeopleAndTags => 'افراد و برچسب‌ها';
+
+  @override
+  String get rdMemorySourceVoice =>
+      'ضبط‌شده در خانه · آیفون · به‌اشتراک گذاشته نشده';
+
+  @override
+  String get rdMemorySourceNote =>
+      'نوشته‌شده در خانه · آیفون · به‌اشتراک گذاشته نشده';
+
+  @override
+  String get rdMemorySaveChanges => 'ذخیره تغییرات';
+
+  @override
+  String get rdMemoryAskMiraAboutThis => 'از میرا درباره این بپرس';
+
+  @override
+  String get rdMemoryPinToTop => 'سنجاق به بالا';
+
+  @override
+  String get rdMemoryUnpin => 'برداشتن سنجاق';
+
+  @override
+  String get rdMemoryEditNote => 'ویرایش یادداشت';
+
+  @override
+  String get rdMemoryShareMemory => 'اشتراک‌گذاری خاطره';
+
+  @override
+  String get rdMemorySavedTranscript => 'ذخیره شد — میرا متن را دوباره خواند';
+
+  @override
+  String get rdMemorySavedNote => 'ذخیره شد — میرا این یادداشت را دوباره خواند';
+
+  @override
+  String rdMemoryAddedToCollection(String name) {
+    return 'به «$name» اضافه شد';
+  }
+
+  @override
+  String get rdMemoryLinkCopied => 'لینک کپی شد';
+
+  @override
+  String get rdMemoryCopyLink => 'کپی لینک';
+
+  @override
+  String get rdMemoryCopyAsText => 'کپی به‌صورت متن';
+
+  @override
+  String get rdMemoryEmail => 'ایمیل';
+
+  @override
+  String get rdMemoryMessage => 'پیام';
+
+  @override
+  String get rdMemoryCopiedToClipboard => 'در کلیپ‌بورد کپی شد';
+
+  @override
+  String get rdMemoryNoAppAvailable => 'برنامه‌ای برای این کار در دسترس نیست';
+
+  @override
+  String rdMemoryDeleteConfirmBody(String title, int connections) {
+    String _temp0 = intl.Intl.pluralLogic(
+      connections,
+      locale: localeName,
+      other: '$connections پیوندش',
+      one: '۱ پیوندش',
+    );
+    return '«$title» و $_temp0 از کتابخانه حذف می‌شود. این کار قابل بازگشت نیست.';
+  }
+
+  @override
+  String get rdMemoryKeepIt => 'نگهش دار';
+
+  @override
+  String get rdChatOpening =>
+      'هر چیزی درباره خاطراتت بپرس — چه ذخیره کردی، چه پیگیری کنی، یا می‌توانم چیزی بنویسم.';
+
+  @override
+  String rdChatOpeningAnchored(String title) {
+    return 'این درباره «$title» است. هر چیزی بپرس — چه باز مانده، چطور وصل است، یا می‌توانم چیزی بنویسم.';
+  }
+
+  @override
+  String get rdChatStarterDraftReminder => 'پیش‌نویس یادآور';
+
+  @override
+  String get rdChatStarterHowConnect => 'چطور به بقیه وصل است؟';
+
+  @override
+  String get rdChatStarterSummarise => 'خلاصه‌اش کن';
+
+  @override
+  String get rdChatFollowUpDefault => 'پیگیری این موضوع';
+
+  @override
+  String get rdChatEmptyAnswer =>
+      'نگاه کردم، اما چیزی درباره‌اش ندارم — ثبتش کن تا اینجا وصلش کنم.';
+
+  @override
+  String get rdChatOfflineFallback =>
+      'الان به حافظه‌ات دسترسی ندارم. کمی بعد دوباره امتحان کن.';
+
+  @override
+  String get rdChatTitle => 'از میرا بپرس';
+
+  @override
+  String rdChatAboutTitle(String title) {
+    return 'درباره «$title»';
+  }
+
+  @override
+  String get rdChatGroundedInMemories => 'بر پایه خاطراتت';
+
+  @override
+  String get rdChatFromYourMemories => 'از خاطراتت';
+
+  @override
+  String get rdChatReminderAdded => 'یادآور اضافه شد';
+
+  @override
+  String get rdChatSetReminder => 'تنظیم این یادآور';
+
+  @override
+  String get rdChatComposeHint => 'درباره خاطراتت بپرس…';
+
+  @override
+  String get rdChatCiteVoiceSub => 'صدا · خوانده‌شده توسط میرا';
+
+  @override
+  String get rdChatCitePhotoSub => 'عکس · خوانده‌شده توسط میرا';
+
+  @override
+  String get rdAccountTitle => 'حساب';
+
+  @override
+  String get rdAccountPlaceholderName => 'حساب تو';
+
+  @override
+  String get rdAccountSignedOut => 'خارج شدی';
+
+  @override
+  String get rdAccountSectionProfile => 'پروفایل';
+
+  @override
+  String get rdAccountName => 'نام';
+
+  @override
+  String get rdAccountEmail => 'ایمیل';
+
+  @override
+  String get rdAccountPhone => 'تلفن';
+
+  @override
+  String get rdAccountSectionSecurity => 'امنیت';
+
+  @override
+  String get rdAccountFaceIdTitle => 'باز کردن با Face ID';
+
+  @override
+  String get rdAccountFaceIdSub => 'برای باز کردن میرا Face ID لازم باشد';
+
+  @override
+  String get rdAccountAutoLockTitle => 'قفل خودکار';
+
+  @override
+  String get rdAccountAutoLockSub => 'بعد از ۵ دقیقه بی‌حرکتی قفل شود';
+
+  @override
+  String get rdAccountChangePassword => 'تغییر رمز';
+
+  @override
+  String get rdAccountSectionPlan => 'طرح';
+
+  @override
+  String get rdAccountMiraPlus => 'میرا پلاس';
+
+  @override
+  String get rdAccountMiraFree => 'میرا رایگان';
+
+  @override
+  String get rdAccountPlusActiveSub => 'فعال · ۸ دلار در ماه';
+
+  @override
+  String rdAccountFreeUsageSub(int used, int limit) {
+    return '$used از $limit خاطره استفاده شده';
+  }
+
+  @override
+  String get rdAccountSectionPreferences => 'ترجیحات';
+
+  @override
+  String get rdAccountNotificationsTitle => 'اعلان‌ها';
+
+  @override
+  String get rdAccountNotificationsSub => 'خلاصه روز، یادآورها و ساعات سکوت';
+
+  @override
+  String get rdAccountRemindersTitle => 'یادآورها';
+
+  @override
+  String get rdAccountRemindersSub => 'همه چیزهایی که میرا برایت نگه داشته';
+
+  @override
+  String get rdAccountAppearanceTitle => 'ظاهر';
+
+  @override
+  String get rdAccountAppearanceSub => 'تم، رنگ، اندازه متن و حرکت';
+
+  @override
+  String get rdAccountConnectedAppsTitle => 'اپ‌های متصل';
+
+  @override
+  String get rdAccountConnectedAppsSub => 'تقویم، یادداشت، عکس و بیشتر';
+
+  @override
+  String get rdAccountSectionMemoryData => 'حافظه و داده';
+
+  @override
+  String get rdAccountExportData => 'خروجی داده‌هایم';
+
+  @override
+  String get rdAccountExportDataSub => 'دانلود همه چیزهایی که میرا نگه داشته';
+
+  @override
+  String get rdAccountMemoryHistory => 'تاریخچه حافظه';
+
+  @override
+  String get rdAccountMemoryHistorySub => 'ببین چه چیزی و کی ثبت شده';
+
+  @override
+  String get rdAccountSignOut => 'خروج';
+
+  @override
+  String get rdAccountDeleteAccount => 'حذف حساب';
+
+  @override
+  String get rdAccountFootVersion => 'میرا · نسخه ۱.۰';
+
+  @override
+  String get rdAccountAllMemoriesSynced => 'همه خاطرات همگام';
+
+  @override
+  String rdAccountStorageHeadline(int count) {
+    return '$count خاطره';
+  }
+
+  @override
+  String rdAccountStorageSubline(int limit) {
+    return 'از $limit · جا زیاد است';
+  }
+
+  @override
+  String get rdNotificationsTitle => 'اعلان‌ها';
+
+  @override
+  String get rdNotificationsIntro =>
+      'میرا پیش‌فرض آرام است — فقط وقتی واقعاً کمک می‌کند صحبت می‌کند.';
+
+  @override
+  String get rdNotificationsSectionDailyBrief => 'خلاصه روز';
+
+  @override
+  String get rdNotificationsMorningBrief => 'خلاصه صبح';
+
+  @override
+  String get rdNotificationsMorningBriefSub => 'جمع‌بندی آرام برای شروع روز';
+
+  @override
+  String get rdNotificationsBriefTime => 'زمان خلاصه';
+
+  @override
+  String get rdNotificationsResurfaceMemory => 'برگرداندن یک خاطره';
+
+  @override
+  String get rdNotificationsResurfaceMemorySub =>
+      'گاهی چیزی شایسته یادآوری را دوباره ببین';
+
+  @override
+  String get rdNotificationsSectionReminders => 'یادآورها';
+
+  @override
+  String get rdNotificationsTimeSensitive => 'یادآورهای زمان‌حساس';
+
+  @override
+  String get rdNotificationsTimeSensitiveSub =>
+      'تاریخ‌ها، بلیت‌ها و چیزهایی که منقضی می‌شوند';
+
+  @override
+  String get rdNotificationsGentleNudges => 'یادآوری ملایم';
+
+  @override
+  String get rdNotificationsGentleNudgesSub => 'پیشنهاد نرم برای کارهای ناتمام';
+
+  @override
+  String get rdNotificationsSectionCaptures => 'ثبت‌ها';
+
+  @override
+  String get rdNotificationsConfirmBeforeSaving => 'تأیید قبل از ذخیره';
+
+  @override
+  String get rdNotificationsConfirmBeforeSavingSub =>
+      'قبل از افزودن به گراف بپرس';
+
+  @override
+  String get rdNotificationsWeeklyRecap => 'مرور هفتگی';
+
+  @override
+  String get rdNotificationsWeeklyRecapSub => 'یک نگاه به عقب در یکشنبه';
+
+  @override
+  String get rdNotificationsSectionQuietHours => 'ساعات سکوت';
+
+  @override
+  String get rdNotificationsQuietHours => 'ساعات سکوت';
+
+  @override
+  String get rdNotificationsQuietHoursSub =>
+      'همه اعلان‌ها را وقتی استراحت می‌کنی نگه دار';
+
+  @override
+  String get rdNotificationsSchedule => 'زمان‌بندی';
+
+  @override
+  String get rdNotificationsQuietStartHelp => 'شروع ساعات سکوت';
+
+  @override
+  String get rdNotificationsQuietEndHelp => 'پایان ساعات سکوت';
+
+  @override
+  String get rdNotificationsSectionDelivery => 'تحویل';
+
+  @override
+  String get rdNotificationsSound => 'صدا';
+
+  @override
+  String get rdNotificationsHaptics => 'لرزش';
+
+  @override
+  String get rdNotificationsFoot => 'میرا آرام اعلان می‌دهد، یا اصلاً نه.';
+
+  @override
+  String get rdConnectedAppsTitle => 'اپ‌های متصل';
+
+  @override
+  String get rdConnectedAppsIntro =>
+      'میرا این منابع را آرام در حافظه‌ات می‌بافد — بدون اجازه‌ات چیزی خارج نمی‌شود.';
+
+  @override
+  String get rdConnectedAppsSectionConnected => 'متصل';
+
+  @override
+  String get rdConnectedAppsCalendar => 'تقویم';
+
+  @override
+  String get rdConnectedAppsCalendarSub =>
+      '۲ دقیقه پیش همگام · به خلاصه روز می‌رسد';
+
+  @override
+  String get rdConnectedAppsNotes => 'یادداشت‌ها';
+
+  @override
+  String get rdConnectedAppsNotesSub => '۱ ساعت پیش همگام · ۱۲۸ یادداشت';
+
+  @override
+  String get rdConnectedAppsPhotos => 'عکس‌ها';
+
+  @override
+  String get rdConnectedAppsPhotosSub => 'امروز همگام · اسکرین‌شات و اسکن';
+
+  @override
+  String get rdConnectedAppsSectionAvailable => 'در دسترس';
+
+  @override
+  String get rdConnectedAppsGmail => 'جیمیل';
+
+  @override
+  String get rdConnectedAppsGmailSub => 'ایمیل مهم را به خاطره تبدیل کن';
+
+  @override
+  String get rdConnectedAppsSafari => 'سافاری';
+
+  @override
+  String get rdConnectedAppsSafariSub =>
+      'صفحات و هایلایت‌ها را هنگام مرور ذخیره کن';
+
+  @override
+  String get rdConnectedAppsReadwise => 'ریدوایز';
+
+  @override
+  String get rdConnectedAppsReadwiseSub => 'هایلایت کتاب و مقاله را وارد کن';
+
+  @override
+  String get rdConnectedAppsVoiceMemos => 'یادداشت صوتی';
+
+  @override
+  String get rdConnectedAppsVoiceMemosSub => 'ضبط‌ها را به گراف تبدیل کن';
+
+  @override
+  String get rdConnectedAppsPrivacy =>
+      'میرا فقط آنچه وصل می‌کنی می‌خواند و خصوصی پردازش می‌کند. هر وقت بخواه قطع کن.';
+
+  @override
+  String rdConnectedAppsFoot(int count) {
+    return '$count منبع برای اتصال در دسترس است';
+  }
+
+  @override
+  String get rdAppearanceTitle => 'ظاهر';
+
+  @override
+  String get rdAppearanceIntro => 'میرا را مال خودت کن — رنگ، کنتراست و آرامش.';
+
+  @override
+  String get rdAppearanceSectionTheme => 'تم';
+
+  @override
+  String get rdAppearanceThemeSystem => 'سیستم';
+
+  @override
+  String get rdAppearanceThemeLight => 'روشن';
+
+  @override
+  String get rdAppearanceThemeDark => 'تیره';
+
+  @override
+  String get rdAppearanceDarkModeHint =>
+      'حالت تیره روشن است — برای خواندن آرام در نور کم.';
+
+  @override
+  String get rdAppearanceSectionAccent => 'رنگ تأکید';
+
+  @override
+  String get rdAppearanceAccentPeriwinkle => 'یاسی';
+
+  @override
+  String get rdAppearanceAccentSage => 'مریم‌گلی';
+
+  @override
+  String get rdAppearanceAccentClay => 'خاکی';
+
+  @override
+  String get rdAppearanceAccentPlum => 'آلویی';
+
+  @override
+  String get rdAppearanceAccentCustom => 'سفارشی';
+
+  @override
+  String get rdAppearanceSectionTextSize => 'اندازه متن';
+
+  @override
+  String get rdAppearanceTextSmall => 'کوچک';
+
+  @override
+  String get rdAppearanceTextDefault => 'پیش‌فرض';
+
+  @override
+  String get rdAppearanceTextLarge => 'بزرگ';
+
+  @override
+  String get rdAppearancePreviewText =>
+      'میرا خاطراتت را واضح و خوانا نگه می‌دارد.';
+
+  @override
+  String get rdAppearanceReduceMotion => 'کاهش حرکت';
+
+  @override
+  String get rdAppearanceReduceMotionSub => 'انتقال‌های آرام‌تر و حرکت کمتر';
+
+  @override
+  String get rdAppearanceSectionAppIcon => 'آیکن اپ';
+
+  @override
+  String get rdAppearanceIconDefault => 'پیش‌فرض';
+
+  @override
+  String get rdAppearanceIconSage => 'مریم‌گلی';
+
+  @override
+  String get rdAppearanceIconDusk => 'غروب';
+
+  @override
+  String get rdAppearanceFoot => 'تغییرات ظاهر فوراً اعمال می‌شود.';
+
+  @override
+  String get rdStorageTitle => 'فضای ذخیره';
+
+  @override
+  String get rdStorageIntro => 'آنچه میرا نگه داشته و چقدر جا مانده.';
+
+  @override
+  String get rdStorageUpdating => 'در حال به‌روزرسانی مصرف…';
+
+  @override
+  String get rdStorageSectionBreakdown => 'جزئیات';
+
+  @override
+  String get rdStorageSectionManage => 'مدیریت';
+
+  @override
+  String get rdStorageClearArchived => 'پاک کردن بایگانی';
+
+  @override
+  String get rdStorageClearArchivedSub => 'ثبت‌های بایگانی‌شده را حذف کن';
+
+  @override
+  String get rdStorageOffloadCloud => 'انتقال اصل به ابر';
+
+  @override
+  String get rdStorageOffloadCloudSub =>
+      'نسخه با کیفیت کامل در سرویس متصل نگه دار';
+
+  @override
+  String get rdStorageFoot => 'میرا فقط آنچه تأیید می‌کنی نگه می‌دارد.';
+
+  @override
+  String get rdStorageCategoryPhotos => 'عکس‌ها';
+
+  @override
+  String get rdStorageCategoryVoice => 'صدا';
+
+  @override
+  String get rdStorageCategoryScreenshots => 'اسکرین‌شات';
+
+  @override
+  String get rdStorageCategoryNotes => 'یادداشت‌ها';
+
+  @override
+  String get rdStorageCategoryLinks => 'لینک‌ها';
+
+  @override
+  String get rdStorageCategoryOther => 'سایر';
+
+  @override
+  String get rdStorageEmpty => 'خالی';
+
+  @override
+  String rdStorageItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مورد',
+      one: '۱ مورد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdStorageOfQuota(String quota) {
+    return 'از $quota';
+  }
+
+  @override
+  String get rdStorageNoArchived => 'مورد بایگانی برای پاک کردن نیست';
+
+  @override
+  String rdStorageCleared(int count, String freed) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مورد بایگانی پاک شد',
+      one: '۱ مورد بایگانی پاک شد',
+    );
+    return '$_temp0$freed';
+  }
+
+  @override
+  String rdStorageFreedSuffix(String amount) {
+    return ' · $amount آزاد شد';
+  }
+
+  @override
+  String get rdStorageClearFailed => 'پاک کردن بایگانی ممکن نشد';
+
+  @override
+  String get rdRemindersTitle => 'یادآورها';
+
+  @override
+  String get rdRemindersSubtitleEmpty => 'چیزی منتظر تو نیست';
+
+  @override
+  String get rdRemindersSubtitleOne => '۱ چیز که میرا برایت نگه داشته';
+
+  @override
+  String rdRemindersSubtitleMany(int count) {
+    return '$count چیز که میرا برایت نگه داشته';
+  }
+
+  @override
+  String get rdRemindersSectionOverdue => 'عقب‌افتاده';
+
+  @override
+  String get rdRemindersSectionToday => 'امروز';
+
+  @override
+  String get rdRemindersSectionUpcoming => 'پیش‌رو';
+
+  @override
+  String get rdRemindersSectionWaiting => 'وقتی لحظه مناسب برسد';
+
+  @override
+  String get rdRemindersSectionDone => 'انجام‌شده';
+
+  @override
+  String get rdRemindersEmptyTitle => 'هنوز یادآوری نیست';
+
+  @override
+  String get rdRemindersEmptyBody =>
+      'از میرا بخواه چیزی را یادآوری کند،\nاینجا جا می‌گیرد.';
+
+  @override
+  String get rdRemindersMarkedDone => 'انجام‌شده علامت خورد';
+
+  @override
+  String get rdRemindersBackOnList => 'برگشت به لیست';
+
+  @override
+  String get rdRemindersSnoozedTomorrow => 'تا فردا به تعویق افتاد';
+
+  @override
+  String get rdRemindersDeleted => 'یادآور حذف شد';
+
+  @override
+  String get rdRemindersSet => 'یادآور تنظیم شد';
+
+  @override
+  String get rdRemindersUntitled => 'یادآور بدون عنوان';
+
+  @override
+  String get rdRemindersFromMemory => 'از یک خاطره';
+
+  @override
+  String get rdRemindersDone => 'انجام شد';
+
+  @override
+  String get rdRemindersSnooze => 'بعداً';
+
+  @override
+  String get rdRemindersOverdue => 'عقب‌افتاده';
+
+  @override
+  String rdRemindersOverdueByHours(int hours) {
+    return '$hours ساعت عقب';
+  }
+
+  @override
+  String get rdRemindersOverdueSinceYesterday => 'از دیروز عقب افتاده';
+
+  @override
+  String rdRemindersOverdueByDays(int days) {
+    return '$days روز عقب';
+  }
+
+  @override
+  String get rdRemindersNow => 'الان';
+
+  @override
+  String rdRemindersInMinutes(int minutes) {
+    return 'تا $minutes دقیقه';
+  }
+
+  @override
+  String rdRemindersInHours(int hours) {
+    return 'تا $hours ساعت';
+  }
+
+  @override
+  String get rdRemindersTomorrow => 'فردا';
+
+  @override
+  String rdRemindersInDays(int days) {
+    return 'تا $days روز';
+  }
+
+  @override
+  String get rdRemindersComposeTitle => 'یادآور جدید';
+
+  @override
+  String get rdRemindersComposeHint => 'یادآوری کن که…';
+
+  @override
+  String get rdRemindersWhenLabel => 'کی';
+
+  @override
+  String get rdRemindersLaterToday => 'امروز بعداً';
+
+  @override
+  String get rdRemindersThisEvening => 'امشب';
+
+  @override
+  String get rdRemindersNextWeek => 'هفته آینده';
+
+  @override
+  String get rdRemindersPickDateTime => 'انتخاب تاریخ و ساعت';
+
+  @override
+  String get rdRemindersSetReminder => 'تنظیم یادآور';
+
+  @override
+  String get rdRemindersTranscribing => 'در حال تبدیل به متن…';
+
+  @override
+  String get rdHomeRecentsEmpty => 'خاطرات اخیرت اینجا ظاهر می‌شوند.';
+
+  @override
+  String get rdHomeRemindAgain => 'دوباره یادآوری کن…';
+
+  @override
+  String rdHomeSnoozed(String label) {
+    return 'به تعویق افتاد · $label';
+  }
+
+  @override
+  String get rdHomeLaterToday => 'بعداً امروز';
+
+  @override
+  String rdHomeInDays(int days) {
+    return 'تا $days روز دیگر';
+  }
+
+  @override
+  String get rdHomeKindNote => 'یادداشت';
+
+  @override
+  String get rdHomeKindVoice => 'صدا';
+
+  @override
+  String rdHomeLinksCount(int count) {
+    return '$count لینک';
+  }
+
+  @override
+  String rdCanvasMapContext(int memories, int connections) {
+    return 'حافظه‌ات · $memories خاطره · $connections ارتباط';
+  }
+
+  @override
+  String rdCanvasClusterContext(int clusters, int memories) {
+    return '$clusters خوشه · $memories خاطره';
+  }
+
+  @override
+  String get rdCanvasMergeSuccess => 'خاطرات ادغام شد';
+
+  @override
+  String get rdCanvasMergeFail => 'ادغام ممکن نشد';
+
+  @override
+  String get rdCanvasUnlinkSuccess => 'ارتباط حذف شد';
+
+  @override
+  String get rdCanvasUnlinkFail => 'حذف ارتباط ممکن نشد';
+
+  @override
+  String get rdCanvasMyBoard => 'بورد من';
+
+  @override
+  String get rdCanvasNewBoard => 'بورد جدید';
+
+  @override
+  String get rdCanvasBoardDefault => 'بورد';
+
+  @override
+  String rdCanvasBoardLabel(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count کارت',
+      one: '۱ کارت',
+    );
+    return '$name · $_temp0';
+  }
+
+  @override
+  String get rdCanvasRenameTitle => 'تغییر نام بورد';
+
+  @override
+  String get rdCanvasBoardNameHint => 'نام بورد';
+
+  @override
+  String get rdCanvasLoading => 'در حال بارگذاری…';
+
+  @override
+  String get rdCanvasBoardsHeader => 'بوردها';
+
+  @override
+  String get rdCanvasUntitledBoard => 'بورد بدون عنوان';
+
+  @override
+  String rdCanvasCardCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count کارت',
+      one: '۱ کارت',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdCanvasLinkedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'خاطره',
+      one: 'خاطره',
+    );
+    return '$count $_temp0 وصل.';
+  }
+
+  @override
+  String get rdCanvasNodePerson => 'شخص';
+
+  @override
+  String get rdCanvasNodeTask => 'کار';
+
+  @override
+  String get rdCanvasNodeEvent => 'رویداد';
+
+  @override
+  String get rdCanvasNodeNote => 'یادداشت';
+
+  @override
+  String get rdCanvasNodeBook => 'کتاب';
+
+  @override
+  String get rdCanvasNodeIdea => 'ایده';
+
+  @override
+  String get rdCanvasNodeTopic => 'موضوع';
+
+  @override
+  String get rdCanvasClusterTasks => 'کارها';
+
+  @override
+  String get rdCanvasClusterBooks => 'کتاب‌ها و ایده‌ها';
+
+  @override
+  String get rdCanvasClusterEvents => 'رویدادها';
+
+  @override
+  String get rdCanvasClusterNotes => 'یادداشت‌ها و خاطرات';
+
+  @override
+  String get rdCanvasNoClusters => 'هنوز خوشه‌ای نیست';
+
+  @override
+  String get rdCanvasGraphEmpty => 'گراف حافظه‌ات خالی است';
+
+  @override
+  String rdCanvasFocusedOn(String label) {
+    return 'تمرکز روی $label';
+  }
+
+  @override
+  String get rdCanvasTapExplore => 'روی خاطره بزن · بکش و کاوش کن';
+
+  @override
+  String rdCanvasMergeInto(String label) {
+    return 'ادغام در «$label»';
+  }
+
+  @override
+  String get rdCanvasMergePickDuplicate =>
+      'تکراری را انتخاب کن — همه ارتباط‌ها حفظ می‌شوند.';
+
+  @override
+  String get rdCanvasFocusConstellation => 'تمرکز روی این خوشه';
+
+  @override
+  String get rdCanvasMergeDuplicate => 'ادغام تکراری';
+
+  @override
+  String rdCanvasConnectedTo(int count) {
+    return 'وصل به $count';
+  }
+
+  @override
+  String get rdCanvasCardRemoved => 'کارت حذف شد';
+
+  @override
+  String get rdCanvasNewNoteTitle => 'یادداشت جدید';
+
+  @override
+  String get rdCanvasNewNoteSub => 'برای ویرایش بعداً بزن.';
+
+  @override
+  String get rdCanvasEditCard => 'ویرایش کارت';
+
+  @override
+  String get rdCanvasEditTitle => 'عنوان';
+
+  @override
+  String get rdCanvasEditNoteOptional => 'یادداشت (اختیاری)';
+
+  @override
+  String get rdCanvasBoardEmpty => 'این بورد خالی است';
+
+  @override
+  String get rdCanvasConnectTapSecond => 'حالا کارت دیگر را برای وصل کردن بزن';
+
+  @override
+  String get rdCanvasConnectMode => 'حالت وصل · دو کارت را بزن';
+
+  @override
+  String get rdCanvasAddMode => 'حالت افزودن · هر جا بزن تا کارت بیفتد';
+
+  @override
+  String rdCanvasEdgeWithPerson(String person) {
+    return 'با $person';
+  }
+
+  @override
+  String get rdCanvasEdgeReminder => 'یادآور';
+
+  @override
+  String get rdCanvasEdgeToRead => 'برای خواندن';
+
+  @override
+  String get rdCanvasEdgeRelated => 'مرتبط';
+
+  @override
+  String get rdPaywallPlanSaveBadge => '۲ ماه رایگان';
+
+  @override
+  String get rdPaywallPlanPerMonth => '/ماه';
+
+  @override
+  String get rdPaywallPlanAnnualNote => '۷۲ دلار سالانه';
+
+  @override
+  String rdPaywallFinePrint(String then) {
+    return '$then · هر وقت لغو کن.\nامروز هزینه‌ای نیست — قبل از پایان یادآوری می‌کنیم.';
+  }
+
+  @override
+  String get rdPaywallMemPlan => 'طرح';
+
+  @override
+  String get rdPaywallMemPlanValue => 'سالانه · ۶ دلار/ماه';
+
+  @override
+  String get rdPaywallMemRenews => 'تمدید';
+
+  @override
+  String get rdPaywallMemRenewsValue => '۱۲ اوت ۲۰۲۵';
+
+  @override
+  String get rdPaywallMemPayment => 'پرداخت';
+
+  @override
+  String get rdPaywallMemPaymentValue => 'Apple ID';
+
+  @override
+  String get rdPaywallMemoriesHeld => 'خاطرات نگه‌داشته‌شده';
+
+  @override
+  String rdPaywallMemoriesCount(String count) {
+    return '$count · نامحدود';
+  }
+
+  @override
+  String get rdPaywallMemoriesGrowth =>
+      'آرام رشد می‌کند. در نسخه رایگان در ۲٬۰۰۰ متوقف می‌شد.';
+
+  @override
+  String get rdPaywallPerksLabel => 'مزایای پلاس تو';
+
+  @override
+  String get rdPaywallPerkUnlimited => 'خاطرات نامحدود';
+
+  @override
+  String get rdPaywallPerkGraph => 'گراف کامل حافظه';
+
+  @override
+  String get rdPaywallPerkVoice => 'تاریخچه طولانی‌تر و صدای ۱۰ دقیقه‌ای';
+
+  @override
+  String get rdPaywallPerkConnect => 'اپ‌های متصل نامحدود';
+
+  @override
+  String get rdSetupSkip => 'رد کردن';
+
+  @override
+  String get rdSetupContinue => 'ادامه';
+
+  @override
+  String get rdSetupPickFew => 'چند مورد انتخاب کن';
+
+  @override
+  String get rdSetupWelcomeTitle => 'بیایید\nذهن دومت را بسازیم.';
+
+  @override
+  String get rdSetupWelcomeDesc =>
+      'چند سؤال کوتاه تا میرا مثل تو به خاطر بسپارد. حدود دو دقیقه — و بعداً هر وقت بخواهی عوض می‌کنی.';
+
+  @override
+  String get rdSetupBeginSetup => 'شروع راه‌اندازی';
+
+  @override
+  String get rdSetupSkipForNow => 'فعلاً رد کن';
+
+  @override
+  String get rdSetupAddressTitle => 'میرا باید\nتو را چه صدا کند؟';
+
+  @override
+  String get rdSetupAddressDesc =>
+      'خلاصه روزانه و یادآورها با این نام سلام می‌کنند.';
+
+  @override
+  String get rdSetupNameHint => 'نام تو';
+
+  @override
+  String get rdSetupToneLabel => 'چطور حرف بزند؟';
+
+  @override
+  String get rdSetupToneCalm => 'آرام';
+
+  @override
+  String get rdSetupToneCalmSub => 'ملایم و بدون عجله';
+
+  @override
+  String get rdSetupToneConcise => 'مختصر';
+
+  @override
+  String get rdSetupToneConciseSub => 'کوتاه و روشن';
+
+  @override
+  String get rdSetupToneWarm => 'صمیمی';
+
+  @override
+  String get rdSetupToneWarmSub => 'دوستانه و شخصی';
+
+  @override
+  String get rdSetupFocusTitle => 'چه چیزهایی\nبرایت مهم است؟';
+
+  @override
+  String get rdSetupFocusDesc =>
+      'میرا خاطرات را دور این‌ها خوشه می‌کند. هر کدام که مناسب است انتخاب کن.';
+
+  @override
+  String get rdSetupFocusWork => 'کار و پروژه‌ها';
+
+  @override
+  String get rdSetupFocusIdeas => 'ایده‌ها و جرقه‌ها';
+
+  @override
+  String get rdSetupFocusPeople => 'افراد';
+
+  @override
+  String get rdSetupFocusReading => 'خواندن و لینک‌ها';
+
+  @override
+  String get rdSetupFocusHealth => 'سلامت';
+
+  @override
+  String get rdSetupFocusMoney => 'پول';
+
+  @override
+  String get rdSetupFocusTravel => 'سفر و مکان‌ها';
+
+  @override
+  String get rdSetupFocusLearning => 'یادگیری';
+
+  @override
+  String get rdSetupPeopleTitle => 'چه کسانی\nبرایت مهم‌اند؟';
+
+  @override
+  String get rdSetupPeopleDesc =>
+      'میرا ثبت‌ها را به افراد زندگی‌ات وصل می‌کند. چند نفر اضافه کن — اسم کوچک کافی است.';
+
+  @override
+  String get rdSetupPeopleHint => 'نام اضافه کن';
+
+  @override
+  String get rdSetupPeopleEmpty =>
+      'هنوز کسی نیست — میرا با ثبت‌ها یاد می‌گیرد.';
+
+  @override
+  String get rdSetupRhythmTitle => 'خلاصه روزانه\nکی برسد؟';
+
+  @override
+  String get rdSetupRhythmDesc =>
+      'یک خلاصه آرام روزانه از آنچه به تو نیاز دارد — نه بیشتر.';
+
+  @override
+  String get rdSetupRhythmMorning => 'صبح';
+
+  @override
+  String get rdSetupRhythmMidday => 'ظهر';
+
+  @override
+  String get rdSetupRhythmEvening => 'عصر';
+
+  @override
+  String get rdSetupQuietHours => 'ساعات سکوت';
+
+  @override
+  String get rdSetupQuietHoursSub => 'بدون نudge از ۲۲:۰۰ تا ۰۷:۰۰';
+
+  @override
+  String get rdSetupPrivacyTitle => 'حافظه‌ات\nمال خودت می‌ماند.';
+
+  @override
+  String get rdSetupPrivacyDesc =>
+      'قبل از اتصال چیزی، این وعده‌ای است که میرا روی آن ساخته شده.';
+
+  @override
+  String get rdSetupPrivacyProcessed => 'پردازش خصوصی';
+
+  @override
+  String get rdSetupPrivacyProcessedSub =>
+      'هر جا ممکن باشد روی دستگاه تحلیل می‌شود.';
+
+  @override
+  String get rdSetupPrivacyEncrypted => 'رمزگذاری سرتاسری';
+
+  @override
+  String get rdSetupPrivacyEncryptedSub =>
+      'فقط تو خاطرات را می‌خوانی — حتی میرا نه.';
+
+  @override
+  String get rdSetupPrivacyNeverSold => 'هرگز فروخته نمی‌شود';
+
+  @override
+  String get rdSetupPrivacyNeverSoldSub =>
+      'داده‌ات را نمی‌فروشیم و به اشتراک نمی‌گذاریم. بدون تبلیغ، بدون استثنا.';
+
+  @override
+  String get rdSetupChoicesLabel => 'انتخاب‌های تو';
+
+  @override
+  String get rdSetupSyncDevices => 'همگام‌سازی بین دستگاه‌ها';
+
+  @override
+  String get rdSetupSyncDevicesSub =>
+      'پشتیبان رمزگذاری‌شده تا حافظه همراهت بماند.';
+
+  @override
+  String get rdSetupHelpImprove => 'کمک به بهتر شدن میرا';
+
+  @override
+  String get rdSetupHelpImproveSub =>
+      'استفاده ناشناس و تجمیع‌شده — نه محتوای تو.';
+
+  @override
+  String get rdSetupSourcesTitle => 'دنیایت را\nوصل کن.';
+
+  @override
+  String get rdSetupSourcesDesc =>
+      'به میرا یک شروع بده. فقط آنچه وصل می‌کنی را می‌خواند و خصوصی پردازش می‌کند.';
+
+  @override
+  String get rdSetupSourceCalendar => 'تقویم';
+
+  @override
+  String get rdSetupSourceCalendarSub => 'جلسات به خلاصه روزانه می‌روند';
+
+  @override
+  String get rdSetupSourceNotes => 'یادداشت‌ها';
+
+  @override
+  String get rdSetupSourceNotesSub => 'افکار نوشته‌شده‌ات';
+
+  @override
+  String get rdSetupSourcePhotos => 'عکس‌ها';
+
+  @override
+  String get rdSetupSourcePhotosSub => 'اسکرین‌شات و اسکن';
+
+  @override
+  String get rdSetupSourceGmail => 'Gmail';
+
+  @override
+  String get rdSetupSourceGmailSub => 'ایمیل‌های مهم';
+
+  @override
+  String get rdSetupImportTitle => 'یادداشت‌ها را\nبا خودت بیاور.';
+
+  @override
+  String get rdSetupImportDesc =>
+      'جای دیگر یادداشت داری؟ یک‌بار وارد کن تا میرا در گراف ببافد. از اپ اصلی چیزی حذف نمی‌شود.';
+
+  @override
+  String rdSetupImportNotesFound(String count) {
+    return 'حدود $count یادداشت یافت شد';
+  }
+
+  @override
+  String get rdSetupImportLater => 'می‌توانی بعداً از تنظیمات وارد کنی.';
+
+  @override
+  String get rdSetupImportBackground =>
+      'میرا در پس‌زمینه وارد می‌کند — همین الان شروع کن.';
+
+  @override
+  String rdSetupImportCta(String count) {
+    return 'وارد کردن $count یادداشت';
+  }
+
+  @override
+  String get rdSetupPermissionsTitle => 'بگذار میرا\nآرام کمک کند.';
+
+  @override
+  String get rdSetupPermissionsDesc =>
+      'دو مجوز، هر دو اختیاری. هر وقت بخواهی خاموش کن.';
+
+  @override
+  String get rdSetupMicTitle => 'میکروفون';
+
+  @override
+  String get rdSetupMicSub => 'هر وقت بخواهی با صدا ثبت کنی';
+
+  @override
+  String get rdSetupNotifTitle => 'اعلان‌ها';
+
+  @override
+  String get rdSetupNotifSub => 'فقط خلاصه روزانه و یادآورهایی که تنظیم می‌کنی';
+
+  @override
+  String get rdSetupWeavingTitle => 'در حال بافت\nحافظه…';
+
+  @override
+  String rdSetupWeavingDesc(String line) {
+    return 'میرا $line را به شکل ذهنت می‌چیند.';
+  }
+
+  @override
+  String get rdSetupWeavingPreferences => 'ترجیحاتت';
+
+  @override
+  String rdSetupWeavingFocusAreas(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count حوزه تمرکز',
+      one: '۱ حوزه تمرکز',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdSetupWeavingPeople(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count نفر',
+      one: '۱ نفر',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdSetupWeavingSources(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count منبع',
+      one: '۱ منبع',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdSetupWeavingImported(String count) {
+    return '$count یادداشت واردشده';
+  }
+
+  @override
+  String get rdSetupReadyTitle => 'ذهن دومت\nآماده است.';
+
+  @override
+  String rdSetupReadyDesc(String name) {
+    return 'از اینجا به بعد هر چیزی ثبت کنی، $name، جایی برای ماندن دارد — و راهی برای برگشت به تو.';
+  }
+
+  @override
+  String get rdSetupReadyYou => 'تو';
+
+  @override
+  String get rdSetupTakeTour => 'یک تور کوتاه';
+
+  @override
+  String get rdSetupSkipTour => 'رد کردن تور';
+
+  @override
+  String get rdSetupTour1Title => 'یک جا برای ثبت';
+
+  @override
+  String get rdSetupTour1Body =>
+      'بنویس، بگو یا عکس بگیر — هر چیزی که ذخیره می‌کنی از اینجا شروع می‌شود.';
+
+  @override
+  String get rdSetupTour2Title => 'همه‌چیز اینجا می‌نشیند';
+
+  @override
+  String get rdSetupTour2Body =>
+      'هر ثبت به خط زمانی می‌پیوندد، از قبل به آنچه مربوط است وصل.';
+
+  @override
+  String get rdSetupTour3Title => 'از هر جا ثبت کن';
+
+  @override
+  String get rdSetupTour3Body =>
+      'هر وقت میک را بزن — حتی وسط گفتگو — یک فکر را در یک نفس ذخیره کن.';
+
+  @override
+  String get rdSetupTour4Title => 'آرام جابه‌جا شو';
+
+  @override
+  String get rdSetupTour4Body =>
+      'خانه، کتابخانه، بوم و خلاصه روزانه این پایین‌اند.';
+
+  @override
+  String get rdSetupTourSkip => 'رد کردن تور';
+
+  @override
+  String get rdSetupTourNext => 'بعدی';
+
+  @override
+  String get rdSetupTourFinish => 'پایان';
+
+  @override
+  String get rdSetupInviteTitle => 'به کسی\nذهنی آرام‌تر بده.';
+
+  @override
+  String get rdSetupInviteDesc =>
+      'میرا با کسانی که کنارشان فکر می‌کنی بهتر است. چند نفر دعوت کن — از صف رد می‌شوند و هر دو یک ماه پلاس می‌گیرید.';
+
+  @override
+  String get rdSetupInviteCodeLabel => 'کد دعوت تو';
+
+  @override
+  String get rdSetupCopy => 'کپی';
+
+  @override
+  String get rdSetupCopied => 'کپی شد';
+
+  @override
+  String get rdSetupChannelMessages => 'پیام';
+
+  @override
+  String get rdSetupChannelMail => 'ایمیل';
+
+  @override
+  String get rdSetupChannelCopyLink => 'کپی لینک';
+
+  @override
+  String get rdSetupShareInvite => 'اشتراک دعوت';
+
+  @override
+  String get rdSetupMaybeLater => 'شاید بعداً';
 }

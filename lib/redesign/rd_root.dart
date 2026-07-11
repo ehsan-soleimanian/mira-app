@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 
 import 'models/rd_capture_mode.dart';
 import 'screens/rd_appearance.dart';
@@ -101,7 +102,8 @@ class _RdRootState extends State<RdRoot> {
     }
   }
 
-  Widget _screenFor(String id, Object? arg) {
+  Widget _screenFor(BuildContext context, String id, Object? arg) {
+    final l10n = AppLocalizations.of(context)!;
     switch (id) {
       case 'home':
         return RdHomeScreen(go: _go);
@@ -178,7 +180,11 @@ class _RdRootState extends State<RdRoot> {
       case 'ask':
         return RdAskScreen(go: _go, onBack: _back);
       case 'reminders':
-        return RdRemindersScreen(go: _go, onBack: _back, backLabel: 'Account');
+        return RdRemindersScreen(
+          go: _go,
+          onBack: _back,
+          backLabel: l10n.rdCommonAccount,
+        );
       case 'paywall':
         return RdPaywallScreen(go: _go, onBack: _back);
       case 'storage':
@@ -194,6 +200,7 @@ class _RdRootState extends State<RdRoot> {
           go: _go,
           onBack: _back,
           isTab: _tabs.contains(id),
+          l10n: l10n,
         );
     }
   }
@@ -201,7 +208,7 @@ class _RdRootState extends State<RdRoot> {
   @override
   Widget build(BuildContext context) {
     final current = _stack.last;
-    final screen = _screenFor(current.id, current.arg);
+    final screen = _screenFor(context, current.id, current.arg);
     final swipeEnabled = _pushedScreens.contains(current.id);
 
     return PopScope(
@@ -259,27 +266,32 @@ class _ComingSoon extends StatelessWidget {
     required this.go,
     required this.onBack,
     required this.isTab,
+    required this.l10n,
   });
 
   final String id;
   final RdGo go;
   final VoidCallback onBack;
   final bool isTab;
+  final AppLocalizations l10n;
 
-  static const _titles = {
-    'account': 'Account',
-    'memory': 'Memory',
-    'capture': 'Capture',
-    'notifications': 'Notifications',
-    'connectedapps': 'Connected apps',
-    'listen': 'Listening',
-    'chat': 'Chat',
-    'wizard': 'Setup',
-  };
+  String _titleFor(String screenId) {
+    return switch (screenId) {
+      'account' => l10n.rdCommonAccount,
+      'memory' => l10n.rdRootTitleMemory,
+      'capture' => l10n.rdRootTitleCapture,
+      'notifications' => l10n.rdRootTitleNotifications,
+      'connectedapps' => l10n.rdRootTitleConnectedApps,
+      'listen' => l10n.rdRootTitleListening,
+      'chat' => l10n.rdRootTitleChat,
+      'wizard' => l10n.rdRootTitleSetup,
+      _ => screenId,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
-    final title = _titles[id] ?? id;
+    final title = _titleFor(id);
     return Scaffold(
       backgroundColor: RdColors.bg,
       body: Stack(
@@ -321,7 +333,7 @@ class _ComingSoon extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Coming soon',
+                  l10n.rdCommonComingSoon,
                   style: GoogleFonts.vazirmatn(
                     fontSize: 13,
                     color: RdColors.muted,

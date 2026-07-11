@@ -106,7 +106,8 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
 
     try {
       final update = await services.dailyBriefRepository.fetchDailyUpdate();
-      final items = update.items.take(6).map(_toRecent).toList();
+      final l10n = AppLocalizations.of(context)!;
+      final items = update.items.take(6).map((i) => _toRecent(i, l10n)).toList();
       if (mounted) setState(() => _recents = items);
     } catch (_) {}
 
@@ -155,25 +156,25 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     return 0;
   }
 
-  static RdRecent _toRecent(DailyUpdateItem item) {
+  static RdRecent _toRecent(DailyUpdateItem item, AppLocalizations l10n) {
     final isVoice = (item.captureType ?? '').toLowerCase() == 'voice';
     final title = item.title.trim().isEmpty ? item.summary : item.title;
     return RdRecent(
       title: title,
       kind: isVoice ? RdRecentKind.voice : RdRecentKind.note,
-      time: _relativeTime(item.createdAt),
+      time: _relativeTime(item.createdAt, l10n),
       links: _linkCount(item),
     );
   }
 
-  static String _relativeTime(DateTime dt) {
+  static String _relativeTime(DateTime dt, AppLocalizations l10n) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays} days ago';
-    return '${dt.month}/${dt.day}';
+    if (diff.inMinutes < 1) return l10n.rdLibraryTimeJustNow;
+    if (diff.inMinutes < 60) return l10n.rdLibraryTimeMinutesAgo(diff.inMinutes);
+    if (diff.inHours < 24) return l10n.rdLibraryTimeHoursAgo(diff.inHours);
+    if (diff.inDays == 1) return l10n.rdLibraryTimeYesterday;
+    if (diff.inDays < 7) return l10n.rdLibraryTimeDaysAgo(diff.inDays);
+    return l10n.rdLibraryTimeDate(dt.month, dt.day);
   }
 
   String _whenLabel(Reminder r, AppLocalizations l10n) {
@@ -185,10 +186,10 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     final at = r.remindAt!.toLocal();
     final diff = at.difference(DateTime.now());
     if (diff.inHours < 24 && diff.inHours >= 0) {
-      return 'Later today';
+      return l10n.rdHomeLaterToday;
     }
-    if (diff.inDays == 1) return 'Tomorrow';
-    if (diff.inDays > 1 && diff.inDays < 7) return 'In ${diff.inDays} days';
+    if (diff.inDays == 1) return l10n.rdBriefTomorrow;
+    if (diff.inDays > 1 && diff.inDays < 7) return l10n.rdHomeInDays(diff.inDays);
     return '${at.month}/${at.day}';
   }
 
@@ -473,13 +474,14 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     final snoozed = _snoozed;
     if (snoozed != null && snoozed.id == r.id) {
       return _SnoozedStrip(
-        label: snoozed.label,
+        message: l10n.rdHomeSnoozed(snoozed.label),
         undoLabel: l10n.rdSnoozeUndo,
         onUndo: _undoSnooze,
       );
     }
     if (_pickingId == r.id) {
       return _SnoozePicker(
+        title: l10n.rdHomeRemindAgain,
         options: _snoozeOptions(l10n),
         onCancel: () => setState(() => _pickingId = null),
         onPick: (opt) => _applySnooze(r, opt),
@@ -533,7 +535,7 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
           ),
           const SizedBox(height: 8),
           if (_recents.isEmpty)
-            Expanded(child: _recentsEmpty())
+            Expanded(child: _recentsEmpty(l10n))
           else
           Expanded(
             child: Stack(
@@ -582,13 +584,13 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     );
   }
 
-  Widget _recentsEmpty() {
+  Widget _recentsEmpty(AppLocalizations l10n) {
     final rd = context.rd;
     return Center(
       child: Padding(
         padding: const EdgeInsets.only(bottom: 40),
         child: Text(
-          'Your recent memories will appear here.',
+          l10n.rdHomeRecentsEmpty,
           textAlign: TextAlign.center,
           style: GoogleFonts.vazirmatn(
               fontSize: 13.5, height: 1.5, color: rd.faint),
@@ -726,11 +728,13 @@ class _WaitingItem extends StatelessWidget {
 
 class _SnoozePicker extends StatelessWidget {
   const _SnoozePicker({
+    required this.title,
     required this.options,
     required this.onCancel,
     required this.onPick,
   });
 
+  final String title;
   final List<_SnoozeOption> options;
   final VoidCallback onCancel;
   final void Function(_SnoozeOption opt) onPick;
@@ -751,7 +755,7 @@ class _SnoozePicker extends StatelessWidget {
           Row(
             children: [
               Text(
-                'Remind again…',
+                title,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -794,12 +798,12 @@ class _SnoozePicker extends StatelessWidget {
 
 class _SnoozedStrip extends StatelessWidget {
   const _SnoozedStrip({
-    required this.label,
+    required this.message,
     required this.undoLabel,
     required this.onUndo,
   });
 
-  final String label;
+  final String message;
   final String undoLabel;
   final VoidCallback onUndo;
 
@@ -818,7 +822,7 @@ class _SnoozedStrip extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Snoozed · $label',
+              message,
               style: GoogleFonts.vazirmatn(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -907,6 +911,7 @@ class _RecentTile extends StatelessWidget {
                     isNote: isNote,
                     time: item.time,
                     links: item.links,
+                    l10n: AppLocalizations.of(context)!,
                   ),
                 ],
               ),
@@ -919,11 +924,17 @@ class _RecentTile extends StatelessWidget {
 }
 
 class _MetaRow extends StatelessWidget {
-  const _MetaRow({required this.isNote, required this.time, required this.links});
+  const _MetaRow({
+    required this.isNote,
+    required this.time,
+    required this.links,
+    required this.l10n,
+  });
 
   final bool isNote;
   final String time;
   final int links;
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -937,7 +948,10 @@ class _MetaRow extends StatelessWidget {
           strokeWidth: 2,
         ),
         const SizedBox(width: 6),
-        Text(isNote ? 'Note' : 'Voice', style: RdText.meta.copyWith(color: rd.faint)),
+        Text(
+          isNote ? l10n.rdHomeKindNote : l10n.rdHomeKindVoice,
+          style: RdText.meta.copyWith(color: rd.faint),
+        ),
         const _MetaSep(),
         Text(time, style: RdText.meta.copyWith(color: rd.faint)),
         if (links > 0) ...[
@@ -945,7 +959,7 @@ class _MetaRow extends StatelessWidget {
           RdIcon(RdIcons.link, size: 12, color: rd.peri, strokeWidth: 2),
           const SizedBox(width: 5),
           Text(
-            '$links links',
+            l10n.rdHomeLinksCount(links),
             style: RdText.meta.copyWith(
               color: rd.peri,
               fontWeight: FontWeight.w500,
