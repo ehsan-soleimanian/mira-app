@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:intl/intl.dart';
+
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/models/api/daily_brief_models.dart';
 import 'package:mira_app/models/api/daily_update_models.dart';
@@ -35,10 +38,6 @@ class RdDailyBriefScreen extends StatefulWidget {
 }
 
 class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
-  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  static const _monthsFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  static const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
   List<DailyUpdateItem>? _items;
 
   /// Rich brief from `GET /daily-brief` when available.
@@ -96,8 +95,8 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                 .map(
                   (m) => ResurfacedItem(
                     id: m['id'] as String? ?? '',
-                    title: m['title'] as String? ?? 'Memory',
-                    reason: m['reason'] as String? ?? 'Recent memory',
+                    title: m['title'] as String? ?? AppLocalizations.of(context)!.rdBriefFallbackMemory,
+                    reason: m['reason'] as String? ?? AppLocalizations.of(context)!.rdBriefFallbackRecentMemory,
                   ),
                 )
                 .toList();
@@ -164,7 +163,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     setState(() =>
         _overdue = before.where((r) => r.id != reminder.id).toList());
     _pushRemindAt(reminder.id, DateTime.now().add(const Duration(days: 1)));
-    _toastUndo('Snoozed until tomorrow', () {
+    _toastUndo(AppLocalizations.of(context)!.rdBriefSnoozedTomorrow, () {
       setState(() => _overdue = before);
       final original = reminder.remindAt;
       if (original != null) _pushRemindAt(reminder.id, original);
@@ -177,7 +176,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     setState(() =>
         _overdue = before.where((r) => r.id != reminder.id).toList());
     _pushDone(reminder.id, true);
-    _toastUndo('Done', () {
+    _toastUndo(AppLocalizations.of(context)!.rdBriefDone, () {
       setState(() => _overdue = before);
       _pushDone(reminder.id, false);
     });
@@ -192,7 +191,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     for (final r in before) {
       _pushRemindAt(r.id, next);
     }
-    _toastUndo('Cleared — Mira will ask again later', () {
+    _toastUndo(AppLocalizations.of(context)!.rdBriefClearedLater, () {
       setState(() => _overdue = before);
       for (final r in before) {
         if (r.remindAt != null) _pushRemindAt(r.id, r.remindAt!);
@@ -219,10 +218,11 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   List<Widget> _waitingBlock() {
     if (_waiting.isEmpty) return const [];
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return [
       _SectionHeader(
         icon: RdIcons.dueClock,
-        label: 'WAITING FOR THE RIGHT MOMENT',
+        label: l10n.rdBriefSectionWaitingMoment,
         count: '${_waiting.length}',
       ),
       for (final r in _waiting)
@@ -248,7 +248,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      r.title.trim().isEmpty ? 'A reminder' : r.title.trim(),
+                      r.title.trim().isEmpty ? l10n.rdBriefFallbackAReminder : r.title.trim(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.vazirmatn(
@@ -270,6 +270,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   /// Footer under the overdue list: Clear-all + a link to the full Reminders.
   Widget _overdueFooter() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
       child: Row(
@@ -277,7 +278,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
           GestureDetector(
             onTap: _clearAllOverdue,
             behavior: HitTestBehavior.opaque,
-            child: Text('Clear all',
+            child: Text(l10n.rdBriefClearAll,
                 style: GoogleFonts.vazirmatn(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -290,7 +291,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('See all reminders',
+                Text(l10n.rdBriefSeeAllReminders,
                     style: GoogleFonts.vazirmatn(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -309,6 +310,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   void _toastUndo(String message, VoidCallback onUndo) {
     if (!mounted) return;
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -320,7 +322,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
           ),
           action: SnackBarAction(
-            label: 'Undo',
+            label: l10n.rdBriefUndo,
             textColor: Colors.white,
             onPressed: onUndo,
           ),
@@ -329,6 +331,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   List<Widget> _bodyChildren() {
+    final l10n = AppLocalizations.of(context)!;
     if (_items == null && _overdue == null && _brief == null) {
       // No data yet. While the first load is still in flight, show only the
       // header (no fabricated content). Once it has finished with nothing to
@@ -339,7 +342,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(26, 40, 26, 0),
           child: Text(
-            'Nothing needs you right now.',
+            l10n.rdBriefNothingNow,
             style: GoogleFonts.vazirmatn(
               fontSize: 14.5,
               height: 1.5,
@@ -393,6 +396,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   List<Widget> _briefLiveChildren({required List<Reminder> overdue}) {
+    final l10n = AppLocalizations.of(context)!;
     return [
       _header(),
       if (_brief != null && _brief!.summary.isNotEmpty)
@@ -407,7 +411,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         for (final r in overdue)
           _OverdueCard(
             when: _overdueWhen(r.remindAt),
-            title: r.title.trim().isEmpty ? 'Reminder' : r.title,
+            title: r.title.trim().isEmpty ? AppLocalizations.of(context)!.rdBriefFallbackReminder : r.title,
             onSnooze: () => _snoozeReminder(r),
             onDone: () => _completeReminder(r),
           ),
@@ -417,13 +421,12 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       if (_briefTasks.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.checkCircle,
-          label: 'NEEDS YOU',
-          count:
-              '${_briefTasks.length} ${_briefTasks.length == 1 ? 'task' : 'tasks'}',
+          label: l10n.rdBriefSectionNeedsYou,
+          count: l10n.rdBriefTaskCount(_briefTasks.length),
         ),
         for (final t in _briefTasks)
           _TaskCard(
-            title: t['title'] as String? ?? 'Task',
+            title: t['title'] as String? ?? l10n.rdBriefFallbackTask,
             due: _briefTaskDue(t),
             onToggle: (done) => _toggleTask(t['id'] as String? ?? '', done),
           ),
@@ -435,13 +438,14 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   List<Widget> _todayTimeline() {
+    final l10n = AppLocalizations.of(context)!;
     final items = _brief?.section('today')?.items ?? const [];
     if (items.isEmpty) return const [];
     return [
       _SectionHeader(
         icon: RdIcons.dueClock,
-        label: 'TODAY',
-        count: '${items.length} events',
+        label: l10n.rdBriefSectionToday,
+        count: l10n.rdBriefEventsCount(items.length),
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -472,7 +476,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                 for (var i = 0; i < items.length; i++)
                   _TimelineCard(
                     time: items[i]['timeLabel'] as String? ?? '—',
-                    title: items[i]['title'] as String? ?? 'Event',
+                    title: items[i]['title'] as String? ?? l10n.rdBriefFallbackEvent,
                     sub: items[i]['subtitle'] as String? ?? '',
                     prep: items[i]['prep'] as String?,
                     isNow: i == items.length - 1,
@@ -486,12 +490,13 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   List<Widget> _handledQuietly() {
+    final l10n = AppLocalizations.of(context)!;
     final items = _brief?.section('handled')?.items ?? const [];
     if (items.isEmpty) return const [];
     return [
       _SectionHeader(
         icon: RdIcons.check,
-        label: 'HANDLED QUIETLY',
+        label: l10n.rdBriefSectionHandled,
         count: '${items.length}',
       ),
       Padding(
@@ -519,18 +524,20 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     ];
   }
 
-  static String _briefTaskDue(Map<String, dynamic> task) {
+  String _briefTaskDue(Map<String, dynamic> task) {
+    final l10n = AppLocalizations.of(context)!;
     final dueText = task['dueText'] as String?;
     if (dueText != null && dueText.trim().isNotEmpty) return dueText;
     final dueAt = task['dueAt'];
     if (dueAt is String) {
       final dt = DateTime.tryParse(dueAt)?.toLocal();
       if (dt != null) {
-        return 'Due ${dt.month}/${dt.day}';
+        final locale = Localizations.localeOf(context).toString();
+        return l10n.rdBriefDueOn(DateFormat.MMMd(locale).format(dt));
       }
     }
-    if (task['overdue'] == true) return 'Overdue';
-    return 'Open';
+    if (task['overdue'] == true) return l10n.rdBriefOverdue;
+    return l10n.rdBriefOpen;
   }
 
   List<Widget> _liveChildren({
@@ -538,6 +545,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     required List<DailyUpdateItem> recent,
     required List<Reminder> overdue,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     return [
       _header(),
       // "Waiting on you" — overdue reminders, each with Snooze / Done.
@@ -547,7 +555,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         for (final r in overdue)
           _OverdueCard(
             when: _overdueWhen(r.remindAt),
-            title: r.title.trim().isEmpty ? 'Reminder' : r.title,
+            title: r.title.trim().isEmpty ? AppLocalizations.of(context)!.rdBriefFallbackReminder : r.title,
             onSnooze: () => _snoozeReminder(r),
             onDone: () => _completeReminder(r),
           ),
@@ -557,8 +565,8 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       if (tasks.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.checkCircle,
-          label: 'NEEDS YOU',
-          count: '${tasks.length} ${tasks.length == 1 ? 'task' : 'tasks'}',
+          label: l10n.rdBriefSectionNeedsYou,
+          count: l10n.rdBriefTaskCount(tasks.length),
         ),
         for (final t in tasks)
           _TaskCard(
@@ -570,7 +578,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       if (recent.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.resurface,
-          label: 'RECENT',
+          label: l10n.rdBriefSectionRecent,
           count: '${recent.length}',
         ),
         for (final o in recent)
@@ -578,7 +586,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             icon: _isImage(o) ? RdIcons.vinyl : RdIcons.book,
             image: _isImage(o),
             why: _sectionLabel(o.createdAt),
-            title: o.title.trim().isEmpty ? 'Untitled memory' : o.title,
+            title: o.title.trim().isEmpty ? l10n.rdBriefFallbackUntitled : o.title,
             sub: o.summary.trim().isEmpty ? o.title : o.summary,
           ),
       ],
@@ -592,50 +600,52 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   /// "Mira resurfaced" section. Renders live items from `/v2/resurfaced` when
   /// the feed returned any; hidden entirely otherwise (null or empty).
   List<Widget> _resurfacedChildren() {
+    final l10n = AppLocalizations.of(context)!;
     final items = _resurfaced ?? const <ResurfacedItem>[];
     if (items.isEmpty) return const [];
 
     return [
       _SectionHeader(
         icon: RdIcons.resurface,
-        label: 'MIRA RESURFACED',
+        label: l10n.rdBriefSectionResurfaced,
         count: '${items.length}',
       ),
       for (final item in items)
         _ResCard(
           icon: RdIcons.book,
           why: _resurfacedWhy(item.reason),
-          title: item.title.trim().isEmpty ? 'A memory' : item.title,
+          title: item.title.trim().isEmpty ? l10n.rdBriefFallbackAMemory : item.title,
           sub: _resurfacedSub(item),
-          primaryAction: 'Open',
-          secondaryAction: 'Remind me',
+          primaryAction: l10n.rdBriefOpenAction,
+          secondaryAction: l10n.rdBriefRemindMe,
           onPrimary: () => widget.go(
             'memory',
             arg: RdMemoryArg(title: item.title, id: item.id),
           ),
-          onSecondary: () => _toastUndo('Reminder set for Thursday', () {}),
+          onSecondary: () => _toastUndo(l10n.rdBriefReminderSetThursday, () {}),
         ),
     ];
   }
 
   /// The eyebrow line for a resurfaced card — the backend `reason`, trimmed,
   /// with a gentle fallback when it is blank.
-  static String _resurfacedWhy(String reason) {
+  String _resurfacedWhy(String reason) {
     final trimmed = reason.trim();
-    return trimmed.isEmpty ? 'Brought back for you' : trimmed;
+    return trimmed.isEmpty ? AppLocalizations.of(context)!.rdBriefBroughtBack : trimmed;
   }
 
   /// Supporting line for a resurfaced card, composed from the optional `type`
   /// and `date`. Falls back to the reason, then a neutral phrase, so the card
   /// always has a second line to read.
-  static String _resurfacedSub(ResurfacedItem item) {
+  String _resurfacedSub(ResurfacedItem item) {
+    final l10n = AppLocalizations.of(context)!;
     final type = (item.type ?? '').trim();
     final when = item.date != null ? _sectionLabel(item.date!) : '';
     if (type.isNotEmpty && when.isNotEmpty) return '$type · $when';
     if (type.isNotEmpty) return type;
     if (when.isNotEmpty) return when;
     final reason = item.reason.trim();
-    return reason.isEmpty ? 'Saved to your memory' : reason;
+    return reason.isEmpty ? l10n.rdBriefSavedToMemory : reason;
   }
 
   static bool _isTask(DailyUpdateItem item) {
@@ -647,52 +657,57 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       (item.captureType ?? '').toLowerCase() == 'image';
 
   String _dueLabel(DailyUpdateItem item) {
+    final l10n = AppLocalizations.of(context)!;
     final due = item.dueAt;
-    if (due != null) return 'Due ${_sectionLabel(due)}';
+    if (due != null) return l10n.rdBriefDueOn(_sectionLabel(due));
     return _relativeTime(item.createdAt);
   }
 
-  static String _sectionLabel(DateTime dt) {
+  String _sectionLabel(DateTime dt) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
     final now = DateTime.now();
     final days = DateTime(now.year, now.month, now.day)
         .difference(DateTime(dt.year, dt.month, dt.day))
         .inDays;
-    if (days == 0) return 'Today';
-    if (days == 1) return 'Yesterday';
-    if (days == -1) return 'Tomorrow';
-    return '${_months[dt.month - 1]} ${dt.day}';
+    if (days == 0) return l10n.rdBriefToday;
+    if (days == 1) return l10n.rdBriefYesterday;
+    if (days == -1) return l10n.rdBriefTomorrow;
+    return DateFormat.MMMd(locale).format(dt);
   }
 
-  static String _relativeTime(DateTime dt) {
+  String _relativeTime(DateTime dt) {
+    final l10n = AppLocalizations.of(context)!;
     final diff = DateTime.now().difference(dt);
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Yesterday';
-    return '${diff.inDays} days ago';
+    if (diff.inHours < 24) return l10n.rdBriefHoursAgo(diff.inHours);
+    if (diff.inDays == 1) return l10n.rdBriefYesterday;
+    return l10n.rdBriefDaysAgo(diff.inDays);
   }
 
   /// "Due yesterday" / "Due N days ago" for an overdue reminder, by calendar day.
-  static String _overdueWhen(DateTime? remindAt) {
-    if (remindAt == null) return 'Overdue';
+  String _overdueWhen(DateTime? remindAt) {
+    final l10n = AppLocalizations.of(context)!;
+    if (remindAt == null) return l10n.rdBriefOverdue;
     final now = DateTime.now();
     final days = DateTime(now.year, now.month, now.day)
         .difference(DateTime(remindAt.year, remindAt.month, remindAt.day))
         .inDays;
-    if (days <= 0) return 'Due earlier today';
-    if (days == 1) return 'Due yesterday';
-    return 'Due $days days ago';
+    if (days <= 0) return l10n.rdBriefDueEarlierToday;
+    if (days == 1) return l10n.rdBriefDueYesterday;
+    return l10n.rdBriefDueDaysAgo(days);
   }
 
-  static String _greetingForNow() {
+  String _greetingForNow() {
+    final l10n = AppLocalizations.of(context)!;
     final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (h < 12) return l10n.rdBriefGreetingMorning;
+    if (h < 17) return l10n.rdBriefGreetingAfternoon;
+    return l10n.rdBriefGreetingEvening;
   }
 
   String _dateEyebrow() {
-    final now = DateTime.now();
-    return '${_weekdays[now.weekday - 1]} · ${_monthsFull[now.month - 1]} ${now.day}'
-        .toUpperCase();
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat('EEEE · MMMM d', locale).format(DateTime.now()).toUpperCase();
   }
 
   @override
@@ -737,6 +752,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   Widget _header() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
       child: Column(
@@ -760,7 +776,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Daily Brief',
+                      l10n.rdBriefTitle,
                       style: GoogleFonts.dosis(
                         fontSize: 30,
                         fontWeight: FontWeight.w700,
@@ -770,7 +786,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_greetingForNow()}, $_name',
+                      l10n.rdBriefGreeting(_greetingForNow(), _name),
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -809,10 +825,11 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   Widget _dbEnd() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 26, 40, 0),
       child: Text(
-        'That’s your day.\nEverything else is safe in memory.',
+        l10n.rdBriefDayEnd,
         textAlign: TextAlign.center,
         style: GoogleFonts.vazirmatn(
           fontSize: 12.5,
@@ -1276,11 +1293,12 @@ class _HandledRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     final label = action == 'done'
-        ? 'Marked done'
+        ? l10n.rdBriefMarkedDone
         : action == 'dismiss'
-            ? 'Dismissed'
-            : 'Updated';
+            ? l10n.rdBriefDismissed
+            : l10n.rdBriefUpdated;
     return Row(
       children: [
         Container(
@@ -1314,6 +1332,17 @@ class _FirstTimeState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final stepTitles = [
+      l10n.rdBriefFirstStep1Title,
+      l10n.rdBriefFirstStep2Title,
+      l10n.rdBriefFirstStep3Title,
+    ];
+    final stepSubs = [
+      l10n.rdBriefFirstStep1Sub,
+      l10n.rdBriefFirstStep2Sub,
+      l10n.rdBriefFirstStep3Sub,
+    ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 20, 26, 0),
       child: Column(
@@ -1327,7 +1356,7 @@ class _FirstTimeState extends StatelessWidget {
               borderRadius: BorderRadius.circular(100),
             ),
             child: Text(
-              'WELCOME TO MIRA',
+              l10n.rdBriefWelcomeBadge,
               style: GoogleFonts.vazirmatn(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
@@ -1338,7 +1367,7 @@ class _FirstTimeState extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Your Brief fills in\nas you capture',
+            l10n.rdBriefFirstTitle,
             textAlign: TextAlign.center,
             style: GoogleFonts.dosis(
               fontSize: 27,
@@ -1349,7 +1378,7 @@ class _FirstTimeState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Save a thought, task, or link — Mira will surface what matters here each morning.',
+            l10n.rdBriefFirstSubtitle,
             textAlign: TextAlign.center,
             style: GoogleFonts.vazirmatn(fontSize: 14.5, height: 1.6, color: rd.muted),
           ),
@@ -1384,11 +1413,7 @@ class _FirstTimeState extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          [
-                            'Speak or type anything',
-                            'Confirm what matters',
-                            'See it here tomorrow',
-                          ][i],
+                          stepTitles[i],
                           style: GoogleFonts.vazirmatn(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -1397,11 +1422,7 @@ class _FirstTimeState extends StatelessWidget {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          [
-                            'Mira understands before it\'s kept',
-                            'You stay in control of memory',
-                            'Tasks, reminders, and resurfaced memories',
-                          ][i],
+                          stepSubs[i],
                           style: GoogleFonts.vazirmatn(
                             fontSize: 13,
                             height: 1.5,
@@ -1469,6 +1490,7 @@ const _ovAmberDeep = Color(0xFFB8853A);
 class _OverdueSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 22, 20, 0),
       padding: const EdgeInsets.all(16),
@@ -1503,8 +1525,7 @@ class _OverdueSummary extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              'A few things slipped past while you were busy. Nothing’s lost — '
-              'I held onto them. Let’s clear them together, no rush.',
+              l10n.rdBriefOverdueSummary,
               style: GoogleFonts.vazirmatn(
                 fontSize: 14.5,
                 height: 1.55,
@@ -1525,6 +1546,7 @@ class _OverdueHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 30, 26, 10),
       child: Row(
@@ -1540,7 +1562,7 @@ class _OverdueHeader extends StatelessWidget {
               ),
               const SizedBox(width: 9),
               Text(
-                'WAITING ON YOU',
+                l10n.rdBriefSectionWaitingOnYou,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -1551,7 +1573,7 @@ class _OverdueHeader extends StatelessWidget {
             ],
           ),
           Text(
-            '$count ${count == 1 ? 'reminder' : 'reminders'}',
+            l10n.rdBriefReminderCount(count),
             style: GoogleFonts.vazirmatn(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -1649,13 +1671,13 @@ class _OverdueCard extends StatelessWidget {
                           Row(
                             children: [
                               _OverdueButton(
-                                label: 'Snooze',
+                                label: AppLocalizations.of(context)!.rdBriefSnooze,
                                 solid: false,
                                 onTap: onSnooze,
                               ),
                               const SizedBox(width: 8),
                               _OverdueButton(
-                                label: 'Do it now',
+                                label: AppLocalizations.of(context)!.rdBriefDoItNow,
                                 solid: true,
                                 onTap: onDone,
                               ),
@@ -1724,6 +1746,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 0),
       child: Column(
@@ -1734,7 +1757,7 @@ class _EmptyState extends StatelessWidget {
               const RdOrb(size: 92, ring: true),
               const SizedBox(height: 20),
               Text(
-                'Nothing needs you today',
+                l10n.rdBriefEmptyTitle,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.dosis(
                   fontSize: 26,
@@ -1746,8 +1769,7 @@ class _EmptyState extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 300),
                 child: Text(
-                  'Your day is open and no memory is waiting on you. I’ll keep '
-                  'everything safe and speak up the moment something matters.',
+                  l10n.rdBriefEmptyBody,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14.5,
@@ -1760,20 +1782,20 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Row(
-            children: const [
+            children: [
               Expanded(
                 child: _EmptyStat(
                   icon: RdIcons.check,
                   num: '34',
-                  label: 'memories held safe',
+                  label: l10n.rdBriefMemoriesHeldSafe,
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: _EmptyStat(
                   icon: RdIcons.dueClock,
                   num: '0',
-                  label: 'reminders due',
+                  label: l10n.rdBriefRemindersDue,
                 ),
               ),
             ],
@@ -1851,6 +1873,7 @@ class _EmptyCapture extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1899,7 +1922,7 @@ class _EmptyCapture extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Capture a thought',
+                    l10n.rdBriefCaptureThought,
                     style: GoogleFonts.vazirmatn(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
@@ -1908,7 +1931,7 @@ class _EmptyCapture extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Drop anything on your mind — I’ll hold it for you.',
+                    l10n.rdBriefCaptureSub,
                     style: GoogleFonts.vazirmatn(
                       fontSize: 12.5,
                       color: RdColors.muted,

@@ -1202,6 +1202,244 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureContinue => 'Continue';
 
   @override
+  String get rdBriefTitle => 'Daily Brief';
+
+  @override
+  String get rdBriefGreetingMorning => 'Good morning';
+
+  @override
+  String get rdBriefGreetingAfternoon => 'Good afternoon';
+
+  @override
+  String get rdBriefGreetingEvening => 'Good evening';
+
+  @override
+  String rdBriefGreeting(String greeting, String name) {
+    return '$greeting, $name';
+  }
+
+  @override
+  String get rdBriefDayEnd =>
+      'That\'s your day.\nEverything else is safe in memory.';
+
+  @override
+  String get rdBriefNothingNow => 'Nothing needs you right now.';
+
+  @override
+  String get rdBriefSnoozedTomorrow => 'Snoozed until tomorrow';
+
+  @override
+  String get rdBriefDone => 'Done';
+
+  @override
+  String get rdBriefClearedLater => 'Cleared — Mira will ask again later';
+
+  @override
+  String get rdBriefUndo => 'Undo';
+
+  @override
+  String get rdBriefClearAll => 'Clear all';
+
+  @override
+  String get rdBriefSeeAllReminders => 'See all reminders';
+
+  @override
+  String get rdBriefSectionWaitingMoment => 'WAITING FOR THE RIGHT MOMENT';
+
+  @override
+  String get rdBriefSectionNeedsYou => 'NEEDS YOU';
+
+  @override
+  String get rdBriefSectionToday => 'TODAY';
+
+  @override
+  String get rdBriefSectionHandled => 'HANDLED QUIETLY';
+
+  @override
+  String get rdBriefSectionRecent => 'RECENT';
+
+  @override
+  String get rdBriefSectionResurfaced => 'MIRA RESURFACED';
+
+  @override
+  String get rdBriefSectionWaitingOnYou => 'WAITING ON YOU';
+
+  @override
+  String rdBriefTaskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks',
+      one: '1 task',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdBriefReminderCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reminders',
+      one: '1 reminder',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdBriefEventsCount(int count) {
+    return '$count events';
+  }
+
+  @override
+  String get rdBriefFallbackMemory => 'Memory';
+
+  @override
+  String get rdBriefFallbackRecentMemory => 'Recent memory';
+
+  @override
+  String get rdBriefFallbackReminder => 'Reminder';
+
+  @override
+  String get rdBriefFallbackAReminder => 'A reminder';
+
+  @override
+  String get rdBriefFallbackTask => 'Task';
+
+  @override
+  String get rdBriefFallbackEvent => 'Event';
+
+  @override
+  String get rdBriefFallbackUntitled => 'Untitled memory';
+
+  @override
+  String get rdBriefFallbackAMemory => 'A memory';
+
+  @override
+  String get rdBriefOverdue => 'Overdue';
+
+  @override
+  String get rdBriefOpen => 'Open';
+
+  @override
+  String rdBriefDueOn(String when) {
+    return 'Due $when';
+  }
+
+  @override
+  String get rdBriefDueEarlierToday => 'Due earlier today';
+
+  @override
+  String get rdBriefDueYesterday => 'Due yesterday';
+
+  @override
+  String rdBriefDueDaysAgo(int days) {
+    return 'Due $days days ago';
+  }
+
+  @override
+  String get rdBriefToday => 'Today';
+
+  @override
+  String get rdBriefYesterday => 'Yesterday';
+
+  @override
+  String get rdBriefTomorrow => 'Tomorrow';
+
+  @override
+  String rdBriefHoursAgo(int hours) {
+    return '${hours}h ago';
+  }
+
+  @override
+  String rdBriefDaysAgo(int days) {
+    return '$days days ago';
+  }
+
+  @override
+  String get rdBriefBroughtBack => 'Brought back for you';
+
+  @override
+  String get rdBriefSavedToMemory => 'Saved to your memory';
+
+  @override
+  String get rdBriefOpenAction => 'Open';
+
+  @override
+  String get rdBriefRemindMe => 'Remind me';
+
+  @override
+  String get rdBriefReminderSetThursday => 'Reminder set for Thursday';
+
+  @override
+  String get rdBriefMarkedDone => 'Marked done';
+
+  @override
+  String get rdBriefDismissed => 'Dismissed';
+
+  @override
+  String get rdBriefUpdated => 'Updated';
+
+  @override
+  String get rdBriefWelcomeBadge => 'WELCOME TO MIRA';
+
+  @override
+  String get rdBriefFirstTitle => 'Your Brief fills in\nas you capture';
+
+  @override
+  String get rdBriefFirstSubtitle =>
+      'Save a thought, task, or link — Mira will surface what matters here each morning.';
+
+  @override
+  String get rdBriefFirstStep1Title => 'Speak or type anything';
+
+  @override
+  String get rdBriefFirstStep1Sub => 'Mira understands before it\'s kept';
+
+  @override
+  String get rdBriefFirstStep2Title => 'Confirm what matters';
+
+  @override
+  String get rdBriefFirstStep2Sub => 'You stay in control of memory';
+
+  @override
+  String get rdBriefFirstStep3Title => 'See it here tomorrow';
+
+  @override
+  String get rdBriefFirstStep3Sub =>
+      'Tasks, reminders, and resurfaced memories';
+
+  @override
+  String get rdBriefOverdueSummary =>
+      'A few things slipped past while you were busy. Nothing\'s lost — I held onto them. Let\'s clear them together, no rush.';
+
+  @override
+  String get rdBriefSnooze => 'Snooze';
+
+  @override
+  String get rdBriefDoItNow => 'Do it now';
+
+  @override
+  String get rdBriefEmptyTitle => 'Nothing needs you today';
+
+  @override
+  String get rdBriefEmptyBody =>
+      'Your day is open and no memory is waiting on you. I\'ll keep everything safe and speak up the moment something matters.';
+
+  @override
+  String get rdBriefMemoriesHeldSafe => 'memories held safe';
+
+  @override
+  String get rdBriefRemindersDue => 'reminders due';
+
+  @override
+  String get rdBriefCaptureThought => 'Capture a thought';
+
+  @override
+  String get rdBriefCaptureSub =>
+      'Drop anything on your mind — I\'ll hold it for you.';
+
+  @override
   String get rdOnboardingTagline =>
       'A second mind. For when you don\'t want to forget anything.';
 

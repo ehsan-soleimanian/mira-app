@@ -2260,6 +2260,414 @@ abstract class AppLocalizations {
   /// **'Continue'**
   String get rdCaptureContinue;
 
+  /// No description provided for @rdBriefTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Brief'**
+  String get rdBriefTitle;
+
+  /// No description provided for @rdBriefGreetingMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get rdBriefGreetingMorning;
+
+  /// No description provided for @rdBriefGreetingAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get rdBriefGreetingAfternoon;
+
+  /// No description provided for @rdBriefGreetingEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get rdBriefGreetingEvening;
+
+  /// No description provided for @rdBriefGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'{greeting}, {name}'**
+  String rdBriefGreeting(String greeting, String name);
+
+  /// No description provided for @rdBriefDayEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'That\'s your day.\nEverything else is safe in memory.'**
+  String get rdBriefDayEnd;
+
+  /// No description provided for @rdBriefNothingNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing needs you right now.'**
+  String get rdBriefNothingNow;
+
+  /// No description provided for @rdBriefSnoozedTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Snoozed until tomorrow'**
+  String get rdBriefSnoozedTomorrow;
+
+  /// No description provided for @rdBriefDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get rdBriefDone;
+
+  /// No description provided for @rdBriefClearedLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleared — Mira will ask again later'**
+  String get rdBriefClearedLater;
+
+  /// No description provided for @rdBriefUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get rdBriefUndo;
+
+  /// No description provided for @rdBriefClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get rdBriefClearAll;
+
+  /// No description provided for @rdBriefSeeAllReminders.
+  ///
+  /// In en, this message translates to:
+  /// **'See all reminders'**
+  String get rdBriefSeeAllReminders;
+
+  /// No description provided for @rdBriefSectionWaitingMoment.
+  ///
+  /// In en, this message translates to:
+  /// **'WAITING FOR THE RIGHT MOMENT'**
+  String get rdBriefSectionWaitingMoment;
+
+  /// No description provided for @rdBriefSectionNeedsYou.
+  ///
+  /// In en, this message translates to:
+  /// **'NEEDS YOU'**
+  String get rdBriefSectionNeedsYou;
+
+  /// No description provided for @rdBriefSectionToday.
+  ///
+  /// In en, this message translates to:
+  /// **'TODAY'**
+  String get rdBriefSectionToday;
+
+  /// No description provided for @rdBriefSectionHandled.
+  ///
+  /// In en, this message translates to:
+  /// **'HANDLED QUIETLY'**
+  String get rdBriefSectionHandled;
+
+  /// No description provided for @rdBriefSectionRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'RECENT'**
+  String get rdBriefSectionRecent;
+
+  /// No description provided for @rdBriefSectionResurfaced.
+  ///
+  /// In en, this message translates to:
+  /// **'MIRA RESURFACED'**
+  String get rdBriefSectionResurfaced;
+
+  /// No description provided for @rdBriefSectionWaitingOnYou.
+  ///
+  /// In en, this message translates to:
+  /// **'WAITING ON YOU'**
+  String get rdBriefSectionWaitingOnYou;
+
+  /// No description provided for @rdBriefTaskCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 task} other{{count} tasks}}'**
+  String rdBriefTaskCount(int count);
+
+  /// No description provided for @rdBriefReminderCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 reminder} other{{count} reminders}}'**
+  String rdBriefReminderCount(int count);
+
+  /// No description provided for @rdBriefEventsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} events'**
+  String rdBriefEventsCount(int count);
+
+  /// No description provided for @rdBriefFallbackMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory'**
+  String get rdBriefFallbackMemory;
+
+  /// No description provided for @rdBriefFallbackRecentMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent memory'**
+  String get rdBriefFallbackRecentMemory;
+
+  /// No description provided for @rdBriefFallbackReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get rdBriefFallbackReminder;
+
+  /// No description provided for @rdBriefFallbackAReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'A reminder'**
+  String get rdBriefFallbackAReminder;
+
+  /// No description provided for @rdBriefFallbackTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get rdBriefFallbackTask;
+
+  /// No description provided for @rdBriefFallbackEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get rdBriefFallbackEvent;
+
+  /// No description provided for @rdBriefFallbackUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled memory'**
+  String get rdBriefFallbackUntitled;
+
+  /// No description provided for @rdBriefFallbackAMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'A memory'**
+  String get rdBriefFallbackAMemory;
+
+  /// No description provided for @rdBriefOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get rdBriefOverdue;
+
+  /// No description provided for @rdBriefOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get rdBriefOpen;
+
+  /// No description provided for @rdBriefDueOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {when}'**
+  String rdBriefDueOn(String when);
+
+  /// No description provided for @rdBriefDueEarlierToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Due earlier today'**
+  String get rdBriefDueEarlierToday;
+
+  /// No description provided for @rdBriefDueYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Due yesterday'**
+  String get rdBriefDueYesterday;
+
+  /// No description provided for @rdBriefDueDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {days} days ago'**
+  String rdBriefDueDaysAgo(int days);
+
+  /// No description provided for @rdBriefToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get rdBriefToday;
+
+  /// No description provided for @rdBriefYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get rdBriefYesterday;
+
+  /// No description provided for @rdBriefTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get rdBriefTomorrow;
+
+  /// No description provided for @rdBriefHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h ago'**
+  String rdBriefHoursAgo(int hours);
+
+  /// No description provided for @rdBriefDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days ago'**
+  String rdBriefDaysAgo(int days);
+
+  /// No description provided for @rdBriefBroughtBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Brought back for you'**
+  String get rdBriefBroughtBack;
+
+  /// No description provided for @rdBriefSavedToMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your memory'**
+  String get rdBriefSavedToMemory;
+
+  /// No description provided for @rdBriefOpenAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get rdBriefOpenAction;
+
+  /// No description provided for @rdBriefRemindMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Remind me'**
+  String get rdBriefRemindMe;
+
+  /// No description provided for @rdBriefReminderSetThursday.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder set for Thursday'**
+  String get rdBriefReminderSetThursday;
+
+  /// No description provided for @rdBriefMarkedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked done'**
+  String get rdBriefMarkedDone;
+
+  /// No description provided for @rdBriefDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismissed'**
+  String get rdBriefDismissed;
+
+  /// No description provided for @rdBriefUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get rdBriefUpdated;
+
+  /// No description provided for @rdBriefWelcomeBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'WELCOME TO MIRA'**
+  String get rdBriefWelcomeBadge;
+
+  /// No description provided for @rdBriefFirstTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Brief fills in\nas you capture'**
+  String get rdBriefFirstTitle;
+
+  /// No description provided for @rdBriefFirstSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a thought, task, or link — Mira will surface what matters here each morning.'**
+  String get rdBriefFirstSubtitle;
+
+  /// No description provided for @rdBriefFirstStep1Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak or type anything'**
+  String get rdBriefFirstStep1Title;
+
+  /// No description provided for @rdBriefFirstStep1Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira understands before it\'s kept'**
+  String get rdBriefFirstStep1Sub;
+
+  /// No description provided for @rdBriefFirstStep2Title.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm what matters'**
+  String get rdBriefFirstStep2Title;
+
+  /// No description provided for @rdBriefFirstStep2Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'You stay in control of memory'**
+  String get rdBriefFirstStep2Sub;
+
+  /// No description provided for @rdBriefFirstStep3Title.
+  ///
+  /// In en, this message translates to:
+  /// **'See it here tomorrow'**
+  String get rdBriefFirstStep3Title;
+
+  /// No description provided for @rdBriefFirstStep3Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks, reminders, and resurfaced memories'**
+  String get rdBriefFirstStep3Sub;
+
+  /// No description provided for @rdBriefOverdueSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'A few things slipped past while you were busy. Nothing\'s lost — I held onto them. Let\'s clear them together, no rush.'**
+  String get rdBriefOverdueSummary;
+
+  /// No description provided for @rdBriefSnooze.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze'**
+  String get rdBriefSnooze;
+
+  /// No description provided for @rdBriefDoItNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Do it now'**
+  String get rdBriefDoItNow;
+
+  /// No description provided for @rdBriefEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing needs you today'**
+  String get rdBriefEmptyTitle;
+
+  /// No description provided for @rdBriefEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your day is open and no memory is waiting on you. I\'ll keep everything safe and speak up the moment something matters.'**
+  String get rdBriefEmptyBody;
+
+  /// No description provided for @rdBriefMemoriesHeldSafe.
+  ///
+  /// In en, this message translates to:
+  /// **'memories held safe'**
+  String get rdBriefMemoriesHeldSafe;
+
+  /// No description provided for @rdBriefRemindersDue.
+  ///
+  /// In en, this message translates to:
+  /// **'reminders due'**
+  String get rdBriefRemindersDue;
+
+  /// No description provided for @rdBriefCaptureThought.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture a thought'**
+  String get rdBriefCaptureThought;
+
+  /// No description provided for @rdBriefCaptureSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop anything on your mind — I\'ll hold it for you.'**
+  String get rdBriefCaptureSub;
+
   /// No description provided for @rdOnboardingTagline.
   ///
   /// In en, this message translates to:

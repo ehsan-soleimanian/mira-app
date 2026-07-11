@@ -1194,6 +1194,241 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureContinue => 'ادامه';
 
   @override
+  String get rdBriefTitle => 'خلاصه روز';
+
+  @override
+  String get rdBriefGreetingMorning => 'صبح بخیر';
+
+  @override
+  String get rdBriefGreetingAfternoon => 'ظهر بخیر';
+
+  @override
+  String get rdBriefGreetingEvening => 'عصر بخیر';
+
+  @override
+  String rdBriefGreeting(String greeting, String name) {
+    return '$greeting، $name';
+  }
+
+  @override
+  String get rdBriefDayEnd => 'این هم از روزت.\nبقیه‌چیزها امن در حافظه‌اند.';
+
+  @override
+  String get rdBriefNothingNow => 'الان چیزی از تو می‌خواهد نیست.';
+
+  @override
+  String get rdBriefSnoozedTomorrow => 'تا فردا به تعویق افتاد';
+
+  @override
+  String get rdBriefDone => 'انجام شد';
+
+  @override
+  String get rdBriefClearedLater => 'پاک شد — میرا بعداً دوباره می‌پرسد';
+
+  @override
+  String get rdBriefUndo => 'برگردان';
+
+  @override
+  String get rdBriefClearAll => 'پاک کردن همه';
+
+  @override
+  String get rdBriefSeeAllReminders => 'همه یادآورها';
+
+  @override
+  String get rdBriefSectionWaitingMoment => 'منتظر لحظه مناسب';
+
+  @override
+  String get rdBriefSectionNeedsYou => 'نیاز به تو';
+
+  @override
+  String get rdBriefSectionToday => 'امروز';
+
+  @override
+  String get rdBriefSectionHandled => 'بی‌سر و صدا انجام شد';
+
+  @override
+  String get rdBriefSectionRecent => 'اخیر';
+
+  @override
+  String get rdBriefSectionResurfaced => 'میرا دوباره آورد';
+
+  @override
+  String get rdBriefSectionWaitingOnYou => 'منتظر تو';
+
+  @override
+  String rdBriefTaskCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count کار',
+      one: '۱ کار',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdBriefReminderCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count یادآور',
+      one: '۱ یادآور',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rdBriefEventsCount(int count) {
+    return '$count رویداد';
+  }
+
+  @override
+  String get rdBriefFallbackMemory => 'حافظه';
+
+  @override
+  String get rdBriefFallbackRecentMemory => 'حافظه اخیر';
+
+  @override
+  String get rdBriefFallbackReminder => 'یادآور';
+
+  @override
+  String get rdBriefFallbackAReminder => 'یک یادآور';
+
+  @override
+  String get rdBriefFallbackTask => 'کار';
+
+  @override
+  String get rdBriefFallbackEvent => 'رویداد';
+
+  @override
+  String get rdBriefFallbackUntitled => 'حافظه بدون عنوان';
+
+  @override
+  String get rdBriefFallbackAMemory => 'یک حافظه';
+
+  @override
+  String get rdBriefOverdue => 'عقب‌افتاده';
+
+  @override
+  String get rdBriefOpen => 'باز';
+
+  @override
+  String rdBriefDueOn(String when) {
+    return 'موعد: $when';
+  }
+
+  @override
+  String get rdBriefDueEarlierToday => 'موعد: امروز زودتر';
+
+  @override
+  String get rdBriefDueYesterday => 'موعد: دیروز';
+
+  @override
+  String rdBriefDueDaysAgo(int days) {
+    return 'موعد: $days روز پیش';
+  }
+
+  @override
+  String get rdBriefToday => 'امروز';
+
+  @override
+  String get rdBriefYesterday => 'دیروز';
+
+  @override
+  String get rdBriefTomorrow => 'فردا';
+
+  @override
+  String rdBriefHoursAgo(int hours) {
+    return '$hours ساعت پیش';
+  }
+
+  @override
+  String rdBriefDaysAgo(int days) {
+    return '$days روز پیش';
+  }
+
+  @override
+  String get rdBriefBroughtBack => 'برای تو برگردانده شد';
+
+  @override
+  String get rdBriefSavedToMemory => 'در حافظه‌ات ذخیره شد';
+
+  @override
+  String get rdBriefOpenAction => 'باز کردن';
+
+  @override
+  String get rdBriefRemindMe => 'یادآوری کن';
+
+  @override
+  String get rdBriefReminderSetThursday => 'یادآور برای پنج‌شنبه تنظیم شد';
+
+  @override
+  String get rdBriefMarkedDone => 'انجام‌شده علامت خورد';
+
+  @override
+  String get rdBriefDismissed => 'رد شد';
+
+  @override
+  String get rdBriefUpdated => 'به‌روز شد';
+
+  @override
+  String get rdBriefWelcomeBadge => 'به میرا خوش آمدی';
+
+  @override
+  String get rdBriefFirstTitle => 'خلاصه روزت\nبا هر ثبت پر می‌شود';
+
+  @override
+  String get rdBriefFirstSubtitle =>
+      'فکر، کار یا لینک ذخیره کن — میرا هر صبح مهم‌ها را اینجا می‌آورد.';
+
+  @override
+  String get rdBriefFirstStep1Title => 'حرف بزن یا بنویس';
+
+  @override
+  String get rdBriefFirstStep1Sub => 'میرا قبل از ذخیره می‌فهمد';
+
+  @override
+  String get rdBriefFirstStep2Title => 'تأیید کن چه مهم است';
+
+  @override
+  String get rdBriefFirstStep2Sub => 'کنترل حافظه با توست';
+
+  @override
+  String get rdBriefFirstStep3Title => 'فردا اینجا ببین';
+
+  @override
+  String get rdBriefFirstStep3Sub => 'کارها، یادآورها و حافظه‌های برگشتی';
+
+  @override
+  String get rdBriefOverdueSummary =>
+      'چند چیز موقع شلوغی از قلم افتاد. چیزی گم نشده — نگه داشتم. با هم آرام جمعشان می‌کنیم.';
+
+  @override
+  String get rdBriefSnooze => 'بعداً';
+
+  @override
+  String get rdBriefDoItNow => 'الان انجام بده';
+
+  @override
+  String get rdBriefEmptyTitle => 'امروز چیزی از تو نمی‌خواهد';
+
+  @override
+  String get rdBriefEmptyBody =>
+      'روزت آزاد است و هیچ حافظه‌ای منتظر تو نیست. همه‌چیز امن است و وقتی مهم شود خبر می‌دهم.';
+
+  @override
+  String get rdBriefMemoriesHeldSafe => 'حافظه امن';
+
+  @override
+  String get rdBriefRemindersDue => 'یادآور موعددار';
+
+  @override
+  String get rdBriefCaptureThought => 'ثبت یک فکر';
+
+  @override
+  String get rdBriefCaptureSub => 'هر چیزی در ذهنت — نگه می‌دارم.';
+
+  @override
   String get rdOnboardingTagline =>
       'ذهن دوم. برای وقتی نمی‌خواهی چیزی را فراموش کنی.';
 
