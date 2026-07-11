@@ -293,6 +293,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get graphRejectAssertion => 'Reject claim';
 
   @override
+  String get graphEntityPerson => 'Person';
+
+  @override
+  String get graphEntityOrganization => 'Company';
+
+  @override
+  String get graphEntityProject => 'Project';
+
+  @override
+  String get graphEntityPlace => 'Place';
+
+  @override
+  String get graphEntityActivity => 'Activity';
+
+  @override
+  String get graphEntityTopic => 'Topic';
+
+  @override
+  String get graphEntityDocument => 'Document';
+
+  @override
+  String get graphEntityAsset => 'Asset';
+
+  @override
+  String get graphEntityUnknown => 'Entity';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override
@@ -2027,7 +2054,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdMemorySeeInCanvas => 'See in Canvas';
 
   @override
-  String get rdMemoryPeopleAndTags => 'People & tags';
+  String get rdMemoryPeopleAndTags => 'People & entities';
 
   @override
   String get rdMemorySourceVoice => 'Recorded on Home · iPhone · not shared';
@@ -2860,6 +2887,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdCanvasNodeTopic => 'Topic';
+
+  @override
+  String get rdCanvasNodeOrganization => 'Company';
+
+  @override
+  String get rdCanvasNodeProject => 'Project';
+
+  @override
+  String get rdCanvasNodePlace => 'Place';
 
   @override
   String get rdCanvasClusterTasks => 'Tasks';

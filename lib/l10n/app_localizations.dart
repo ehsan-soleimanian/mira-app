@@ -632,6 +632,60 @@ abstract class AppLocalizations {
   /// **'Reject claim'**
   String get graphRejectAssertion;
 
+  /// No description provided for @graphEntityPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Person'**
+  String get graphEntityPerson;
+
+  /// No description provided for @graphEntityOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Company'**
+  String get graphEntityOrganization;
+
+  /// No description provided for @graphEntityProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get graphEntityProject;
+
+  /// No description provided for @graphEntityPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place'**
+  String get graphEntityPlace;
+
+  /// No description provided for @graphEntityActivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get graphEntityActivity;
+
+  /// No description provided for @graphEntityTopic.
+  ///
+  /// In en, this message translates to:
+  /// **'Topic'**
+  String get graphEntityTopic;
+
+  /// No description provided for @graphEntityDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Document'**
+  String get graphEntityDocument;
+
+  /// No description provided for @graphEntityAsset.
+  ///
+  /// In en, this message translates to:
+  /// **'Asset'**
+  String get graphEntityAsset;
+
+  /// No description provided for @graphEntityUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Entity'**
+  String get graphEntityUnknown;
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:
@@ -3613,7 +3667,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdMemoryPeopleAndTags.
   ///
   /// In en, this message translates to:
-  /// **'People & tags'**
+  /// **'People & entities'**
   String get rdMemoryPeopleAndTags;
 
   /// No description provided for @rdMemorySourceVoice.
@@ -5061,6 +5115,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Topic'**
   String get rdCanvasNodeTopic;
+
+  /// No description provided for @rdCanvasNodeOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Company'**
+  String get rdCanvasNodeOrganization;
+
+  /// No description provided for @rdCanvasNodeProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get rdCanvasNodeProject;
+
+  /// No description provided for @rdCanvasNodePlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place'**
+  String get rdCanvasNodePlace;
 
   /// No description provided for @rdCanvasClusterTasks.
   ///

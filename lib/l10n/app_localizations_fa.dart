@@ -295,6 +295,33 @@ class AppLocalizationsFa extends AppLocalizations {
   String get graphRejectAssertion => 'رد این ادعا';
 
   @override
+  String get graphEntityPerson => 'شخص';
+
+  @override
+  String get graphEntityOrganization => 'شرکت';
+
+  @override
+  String get graphEntityProject => 'پروژه';
+
+  @override
+  String get graphEntityPlace => 'مکان';
+
+  @override
+  String get graphEntityActivity => 'فعالیت';
+
+  @override
+  String get graphEntityTopic => 'موضوع';
+
+  @override
+  String get graphEntityDocument => 'سند';
+
+  @override
+  String get graphEntityAsset => 'دارایی';
+
+  @override
+  String get graphEntityUnknown => 'موجودیت';
+
+  @override
   String get settingsTitle => 'تنظیمات';
 
   @override
@@ -2018,7 +2045,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdMemorySeeInCanvas => 'ببین در بوم';
 
   @override
-  String get rdMemoryPeopleAndTags => 'افراد و برچسب‌ها';
+  String get rdMemoryPeopleAndTags => 'افراد و موجودیت‌ها';
 
   @override
   String get rdMemorySourceVoice =>
@@ -2848,6 +2875,15 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get rdCanvasNodeTopic => 'موضوع';
+
+  @override
+  String get rdCanvasNodeOrganization => 'شرکت';
+
+  @override
+  String get rdCanvasNodeProject => 'پروژه';
+
+  @override
+  String get rdCanvasNodePlace => 'مکان';
 
   @override
   String get rdCanvasClusterTasks => 'کارها';

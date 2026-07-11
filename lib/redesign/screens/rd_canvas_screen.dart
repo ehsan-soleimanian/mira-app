@@ -805,7 +805,18 @@ class _BoardSwitcherSheet extends StatelessWidget {
 // Map view — Mira's memory graph
 // ══════════════════════════════════════════════════════════════════════
 
-enum _GType { person, task, event, note, book, idea, topic }
+enum _GType {
+  person,
+  task,
+  event,
+  note,
+  book,
+  idea,
+  topic,
+  organization,
+  project,
+  place,
+}
 
 class _GNode {
   const _GNode({
@@ -845,6 +856,12 @@ String _gTypeIcon(_GType t) {
       return RdIcons.bulb;
     case _GType.topic:
       return RdIcons.hash;
+    case _GType.organization:
+      return RdIcons.work;
+    case _GType.project:
+      return RdIcons.folder;
+    case _GType.place:
+      return RdIcons.pin;
     case _GType.person:
       return RdIcons.people;
   }
@@ -913,6 +930,11 @@ String _gTypeIcon(_GType t) {
 _GType _gTypeForNode(GraphNode n) {
   final t = '${n.entityType ?? ''} ${n.nodeType}'.toLowerCase();
   if (t.contains('person') || t.contains('people')) return _GType.person;
+  if (t.contains('organization') || t.contains('company')) {
+    return _GType.organization;
+  }
+  if (t.contains('project')) return _GType.project;
+  if (t.contains('place')) return _GType.place;
   if (t.contains('task') || t.contains('reminder') || t.contains('todo')) {
     return _GType.task;
   }
@@ -941,6 +963,12 @@ String _gTypeLabelFor(_GType t, AppLocalizations l10n) {
       return l10n.rdCanvasNodeIdea;
     case _GType.topic:
       return l10n.rdCanvasNodeTopic;
+    case _GType.organization:
+      return l10n.rdCanvasNodeOrganization;
+    case _GType.project:
+      return l10n.rdCanvasNodeProject;
+    case _GType.place:
+      return l10n.rdCanvasNodePlace;
   }
 }
 
@@ -1015,6 +1043,9 @@ List<_ClusterSpec> _buildClustersFromNodes(
     final key = switch (n.type) {
       _GType.person => 'person:${n.label.toLowerCase()}',
       _GType.topic => 'topic:${n.label.toLowerCase()}',
+      _GType.organization => 'organization:${n.label.toLowerCase()}',
+      _GType.project => 'project:${n.label.toLowerCase()}',
+      _GType.place => 'place:${n.label.toLowerCase()}',
       _GType.task => 'type:tasks',
       _GType.book => 'type:books',
       _GType.event => 'type:events',
@@ -1034,6 +1065,9 @@ List<_ClusterSpec> _buildClustersFromNodes(
     final name = switch (first.type) {
       _GType.person => first.label,
       _GType.topic => first.label,
+      _GType.organization => first.label,
+      _GType.project => first.label,
+      _GType.place => first.label,
       _GType.task => l10n.rdCanvasClusterTasks,
       _GType.book => l10n.rdCanvasClusterBooks,
       _GType.event => l10n.rdCanvasClusterEvents,
@@ -1599,6 +1633,19 @@ class _GNodeWidget extends StatelessWidget {
           color: rd.periSoft,
           border: Border.all(
             color: selected ? rd.peri : const Color(0x807E8BC9),
+            width: selected ? 2 : 1.5,
+          ),
+        );
+        inner = RdIcon(_gTypeIcon(node.type),
+            size: iconSize, stroke: '#14328C', strokeWidth: 2);
+      case _GType.organization:
+      case _GType.project:
+      case _GType.place:
+        decoration = BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFFE8ECF8),
+          border: Border.all(
+            color: selected ? rd.peri : const Color(0xFFB8C0DE),
             width: selected ? 2 : 1.5,
           ),
         );

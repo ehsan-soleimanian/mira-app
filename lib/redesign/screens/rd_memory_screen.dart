@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/features/graph/entity_type_labels.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/collection_models.dart';
@@ -21,6 +22,17 @@ class _Person {
   const _Person(this.initial, this.name);
   final String initial;
   final String name;
+}
+
+/// A non-person graph entity (company, project, topic, …) linked to this memory.
+class _LinkedEntity {
+  const _LinkedEntity({
+    required this.name,
+    required this.typeLabel,
+  });
+
+  final String name;
+  final String typeLabel;
 }
 
 /// Memory detail — the pushed view you reach by tapping a memory. Shows the
@@ -101,7 +113,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   String? _realInsight;
   List<_MemLink>? _realLinks;
   List<_Person>? _realPeople;
-  List<String>? _realTags;
+  List<_LinkedEntity>? _realEntities;
 
   List<_MemLink> get _links => _realLinks ?? const [];
 
@@ -157,7 +169,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       setState(() {
         if (parsed.links.isNotEmpty) _realLinks = parsed.links;
         if (parsed.people.isNotEmpty) _realPeople = parsed.people;
-        if (parsed.tags.isNotEmpty) _realTags = parsed.tags;
+        if (parsed.entities.isNotEmpty) _realEntities = parsed.entities;
         if (parsed.insight != null) _realInsight = parsed.insight;
         if (pinned != null) _pinned = pinned;
       });
@@ -169,11 +181,11 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   /// Maps the `{ capture, connections: { nodes, edges } }` payload into the
   /// screen's view types. Connected captures (kind `CAPTURE`) become tappable
   /// memory links; person entities become people chips; other entities become
-  /// `#tag` chips. The insight is synthesised from what was actually linked.
+  /// labeled chips (e.g. میرا · شرکت).
   ({
     List<_MemLink> links,
     List<_Person> people,
-    List<String> tags,
+    List<_LinkedEntity> entities,
     String? insight,
   }) _parseDetail(Map<String, dynamic> detail, AppLocalizations l10n) {
     final connections =
@@ -184,7 +196,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
     final links = <_MemLink>[];
     final people = <_Person>[];
-    final tags = <String>[];
+    final entities = <_LinkedEntity>[];
 
     for (final node in nodes) {
       final nodeId = node['id'] as String?;
@@ -209,11 +221,14 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               ? '?'
               : title.characters.first.toUpperCase();
           if (people.length < 4) people.add(_Person(initial, title));
-        } else {
-          final tag = _hashTag(title);
-          if (tag.isNotEmpty && tags.length < 5 && !tags.contains(tag)) {
-            tags.add(tag);
-          }
+        } else if (entities.length < 6 &&
+            !entities.any((e) => e.name == title)) {
+          entities.add(
+            _LinkedEntity(
+              name: title,
+              typeLabel: graphEntityTypeLabel(l10n, entityType),
+            ),
+          );
         }
       }
     }
@@ -221,8 +236,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     return (
       links: links.take(5).toList(),
       people: people,
-      tags: tags,
-      insight: _buildInsight(links.length, people, tags, l10n),
+      entities: entities,
+      insight: _buildInsight(links.length, people, entities, l10n),
     );
   }
 
@@ -237,23 +252,10 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     return 'note';
   }
 
-  /// Turns an entity name into a lowercase single-word hashtag ("Weekly review"
-  /// → "#weekly"). Returns empty when nothing usable remains.
-  String _hashTag(String name) {
-    final word = name
-        .trim()
-        .split(RegExp(r'\s+'))
-        .firstWhere((w) => w.isNotEmpty, orElse: () => '');
-    final cleaned = word.replaceAll(RegExp(r'[^0-9A-Za-z]'), '').toLowerCase();
-    return cleaned.isEmpty ? '' : '#$cleaned';
-  }
-
-  /// Writes a short, human insight from what Mira actually linked, so the
-  /// "Mira noticed" card reflects real connections instead of the sample copy.
   String? _buildInsight(
     int linkCount,
     List<_Person> people,
-    List<String> tags,
+    List<_LinkedEntity> entities,
     AppLocalizations l10n,
   ) {
     final parts = <String>[];
@@ -264,8 +266,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       final names = people.map((p) => p.name).take(2).join(' and ');
       parts.add(l10n.rdMemoryInsightConnected(names));
     }
-    if (tags.isNotEmpty) {
-      parts.add(l10n.rdMemoryInsightTagged(tags.take(3).join(', ')));
+    if (entities.isNotEmpty) {
+      final labels = entities
+          .map((e) => '${e.name} (${e.typeLabel})')
+          .take(3)
+          .join(', ');
+      parts.add(l10n.rdMemoryInsightTagged(labels));
     }
     if (parts.isEmpty) return null;
     return l10n.rdMemoryInsightSummary(parts.join(', '));
@@ -661,7 +667,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         _connections(),
         const SizedBox(height: 26),
       ],
-      if ((_realPeople?.isNotEmpty ?? false) || (_realTags?.isNotEmpty ?? false)) ...[
+      if ((_realPeople?.isNotEmpty ?? false) ||
+          (_realEntities?.isNotEmpty ?? false)) ...[
         _peopleTags(),
         const SizedBox(height: 26),
       ],
@@ -1094,10 +1101,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   }
 
   Widget _peopleTags() {
-    // People/tags come only from the graph; nothing fabricated. This section is
-    // only rendered when at least one of them is present.
     final people = _realPeople ?? const <_Person>[];
-    final tags = _realTags ?? const <String>[];
+    final entities = _realEntities ?? const <_LinkedEntity>[];
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
     return Column(
@@ -1133,11 +1138,21 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                   ],
                 ),
               ),
-            for (final t in tags)
+            for (final entity in entities)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
                 decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(100), border: Border.all(color: rd.line, width: 1)),
-                child: Text(t, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: rd.muted)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(entity.name, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.ink)),
+                    const SizedBox(width: 6),
+                    Text(
+                      entity.typeLabel,
+                      style: GoogleFonts.vazirmatn(fontSize: 11, fontWeight: FontWeight.w500, color: rd.muted),
+                    ),
+                  ],
+                ),
               ),
           ],
         ),
