@@ -13,24 +13,24 @@ import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 
+import '../models/rd_capture_mode.dart';
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
+import '../widgets/rd_capture_mode_views.dart';
 import '../widgets/rd_icon.dart';
 import '../widgets/rd_orb.dart';
 
-/// Capture flow — the voice path: listen (live transcript with entities) →
-/// understanding → review & confirm → kept. Faithful to the voice branch of
-/// `capture.jsx` (`.rd-captureflow`), this is the primary capture experience.
-///
-/// Alongside the voice path, the listen screen offers three quick entry modes
-/// that persist a real memory to the backend library: type a note, paste a
-/// link, or pick a photo. The voice review's "Add to memory" also persists the
-/// understood transcript as a real note (best-effort) in addition to creating
-/// the optional reminder.
+/// Capture flow — voice / photo / screenshot / link / type paths through
+/// understanding → review & confirm → kept. Faithful to `capture.jsx`.
 class RdCaptureFlow extends StatefulWidget {
-  const RdCaptureFlow({super.key, required this.go});
+  const RdCaptureFlow({
+    super.key,
+    required this.go,
+    this.initialMode = RdCaptureMode.voice,
+  });
 
   final RdGo go;
+  final RdCaptureMode initialMode;
 
   @override
   State<RdCaptureFlow> createState() => _RdCaptureFlowState();
@@ -107,10 +107,24 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   Timer? _secTimer;
   final List<Timer> _timers = [];
 
+  bool _fromEntrySheet = false;
+
   @override
   void initState() {
     super.initState();
-    _startListen();
+    _fromEntrySheet = widget.initialMode != RdCaptureMode.voice;
+    switch (widget.initialMode) {
+      case RdCaptureMode.voice:
+        _startListen();
+      case RdCaptureMode.photo:
+        setState(() => _view = 'photo_cam');
+      case RdCaptureMode.screenshot:
+        setState(() => _view = 'shot_pick');
+      case RdCaptureMode.link:
+        setState(() => _view = 'link_capture');
+      case RdCaptureMode.type:
+        WidgetsBinding.instance.addPostFrameCallback((_) => _openTextEntry(fromSheet: true));
+    }
   }
 
   @override
@@ -490,7 +504,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   /// the "Understanding" animation and a review of the genuinely extracted
   /// entities/connections. If the pipeline is unavailable it silently falls back
   /// to the review with simulated chips (persisted on confirm via `createNote`).
-  Future<void> _openTextEntry() async {
+  Future<void> _openTextEntry({bool fromSheet = false}) async {
     _clearTimers();
     final text = await showModalBottomSheet<String>(
       context: context,
@@ -505,7 +519,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     );
     if (!mounted) return;
     if (text == null || text.trim().isEmpty) {
-      _startListen();
+      if (fromSheet || _fromEntrySheet) {
+        widget.go('home');
+      } else {
+        _startListen();
+      }
       return;
     }
     final trimmed = text.trim();
@@ -659,6 +677,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     switch (_view) {
       case 'listen':
         return _listen();
+      case 'photo_cam':
+        return _photoCam();
+      case 'shot_pick':
+        return _shotPick();
+      case 'link_capture':
+        return _linkCapture();
       case 'proc':
         return _proc();
       case 'review':
@@ -666,6 +690,94 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       default:
         return _added();
     }
+  }
+
+  Widget _photoCam() {
+    return RdPhotoCaptureView(
+      onClose: () => widget.go('home'),
+      onGallery: () => _pickPhoto(),
+      onCapture: () async {
+        PickedCaptureMedia? media;
+        try {
+          media = await createCaptureMediaPicker().pickCameraImage();
+        } catch (_) {
+          media = null;
+        }
+        if (!mounted) return;
+        if (media == null) {
+          setState(() => _view = 'photo_cam');
+          return;
+        }
+        setState(() {
+          _kind = 'photo';
+          _pendingMedia = media;
+          capturePreviewBytes = media!.bytes;
+        });
+        _startUnderstanding();
+      },
+    );
+  }
+
+  Widget _shotPick() {
+    return RdScreenshotPickerView(
+      onClose: () => widget.go('home'),
+      onSelected: () async {
+        await _pickPhoto(screenshot: true);
+      },
+    );
+  }
+
+  Widget _linkCapture() {
+    return RdLinkCaptureView(
+      onClose: () => widget.go('home'),
+      onSubmit: (url, title) {
+        setState(() {
+          _kind = 'link';
+          _pendingUrl = url;
+          _pendingTitle = title;
+        });
+        _startUnderstanding();
+      },
+    );
+  }
+
+  List<Widget> _liveEntityChips() {
+    final proposal = _proposal;
+    if (proposal == null) return const [];
+    final chips = <String>[
+      ...proposal.relatedLabels,
+      ...proposal.insightLabels,
+    ].take(4).toList();
+    if (chips.isEmpty) return const [];
+    final rd = context.rd;
+    return [
+      const SizedBox(height: 10),
+      Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 8,
+        runSpacing: 8,
+        children: chips
+            .map(
+              (c) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                decoration: BoxDecoration(
+                  color: rd.card,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: rd.line),
+                ),
+                child: Text(
+                  c,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: rd.ink,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    ];
   }
 
   // ── listen ──────────────────────────────────────────────────────────
@@ -712,6 +824,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                   textAlign: TextAlign.center,
                   style: GoogleFonts.vazirmatn(fontSize: 19, height: 1.5, color: rd.ink),
                 ),
+              ..._liveEntityChips(),
             ],
           ),
         ),

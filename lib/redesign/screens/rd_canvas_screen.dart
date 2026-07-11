@@ -15,6 +15,7 @@ import '../theme/rd_colors.dart';
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
+import '../widgets/rd_orb.dart';
 
 /// Canvas — two ways to see your memory. **Board** is a freeform, pan/zoom
 /// surface of loose cards you can drag around and connect; **Map** is Mira's
@@ -2159,6 +2160,8 @@ class _BoardViewState extends State<_BoardView> {
   /// Debounce for persistence — coalesces a burst of edits into one write.
   Timer? _saveDebounce;
 
+  bool _suggestVisible = true;
+
   /// Monotonic counter for locally-created card ids so they don't collide.
   int _newCardSeq = 0;
 
@@ -2722,6 +2725,23 @@ class _BoardViewState extends State<_BoardView> {
                 onIn: () => _zoom(0.15, viewport),
               ),
             ),
+            // Mira connection suggestion — design2 `.c-suggest`
+            if (_suggestVisible &&
+                _cards.length >= 2 &&
+                !_connectMode &&
+                !_addMode)
+              Positioned(
+                left: 14,
+                right: 14,
+                bottom: 168,
+                child: _SuggestBanner(
+                  onAdd: () => setState(() {
+                    _tool = _connectTool;
+                    _connectSource = _cards.first.id;
+                  }),
+                  onDismiss: () => setState(() => _suggestVisible = false),
+                ),
+              ),
             // connect-mode banner (top) — explains the two-tap flow + Done
             if (_connectMode)
               Positioned(
@@ -2839,6 +2859,72 @@ class _DraggableCard extends StatelessWidget {
             highlighted: isSource || selected,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Dark suggestion chip — «connect these two?» from design2 `.c-suggest`.
+class _SuggestBanner extends StatelessWidget {
+  const _SuggestBanner({required this.onAdd, required this.onDismiss});
+
+  final VoidCallback onAdd;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141828).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 30,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const RdOrb(size: 30),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              'These two look related — connect them?',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                height: 1.4,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onAdd,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              backgroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'Connect',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF14328C),
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onDismiss,
+            icon: const Icon(Icons.close, size: 18, color: Colors.white54),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+          ),
+        ],
       ),
     );
   }

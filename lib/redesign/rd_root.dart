@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'models/rd_capture_mode.dart';
 import 'screens/rd_appearance.dart';
 import 'screens/rd_ask_screen.dart';
 import 'screens/rd_canvas_screen.dart';
@@ -19,7 +20,9 @@ import 'screens/rd_setup_wizard.dart';
 import 'screens/rd_storage.dart';
 import 'theme/rd_colors.dart';
 import 'widgets/rd_bottom_nav.dart';
+import 'widgets/rd_capture_entry_sheet.dart';
 import 'widgets/rd_icon.dart';
+import 'widgets/rd_swipe_back.dart';
 
 /// Root navigator for the redesign. Mirrors the design's `go(screen)` model:
 /// the four tab screens (home / daily / library / canvas) reset the stack;
@@ -39,14 +42,34 @@ class RdRoot extends StatefulWidget {
 class _RdRootState extends State<RdRoot> {
   static const _tabs = {'home', 'daily', 'library', 'canvas'};
 
+  static const _pushedScreens = {
+    'memory',
+    'chat',
+    'account',
+    'storage',
+    'appearance',
+    'notifications',
+    'connectedapps',
+    'ask',
+    'reminders',
+    'paywall',
+    'listen',
+    'captureflow',
+  };
+
   late final List<({String id, Object? arg})> _stack = [
     (id: widget.initial, arg: null),
   ];
 
+  bool _captureSheetOpen = false;
+
   void _go(String screen, {Object? arg}) {
+    if (screen == 'capture') {
+      setState(() => _captureSheetOpen = true);
+      return;
+    }
     setState(() {
-      // Tabs reset the stack; 'splash' is the app root too (used by sign-out to
-      // drop the whole authed stack and return to the first-run flow).
+      _captureSheetOpen = false;
       if (_tabs.contains(screen) || screen == 'splash') {
         _stack
           ..clear()
@@ -55,15 +78,27 @@ class _RdRootState extends State<RdRoot> {
       }
       final idx = _stack.indexWhere((e) => e.id == screen);
       if (idx != -1) {
-        _stack.removeRange(idx + 1, _stack.length); // pop back to it
+        _stack.removeRange(idx + 1, _stack.length);
       } else {
         _stack.add((id: screen, arg: arg));
       }
     });
   }
 
+  void _pickCaptureMode(RdCaptureMode mode) {
+    setState(() {
+      _captureSheetOpen = false;
+      _stack.add((id: 'captureflow', arg: RdCaptureModeArg(mode)));
+    });
+  }
+
   void _back() {
-    if (_stack.length > 1) setState(() => _stack.removeLast());
+    if (_stack.length > 1) {
+      setState(() {
+        _captureSheetOpen = false;
+        _stack.removeLast();
+      });
+    }
   }
 
   Widget _screenFor(String id, Object? arg) {
@@ -143,39 +178,69 @@ class _RdRootState extends State<RdRoot> {
         return RdPaywallScreen(go: _go, onBack: _back);
       case 'storage':
         return RdStorageScreen(go: _go, onBack: _back);
-      case 'capture':
       case 'captureflow':
-        return RdCaptureFlow(go: _go);
+        final mode = arg is RdCaptureModeArg
+            ? arg.mode
+            : RdCaptureMode.voice;
+        return RdCaptureFlow(go: _go, initialMode: mode);
       default:
-        return _ComingSoon(id: id, go: _go, onBack: _back, isTab: _tabs.contains(id));
+        return _ComingSoon(
+          id: id,
+          go: _go,
+          onBack: _back,
+          isTab: _tabs.contains(id),
+        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final current = _stack.last;
+    final screen = _screenFor(current.id, current.arg);
+    final swipeEnabled = _pushedScreens.contains(current.id);
+
     return PopScope(
-      canPop: _stack.length <= 1,
+      canPop: _stack.length <= 1 && !_captureSheetOpen,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _back();
+        if (didPop) return;
+        if (_captureSheetOpen) {
+          setState(() => _captureSheetOpen = false);
+          return;
+        }
+        _back();
       },
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 280),
-        switchInCurve: Curves.easeOut,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.02),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
+      child: Stack(
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOut,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.02),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: KeyedSubtree(
+              key: ValueKey(current.id),
+              child: RdSwipeBack(
+                enabled: swipeEnabled,
+                onBack: _back,
+                child: screen,
+              ),
+            ),
           ),
-        ),
-        child: KeyedSubtree(
-          key: ValueKey(current.id),
-          child: _screenFor(current.id, current.arg),
-        ),
+          if (_captureSheetOpen)
+            Positioned.fill(
+              child: RdCaptureEntrySheet(
+                onPick: _pickCaptureMode,
+                onClose: () => setState(() => _captureSheetOpen = false),
+              ),
+            ),
+        ],
       ),
     );
   }

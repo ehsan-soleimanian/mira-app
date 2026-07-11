@@ -146,6 +146,15 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     return l10n.rdGreetingEvening;
   }
 
+  static int _linkCount(DailyUpdateItem item) {
+    final blob = '${item.title} ${item.summary}';
+    final urls = RegExp(r'https?://\S+').allMatches(blob).length;
+    if (urls > 0) return urls;
+    final type = (item.captureType ?? item.nodeType).toLowerCase();
+    if (type.contains('link')) return 1;
+    return 0;
+  }
+
   static RdRecent _toRecent(DailyUpdateItem item) {
     final isVoice = (item.captureType ?? '').toLowerCase() == 'voice';
     final title = item.title.trim().isEmpty ? item.summary : item.title;
@@ -153,6 +162,7 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
       title: title,
       kind: isVoice ? RdRecentKind.voice : RdRecentKind.note,
       time: _relativeTime(item.createdAt),
+      links: _linkCount(item),
     );
   }
 

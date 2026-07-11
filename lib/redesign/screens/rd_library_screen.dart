@@ -11,7 +11,7 @@ import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_collection_picker.dart';
 import '../widgets/rd_icon.dart';
-import '../widgets/rd_voice_capture_sheet.dart';
+import '../widgets/rd_voice_search_overlay.dart';
 
 /// Library — browse every captured memory: search, type filters, Mira's
 /// collections, and a day-grouped list. Long-press a memory to enter
@@ -33,6 +33,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   String _filter = 'all';
   String _query = '';
   bool _selecting = false;
+  bool _voiceOverlay = false;
   final Set<String> _selected = {};
 
   /// User collections from the backend (null until loaded / unreachable).
@@ -875,6 +876,13 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                 child: RdBottomNav(active: 'library', go: widget.go),
               ),
             ),
+          if (_voiceOverlay)
+            Positioned.fill(
+              child: RdVoiceSearchOverlay(
+                onResult: _onVoiceResult,
+                onCancel: () => setState(() => _voiceOverlay = false),
+              ),
+            ),
         ],
       ),
     );
@@ -1033,23 +1041,15 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   /// Voice search — record a phrase, transcribe it, and drop it into the query.
   Future<void> _voiceSearch() async {
-    final services = AppScope.servicesOf(context);
-    final text = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: false,
-      builder: (_) => RdVoiceCaptureSheet(
-        captureRepository: services.captureRepository,
-        prompt: 'Listening… tap to search',
-        busyLabel: 'Searching…',
-      ),
-    );
-    if (text != null && text.trim().isNotEmpty && mounted) {
-      setState(() {
-        _query = text.trim();
-        _searchCtl.text = text.trim();
-      });
-    }
+    setState(() => _voiceOverlay = true);
+  }
+
+  void _onVoiceResult(String text) {
+    setState(() {
+      _voiceOverlay = false;
+      _query = text.trim();
+      _searchCtl.text = text.trim();
+    });
   }
 
   // ── filter chips ────────────────────────────────────────────────────

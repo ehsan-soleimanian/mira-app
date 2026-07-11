@@ -244,6 +244,10 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
     'captureConfirm': true, 'weekly': false, 'quiet': true, 'sound': true, 'haptics': true,
   };
 
+  TimeOfDay _briefTime = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _quietStart = const TimeOfDay(hour: 22, minute: 0);
+  TimeOfDay _quietEnd = const TimeOfDay(hour: 7, minute: 0);
+
   /// Maps each toggle key to its backend camelCase field on
   /// `/notification-settings`. Every toggle is backend-persisted.
   static const _backendField = <String, String>{
@@ -315,6 +319,40 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
         onTap: () => _t(k),
       );
 
+  Future<void> _pickBriefTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _briefTime,
+    );
+    if (picked != null && mounted) setState(() => _briefTime = picked);
+  }
+
+  Future<void> _pickQuietSchedule() async {
+    final start = await showTimePicker(
+      context: context,
+      initialTime: _quietStart,
+      helpText: 'Quiet hours start',
+    );
+    if (start == null || !mounted) return;
+    final end = await showTimePicker(
+      context: context,
+      initialTime: _quietEnd,
+      helpText: 'Quiet hours end',
+    );
+    if (end == null || !mounted) return;
+    setState(() {
+      _quietStart = start;
+      _quietEnd = end;
+    });
+  }
+
+  String _fmt(TimeOfDay t) {
+    final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final m = t.minute.toString().padLeft(2, '0');
+    final ap = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$h:$m $ap';
+  }
+
   @override
   Widget build(BuildContext context) {
     return _AcScaffold(
@@ -326,7 +364,7 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
           label: 'Daily Brief',
           rows: [
             _toggleRow('<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>', 'Morning brief', 'A calm summary to start the day', 'brief'),
-            const _AcRow(icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', title: 'Brief time', value: '8:00 AM'),
+            _AcRow(icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', title: 'Brief time', value: _fmt(_briefTime), onTap: _pickBriefTime),
             _toggleRow('<path d="M12 3a9 9 0 1 0 9 9 6 6 0 0 1-9-9Z"/>', 'Resurface a memory', 'Occasionally revisit something worth holding', 'briefResurface'),
           ],
         ),
@@ -348,7 +386,12 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
           label: 'Quiet hours',
           rows: [
             _toggleRow('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>', 'Quiet hours', 'Hold all notifications while you rest', 'quiet'),
-            const _AcRow(icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', title: 'Schedule', value: '10:00 PM – 7:00 AM'),
+            _AcRow(
+              icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+              title: 'Schedule',
+              value: '${_fmt(_quietStart)} – ${_fmt(_quietEnd)}',
+              onTap: _pickQuietSchedule,
+            ),
           ],
         ),
         _AcSection(

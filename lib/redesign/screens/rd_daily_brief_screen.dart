@@ -360,6 +360,10 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     final hasBriefTasks = _briefTasks.isNotEmpty;
     final hasLegacyTasks = tasks != null && tasks.isNotEmpty;
 
+    if (_brief?.state == 'first') {
+      return [_header(), _FirstTimeState(onCapture: () => widget.go('capture'))];
+    }
+
     if (!hasBriefTasks &&
         !hasLegacyTasks &&
         recent.isEmpty &&
@@ -394,15 +398,9 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       if (_brief != null && _brief!.summary.isNotEmpty)
         Padding(
           padding: const EdgeInsets.fromLTRB(26, 0, 26, 12),
-          child: Text(
-            _brief!.summary,
-            style: GoogleFonts.vazirmatn(
-              fontSize: 14,
-              height: 1.5,
-              color: context.rd.muted,
-            ),
-          ),
+          child: _MiraSummary(text: _brief!.summary),
         ),
+      ..._todayTimeline(),
       if (overdue.isNotEmpty) ...[
         _OverdueSummary(),
         _OverdueHeader(count: overdue.length),
@@ -431,7 +429,93 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
           ),
       ],
       ..._resurfacedChildren(),
+      ..._handledQuietly(),
       _dbEnd(),
+    ];
+  }
+
+  List<Widget> _todayTimeline() {
+    final items = _brief?.section('today')?.items ?? const [];
+    if (items.isEmpty) return const [];
+    return [
+      _SectionHeader(
+        icon: RdIcons.dueClock,
+        label: 'TODAY',
+        count: '${items.length} events',
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        child: Stack(
+          children: [
+            Positioned(
+              left: 40,
+              top: 8,
+              bottom: 12,
+              child: Container(
+                width: 1.5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      context.rd.periSoft,
+                      context.rd.peri,
+                      context.rd.peri,
+                      context.rd.periSoft,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Column(
+              children: [
+                for (var i = 0; i < items.length; i++)
+                  _TimelineCard(
+                    time: items[i]['timeLabel'] as String? ?? '—',
+                    title: items[i]['title'] as String? ?? 'Event',
+                    sub: items[i]['subtitle'] as String? ?? '',
+                    prep: items[i]['prep'] as String?,
+                    isNow: i == items.length - 1,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _handledQuietly() {
+    final items = _brief?.section('handled')?.items ?? const [];
+    if (items.isEmpty) return const [];
+    return [
+      _SectionHeader(
+        icon: RdIcons.check,
+        label: 'HANDLED QUIETLY',
+        count: '${items.length}',
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(26, 8, 22, 0),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.rd.line),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0)
+                  Divider(height: 24, color: context.rd.line.withValues(alpha: 0.8)),
+                _HandledRow(
+                  action: items[i]['action'] as String? ?? 'done',
+                  kind: items[i]['kind'] as String? ?? 'item',
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     ];
   }
 
@@ -523,6 +607,13 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
           why: _resurfacedWhy(item.reason),
           title: item.title.trim().isEmpty ? 'A memory' : item.title,
           sub: _resurfacedSub(item),
+          primaryAction: 'Open',
+          secondaryAction: 'Remind me',
+          onPrimary: () => widget.go(
+            'memory',
+            arg: RdMemoryArg(title: item.title, id: item.id),
+          ),
+          onSecondary: () => _toastUndo('Reminder set for Thursday', () {}),
         ),
     ];
   }
@@ -690,7 +781,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () => widget.go('account'),
+                onTap: () => widget.go('notifications'),
                 child: Container(
                   width: 42,
                   height: 42,
@@ -906,6 +997,10 @@ class _ResCard extends StatelessWidget {
     required this.title,
     required this.sub,
     this.image = false,
+    this.primaryAction,
+    this.secondaryAction,
+    this.onPrimary,
+    this.onSecondary,
   });
 
   final String icon;
@@ -913,6 +1008,10 @@ class _ResCard extends StatelessWidget {
   final String title;
   final String sub;
   final bool image;
+  final String? primaryAction;
+  final String? secondaryAction;
+  final VoidCallback? onPrimary;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -961,9 +1060,362 @@ class _ResCard extends StatelessWidget {
                     height: 1.4,
                   ),
                 ),
+                if (primaryAction != null && onPrimary != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _ResActionButton(
+                        label: primaryAction!,
+                        solid: true,
+                        onTap: onPrimary!,
+                      ),
+                      if (secondaryAction != null && onSecondary != null) ...[
+                        const SizedBox(width: 8),
+                        _ResActionButton(
+                          label: secondaryAction!,
+                          onTap: onSecondary!,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResActionButton extends StatelessWidget {
+  const _ResActionButton({
+    required this.label,
+    required this.onTap,
+    this.solid = false,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool solid;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: solid ? rd.navy : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+          border: solid ? null : Border.all(color: rd.line),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.vazirmatn(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: solid ? Colors.white : rd.muted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiraSummary extends StatelessWidget {
+  const _MiraSummary({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEEF1FA), Color(0xFFE7EBF7)],
+        ),
+        border: Border.all(color: rd.peri.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const RdOrb(size: 40),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 14.5,
+                height: 1.55,
+                color: const Color(0xFF2B2F45),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineCard extends StatelessWidget {
+  const _TimelineCard({
+    required this.time,
+    required this.title,
+    required this.sub,
+    this.prep,
+    this.isNow = false,
+  });
+
+  final String time;
+  final String title;
+  final String sub;
+  final String? prep;
+  final bool isNow;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 44,
+            child: Text(
+              time,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: rd.muted,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Container(
+            width: 11,
+            height: 11,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isNow ? rd.peri : rd.card,
+              border: Border.all(color: rd.peri, width: isNow ? 0 : 2.5),
+              boxShadow: isNow
+                  ? [BoxShadow(color: rd.periSoft, spreadRadius: 3)]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: rd.card,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: rd.line),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: rd.ink,
+                    ),
+                  ),
+                  if (sub.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+                  ],
+                  if (prep != null && prep!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: rd.periSoft,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Text(
+                        prep!,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 12.5,
+                          color: rd.navy,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HandledRow extends StatelessWidget {
+  const _HandledRow({required this.action, required this.kind});
+
+  final String action;
+  final String kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    final label = action == 'done'
+        ? 'Marked done'
+        : action == 'dismiss'
+            ? 'Dismissed'
+            : 'Updated';
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE9F3EC),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: const Center(
+            child: RdIcon('<path d="m5 12 5 5 9-11"/>', size: 14, stroke: '#2E7D4F', strokeWidth: 2.5),
+          ),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Text(
+            '$label · $kind',
+            style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.4, color: rd.muted),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FirstTimeState extends StatelessWidget {
+  const _FirstTimeState({required this.onCapture});
+
+  final VoidCallback onCapture;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(26, 20, 26, 0),
+      child: Column(
+        children: [
+          const RdOrb(size: 96, ring: true),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+            decoration: BoxDecoration(
+              color: rd.periSoft,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              'WELCOME TO MIRA',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: rd.navy,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Your Brief fills in\nas you capture',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dosis(
+              fontSize: 27,
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+              color: rd.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Save a thought, task, or link — Mira will surface what matters here each morning.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.vazirmatn(fontSize: 14.5, height: 1.6, color: rd.muted),
+          ),
+          const SizedBox(height: 26),
+          for (var i = 0; i < 3; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: rd.card,
+                      border: Border.all(color: rd.periSoft, width: 1.5),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${i + 1}',
+                        style: GoogleFonts.vazirmatn(
+                          fontWeight: FontWeight.w700,
+                          color: rd.navy,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          [
+                            'Speak or type anything',
+                            'Confirm what matters',
+                            'See it here tomorrow',
+                          ][i],
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: rd.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          [
+                            'Mira understands before it\'s kept',
+                            'You stay in control of memory',
+                            'Tasks, reminders, and resurfaced memories',
+                          ][i],
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 13,
+                            height: 1.5,
+                            color: rd.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          _EmptyCapture(onTap: onCapture),
         ],
       ),
     );
@@ -1203,7 +1655,7 @@ class _OverdueCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 8),
                               _OverdueButton(
-                                label: 'Done',
+                                label: 'Do it now',
                                 solid: true,
                                 onTap: onDone,
                               ),

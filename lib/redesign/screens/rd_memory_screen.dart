@@ -80,6 +80,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   bool _editing = false;
   bool _edited = false;
   bool _saved = false;
+  final Set<int> _fixedFlags = {};
 
   bool _playing = false;
   double _pos = 0;
@@ -360,6 +361,44 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       _playing = false;
       _editing = true;
       _menu = false;
+      _fixedFlags.clear();
+    });
+  }
+
+  /// Words Mira may have transcribed with low confidence — capitalised names
+  /// mid-sentence and long uncommon tokens (design: flagged-word chips).
+  List<String> _transcriptFlags(String text) {
+    const skip = {
+      'I', 'The', 'So', 'Let', 'People', 'Circle', 'And', 'But', 'We', 'It',
+      'This', 'That', 'They', 'There', 'Then', 'When', 'What', 'Who', 'How',
+      'Why', 'Not', 'For', 'With', 'From', 'Our', 'Your', 'She', 'He',
+    };
+    final found = <String>[];
+    final seen = <String>{};
+    for (final m in RegExp(r'(?<=\s)[A-Z][a-z]{2,}').allMatches(text)) {
+      final w = m.group(0)!;
+      if (!skip.contains(w) && seen.add(w)) found.add(w);
+    }
+    for (final m in RegExp(r'\b[a-z]{9,}\b').allMatches(text)) {
+      final w = m.group(0)!;
+      if (seen.add(w)) found.add(w);
+    }
+    return found.take(6).toList();
+  }
+
+  void _jumpToFlagWord(String word, int index) {
+    final text = _bodyCtl.text;
+    final idx = text.indexOf(word);
+    if (idx >= 0) {
+      _bodyCtl.selection = TextSelection(baseOffset: idx, extentOffset: idx + word.length);
+      _bodyFocus.requestFocus();
+    }
+    setState(() {
+      if (_fixedFlags.contains(index)) {
+        _fixedFlags.remove(index);
+      } else {
+        _fixedFlags.add(index);
+      }
     });
   }
 
@@ -685,12 +724,68 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   Widget _bodyInput() {
     final rd = context.rd;
+    final flags = widget.isVoice ? _transcriptFlags(_bodyCtl.text) : const <String>[];
+    final unresolved = flags.length - _fixedFlags.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.isVoice) ...[
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE9F1EC),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _playing = !_playing),
+                    child: RdIcon(
+                      _playing
+                          ? '<rect x="6" y="5" width="4" height="14" rx="1.3"/><rect x="14" y="5" width="4" height="14" rx="1.3"/>'
+                          : '<path d="M8 5v14l11-7z"/>',
+                      size: 16,
+                      color: const Color(0xFF1F8A5B),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    height: 28,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(24, (i) {
+                        final h = 12.0 + (i % 5) * 4.0;
+                        final done = _playing && i / 24 < _pos / _clip;
+                        return Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            height: h,
+                            decoration: BoxDecoration(
+                              color: done ? const Color(0xFF1F8A5B) : const Color(0xFFD8E8DF),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         TextField(
           controller: _bodyCtl,
           focusNode: _bodyFocus,
+          onChanged: widget.isVoice ? (_) => setState(() {}) : null,
           cursorColor: rd.navy,
           maxLines: widget.isVoice ? 7 : 5,
           minLines: widget.isVoice ? 7 : 5,
@@ -705,6 +800,58 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: _peri, width: 1.5)),
           ),
         ),
+        if (widget.isVoice && flags.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const RdIcon('<path d="M12 9v4M12 17h.01"/>', size: 14, stroke: '#C58E3F', strokeWidth: 2),
+                  const SizedBox(width: 6),
+                  Text(
+                    unresolved <= 0
+                        ? 'All checked — thanks'
+                        : '$unresolved word${unresolved == 1 ? '' : 's'} Mira wasn\'t sure of',
+                    style: GoogleFonts.vazirmatn(fontSize: 12, color: const Color(0xFF8A6D2F)),
+                  ),
+                ],
+              ),
+              for (var i = 0; i < flags.length; i++)
+                GestureDetector(
+                  onTap: () => _jumpToFlagWord(flags[i], i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _fixedFlags.contains(i) ? const Color(0xFFE7F3EC) : const Color(0xFFFBF3E4),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: _fixedFlags.contains(i)
+                            ? const Color(0xFF1F8A5B).withValues(alpha: 0.3)
+                            : const Color(0xFFC58E3F).withValues(alpha: 0.32),
+                      ),
+                    ),
+                    child: Text(
+                      flags[i],
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: _fixedFlags.contains(i) ? const Color(0xFF1F8A5B) : const Color(0xFF8A6D2F),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tap a flagged word to jump to it, or edit the transcript directly.',
+            style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.faint),
+          ),
+        ],
       ],
     );
   }
