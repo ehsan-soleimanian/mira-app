@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:intl/intl.dart';
+
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/models/api/daily_brief_models.dart';
 import 'package:mira_app/models/api/daily_update_models.dart';
@@ -35,10 +38,6 @@ class RdDailyBriefScreen extends StatefulWidget {
 }
 
 class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
-  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  static const _monthsFull = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  static const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
   List<DailyUpdateItem>? _items;
 
   /// Rich brief from `GET /daily-brief` when available.
@@ -96,8 +95,8 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                 .map(
                   (m) => ResurfacedItem(
                     id: m['id'] as String? ?? '',
-                    title: m['title'] as String? ?? 'Memory',
-                    reason: m['reason'] as String? ?? 'Recent memory',
+                    title: m['title'] as String? ?? AppLocalizations.of(context)!.rdBriefFallbackMemory,
+                    reason: m['reason'] as String? ?? AppLocalizations.of(context)!.rdBriefFallbackRecentMemory,
                   ),
                 )
                 .toList();
@@ -164,7 +163,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     setState(() =>
         _overdue = before.where((r) => r.id != reminder.id).toList());
     _pushRemindAt(reminder.id, DateTime.now().add(const Duration(days: 1)));
-    _toastUndo('Snoozed until tomorrow', () {
+    _toastUndo(AppLocalizations.of(context)!.rdBriefSnoozedTomorrow, () {
       setState(() => _overdue = before);
       final original = reminder.remindAt;
       if (original != null) _pushRemindAt(reminder.id, original);
@@ -177,7 +176,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     setState(() =>
         _overdue = before.where((r) => r.id != reminder.id).toList());
     _pushDone(reminder.id, true);
-    _toastUndo('Done', () {
+    _toastUndo(AppLocalizations.of(context)!.rdBriefDone, () {
       setState(() => _overdue = before);
       _pushDone(reminder.id, false);
     });
@@ -192,7 +191,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     for (final r in before) {
       _pushRemindAt(r.id, next);
     }
-    _toastUndo('Cleared — Mira will ask again later', () {
+    _toastUndo(AppLocalizations.of(context)!.rdBriefClearedLater, () {
       setState(() => _overdue = before);
       for (final r in before) {
         if (r.remindAt != null) _pushRemindAt(r.id, r.remindAt!);
@@ -219,10 +218,11 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   List<Widget> _waitingBlock() {
     if (_waiting.isEmpty) return const [];
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return [
       _SectionHeader(
         icon: RdIcons.dueClock,
-        label: 'WAITING FOR THE RIGHT MOMENT',
+        label: l10n.rdBriefSectionWaitingMoment,
         count: '${_waiting.length}',
       ),
       for (final r in _waiting)
@@ -248,7 +248,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      r.title.trim().isEmpty ? 'A reminder' : r.title.trim(),
+                      r.title.trim().isEmpty ? l10n.rdBriefFallbackAReminder : r.title.trim(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.vazirmatn(
@@ -270,6 +270,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   /// Footer under the overdue list: Clear-all + a link to the full Reminders.
   Widget _overdueFooter() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
       child: Row(
@@ -277,7 +278,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
           GestureDetector(
             onTap: _clearAllOverdue,
             behavior: HitTestBehavior.opaque,
-            child: Text('Clear all',
+            child: Text(l10n.rdBriefClearAll,
                 style: GoogleFonts.vazirmatn(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
@@ -290,7 +291,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('See all reminders',
+                Text(l10n.rdBriefSeeAllReminders,
                     style: GoogleFonts.vazirmatn(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -309,6 +310,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   void _toastUndo(String message, VoidCallback onUndo) {
     if (!mounted) return;
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -320,7 +322,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
           ),
           action: SnackBarAction(
-            label: 'Undo',
+            label: l10n.rdBriefUndo,
             textColor: Colors.white,
             onPressed: onUndo,
           ),
@@ -329,6 +331,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   List<Widget> _bodyChildren() {
+    final l10n = AppLocalizations.of(context)!;
     if (_items == null && _overdue == null && _brief == null) {
       // No data yet. While the first load is still in flight, show only the
       // header (no fabricated content). Once it has finished with nothing to
@@ -339,7 +342,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(26, 40, 26, 0),
           child: Text(
-            'Nothing needs you right now.',
+            l10n.rdBriefNothingNow,
             style: GoogleFonts.vazirmatn(
               fontSize: 14.5,
               height: 1.5,
@@ -359,6 +362,10 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
     final hasBriefTasks = _briefTasks.isNotEmpty;
     final hasLegacyTasks = tasks != null && tasks.isNotEmpty;
+
+    if (_brief?.state == 'first') {
+      return [_header(), _FirstTimeState(onCapture: () => widget.go('capture'))];
+    }
 
     if (!hasBriefTasks &&
         !hasLegacyTasks &&
@@ -389,27 +396,22 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   }
 
   List<Widget> _briefLiveChildren({required List<Reminder> overdue}) {
+    final l10n = AppLocalizations.of(context)!;
     return [
       _header(),
       if (_brief != null && _brief!.summary.isNotEmpty)
         Padding(
           padding: const EdgeInsets.fromLTRB(26, 0, 26, 12),
-          child: Text(
-            _brief!.summary,
-            style: GoogleFonts.vazirmatn(
-              fontSize: 14,
-              height: 1.5,
-              color: context.rd.muted,
-            ),
-          ),
+          child: _MiraSummary(text: _brief!.summary),
         ),
+      ..._todayTimeline(),
       if (overdue.isNotEmpty) ...[
         _OverdueSummary(),
         _OverdueHeader(count: overdue.length),
         for (final r in overdue)
           _OverdueCard(
             when: _overdueWhen(r.remindAt),
-            title: r.title.trim().isEmpty ? 'Reminder' : r.title,
+            title: r.title.trim().isEmpty ? AppLocalizations.of(context)!.rdBriefFallbackReminder : r.title,
             onSnooze: () => _snoozeReminder(r),
             onDone: () => _completeReminder(r),
           ),
@@ -419,34 +421,123 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       if (_briefTasks.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.checkCircle,
-          label: 'NEEDS YOU',
-          count:
-              '${_briefTasks.length} ${_briefTasks.length == 1 ? 'task' : 'tasks'}',
+          label: l10n.rdBriefSectionNeedsYou,
+          count: l10n.rdBriefTaskCount(_briefTasks.length),
         ),
         for (final t in _briefTasks)
           _TaskCard(
-            title: t['title'] as String? ?? 'Task',
+            title: t['title'] as String? ?? l10n.rdBriefFallbackTask,
             due: _briefTaskDue(t),
             onToggle: (done) => _toggleTask(t['id'] as String? ?? '', done),
           ),
       ],
       ..._resurfacedChildren(),
+      ..._handledQuietly(),
       _dbEnd(),
     ];
   }
 
-  static String _briefTaskDue(Map<String, dynamic> task) {
+  List<Widget> _todayTimeline() {
+    final l10n = AppLocalizations.of(context)!;
+    final items = _brief?.section('today')?.items ?? const [];
+    if (items.isEmpty) return const [];
+    return [
+      _SectionHeader(
+        icon: RdIcons.dueClock,
+        label: l10n.rdBriefSectionToday,
+        count: l10n.rdBriefEventsCount(items.length),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        child: Stack(
+          children: [
+            Positioned(
+              left: 40,
+              top: 8,
+              bottom: 12,
+              child: Container(
+                width: 1.5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      context.rd.periSoft,
+                      context.rd.peri,
+                      context.rd.peri,
+                      context.rd.periSoft,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Column(
+              children: [
+                for (var i = 0; i < items.length; i++)
+                  _TimelineCard(
+                    time: items[i]['timeLabel'] as String? ?? '—',
+                    title: items[i]['title'] as String? ?? l10n.rdBriefFallbackEvent,
+                    sub: items[i]['subtitle'] as String? ?? '',
+                    prep: items[i]['prep'] as String?,
+                    isNow: i == items.length - 1,
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _handledQuietly() {
+    final l10n = AppLocalizations.of(context)!;
+    final items = _brief?.section('handled')?.items ?? const [];
+    if (items.isEmpty) return const [];
+    return [
+      _SectionHeader(
+        icon: RdIcons.check,
+        label: l10n.rdBriefSectionHandled,
+        count: '${items.length}',
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(26, 8, 22, 0),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.rd.line),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0)
+                  Divider(height: 24, color: context.rd.line.withValues(alpha: 0.8)),
+                _HandledRow(
+                  action: items[i]['action'] as String? ?? 'done',
+                  kind: items[i]['kind'] as String? ?? 'item',
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
+  String _briefTaskDue(Map<String, dynamic> task) {
+    final l10n = AppLocalizations.of(context)!;
     final dueText = task['dueText'] as String?;
     if (dueText != null && dueText.trim().isNotEmpty) return dueText;
     final dueAt = task['dueAt'];
     if (dueAt is String) {
       final dt = DateTime.tryParse(dueAt)?.toLocal();
       if (dt != null) {
-        return 'Due ${dt.month}/${dt.day}';
+        final locale = Localizations.localeOf(context).toString();
+        return l10n.rdBriefDueOn(DateFormat.MMMd(locale).format(dt));
       }
     }
-    if (task['overdue'] == true) return 'Overdue';
-    return 'Open';
+    if (task['overdue'] == true) return l10n.rdBriefOverdue;
+    return l10n.rdBriefOpen;
   }
 
   List<Widget> _liveChildren({
@@ -454,6 +545,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
     required List<DailyUpdateItem> recent,
     required List<Reminder> overdue,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     return [
       _header(),
       // "Waiting on you" — overdue reminders, each with Snooze / Done.
@@ -463,7 +555,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         for (final r in overdue)
           _OverdueCard(
             when: _overdueWhen(r.remindAt),
-            title: r.title.trim().isEmpty ? 'Reminder' : r.title,
+            title: r.title.trim().isEmpty ? AppLocalizations.of(context)!.rdBriefFallbackReminder : r.title,
             onSnooze: () => _snoozeReminder(r),
             onDone: () => _completeReminder(r),
           ),
@@ -473,8 +565,8 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       if (tasks.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.checkCircle,
-          label: 'NEEDS YOU',
-          count: '${tasks.length} ${tasks.length == 1 ? 'task' : 'tasks'}',
+          label: l10n.rdBriefSectionNeedsYou,
+          count: l10n.rdBriefTaskCount(tasks.length),
         ),
         for (final t in tasks)
           _TaskCard(
@@ -486,7 +578,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       if (recent.isNotEmpty) ...[
         _SectionHeader(
           icon: RdIcons.resurface,
-          label: 'RECENT',
+          label: l10n.rdBriefSectionRecent,
           count: '${recent.length}',
         ),
         for (final o in recent)
@@ -494,7 +586,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
             icon: _isImage(o) ? RdIcons.vinyl : RdIcons.book,
             image: _isImage(o),
             why: _sectionLabel(o.createdAt),
-            title: o.title.trim().isEmpty ? 'Untitled memory' : o.title,
+            title: o.title.trim().isEmpty ? l10n.rdBriefFallbackUntitled : o.title,
             sub: o.summary.trim().isEmpty ? o.title : o.summary,
           ),
       ],
@@ -508,43 +600,52 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   /// "Mira resurfaced" section. Renders live items from `/v2/resurfaced` when
   /// the feed returned any; hidden entirely otherwise (null or empty).
   List<Widget> _resurfacedChildren() {
+    final l10n = AppLocalizations.of(context)!;
     final items = _resurfaced ?? const <ResurfacedItem>[];
     if (items.isEmpty) return const [];
 
     return [
       _SectionHeader(
         icon: RdIcons.resurface,
-        label: 'MIRA RESURFACED',
+        label: l10n.rdBriefSectionResurfaced,
         count: '${items.length}',
       ),
       for (final item in items)
         _ResCard(
           icon: RdIcons.book,
           why: _resurfacedWhy(item.reason),
-          title: item.title.trim().isEmpty ? 'A memory' : item.title,
+          title: item.title.trim().isEmpty ? l10n.rdBriefFallbackAMemory : item.title,
           sub: _resurfacedSub(item),
+          primaryAction: l10n.rdBriefOpenAction,
+          secondaryAction: l10n.rdBriefRemindMe,
+          onPrimary: () => widget.go(
+            'memory',
+            arg: RdMemoryArg(title: item.title, id: item.id),
+          ),
+          onSecondary: () => _toastUndo(l10n.rdBriefReminderSetThursday, () {}),
         ),
     ];
   }
 
   /// The eyebrow line for a resurfaced card — the backend `reason`, trimmed,
   /// with a gentle fallback when it is blank.
-  static String _resurfacedWhy(String reason) {
+  String _resurfacedWhy(String reason) {
     final trimmed = reason.trim();
-    return trimmed.isEmpty ? 'Brought back for you' : trimmed;
+    return trimmed.isEmpty ? AppLocalizations.of(context)!.rdBriefBroughtBack : trimmed;
   }
 
   /// Supporting line for a resurfaced card, composed from the optional `type`
   /// and `date`. Falls back to the reason, then a neutral phrase, so the card
   /// always has a second line to read.
-  static String _resurfacedSub(ResurfacedItem item) {
+  String _resurfacedSub(ResurfacedItem item) {
+    final l10n = AppLocalizations.of(context)!;
     final type = (item.type ?? '').trim();
     final when = item.date != null ? _sectionLabel(item.date!) : '';
     if (type.isNotEmpty && when.isNotEmpty) return '$type · $when';
     if (type.isNotEmpty) return type;
     if (when.isNotEmpty) return when;
     final reason = item.reason.trim();
-    return reason.isEmpty ? 'Saved to your memory' : reason;
+    return reason.isEmpty ? l10n.rdBriefSavedToMemory : reason;
   }
 
   static bool _isTask(DailyUpdateItem item) {
@@ -556,52 +657,57 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       (item.captureType ?? '').toLowerCase() == 'image';
 
   String _dueLabel(DailyUpdateItem item) {
+    final l10n = AppLocalizations.of(context)!;
     final due = item.dueAt;
-    if (due != null) return 'Due ${_sectionLabel(due)}';
+    if (due != null) return l10n.rdBriefDueOn(_sectionLabel(due));
     return _relativeTime(item.createdAt);
   }
 
-  static String _sectionLabel(DateTime dt) {
+  String _sectionLabel(DateTime dt) {
+    final l10n = AppLocalizations.of(context)!;
+    final locale = Localizations.localeOf(context).toString();
     final now = DateTime.now();
     final days = DateTime(now.year, now.month, now.day)
         .difference(DateTime(dt.year, dt.month, dt.day))
         .inDays;
-    if (days == 0) return 'Today';
-    if (days == 1) return 'Yesterday';
-    if (days == -1) return 'Tomorrow';
-    return '${_months[dt.month - 1]} ${dt.day}';
+    if (days == 0) return l10n.rdBriefToday;
+    if (days == 1) return l10n.rdBriefYesterday;
+    if (days == -1) return l10n.rdBriefTomorrow;
+    return DateFormat.MMMd(locale).format(dt);
   }
 
-  static String _relativeTime(DateTime dt) {
+  String _relativeTime(DateTime dt) {
+    final l10n = AppLocalizations.of(context)!;
     final diff = DateTime.now().difference(dt);
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Yesterday';
-    return '${diff.inDays} days ago';
+    if (diff.inHours < 24) return l10n.rdBriefHoursAgo(diff.inHours);
+    if (diff.inDays == 1) return l10n.rdBriefYesterday;
+    return l10n.rdBriefDaysAgo(diff.inDays);
   }
 
   /// "Due yesterday" / "Due N days ago" for an overdue reminder, by calendar day.
-  static String _overdueWhen(DateTime? remindAt) {
-    if (remindAt == null) return 'Overdue';
+  String _overdueWhen(DateTime? remindAt) {
+    final l10n = AppLocalizations.of(context)!;
+    if (remindAt == null) return l10n.rdBriefOverdue;
     final now = DateTime.now();
     final days = DateTime(now.year, now.month, now.day)
         .difference(DateTime(remindAt.year, remindAt.month, remindAt.day))
         .inDays;
-    if (days <= 0) return 'Due earlier today';
-    if (days == 1) return 'Due yesterday';
-    return 'Due $days days ago';
+    if (days <= 0) return l10n.rdBriefDueEarlierToday;
+    if (days == 1) return l10n.rdBriefDueYesterday;
+    return l10n.rdBriefDueDaysAgo(days);
   }
 
-  static String _greetingForNow() {
+  String _greetingForNow() {
+    final l10n = AppLocalizations.of(context)!;
     final h = DateTime.now().hour;
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (h < 12) return l10n.rdBriefGreetingMorning;
+    if (h < 17) return l10n.rdBriefGreetingAfternoon;
+    return l10n.rdBriefGreetingEvening;
   }
 
   String _dateEyebrow() {
-    final now = DateTime.now();
-    return '${_weekdays[now.weekday - 1]} · ${_monthsFull[now.month - 1]} ${now.day}'
-        .toUpperCase();
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat('EEEE · MMMM d', locale).format(DateTime.now()).toUpperCase();
   }
 
   @override
@@ -646,6 +752,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   Widget _header() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
       child: Column(
@@ -669,7 +776,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Daily Brief',
+                      l10n.rdBriefTitle,
                       style: GoogleFonts.dosis(
                         fontSize: 30,
                         fontWeight: FontWeight.w700,
@@ -679,7 +786,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_greetingForNow()}, $_name',
+                      l10n.rdBriefGreeting(_greetingForNow(), _name),
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -690,7 +797,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () => widget.go('account'),
+                onTap: () => widget.go('notifications'),
                 child: Container(
                   width: 42,
                   height: 42,
@@ -718,10 +825,11 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
 
   Widget _dbEnd() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 26, 40, 0),
       child: Text(
-        'That’s your day.\nEverything else is safe in memory.',
+        l10n.rdBriefDayEnd,
         textAlign: TextAlign.center,
         style: GoogleFonts.vazirmatn(
           fontSize: 12.5,
@@ -906,6 +1014,10 @@ class _ResCard extends StatelessWidget {
     required this.title,
     required this.sub,
     this.image = false,
+    this.primaryAction,
+    this.secondaryAction,
+    this.onPrimary,
+    this.onSecondary,
   });
 
   final String icon;
@@ -913,6 +1025,10 @@ class _ResCard extends StatelessWidget {
   final String title;
   final String sub;
   final bool image;
+  final String? primaryAction;
+  final String? secondaryAction;
+  final VoidCallback? onPrimary;
+  final VoidCallback? onSecondary;
 
   @override
   Widget build(BuildContext context) {
@@ -961,9 +1077,366 @@ class _ResCard extends StatelessWidget {
                     height: 1.4,
                   ),
                 ),
+                if (primaryAction != null && onPrimary != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _ResActionButton(
+                        label: primaryAction!,
+                        solid: true,
+                        onTap: onPrimary!,
+                      ),
+                      if (secondaryAction != null && onSecondary != null) ...[
+                        const SizedBox(width: 8),
+                        _ResActionButton(
+                          label: secondaryAction!,
+                          onTap: onSecondary!,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResActionButton extends StatelessWidget {
+  const _ResActionButton({
+    required this.label,
+    required this.onTap,
+    this.solid = false,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool solid;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: solid ? rd.navy : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+          border: solid ? null : Border.all(color: rd.line),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.vazirmatn(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+            color: solid ? Colors.white : rd.muted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiraSummary extends StatelessWidget {
+  const _MiraSummary({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEEF1FA), Color(0xFFE7EBF7)],
+        ),
+        border: Border.all(color: rd.peri.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const RdOrb(size: 40),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 14.5,
+                height: 1.55,
+                color: const Color(0xFF2B2F45),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineCard extends StatelessWidget {
+  const _TimelineCard({
+    required this.time,
+    required this.title,
+    required this.sub,
+    this.prep,
+    this.isNow = false,
+  });
+
+  final String time;
+  final String title;
+  final String sub;
+  final String? prep;
+  final bool isNow;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 44,
+            child: Text(
+              time,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: rd.muted,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Container(
+            width: 11,
+            height: 11,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isNow ? rd.peri : rd.card,
+              border: Border.all(color: rd.peri, width: isNow ? 0 : 2.5),
+              boxShadow: isNow
+                  ? [BoxShadow(color: rd.periSoft, spreadRadius: 3)]
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: rd.card,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: rd.line),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: rd.ink,
+                    ),
+                  ),
+                  if (sub.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+                  ],
+                  if (prep != null && prep!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: rd.periSoft,
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Text(
+                        prep!,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 12.5,
+                          color: rd.navy,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HandledRow extends StatelessWidget {
+  const _HandledRow({required this.action, required this.kind});
+
+  final String action;
+  final String kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final label = action == 'done'
+        ? l10n.rdBriefMarkedDone
+        : action == 'dismiss'
+            ? l10n.rdBriefDismissed
+            : l10n.rdBriefUpdated;
+    return Row(
+      children: [
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE9F3EC),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: const Center(
+            child: RdIcon('<path d="m5 12 5 5 9-11"/>', size: 14, stroke: '#2E7D4F', strokeWidth: 2.5),
+          ),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Text(
+            '$label · $kind',
+            style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.4, color: rd.muted),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _FirstTimeState extends StatelessWidget {
+  const _FirstTimeState({required this.onCapture});
+
+  final VoidCallback onCapture;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final stepTitles = [
+      l10n.rdBriefFirstStep1Title,
+      l10n.rdBriefFirstStep2Title,
+      l10n.rdBriefFirstStep3Title,
+    ];
+    final stepSubs = [
+      l10n.rdBriefFirstStep1Sub,
+      l10n.rdBriefFirstStep2Sub,
+      l10n.rdBriefFirstStep3Sub,
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(26, 20, 26, 0),
+      child: Column(
+        children: [
+          const RdOrb(size: 96, ring: true),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
+            decoration: BoxDecoration(
+              color: rd.periSoft,
+              borderRadius: BorderRadius.circular(100),
+            ),
+            child: Text(
+              l10n.rdBriefWelcomeBadge,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: rd.navy,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            l10n.rdBriefFirstTitle,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dosis(
+              fontSize: 27,
+              fontWeight: FontWeight.w700,
+              height: 1.15,
+              color: rd.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.rdBriefFirstSubtitle,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.vazirmatn(fontSize: 14.5, height: 1.6, color: rd.muted),
+          ),
+          const SizedBox(height: 26),
+          for (var i = 0; i < 3; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: rd.card,
+                      border: Border.all(color: rd.periSoft, width: 1.5),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${i + 1}',
+                        style: GoogleFonts.vazirmatn(
+                          fontWeight: FontWeight.w700,
+                          color: rd.navy,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          stepTitles[i],
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: rd.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          stepSubs[i],
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 13,
+                            height: 1.5,
+                            color: rd.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          _EmptyCapture(onTap: onCapture),
         ],
       ),
     );
@@ -1017,6 +1490,7 @@ const _ovAmberDeep = Color(0xFFB8853A);
 class _OverdueSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 22, 20, 0),
       padding: const EdgeInsets.all(16),
@@ -1051,8 +1525,7 @@ class _OverdueSummary extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              'A few things slipped past while you were busy. Nothing’s lost — '
-              'I held onto them. Let’s clear them together, no rush.',
+              l10n.rdBriefOverdueSummary,
               style: GoogleFonts.vazirmatn(
                 fontSize: 14.5,
                 height: 1.55,
@@ -1073,6 +1546,7 @@ class _OverdueHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 30, 26, 10),
       child: Row(
@@ -1088,7 +1562,7 @@ class _OverdueHeader extends StatelessWidget {
               ),
               const SizedBox(width: 9),
               Text(
-                'WAITING ON YOU',
+                l10n.rdBriefSectionWaitingOnYou,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -1099,7 +1573,7 @@ class _OverdueHeader extends StatelessWidget {
             ],
           ),
           Text(
-            '$count ${count == 1 ? 'reminder' : 'reminders'}',
+            l10n.rdBriefReminderCount(count),
             style: GoogleFonts.vazirmatn(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -1197,13 +1671,13 @@ class _OverdueCard extends StatelessWidget {
                           Row(
                             children: [
                               _OverdueButton(
-                                label: 'Snooze',
+                                label: AppLocalizations.of(context)!.rdBriefSnooze,
                                 solid: false,
                                 onTap: onSnooze,
                               ),
                               const SizedBox(width: 8),
                               _OverdueButton(
-                                label: 'Done',
+                                label: AppLocalizations.of(context)!.rdBriefDoItNow,
                                 solid: true,
                                 onTap: onDone,
                               ),
@@ -1272,6 +1746,7 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 0),
       child: Column(
@@ -1282,7 +1757,7 @@ class _EmptyState extends StatelessWidget {
               const RdOrb(size: 92, ring: true),
               const SizedBox(height: 20),
               Text(
-                'Nothing needs you today',
+                l10n.rdBriefEmptyTitle,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.dosis(
                   fontSize: 26,
@@ -1294,8 +1769,7 @@ class _EmptyState extends StatelessWidget {
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 300),
                 child: Text(
-                  'Your day is open and no memory is waiting on you. I’ll keep '
-                  'everything safe and speak up the moment something matters.',
+                  l10n.rdBriefEmptyBody,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14.5,
@@ -1308,20 +1782,20 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Row(
-            children: const [
+            children: [
               Expanded(
                 child: _EmptyStat(
                   icon: RdIcons.check,
                   num: '34',
-                  label: 'memories held safe',
+                  label: l10n.rdBriefMemoriesHeldSafe,
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: _EmptyStat(
                   icon: RdIcons.dueClock,
                   num: '0',
-                  label: 'reminders due',
+                  label: l10n.rdBriefRemindersDue,
                 ),
               ),
             ],
@@ -1399,6 +1873,7 @@ class _EmptyCapture extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -1447,7 +1922,7 @@ class _EmptyCapture extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Capture a thought',
+                    l10n.rdBriefCaptureThought,
                     style: GoogleFonts.vazirmatn(
                       fontSize: 14.5,
                       fontWeight: FontWeight.w600,
@@ -1456,7 +1931,7 @@ class _EmptyCapture extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Drop anything on your mind — I’ll hold it for you.',
+                    l10n.rdBriefCaptureSub,
                     style: GoogleFonts.vazirmatn(
                       fontSize: 12.5,
                       color: RdColors.muted,

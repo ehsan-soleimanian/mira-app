@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/storage_models.dart';
 
 import '../theme/rd_colors.dart';
@@ -94,7 +95,7 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
       if (archived.isEmpty) {
         if (mounted) {
           setState(() => _clearing = false);
-          _toast('No archived items to clear');
+          _toast(AppLocalizations.of(context)!.rdStorageNoArchived);
         }
         return;
       }
@@ -103,20 +104,23 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
       await _load(); // pull the new usage so the bar/breakdown update
       if (mounted) {
         setState(() => _clearing = false);
-        final freed = bytes > 0 ? ' · ${_bytesHuman(bytes)} freed' : '';
-        _toast(
-            'Cleared ${archived.length} archived item${archived.length == 1 ? '' : 's'}$freed');
+        final l10n = AppLocalizations.of(context)!;
+        final freed = bytes > 0
+            ? l10n.rdStorageFreedSuffix(_bytesHuman(bytes))
+            : '';
+        _toast(l10n.rdStorageCleared(archived.length, freed));
       }
     } catch (_) {
       if (mounted) {
         setState(() => _clearing = false);
-        _toast('Couldn’t clear archived items');
+        _toast(AppLocalizations.of(context)!.rdStorageClearFailed);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final usage = _source;
     return Scaffold(
@@ -128,15 +132,15 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _back(),
-              _heading(),
-              if (_usage == null) const _LoadingHint(),
+              _back(l10n),
+              _heading(l10n),
+              if (_usage == null) _LoadingHint(l10n.rdStorageUpdating),
               _SummaryCard(usage: usage),
-              _sectionLabel('Breakdown'),
+              _sectionLabel(l10n.rdStorageSectionBreakdown),
               _breakdown(usage),
-              _sectionLabel('Manage'),
-              _manage(),
-              const _StorageFoot('Mira keeps only what you approve.'),
+              _sectionLabel(l10n.rdStorageSectionManage),
+              _manage(l10n),
+              _StorageFoot(l10n.rdStorageFoot),
             ],
           ),
         ),
@@ -144,7 +148,7 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
     );
   }
 
-  Widget _back() {
+  Widget _back(AppLocalizations l10n) {
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 8, 20, 0),
@@ -158,7 +162,7 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
             children: [
               RdIcon(RdIcons.chevronLeft, size: 20, color: rd.navy, strokeWidth: 2),
               const SizedBox(width: 3),
-              Text('Account',
+              Text(l10n.rdCommonAccount,
                   style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.navy)),
             ],
           ),
@@ -167,19 +171,19 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
     );
   }
 
-  Widget _heading() {
+  Widget _heading(AppLocalizations l10n) {
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Storage',
+          Text(l10n.rdStorageTitle,
               style: GoogleFonts.dosis(
                   fontSize: 30, fontWeight: FontWeight.w700, color: rd.ink)),
           const SizedBox(height: 4),
           Text(
-            'What Mira is holding, and how much room is left.',
+            l10n.rdStorageIntro,
             style:
                 GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: rd.muted),
           ),
@@ -234,7 +238,7 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
     );
   }
 
-  Widget _manage() {
+  Widget _manage(AppLocalizations l10n) {
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -249,8 +253,8 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
           children: [
             _ManageRow(
               icon: RdIcons.archive,
-              title: 'Clear archived',
-              sub: 'Remove captures you have archived',
+              title: l10n.rdStorageClearArchived,
+              sub: l10n.rdStorageClearArchivedSub,
               busy: _clearing,
               onTap: _clearArchived,
             ),
@@ -260,8 +264,8 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
             ),
             _ManageRow(
               icon: RdIcons.link,
-              title: 'Offload originals to cloud',
-              sub: 'Keep full-quality copies in a connected service',
+              title: l10n.rdStorageOffloadCloud,
+              sub: l10n.rdStorageOffloadCloudSub,
               onTap: () => widget.go('connectedapps'),
             ),
           ],
@@ -295,6 +299,7 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final hasQuota = usage.quotaBytes > 0;
     final pct = (usage.fraction * 100).round();
@@ -321,7 +326,7 @@ class _SummaryCard extends StatelessWidget {
               const SizedBox(width: 8),
               if (hasQuota)
                 Text(
-                  'of ${_bytesHuman(usage.quotaBytes)}',
+                  l10n.rdStorageOfQuota(_bytesHuman(usage.quotaBytes)),
                   style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.muted),
                 ),
               const Spacer(),
@@ -400,6 +405,7 @@ class _Legend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final items = usage.categories.where((c) => c.bytes > 0).toList();
     return Wrap(
@@ -419,7 +425,7 @@ class _Legend extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                _categoryLabel(c.type),
+                _categoryLabel(l10n, c.type),
                 style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted),
               ),
             ],
@@ -438,6 +444,7 @@ class _CategoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final color = _categoryColor(context, category.type);
     return Padding(
@@ -464,13 +471,13 @@ class _CategoryRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _categoryLabel(category.type),
+                  _categoryLabel(l10n, category.type),
                   style: GoogleFonts.vazirmatn(
                       fontSize: 15, fontWeight: FontWeight.w500, color: rd.ink),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _countLabel(category.count),
+                  _countLabel(l10n, category.count),
                   style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
                 ),
               ],
@@ -563,7 +570,9 @@ class _ManageRow extends StatelessWidget {
 /// A brief "loading" line shown above the summary while live figures load; the
 /// sample renders underneath so the screen is never blank.
 class _LoadingHint extends StatelessWidget {
-  const _LoadingHint();
+  const _LoadingHint(this.text);
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -579,7 +588,7 @@ class _LoadingHint extends StatelessWidget {
                 CircularProgressIndicator(strokeWidth: 1.8, color: rd.faint),
           ),
           const SizedBox(width: 8),
-          Text('Updating usage…',
+          Text(text,
               style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.faint)),
         ],
       ),
@@ -611,20 +620,20 @@ bool _isDark(BuildContext context) =>
     Theme.of(context).brightness == Brightness.dark;
 
 /// Human label for a category type (e.g. `screenshots` → "Screenshots").
-String _categoryLabel(String type) {
+String _categoryLabel(AppLocalizations l10n, String type) {
   switch (type) {
     case 'photos':
-      return 'Photos';
+      return l10n.rdStorageCategoryPhotos;
     case 'voice':
-      return 'Voice';
+      return l10n.rdStorageCategoryVoice;
     case 'screenshots':
-      return 'Screenshots';
+      return l10n.rdStorageCategoryScreenshots;
     case 'notes':
-      return 'Notes';
+      return l10n.rdStorageCategoryNotes;
     case 'links':
-      return 'Links';
+      return l10n.rdStorageCategoryLinks;
     default:
-      return 'Other';
+      return l10n.rdStorageCategoryOther;
   }
 }
 
@@ -668,10 +677,9 @@ Color _categoryColor(BuildContext context, String type) {
 }
 
 /// "128 items" / "1 item" / "Empty".
-String _countLabel(int count) {
-  if (count <= 0) return 'Empty';
-  if (count == 1) return '1 item';
-  return '$count items';
+String _countLabel(AppLocalizations l10n, int count) {
+  if (count <= 0) return l10n.rdStorageEmpty;
+  return l10n.rdStorageItemCount(count);
 }
 
 /// Human-readable byte size: bytes → KB → MB → GB, with one decimal above the

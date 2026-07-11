@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/core/membership.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -40,10 +41,6 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
   /// billing is involved — this only swaps which mock layout renders.
   bool _member = false;
 
-  /// The "coming soon" stub every purchase affordance resolves to — makes it
-  /// unmistakable this is a placeholder, never a real checkout.
-  static const _stubMsg = 'Plus is coming soon — we’ll let you know.';
-
   @override
   void initState() {
     super.initState();
@@ -59,7 +56,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     await Membership.setPlus(true);
     if (mounted) {
       setState(() => _member = true);
-      _toast('Welcome to Mira Plus ✨');
+      _toast(AppLocalizations.of(context)!.rdPaywallWelcome);
     }
   }
 
@@ -67,7 +64,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     await Membership.setPlus(false);
     if (mounted) {
       setState(() => _member = false);
-      _toast('Your Plus membership was cancelled.');
+      _toast(AppLocalizations.of(context)!.rdPaywallCancelled);
     }
   }
 
@@ -142,17 +139,16 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
 
   // ══ upgrade view (non-member) ══════════════════════════════════════════
   Widget _upgradeView() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 60),
-        const _Hero(
+        _Hero(
           live: false,
-          badge: 'Mira Plus',
-          title: 'Give your memory\nroom to grow',
-          sub:
-              'Everything you capture, held for as long as you need — woven into '
-              'one calm, connected memory.',
+          badge: l10n.rdPaywallBadge,
+          title: l10n.rdPaywallTitle,
+          sub: l10n.rdPaywallSubtitle,
         ),
         const SizedBox(height: 26),
         _benefits(),
@@ -165,61 +161,60 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
         const SizedBox(height: 20),
         _links(),
         const SizedBox(height: 20),
-        const _Trust(
-          'Plus changes what Mira remembers — never who can see it. Your memory '
-          'stays private, always.',
-        ),
+        _Trust(l10n.rdPaywallPrivacyNote),
       ],
     );
   }
 
   Widget _benefits() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
-      children: const [
+      children: [
         _Benefit(
           icon:
               '<path d="M4 7c0-1 .9-2 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M4 11h16"/>',
-          title: 'Unlimited memories',
-          sub: 'Never hit a cap — Free holds 2,000.',
+          title: l10n.rdPaywallFeatUnlimitedTitle,
+          sub: l10n.rdPaywallFeatUnlimitedSub,
         ),
         _Benefit(
           icon:
               '<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="10" r="2.4"/><circle cx="9" cy="18" r="2.4"/><path d="M8 7.5 15.5 9.5M8.5 16 16 11.5"/>',
-          title: 'The full memory graph',
-          sub: 'See every connection, not just recent ones.',
+          title: l10n.rdPaywallFeatGraphTitle,
+          sub: l10n.rdPaywallFeatGraphSub,
         ),
         _Benefit(
           icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-          title: 'Longer history & voice',
-          sub: 'Keep years of memories and 10-min captures.',
+          title: l10n.rdPaywallFeatVoiceTitle,
+          sub: l10n.rdPaywallFeatVoiceSub,
         ),
         _Benefit(
           icon:
               '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
-          title: 'Connect everything',
-          sub: 'All your apps — Free links two.',
+          title: l10n.rdPaywallFeatConnectTitle,
+          sub: l10n.rdPaywallFeatConnectSub,
         ),
         _Benefit(
           icon: '<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 3v9l6 3"/>',
-          title: 'Daily Brief & smart reminders',
-          sub: 'Mira resurfaces things at the right moment.',
+          title: l10n.rdPaywallFeatBriefTitle,
+          sub: l10n.rdPaywallFeatBriefSub,
         ),
       ],
     );
   }
 
   Widget _plans() {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: _PlanCard(
             selected: _plan == _Plan.annual,
-            save: '2 months free',
-            name: 'Annual',
+            save: l10n.rdPaywallPlanSaveBadge,
+            name: l10n.rdPaywallPlanAnnual,
             price: '\$6',
-            per: '/mo',
-            note: '\$72 billed yearly',
+            per: l10n.rdPaywallPlanPerMonth,
+            note: l10n.rdPaywallPlanAnnualNote,
             onTap: () => setState(() => _plan = _Plan.annual),
           ),
         ),
@@ -227,10 +222,10 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
         Expanded(
           child: _PlanCard(
             selected: _plan == _Plan.monthly,
-            name: 'Monthly',
+            name: l10n.rdPaywallPlanMonthly,
             price: '\$8',
-            per: '/mo',
-            note: 'billed monthly',
+            per: l10n.rdPaywallPlanPerMonth,
+            note: l10n.rdPaywallPlanMonthlyNote,
             onTap: () => setState(() => _plan = _Plan.monthly),
           ),
         ),
@@ -239,8 +234,9 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
   }
 
   Widget _cta() {
+    final l10n = AppLocalizations.of(context)!;
     return _PrimaryButton(
-      label: 'Try Plus free for 14 days',
+      label: l10n.rdPaywallCtaTrial,
       height: 54,
       // No real checkout (no billing backend); flips the shared Plus flag so
       // the member view + Account plan row update.
@@ -250,13 +246,14 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
 
   Widget _fine() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     final then =
-        _plan == _Plan.annual ? 'Then \$72/year' : 'Then \$8/month';
+        _plan == _Plan.annual ? l10n.rdPaywallThenAnnual : l10n.rdPaywallThenMonthly;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 290),
         child: Text(
-          '$then · cancel anytime.\nNo charge today — we’ll remind you before it ends.',
+          l10n.rdPaywallFinePrint(then),
           textAlign: TextAlign.center,
           style: GoogleFonts.vazirmatn(
             fontSize: 12,
@@ -269,15 +266,16 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
   }
 
   Widget _links() {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _LinkButton('Restore purchase', onTap: () => _toast(_stubMsg)),
+        _LinkButton(l10n.rdPaywallRestore, onTap: () => _toast(l10n.rdPaywallComingSoon)),
         _linkDot(),
-        _LinkButton('Terms', onTap: () => _toast('Terms open in your browser.')),
+        _LinkButton(l10n.rdPaywallTerms, onTap: () => _toast(l10n.rdPaywallTermsToast)),
         _linkDot(),
-        _LinkButton('Privacy',
-            onTap: () => _toast('Privacy opens in your browser.')),
+        _LinkButton(l10n.rdPaywallPrivacy,
+            onTap: () => _toast(l10n.rdPaywallPrivacyToast)),
       ],
     );
   }
@@ -294,38 +292,36 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
 
   // ══ member view (active Plus) ══════════════════════════════════════════
   Widget _memberView() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 60),
-        const _Hero(
+        _Hero(
           live: true,
-          badge: 'Mira Plus · Active',
-          title: 'You have room\nto remember',
-          sub:
-              'Thank you for being on Plus. Everything you capture is held in '
-              'full — no caps, no forgetting.',
+          badge: l10n.rdPaywallActiveBadge,
+          title: l10n.rdPaywallActiveTitle,
+          sub: l10n.rdPaywallActiveSubtitle,
         ),
         const SizedBox(height: 26),
-        _memCard(),
+        _memCard(l10n),
         const SizedBox(height: 18),
-        _usage(),
+        _usage(l10n),
         const SizedBox(height: 26),
-        _perksLabel(),
+        _perksLabel(l10n),
         const SizedBox(height: 10),
-        _perks(),
+        _perks(l10n),
         const SizedBox(height: 26),
         _PrimaryButton(
-          label: 'Manage subscription',
+          label: l10n.rdPaywallManage,
           height: 52,
-          onTap: () => _toast(_stubMsg),
+          onTap: () => _toast(l10n.rdPaywallComingSoon),
         ),
         const SizedBox(height: 9),
         _cancel(),
         const SizedBox(height: 20),
-        const _Trust(
-          'If you ever cancel, nothing is deleted — your memories stay, and '
-          'captures pause at the Free limit.',
+        _Trust(
+          l10n.rdPaywallCancelNote,
           icon:
               '<rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
         ),
@@ -333,7 +329,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     );
   }
 
-  Widget _memCard() {
+  Widget _memCard(AppLocalizations l10n) {
     final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -344,11 +340,11 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
       ),
       child: Column(
         children: [
-          _memRow('Plan', 'Annual · \$6/mo'),
+          _memRow(l10n.rdPaywallMemPlan, l10n.rdPaywallMemPlanValue),
           Divider(height: 1, thickness: 1, color: rd.line),
-          _memRow('Renews', 'Aug 12, 2025'),
+          _memRow(l10n.rdPaywallMemRenews, l10n.rdPaywallMemRenewsValue),
           Divider(height: 1, thickness: 1, color: rd.line),
-          _memRow('Payment', 'Apple ID'),
+          _memRow(l10n.rdPaywallMemPayment, l10n.rdPaywallMemPaymentValue),
         ],
       ),
     );
@@ -376,7 +372,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     );
   }
 
-  Widget _usage() {
+  Widget _usage(AppLocalizations l10n) {
     final rd = context.rd;
     // Bar track has no palette token: keep the exact light literal, darken for
     // dark mode (mirrors the neutral-track pattern in rd_settings.dart).
@@ -399,31 +395,19 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Memories held',
+                l10n.rdPaywallMemoriesHeld,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w600,
                   color: rd.ink,
                 ),
               ),
-              Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(text: '1,284 '),
-                    TextSpan(
-                      text: '· unlimited',
-                      style: GoogleFonts.vazirmatn(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: rd.success,
-                      ),
-                    ),
-                  ],
-                  style: GoogleFonts.dosis(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: rd.ink,
-                  ),
+              Text(
+                l10n.rdPaywallMemoriesCount('1,284'),
+                style: GoogleFonts.dosis(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: rd.ink,
                 ),
               ),
             ],
@@ -449,7 +433,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
           ),
           const SizedBox(height: 9),
           Text(
-            'Growing calmly. On Free this would have stopped at 2,000.',
+            l10n.rdPaywallMemoriesGrowth,
             style: GoogleFonts.vazirmatn(
               fontSize: 12,
               height: 1.45,
@@ -461,11 +445,11 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     );
   }
 
-  Widget _perksLabel() {
+  Widget _perksLabel(AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(
-        'YOUR PLUS PERKS',
+        l10n.rdPaywallPerksLabel,
         style: GoogleFonts.dosis(
           fontSize: 12.5,
           fontWeight: FontWeight.w700,
@@ -476,33 +460,34 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
     );
   }
 
-  Widget _perks() {
+  Widget _perks(AppLocalizations l10n) {
     return Column(
-      children: const [
+      children: [
         _Perk(
           icon:
               '<path d="M4 7c0-1 .9-2 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M4 11h16"/>',
-          title: 'Unlimited memories',
+          title: l10n.rdPaywallPerkUnlimited,
         ),
         _Perk(
           icon:
               '<circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="10" r="2.4"/><circle cx="9" cy="18" r="2.4"/><path d="M8 7.5 15.5 9.5M8.5 16 16 11.5"/>',
-          title: 'Full memory graph',
+          title: l10n.rdPaywallPerkGraph,
         ),
         _Perk(
           icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-          title: 'Longer history & 10-min voice',
+          title: l10n.rdPaywallPerkVoice,
         ),
         _Perk(
           icon:
               '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
-          title: 'Unlimited connected apps',
+          title: l10n.rdPaywallPerkConnect,
         ),
       ],
     );
   }
 
   Widget _cancel() {
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       // No real store call; flips the shared Plus flag back to Free.
@@ -511,7 +496,7 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
         height: 48,
         alignment: Alignment.center,
         child: Text(
-          'Cancel Plus',
+          l10n.rdPaywallCancelCta,
           style: GoogleFonts.vazirmatn(
             fontSize: 13.5,
             fontWeight: FontWeight.w500,
@@ -1082,6 +1067,7 @@ class _DemoToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final trayBg = isDark
         ? rd.card.withValues(alpha: 0.85)
@@ -1102,9 +1088,9 @@ class _DemoToggle extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _seg('Free', !member, onFree),
+          _seg(l10n.rdPaywallDemoFree, !member, onFree),
           const SizedBox(width: 3),
-          _seg('Plus member', member, onPlus),
+          _seg(l10n.rdPaywallDemoPlus, member, onPlus),
         ],
       ),
     );

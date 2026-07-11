@@ -97,7 +97,7 @@ class RdSplashScreen extends StatelessWidget {
               SizedBox(
                 width: 260,
                 child: Text(
-                  'A second mind. For when you don’t want to forget anything.',
+                  l10n.rdOnboardingTagline,
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14,
                     height: 1.5,
@@ -107,7 +107,7 @@ class RdSplashScreen extends StatelessWidget {
               ),
               const Spacer(flex: 4),
               _ObButton(
-                label: 'See how it works',
+                label: l10n.rdOnboardingSeeHow,
                 variant: _ObVariant.navy,
                 onTap: () => go('login'),
               ),
@@ -146,7 +146,7 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
     if (_busy) return;
     final email = _email.text.trim();
     if (!email.contains('@') || email.length < 5) {
-      _authError(context, 'Enter a valid email address.');
+      _authError(context, AppLocalizations.of(context)!.rdOnboardingAuthInvalidEmail);
       return;
     }
     setState(() => _busy = true);
@@ -157,7 +157,7 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
       if (!mounted) return;
       widget.go(res.inviteRequired ? 'invite' : 'email', arg: email);
     } catch (_) {
-      if (mounted) _authError(context, 'Could not send a code. Try again.');
+      if (mounted) _authError(context, AppLocalizations.of(context)!.rdOnboardingAuthCodeFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -182,7 +182,7 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
             arg: RdOnboardingArg(email: session.user.email));
       }
     } catch (_) {
-      if (mounted) _authError(context, 'Google sign-in failed.');
+      if (mounted) _authError(context, AppLocalizations.of(context)!.rdOnboardingGoogleFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -200,12 +200,12 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
           child: Column(
             children: [
               _ObHeader(
-                title: 'Login or sign up',
+                title: l10n.rdOnboardingAuthTitle,
                 onBack: () => widget.go('splash'),
               ),
               const SizedBox(height: 24),
               _ObInput(
-                hint: 'Enter Your Email',
+                hint: l10n.rdOnboardingEmailHint,
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.go,
@@ -214,7 +214,7 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
               ),
               const SizedBox(height: 14),
               _ObButton(
-                label: 'Continue',
+                label: l10n.rdOnboardingContinue,
                 variant: _ObVariant.navy,
                 loading: _busy,
                 onTap: _continue,
@@ -228,14 +228,14 @@ class _RdLoginScreenState extends State<RdLoginScreen> {
               ),
               const SizedBox(height: 12),
               _ObButton(
-                label: 'Continue with Apple',
+                label: l10n.rdOnboardingApple,
                 variant: _ObVariant.social,
                 leading: const _AppleIcon(),
-                onTap: () => _authError(context, 'Apple sign-in is coming soon.'),
+                onTap: () => _authError(context, l10n.rdOnboardingAppleSoon),
               ),
               const Spacer(),
               Text(
-                'If you are creating a new account,\nTerms & Conditions and Privacy Policy will apply.',
+                l10n.rdOnboardingLegal,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12,
@@ -284,7 +284,7 @@ class _RdInviteScreenState extends State<RdInviteScreen> {
     }
     final code = _code.text.trim();
     if (code.isEmpty) {
-      _authError(context, 'Enter your invite code.');
+      _authError(context, AppLocalizations.of(context)!.rdOnboardingInviteEmpty);
       return;
     }
     setState(() => _busy = true);
@@ -296,10 +296,10 @@ class _RdInviteScreenState extends State<RdInviteScreen> {
       if (res.accepted) {
         widget.go('email', arg: email);
       } else {
-        _authError(context, 'That invite code was not accepted.');
+        _authError(context, AppLocalizations.of(context)!.rdOnboardingInviteInvalid);
       }
     } catch (_) {
-      if (mounted) _authError(context, 'Could not verify the code. Try again.');
+      if (mounted) _authError(context, AppLocalizations.of(context)!.rdOnboardingInviteVerifyFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -307,19 +307,20 @@ class _RdInviteScreenState extends State<RdInviteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _ObFormScaffold(
       onBack: () => widget.go('login'),
       badge: RdIcons.shieldCheck,
-      title: 'You need an invite code to join Mira.',
-      desc: 'Enter your invite code',
+      title: l10n.rdOnboardingInviteRequired,
+      desc: l10n.rdOnboardingInviteHint,
       input: _ObInput(
-        hint: 'Code',
+        hint: l10n.rdOnboardingInviteHint,
         controller: _code,
         textInputAction: TextInputAction.go,
         onSubmitted: (_) => _submit(),
         autofocus: true,
       ),
-      ctaLabel: 'Enter',
+      ctaLabel: l10n.rdOnboardingEnter,
       ctaVariant: _ObVariant.peri,
       busy: _busy,
       onCta: _submit,
@@ -354,7 +355,7 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
       return;
     }
     if (_code.trim().length < 4) {
-      _authError(context, 'Enter the code we emailed you.');
+      _authError(context, AppLocalizations.of(context)!.rdOnboardingOtpRequired);
       return;
     }
     setState(() => _busy = true);
@@ -369,7 +370,7 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
         arg: RdOnboardingArg(email: email),
       );
     } catch (_) {
-      if (mounted) _authError(context, 'That code did not match. Try again.');
+      if (mounted) _authError(context, AppLocalizations.of(context)!.rdOnboardingOtpMismatch);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -380,15 +381,16 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
     if (email == null || _busy) return;
     try {
       await AppScope.servicesOf(context).authRepository.startEmailFlow(email);
-      if (mounted) _authError(context, 'We sent a new code.');
+      if (mounted) _authError(context, AppLocalizations.of(context)!.rdOnboardingOtpResent);
     } catch (_) {
-      if (mounted) _authError(context, 'Could not resend the code.');
+      if (mounted) _authError(context, AppLocalizations.of(context)!.rdOnboardingOtpResendFailed);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
@@ -402,7 +404,7 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
               const _ObBadge(icon: RdIcons.shield),
               const SizedBox(height: 16),
               Text(
-                'Check your email',
+                l10n.rdOnboardingCheckEmail,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.dosis(
                   fontSize: 22,
@@ -413,7 +415,7 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'We sent you a 6-digit code',
+                l10n.rdOnboardingOtpSent,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
@@ -432,14 +434,14 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Didn’t get the code? ',
+                    l10n.rdOnboardingOtpResendPrompt,
                     style:
                         GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
                   ),
                   GestureDetector(
                     onTap: _resend,
                     child: Text(
-                      'Resend',
+                      l10n.rdOnboardingResend,
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -451,7 +453,7 @@ class _RdEmailCodeScreenState extends State<RdEmailCodeScreen> {
               ),
               const Spacer(),
               _ObButton(
-                label: 'Enter',
+                label: l10n.rdOnboardingEnter,
                 variant: _ObVariant.peri,
                 loading: _busy,
                 onTap: _submit,
@@ -511,19 +513,20 @@ class _RdDetailsScreenState extends State<RdDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _ObFormScaffold(
       onBack: () => widget.go('email'),
       badge: RdIcons.user,
-      title: 'Your details',
-      desc: 'This is how Mira will greet you. You can change it later in Settings.',
+      title: l10n.rdOnboardingDetailsTitle,
+      desc: l10n.rdOnboardingDetailsDesc,
       input: _ObInput(
-        hint: 'your name',
+        hint: l10n.rdOnboardingNameHint,
         controller: _name,
         textInputAction: TextInputAction.go,
         onSubmitted: (_) => _next(),
         autofocus: true,
       ),
-      ctaLabel: 'Enter',
+      ctaLabel: l10n.rdOnboardingEnter,
       ctaVariant: _ObVariant.peri,
       onCta: _next,
     );
@@ -648,7 +651,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
               RdOrb(size: 120, ring: !_recording),
               const SizedBox(height: 26),
               Text(
-                'What do you want Mira to remember?',
+                l10n.rdOnboardingRememberTitle,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.dosis(
                   fontSize: 22,
@@ -659,7 +662,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Anything you don’t want to forget. An idea. A task. A link. Even a feeling.',
+                l10n.rdOnboardingRememberSub,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
@@ -682,7 +685,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'TAP TO STOP',
+                  l10n.rdListenTapToStop,
                   style: GoogleFonts.vazirmatn(
                     fontSize: 10,
                     color: rd.muted,
@@ -691,7 +694,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
                 ),
               ] else ...[
                 Text(
-                  'Press the button and speak or type',
+                  l10n.rdOnboardingRememberHint,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.vazirmatn(
                     fontSize: 13,
@@ -704,7 +707,7 @@ class _RdRememberScreenState extends State<RdRememberScreen> {
               ],
               const Spacer(),
               _ObButton(
-                label: 'Next',
+                label: l10n.rdOnboardingNext,
                 variant: _ObVariant.peri,
                 loading: _busy,
                 onTap: _busy ? () {} : _nextWithoutRecording,
@@ -763,7 +766,7 @@ class RdUnderstoodScreen extends StatelessWidget {
               Opacity(
                 opacity: 0.35,
                 child: Text(
-                  'What do you want Mira to remember?',
+                  l10n.rdOnboardingRememberTitle,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.dosis(
                     fontSize: 22,
@@ -775,7 +778,7 @@ class RdUnderstoodScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text(
-                'MIRA understands you',
+                l10n.rdOnboardingUnderstoodBrand,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 22,
@@ -785,7 +788,7 @@ class RdUnderstoodScreen extends StatelessWidget {
               ),
               const Spacer(),
               _ObButton(
-                label: 'Next',
+                label: l10n.rdOnboardingNext,
                 variant: _ObVariant.navy,
                 onTap: () => go('wizard', arg: ob),
               ),

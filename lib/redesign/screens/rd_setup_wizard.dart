@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -141,6 +142,48 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
       ? '${(n / 1000).toStringAsFixed(1).replaceAll('.0', '')}k'
       : '$n';
 
+  List<(String, String, String)> _tones(AppLocalizations l10n) => [
+        ('calm', l10n.rdSetupToneCalm, l10n.rdSetupToneCalmSub),
+        ('concise', l10n.rdSetupToneConcise, l10n.rdSetupToneConciseSub),
+        ('warm', l10n.rdSetupToneWarm, l10n.rdSetupToneWarmSub),
+      ];
+
+  List<(String, String, String)> _foci(AppLocalizations l10n) => [
+        ('work', l10n.rdSetupFocusWork, '<path d="M4 7h16v13H4zM8 7V4h8v3"/>'),
+        ('ideas', l10n.rdSetupFocusIdeas, '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10c1 1 1 2 1 3h6c0-1 0-2 1-3a6 6 0 0 0-4-10Z"/>'),
+        ('people', l10n.rdSetupFocusPeople, '<path d="M16 20v-2a4 4 0 0 0-8 0v2M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>'),
+        ('reading', l10n.rdSetupFocusReading, '<path d="M4 5a2 2 0 0 1 2-2h13v17H6a2 2 0 0 1-2-2zM19 3v17"/>'),
+        ('health', l10n.rdSetupFocusHealth, '<path d="M20.8 6.6a5 5 0 0 0-8.8-2 5 5 0 0 0-8.8 3.2C3.2 12 12 20 12 20s8.8-8 8.8-13.4Z"/>'),
+        ('money', l10n.rdSetupFocusMoney, '<path d="M12 2v20M17 6H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6H6"/>'),
+        ('travel', l10n.rdSetupFocusTravel, '<path d="M12 21c-4-5-7-8-7-11a7 7 0 0 1 14 0c0 3-3 6-7 11ZM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>'),
+        ('learning', l10n.rdSetupFocusLearning, '<path d="M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1 3 3 6 3s6-2 6-3v-5"/>'),
+      ];
+
+  List<(String, String, String)> _times(AppLocalizations l10n) => [
+        ('morning', l10n.rdSetupRhythmMorning, '7:00'),
+        ('midday', l10n.rdSetupRhythmMidday, '12:30'),
+        ('evening', l10n.rdSetupRhythmEvening, '18:00'),
+      ];
+
+  List<(Color, String, String, String)> _assurances(AppLocalizations l10n) => [
+        (const Color(0x181F8A5B), '<path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM12 14v3"/>', l10n.rdSetupPrivacyProcessed, l10n.rdSetupPrivacyProcessedSub),
+        (const Color(0x185B8DEF), '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9 12l2 2 4-4"/>', l10n.rdSetupPrivacyEncrypted, l10n.rdSetupPrivacyEncryptedSub),
+        (const Color(0x18E94848), '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM5.6 5.6l12.8 12.8"/>', l10n.rdSetupPrivacyNeverSold, l10n.rdSetupPrivacyNeverSoldSub),
+      ];
+
+  List<(String, String, String, Color, String)> _sourceList(AppLocalizations l10n) => [
+        ('calendar', l10n.rdSetupSourceCalendar, l10n.rdSetupSourceCalendarSub, const Color(0x18E94848), '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM2 9h20M8 3v3M16 3v3"/>'),
+        ('notes', l10n.rdSetupSourceNotes, l10n.rdSetupSourceNotesSub, const Color(0x18F0B545), '<path d="M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1ZM8 8h8M8 12h8M8 16h5"/>'),
+        ('photos', l10n.rdSetupSourcePhotos, l10n.rdSetupSourcePhotosSub, const Color(0x185B8DEF), '<path d="M3 5h18v14H3zM3 15l5-4 4 3 3-2 6 5"/>'),
+        ('gmail', l10n.rdSetupSourceGmail, l10n.rdSetupSourceGmailSub, const Color(0x18EA4335), '<path d="M3 5h18v14H3zM3 7l9 6 9-6"/>'),
+      ];
+
+  List<(String, Color, String)> _channels(AppLocalizations l10n) => [
+        (l10n.rdSetupChannelMessages, const Color(0x181F8A5B), '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+        (l10n.rdSetupChannelMail, const Color(0x185B8DEF), '<path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM3 6l9 7 9-7"/>'),
+        (l10n.rdSetupChannelCopyLink, const Color(0x188A6BEF), '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>'),
+      ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -189,6 +232,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
     VoidCallback? onCta,
     bool skip = false,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final progIdx = _inputSteps.indexOf(_step);
     return Column(
@@ -234,7 +278,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                     ? GestureDetector(
                         onTap: _next,
                         child: Text(
-                          'Skip',
+                          l10n.rdSetupSkip,
                           textAlign: TextAlign.right,
                           style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.muted),
                         ),
@@ -293,6 +337,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── welcome ─────────────────────────────────────────────────────────
   Widget _welcome() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Column(
       children: [
@@ -306,7 +351,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                   const RdOrb(size: 112),
                   const SizedBox(height: 30),
                   Text(
-                    'Let’s set up\nyour second mind.',
+                    l10n.rdSetupWelcomeTitle,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.dosis(
                       fontSize: 30,
@@ -319,7 +364,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                   SizedBox(
                     width: 280,
                     child: Text(
-                      'A few quick questions so Mira remembers the way you do. About two minutes — and you can change any of it later.',
+                      l10n.rdSetupWelcomeDesc,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13.5,
@@ -334,8 +379,8 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
           ),
         ),
         _ctaStack([
-          _WzButton(label: 'Begin setup', onTap: _next),
-          _WzButton(label: 'Skip for now', variant: _WzVariant.ghost, onTap: _finish),
+          _WzButton(label: l10n.rdSetupBeginSetup, onTap: _next),
+          _WzButton(label: l10n.rdSetupSkipForNow, variant: _WzVariant.ghost, onTap: _finish),
         ]),
       ],
     );
@@ -343,22 +388,23 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── address ─────────────────────────────────────────────────────────
   Widget _address() {
+    final l10n = AppLocalizations.of(context)!;
     return _chrome(
-      ctaLabel: 'Continue',
+      ctaLabel: l10n.rdSetupContinue,
       children: [
         _h('What should Mira\ncall you?'),
-        _desc('This is how your Brief and reminders will greet you.'),
+        _desc(l10n.rdSetupAddressDesc),
         const SizedBox(height: 20),
-        _WzInput(controller: _nameCtl, hint: 'Your name'),
-        _fieldLabel('And how should it speak?'),
-        for (final t in _tones) ...[
+        _WzInput(controller: _nameCtl, hint: l10n.rdSetupNameHint),
+        _fieldLabel(l10n.rdSetupToneLabel),
+        for (final t in _tones(l10n)) ...[
           _ToneCard(
             label: t.$2,
             sub: t.$3,
             on: _tone == t.$1,
             onTap: () => setState(() => _tone = t.$1),
           ),
-          if (t != _tones.last) const SizedBox(height: 10),
+          if (t != _tones(l10n).last) const SizedBox(height: 10),
         ],
       ],
     );
@@ -366,18 +412,19 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── focus ───────────────────────────────────────────────────────────
   Widget _focusStep() {
+    final l10n = AppLocalizations.of(context)!;
     return _chrome(
-      ctaLabel: _focus.isEmpty ? 'Pick a few' : 'Continue',
+      ctaLabel: _focus.isEmpty ? l10n.rdSetupPickFew : l10n.rdSetupContinue,
       skip: true,
       children: [
         _h('What matters\nto you?'),
-        _desc('Mira will cluster your memories around these. Choose any that fit.'),
+        _desc(l10n.rdSetupFocusDesc),
         const SizedBox(height: 22),
         Wrap(
           spacing: 10,
           runSpacing: 10,
           children: [
-            for (final f in _foci)
+            for (final f in _foci(l10n))
               _FocusChip(
                 label: f.$2,
                 icon: f.$3,
@@ -393,6 +440,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── people ──────────────────────────────────────────────────────────
   Widget _peopleStep() {
+    final l10n = AppLocalizations.of(context)!;
     void add() {
       final v = _peopleCtl.text.trim();
       if (v.isNotEmpty && !_people.contains(v)) {
@@ -402,15 +450,15 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
     }
 
     return _chrome(
-      ctaLabel: 'Continue',
+      ctaLabel: l10n.rdSetupContinue,
       skip: true,
       children: [
         _h('Who’s important\nto you?'),
-        _desc('Mira links what you capture to the people in your life. Add a few — first names are enough.'),
+        _desc(l10n.rdSetupPeopleDesc),
         const SizedBox(height: 22),
         Row(
           children: [
-            Expanded(child: _WzInput(controller: _peopleCtl, hint: 'Add a name', onSubmitted: (_) => add())),
+            Expanded(child: _WzInput(controller: _peopleCtl, hint: l10n.rdSetupPeopleHint, onSubmitted: (_) => add())),
             const SizedBox(width: 10),
             GestureDetector(
               onTap: add,
@@ -432,7 +480,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
         const SizedBox(height: 16),
         if (_people.isEmpty)
           Text(
-            'No one yet — Mira will still learn as you capture.',
+            l10n.rdSetupPeopleEmpty,
             style: GoogleFonts.vazirmatn(fontSize: 12.5, color: context.rd.faint),
           )
         else
@@ -453,15 +501,16 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── rhythm ──────────────────────────────────────────────────────────
   Widget _rhythm() {
+    final l10n = AppLocalizations.of(context)!;
     return _chrome(
-      ctaLabel: 'Continue',
+      ctaLabel: l10n.rdSetupContinue,
       children: [
         _h('When should your\nBrief arrive?'),
-        _desc('A calm once-a-day summary of what needs you — nothing more.'),
+        _desc(l10n.rdSetupRhythmDesc),
         const SizedBox(height: 22),
         Row(
           children: [
-            for (final t in _times) ...[
+            for (final t in _times(l10n)) ...[
               Expanded(
                 child: _TimeCard(
                   label: t.$2,
@@ -470,14 +519,14 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                   onTap: () => setState(() => _briefTime = t.$1),
                 ),
               ),
-              if (t != _times.last) const SizedBox(width: 10),
+              if (t != _times(l10n).last) const SizedBox(width: 10),
             ],
           ],
         ),
         const SizedBox(height: 14),
         _ToggleRow(
-          title: 'Quiet hours',
-          sub: 'No nudges 22:00 – 07:00',
+          title: l10n.rdSetupQuietHours,
+          sub: l10n.rdSetupQuietHoursSub,
           on: _quiet,
           onTap: () => setState(() => _quiet = !_quiet),
         ),
@@ -487,29 +536,30 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── privacy ─────────────────────────────────────────────────────────
   Widget _privacy() {
+    final l10n = AppLocalizations.of(context)!;
     return _chrome(
-      ctaLabel: 'Continue',
+      ctaLabel: l10n.rdSetupContinue,
       children: [
         _h('Your memory\nstays yours.'),
-        _desc('Before you connect anything, here’s the promise Mira is built on.'),
+        _desc(l10n.rdSetupPrivacyDesc),
         const SizedBox(height: 20),
-        for (final a in _assurances) ...[
+        for (final a in _assurances(l10n)) ...[
           _AssuranceRow(bg: a.$1, icon: a.$2, title: a.$3, sub: a.$4),
           const SizedBox(height: 10),
         ],
-        _fieldLabel('Your choices'),
+        _fieldLabel(l10n.rdSetupChoicesLabel),
         _ToggleRow(
           icon: '<path d="M4 12a8 8 0 0 1 14-5l2 2M20 12a8 8 0 0 1-14 5l-2-2M18 4v5h-5M6 20v-5h5"/>',
-          title: 'Sync across my devices',
-          sub: 'Encrypted backup so your memory follows you.',
+          title: l10n.rdSetupSyncDevices,
+          sub: l10n.rdSetupSyncDevicesSub,
           on: _syncOn,
           onTap: () => setState(() => _syncOn = !_syncOn),
         ),
         const SizedBox(height: 14),
         _ToggleRow(
           icon: '<path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/>',
-          title: 'Help improve Mira',
-          sub: 'Share anonymous, aggregated usage — never your content.',
+          title: l10n.rdSetupHelpImprove,
+          sub: l10n.rdSetupHelpImproveSub,
           on: _improveOn,
           onTap: () => setState(() => _improveOn = !_improveOn),
         ),
@@ -519,14 +569,15 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── sources ─────────────────────────────────────────────────────────
   Widget _sourcesStep() {
+    final l10n = AppLocalizations.of(context)!;
     return _chrome(
-      ctaLabel: 'Continue',
+      ctaLabel: l10n.rdSetupContinue,
       skip: true,
       children: [
         _h('Connect\nyour world.'),
-        _desc('Give Mira a head start. It only reads what you connect, and processes it privately.'),
+        _desc(l10n.rdSetupSourcesDesc),
         const SizedBox(height: 22),
-        for (final s in _sourceList) ...[
+        for (final s in _sourceList(l10n)) ...[
           _SourceRow(
             bg: s.$4,
             icon: s.$5,
@@ -544,19 +595,20 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── import ──────────────────────────────────────────────────────────
   Widget _importStep() {
+    final l10n = AppLocalizations.of(context)!;
     return _chrome(
-      ctaLabel: _imports.isEmpty ? 'Continue' : 'Import ${_fmtK(_importTotal)} notes',
+      ctaLabel: _imports.isEmpty ? l10n.rdSetupContinue : l10n.rdSetupImportCta(_fmtK(_importTotal)),
       skip: true,
       children: [
-        _h('Bring your\nnotes with you.'),
-        _desc('Already keep notes elsewhere? Import them once and Mira will weave them into your graph. Nothing is deleted from the original app.'),
+        _h(l10n.rdSetupImportTitle),
+        _desc(l10n.rdSetupImportDesc),
         const SizedBox(height: 22),
         for (final a in _importApps) ...[
           _ImportRow(
             bg: a.bg,
             icon: a.icon,
             title: a.label,
-            sub: '~${_fmtK(a.count)} notes found',
+            sub: l10n.rdSetupImportNotesFound(_fmtK(a.count)),
             on: _imports.contains(a.id),
             onTap: () => setState(() =>
                 _imports.contains(a.id) ? _imports.remove(a.id) : _imports.add(a.id)),
@@ -577,8 +629,8 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
             Expanded(
               child: Text(
                 _imports.isEmpty
-                    ? 'You can also import later from Settings.'
-                    : 'Mira will import in the background — you can start using it right away.',
+                    ? l10n.rdSetupImportLater
+                    : l10n.rdSetupImportBackground,
                 style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.5, color: context.rd.muted),
               ),
             ),
@@ -590,24 +642,25 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── permissions ─────────────────────────────────────────────────────
   Widget _permissions() {
+    final l10n = AppLocalizations.of(context)!;
     return _chrome(
-      ctaLabel: 'Continue',
+      ctaLabel: l10n.rdSetupContinue,
       children: [
-        _h('Let Mira\nhelp quietly.'),
-        _desc('Two permissions, both optional. Turn off anything, anytime.'),
+        _h(l10n.rdSetupPermissionsTitle),
+        _desc(l10n.rdSetupPermissionsDesc),
         const SizedBox(height: 22),
         _ToggleRow(
           icon: '<path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5 11a7 7 0 0 0 14 0M12 18v3"/>',
-          title: 'Microphone',
-          sub: 'So you can speak a memory anytime',
+          title: l10n.rdSetupMicTitle,
+          sub: l10n.rdSetupMicSub,
           on: _micOn,
           onTap: () => setState(() => _micOn = !_micOn),
         ),
         const SizedBox(height: 14),
         _ToggleRow(
           icon: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
-          title: 'Notifications',
-          sub: 'Only your Brief and reminders you set',
+          title: l10n.rdSetupNotifTitle,
+          sub: l10n.rdSetupNotifSub,
           on: _notifOn,
           onTap: () => setState(() => _notifOn = !_notifOn),
         ),
@@ -617,18 +670,13 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── weaving ─────────────────────────────────────────────────────────
   Widget _weaving() {
+    final l10n = AppLocalizations.of(context)!;
     final echoes = <String>[];
-    if (_focus.isNotEmpty) {
-      echoes.add('${_focus.length} focus ${_focus.length == 1 ? 'area' : 'areas'}');
-    }
-    if (_people.isNotEmpty) {
-      echoes.add('${_people.length} ${_people.length == 1 ? 'person' : 'people'}');
-    }
-    if (_sources.isNotEmpty) {
-      echoes.add('${_sources.length} ${_sources.length == 1 ? 'source' : 'sources'}');
-    }
-    if (_importTotal > 0) echoes.add('${_fmtK(_importTotal)} imported notes');
-    final line = echoes.isEmpty ? 'your preferences' : echoes.join(' · ');
+    if (_focus.isNotEmpty) echoes.add(l10n.rdSetupWeavingFocusAreas(_focus.length));
+    if (_people.isNotEmpty) echoes.add(l10n.rdSetupWeavingPeople(_people.length));
+    if (_sources.isNotEmpty) echoes.add(l10n.rdSetupWeavingSources(_sources.length));
+    if (_importTotal > 0) echoes.add(l10n.rdSetupWeavingImported(_fmtK(_importTotal)));
+    final line = echoes.isEmpty ? l10n.rdSetupWeavingPreferences : echoes.join(' · ');
     final rd = context.rd;
 
     return Center(
@@ -640,7 +688,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
             const RdOrb(size: 128),
             const SizedBox(height: 30),
             Text(
-              'Weaving your\nmemory…',
+              l10n.rdSetupWeavingTitle,
               textAlign: TextAlign.center,
               style: GoogleFonts.dosis(
                 fontSize: 30,
@@ -653,7 +701,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
             SizedBox(
               width: 260,
               child: Text(
-                'Mira is arranging $line into the shape of your mind.',
+                l10n.rdSetupWeavingDesc(line),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: rd.muted),
               ),
@@ -668,9 +716,10 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── ready ───────────────────────────────────────────────────────────
   Widget _ready() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final greet = _nameCtl.text.trim().isEmpty
-        ? 'you'
+        ? l10n.rdSetupReadyYou
         : _nameCtl.text.trim().split(' ').first;
     return Column(
       children: [
@@ -699,7 +748,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                   ),
                   const SizedBox(height: 26),
                   Text(
-                    'Your second\nmind is ready.',
+                    l10n.rdSetupReadyTitle,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.dosis(
                       fontSize: 30,
@@ -712,7 +761,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                   SizedBox(
                     width: 290,
                     child: Text(
-                      'Everything you capture from here, $greet, has a place to live — and a way back to you.',
+                      l10n.rdSetupReadyDesc(greet),
                       textAlign: TextAlign.center,
                       style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: rd.muted),
                     ),
@@ -724,14 +773,14 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
         ),
         _ctaStack([
           _WzButton(
-            label: 'Take a quick tour',
+            label: l10n.rdSetupTakeTour,
             onTap: () {
               setState(() => _tourI = 0);
               _setStep(_steps.indexOf('tour'));
             },
           ),
           _WzButton(
-            label: 'Skip the tour',
+            label: l10n.rdSetupSkipTour,
             variant: _WzVariant.ghost,
             onTap: () => _setStep(_steps.indexOf('invite')),
           ),
@@ -742,11 +791,12 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── tour (coach-marks over Home) ────────────────────────────────────
   Widget _tour() {
-    const stops = [
-      ('One place to capture', 'Type, speak, or snap a photo — everything you save starts right here.', 0.30, 62.0, 18.0, true),
-      ('Everything lands here', 'Each capture joins your timeline, already linked to what it relates to.', 0.50, 74.0, 14.0, true),
-      ('Capture from anywhere', 'Tap the mic any time — even mid-conversation — to save a thought in a breath.', 0.88, 76.0, 38.0, false),
-      ('Move around calmly', 'Home, Library, Canvas and your Daily Brief all live down here.', 0.94, 84.0, 20.0, false),
+    final l10n = AppLocalizations.of(context)!;
+    final stops = [
+      (l10n.rdSetupTour1Title, l10n.rdSetupTour1Body, 0.30, 62.0, 18.0, true),
+      (l10n.rdSetupTour2Title, l10n.rdSetupTour2Body, 0.50, 74.0, 14.0, true),
+      (l10n.rdSetupTour3Title, l10n.rdSetupTour3Body, 0.88, 76.0, 38.0, false),
+      (l10n.rdSetupTour4Title, l10n.rdSetupTour4Body, 0.94, 84.0, 20.0, false),
     ];
     final stop = stops[_tourI];
     final last = _tourI == stops.length - 1;
@@ -802,6 +852,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
 
   // ── invite (referral) ───────────────────────────────────────────────
   Widget _invite() {
+    final l10n = AppLocalizations.of(context)!;
     const code = 'MIRA-7F3K';
     final rd = context.rd;
     return Column(
@@ -846,7 +897,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                 SizedBox(
                   width: 300,
                   child: Text(
-                    'Mira is better with the people you think alongside. Invite a few — they skip the waitlist, and you both get a month of Plus.',
+                    l10n.rdSetupInviteDesc,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.5, color: rd.muted),
                   ),
@@ -856,11 +907,11 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                 const SizedBox(height: 14),
                 Row(
                   children: [
-                    for (final c in _channels) ...[
+                    for (final c in _channels(l10n)) ...[
                       Expanded(
                         child: _ChannelCard(bg: c.$2, icon: c.$3, label: c.$1),
                       ),
-                      if (c != _channels.last) const SizedBox(width: 10),
+                      if (c != _channels(l10n).last) const SizedBox(width: 10),
                     ],
                   ],
                 ),
@@ -869,14 +920,15 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
           ),
         ),
         _ctaStack([
-          _WzButton(label: 'Share your invite', onTap: _finish),
-          _WzButton(label: 'Maybe later', variant: _WzVariant.ghost, onTap: _finish),
+          _WzButton(label: l10n.rdSetupShareInvite, onTap: _finish),
+          _WzButton(label: l10n.rdSetupMaybeLater, variant: _WzVariant.ghost, onTap: _finish),
         ]),
       ],
     );
   }
 
   Widget _inviteCode(String code) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Container(
       width: double.infinity,
@@ -890,7 +942,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'YOUR INVITE CODE',
+            l10n.rdSetupInviteCodeLabel,
             style: GoogleFonts.vazirmatn(
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
@@ -938,7 +990,7 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _copied ? 'Copied' : 'Copy',
+                        _copied ? l10n.rdSetupCopied : l10n.rdSetupCopy,
                         style: GoogleFonts.vazirmatn(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -971,43 +1023,6 @@ class _RdSetupWizardState extends State<RdSetupWizard> {
   }
 }
 
-// ══ data ═══════════════════════════════════════════════════════════════
-const _tones = [
-  ('calm', 'Calm', 'Gentle, unhurried'),
-  ('concise', 'Concise', 'Short and clear'),
-  ('warm', 'Warm', 'Friendly, personal'),
-];
-
-const _foci = [
-  ('work', 'Work & projects', '<path d="M4 7h16v13H4zM8 7V4h8v3"/>'),
-  ('ideas', 'Ideas & sparks', '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10c1 1 1 2 1 3h6c0-1 0-2 1-3a6 6 0 0 0-4-10Z"/>'),
-  ('people', 'People', '<path d="M16 20v-2a4 4 0 0 0-8 0v2M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/>'),
-  ('reading', 'Reading & links', '<path d="M4 5a2 2 0 0 1 2-2h13v17H6a2 2 0 0 1-2-2zM19 3v17"/>'),
-  ('health', 'Health', '<path d="M20.8 6.6a5 5 0 0 0-8.8-2 5 5 0 0 0-8.8 3.2C3.2 12 12 20 12 20s8.8-8 8.8-13.4Z"/>'),
-  ('money', 'Money', '<path d="M12 2v20M17 6H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6H6"/>'),
-  ('travel', 'Travel & places', '<path d="M12 21c-4-5-7-8-7-11a7 7 0 0 1 14 0c0 3-3 6-7 11ZM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>'),
-  ('learning', 'Learning', '<path d="M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1 3 3 6 3s6-2 6-3v-5"/>'),
-];
-
-const _times = [
-  ('morning', 'Morning', '7:00'),
-  ('midday', 'Midday', '12:30'),
-  ('evening', 'Evening', '18:00'),
-];
-
-const _assurances = [
-  (Color(0x181F8A5B), '<path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1ZM12 14v3"/>', 'Processed privately', 'Your captures are analysed on-device whenever possible.'),
-  (Color(0x185B8DEF), '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9 12l2 2 4-4"/>', 'Encrypted end-to-end', 'Only you can read your memories — not even Mira can.'),
-  (Color(0x18E94848), '<path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM5.6 5.6l12.8 12.8"/>', 'Never sold, ever', 'We don’t sell or share your data. No ads, no exceptions.'),
-];
-
-const _sourceList = [
-  ('calendar', 'Calendar', 'Meetings feed your Brief', Color(0x18E94848), '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM2 9h20M8 3v3M16 3v3"/>'),
-  ('notes', 'Notes', 'Your written thoughts', Color(0x18F0B545), '<path d="M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1ZM8 8h8M8 12h8M8 16h5"/>'),
-  ('photos', 'Photos', 'Screenshots & scans', Color(0x185B8DEF), '<path d="M3 5h18v14H3zM3 15l5-4 4 3 3-2 6 5"/>'),
-  ('gmail', 'Gmail', 'Important mail', Color(0x18EA4335), '<path d="M3 5h18v14H3zM3 7l9 6 9-6"/>'),
-];
-
 class _ImportApp {
   const _ImportApp(this.id, this.label, this.count, this.bg, this.icon);
   final String id;
@@ -1024,12 +1039,6 @@ const _importApps = [
   _ImportApp('bear', 'Bear', 180, Color(0x22E86868), '<path d="M6 6a3 3 0 1 0-1 3M18 6a3 3 0 1 1 1 3M12 21a6 6 0 0 0 6-6c0-3-2.7-6-6-6s-6 3-6 6a6 6 0 0 0 6 6ZM10 15h4"/>'),
   _ImportApp('keep', 'Google Keep', 95, Color(0x22F0B545), '<path d="M9 3h6l4 6-7 12L5 9l4-6ZM9 3l3 6 3-6M5 9h14"/>'),
   _ImportApp('obsidian', 'Obsidian', 340, Color(0x227C6BEA), '<path d="M12 2l7 6-4 14H9L5 8l7-6ZM9 22l3-9 3 9M5 8l7 5 7-5"/>'),
-];
-
-const _channels = [
-  ('Messages', Color(0x181F8A5B), '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
-  ('Mail', Color(0x185B8DEF), '<path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM3 6l9 7 9-7"/>'),
-  ('Copy link', Color(0x188A6BEF), '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>'),
 ];
 
 // ══ shared widgets ═════════════════════════════════════════════════════
@@ -1669,6 +1678,7 @@ class _TourCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
       decoration: BoxDecoration(
@@ -1718,7 +1728,7 @@ class _TourCard extends StatelessWidget {
               if (!last)
                 GestureDetector(
                   onTap: onSkip,
-                  child: Text('Skip tour', style: GoogleFonts.vazirmatn(fontSize: 14, color: const Color(0xFF9A9A9A))),
+                  child: Text(l10n.rdSetupTourSkip, style: GoogleFonts.vazirmatn(fontSize: 14, color: const Color(0xFF9A9A9A))),
                 ),
               const Spacer(),
               GestureDetector(
@@ -1727,7 +1737,7 @@ class _TourCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
                   decoration: BoxDecoration(color: _navy, borderRadius: BorderRadius.circular(100)),
                   child: Text(
-                    last ? 'Finish' : 'Next',
+                    last ? l10n.rdSetupTourFinish : l10n.rdSetupTourNext,
                     style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
                   ),
                 ),

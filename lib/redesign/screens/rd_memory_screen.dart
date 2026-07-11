@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 
 import '../theme/rd_theme.dart';
@@ -80,14 +81,15 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   bool _editing = false;
   bool _edited = false;
   bool _saved = false;
+  final Set<int> _fixedFlags = {};
 
   bool _playing = false;
   double _pos = 0;
   double _speed = 1;
   Timer? _tick;
 
-  late String _title = widget.title ?? 'Untitled memory';
-  late String _body = widget.body ?? '';
+  late String _title;
+  late String _body;
   late final TextEditingController _titleCtl = TextEditingController();
   late final TextEditingController _bodyCtl = TextEditingController();
   final FocusNode _bodyFocus = FocusNode();
@@ -108,10 +110,24 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     .6, .38, .48, .7, .95, .68, .5, .34, .46, .64, .8, .58, .4, .3, .52, .68, .44, .36, .5, .26,
   ];
 
+  bool _l10nReady = false;
+
   @override
   void initState() {
     super.initState();
+    _title = widget.title ?? '';
+    _body = widget.body ?? '';
     if (widget.id != null) unawaited(_loadDetail());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_l10nReady) {
+      final l10n = AppLocalizations.of(context)!;
+      if (_title.isEmpty) _title = l10n.rdBriefFallbackUntitled;
+      _l10nReady = true;
+    }
   }
 
   @override
@@ -134,7 +150,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       final detail =
           await AppScope.servicesOf(context).graphRepository.fetchCaptureDetail(id);
       if (!mounted) return;
-      final parsed = _parseDetail(detail);
+      final l10n = AppLocalizations.of(context)!;
+      final parsed = _parseDetail(detail, l10n);
       final uiState = detail['uiState'] as Map<String, dynamic>? ?? const {};
       final pinned = uiState['pinned'] as bool?;
       setState(() {
@@ -158,7 +175,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     List<_Person> people,
     List<String> tags,
     String? insight,
-  }) _parseDetail(Map<String, dynamic> detail) {
+  }) _parseDetail(Map<String, dynamic> detail, AppLocalizations l10n) {
     final connections =
         detail['connections'] as Map<String, dynamic>? ?? const {};
     final nodes = (connections['nodes'] as List<dynamic>? ?? const [])
@@ -182,8 +199,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         links.add(_MemLink(
           _linkTypeFor(entityType, subtitle),
           title,
-          subtitle.isEmpty ? 'Connected memory' : subtitle,
-          'Linked',
+          subtitle.isEmpty ? l10n.rdMemoryConnectedMemory : subtitle,
+          l10n.rdMemoryLinked,
           id: nodeId,
         ));
       } else if (kind == 'ENTITY') {
@@ -205,7 +222,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       links: links.take(5).toList(),
       people: people,
       tags: tags,
-      insight: _buildInsight(links.length, people, tags),
+      insight: _buildInsight(links.length, people, tags, l10n),
     );
   }
 
@@ -233,24 +250,25 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   /// Writes a short, human insight from what Mira actually linked, so the
   /// "Mira noticed" card reflects real connections instead of the sample copy.
-  String? _buildInsight(int linkCount, List<_Person> people, List<String> tags) {
+  String? _buildInsight(
+    int linkCount,
+    List<_Person> people,
+    List<String> tags,
+    AppLocalizations l10n,
+  ) {
     final parts = <String>[];
     if (linkCount > 0) {
-      parts.add('linked it to $linkCount related '
-          '${linkCount == 1 ? 'memory' : 'memories'}');
+      parts.add(l10n.rdMemoryInsightLinked(linkCount));
     }
     if (people.isNotEmpty) {
       final names = people.map((p) => p.name).take(2).join(' and ');
-      parts.add('connected $names');
+      parts.add(l10n.rdMemoryInsightConnected(names));
     }
     if (tags.isNotEmpty) {
-      parts.add('tagged it ${tags.take(3).join(', ')}');
+      parts.add(l10n.rdMemoryInsightTagged(tags.take(3).join(', ')));
     }
     if (parts.isEmpty) return null;
-    final body = parts.length == 1
-        ? parts.first
-        : '${parts.sublist(0, parts.length - 1).join(', ')} and ${parts.last}';
-    return 'I read through this and $body so it stays easy to find.';
+    return l10n.rdMemoryInsightSummary(parts.join(', '));
   }
 
   /// Opens a connected memory when the link carries a real graph id; otherwise
@@ -329,12 +347,13 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   // to the backend best-effort. A null id (sample memory) or offline backend
   // leaves the optimistic UI as-is.
   void _togglePin() {
+    final l10n = AppLocalizations.of(context)!;
     final next = !_pinned;
     setState(() {
       _pinned = next;
       _menu = false;
     });
-    _toast(next ? 'Pinned' : 'Unpinned');
+    _toast(next ? l10n.rdMemoryPinned : l10n.rdMemoryUnpinned);
     unawaited(_persistPin(next));
   }
 
@@ -360,6 +379,44 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       _playing = false;
       _editing = true;
       _menu = false;
+      _fixedFlags.clear();
+    });
+  }
+
+  /// Words Mira may have transcribed with low confidence — capitalised names
+  /// mid-sentence and long uncommon tokens (design: flagged-word chips).
+  List<String> _transcriptFlags(String text) {
+    const skip = {
+      'I', 'The', 'So', 'Let', 'People', 'Circle', 'And', 'But', 'We', 'It',
+      'This', 'That', 'They', 'There', 'Then', 'When', 'What', 'Who', 'How',
+      'Why', 'Not', 'For', 'With', 'From', 'Our', 'Your', 'She', 'He',
+    };
+    final found = <String>[];
+    final seen = <String>{};
+    for (final m in RegExp(r'(?<=\s)[A-Z][a-z]{2,}').allMatches(text)) {
+      final w = m.group(0)!;
+      if (!skip.contains(w) && seen.add(w)) found.add(w);
+    }
+    for (final m in RegExp(r'\b[a-z]{9,}\b').allMatches(text)) {
+      final w = m.group(0)!;
+      if (seen.add(w)) found.add(w);
+    }
+    return found.take(6).toList();
+  }
+
+  void _jumpToFlagWord(String word, int index) {
+    final text = _bodyCtl.text;
+    final idx = text.indexOf(word);
+    if (idx >= 0) {
+      _bodyCtl.selection = TextSelection(baseOffset: idx, extentOffset: idx + word.length);
+      _bodyFocus.requestFocus();
+    }
+    setState(() {
+      if (_fixedFlags.contains(index)) {
+        _fixedFlags.remove(index);
+      } else {
+        _fixedFlags.add(index);
+      }
     });
   }
 
@@ -466,9 +523,11 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         await services.collectionsRepository.addItems(target.id, [id]);
       }
       if (!mounted) return;
-      _toast('Added to “${target.name}”');
+      final l10n = AppLocalizations.of(context)!;
+      _toast(l10n.rdMemoryAddedToCollection(target.name));
     } catch (_) {
-      _toast('Couldn’t add to collection. Check your connection.');
+      if (!mounted) return;
+      _toast(AppLocalizations.of(context)!.rdLibraryAddToCollectionFailed);
     }
   }
 
@@ -612,10 +671,13 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   Widget _typeRow() {
     final rd = context.rd;
-    final label = widget.isVoice ? 'Voice note · 0:34' : 'Note';
+    final l10n = AppLocalizations.of(context)!;
+    final label = widget.isVoice
+        ? l10n.rdMemoryVoiceNoteBadge('0:34')
+        : l10n.rdCaptureTypeNote;
     final time = _edited
-        ? 'Edited just now · today, 4:12 PM'
-        : (widget.isVoice ? 'Recorded 2h ago · today, 4:12 PM' : 'Captured 2h ago · today, 4:12 PM');
+        ? l10n.rdMemoryEditedJustNow
+        : (widget.isVoice ? l10n.rdMemoryRecordedAgo : l10n.rdMemoryCapturedAgo);
     return Row(
       children: [
         Container(
@@ -641,6 +703,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   }
 
   Widget _editBar() {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Container(
@@ -653,9 +716,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             const SizedBox(width: 9),
             Expanded(
               child: Text(
-                widget.isVoice
-                    ? 'Editing the transcript — Mira will re-read it and refresh connections when you save.'
-                    : 'Editing note — Mira will re-read it and refresh connections when you save.',
+                widget.isVoice ? l10n.rdMemoryEditTranscriptHint : l10n.rdMemoryEditNoteHint,
                 style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.4, color: const Color(0xFF46485A)),
               ),
             ),
@@ -667,36 +728,94 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   Widget _titleInput() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return TextField(
       controller: _titleCtl,
       cursorColor: rd.navy,
       maxLines: null,
       style: GoogleFonts.dosis(fontSize: 27, fontWeight: FontWeight.w700, height: 1.18, color: rd.ink),
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         isCollapsed: true,
-        contentPadding: EdgeInsets.only(bottom: 6),
-        hintText: 'Title',
-        border: UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
-        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
-        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
+        contentPadding: const EdgeInsets.only(bottom: 6),
+        hintText: l10n.rdMemoryTitleHint,
+        border: const UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
+        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
+        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
       ),
     );
   }
 
   Widget _bodyInput() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final flags = widget.isVoice ? _transcriptFlags(_bodyCtl.text) : const <String>[];
+    final unresolved = flags.length - _fixedFlags.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.isVoice) ...[
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE9F1EC),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _playing = !_playing),
+                    child: RdIcon(
+                      _playing
+                          ? '<rect x="6" y="5" width="4" height="14" rx="1.3"/><rect x="14" y="5" width="4" height="14" rx="1.3"/>'
+                          : '<path d="M8 5v14l11-7z"/>',
+                      size: 16,
+                      color: const Color(0xFF1F8A5B),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    height: 28,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: List.generate(24, (i) {
+                        final h = 12.0 + (i % 5) * 4.0;
+                        final done = _playing && i / 24 < _pos / _clip;
+                        return Expanded(
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 1),
+                            height: h,
+                            decoration: BoxDecoration(
+                              color: done ? const Color(0xFF1F8A5B) : const Color(0xFFD8E8DF),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         TextField(
           controller: _bodyCtl,
           focusNode: _bodyFocus,
+          onChanged: widget.isVoice ? (_) => setState(() {}) : null,
           cursorColor: rd.navy,
           maxLines: widget.isVoice ? 7 : 5,
           minLines: widget.isVoice ? 7 : 5,
           style: GoogleFonts.vazirmatn(fontSize: 15.5, height: 1.62, color: rd.ink),
           decoration: InputDecoration(
-            hintText: widget.isVoice ? 'Transcript…' : 'Write your note…',
+            hintText: widget.isVoice ? l10n.rdMemoryTranscriptHint : l10n.rdMemoryWriteNoteHint,
             filled: true,
             fillColor: rd.card,
             contentPadding: const EdgeInsets.all(14),
@@ -705,12 +824,65 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: _peri, width: 1.5)),
           ),
         ),
+        if (widget.isVoice && flags.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const RdIcon('<path d="M12 9v4M12 17h.01"/>', size: 14, stroke: '#C58E3F', strokeWidth: 2),
+                  const SizedBox(width: 6),
+                  Text(
+                    unresolved <= 0
+                        ? l10n.rdMemoryFlagsAllChecked
+                        : l10n.rdMemoryFlagsUnresolved(unresolved),
+                    style: GoogleFonts.vazirmatn(fontSize: 12, color: const Color(0xFF8A6D2F)),
+                  ),
+                ],
+              ),
+              for (var i = 0; i < flags.length; i++)
+                GestureDetector(
+                  onTap: () => _jumpToFlagWord(flags[i], i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _fixedFlags.contains(i) ? const Color(0xFFE7F3EC) : const Color(0xFFFBF3E4),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: _fixedFlags.contains(i)
+                            ? const Color(0xFF1F8A5B).withValues(alpha: 0.3)
+                            : const Color(0xFFC58E3F).withValues(alpha: 0.32),
+                      ),
+                    ),
+                    child: Text(
+                      flags[i],
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: _fixedFlags.contains(i) ? const Color(0xFF1F8A5B) : const Color(0xFF8A6D2F),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.rdMemoryFlagsHint,
+            style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.faint),
+          ),
+        ],
       ],
     );
   }
 
   Widget _capture() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     if (widget.isVoice) {
       return Container(
         padding: const EdgeInsets.all(16),
@@ -726,7 +898,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               children: [
                 _miniOrb(),
                 const SizedBox(width: 8),
-                Text('TRANSCRIBED BY MIRA',
+                Text(l10n.rdMemoryTranscribedByMira,
                     style: GoogleFonts.vazirmatn(fontSize: 11.5, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: rd.peri)),
               ],
             ),
@@ -823,6 +995,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   }
 
   Widget _insight() {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -837,7 +1010,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             children: [
               _miniOrb(size: 24),
               const SizedBox(width: 10),
-              Text('Mira noticed', style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: _navy)),
+              Text(l10n.rdMemoryMiraNoticed, style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: _navy)),
             ],
           ),
           const SizedBox(height: 11),
@@ -864,13 +1037,15 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Reminder',
+                        Text(l10n.rdMemoryReminder,
                             style: GoogleFonts.vazirmatn(fontSize: 13.5, fontWeight: FontWeight.w600, color: _ink)),
                         const SizedBox(height: 2),
                         Text(
                           _reminded
-                              ? (widget.isVoice ? 'On — tracked in your Brief' : 'On — Mira will bring this up')
-                              : 'Off — tap to remind me',
+                              ? (widget.isVoice
+                                  ? l10n.rdMemoryReminderOnBrief
+                                  : l10n.rdMemoryReminderOnBringUp)
+                              : l10n.rdMemoryReminderOff,
                           style: GoogleFonts.vazirmatn(fontSize: 11.5, color: _muted),
                         ),
                       ],
@@ -888,6 +1063,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   Widget _connections() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     final links = _links;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -899,12 +1075,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               children: [
                 RdIcon('<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7"/><path d="M8.2 13.2 15.8 17"/>', size: 16, stroke: '#7E8BC9', strokeWidth: 1.9, color: rd.peri),
                 const SizedBox(width: 8),
-                Text('Connected memories', style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: rd.ink)),
+                Text(l10n.rdMemoryConnectedMemories, style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: rd.ink)),
               ],
             ),
             GestureDetector(
               onTap: () => widget.go('canvas'),
-              child: Text('See in Canvas', style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.navy)),
+              child: Text(l10n.rdMemorySeeInCanvas, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.navy)),
             ),
           ],
         ),
@@ -923,6 +1099,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     final people = _realPeople ?? const <_Person>[];
     final tags = _realTags ?? const <String>[];
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -930,7 +1107,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           children: [
             RdIcon('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', size: 16, stroke: '#7E8BC9', strokeWidth: 1.9, color: rd.peri),
             const SizedBox(width: 8),
-            Text('People & tags', style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: rd.ink)),
+            Text(l10n.rdMemoryPeopleAndTags, style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: rd.ink)),
           ],
         ),
         const SizedBox(height: 12),
@@ -970,13 +1147,14 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   Widget _source() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
         RdIcon(widget.isVoice ? _voiceIcon : _noteIcon, size: 15, stroke: '#B7B8BE', strokeWidth: 1.8, color: rd.faint),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
-            widget.isVoice ? 'Recorded on Home · iPhone · not shared' : 'Typed on Home · iPhone · not shared',
+            widget.isVoice ? l10n.rdMemorySourceVoice : l10n.rdMemorySourceNote,
             style: GoogleFonts.vazirmatn(fontSize: 11.5, color: rd.faint),
           ),
         ),
@@ -987,22 +1165,23 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   // ── action bar ──────────────────────────────────────────────────────
   Widget _actionBar() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: rd.line, width: 1))),
       child: _editing
           ? Row(
               children: [
-                _ghostButton('Cancel', () => setState(() => _editing = false)),
+                _ghostButton(l10n.rdCommonCancel, () => setState(() => _editing = false)),
                 const SizedBox(width: 10),
-                Expanded(child: _primaryButton('Save changes', '<path d="M20 6 9 17l-5-5"/>', _saveEdit)),
+                Expanded(child: _primaryButton(l10n.rdMemorySaveChanges, '<path d="M20 6 9 17l-5-5"/>', _saveEdit)),
               ],
             )
           : Row(
               children: [
                 Expanded(
                   child: _primaryButton(
-                    'Ask Mira about this',
+                    l10n.rdMemoryAskMiraAboutThis,
                     '<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/>',
                     () => widget.go(
                       'chat',
@@ -1074,6 +1253,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   // ── overlays ────────────────────────────────────────────────────────
   Widget _menuOverlay() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Positioned.fill(
       child: Stack(
         children: [
@@ -1093,12 +1273,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _menuItem('<path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>', _pinned ? 'Unpin' : 'Pin to top', _togglePin),
-                  _menuItem('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', 'Edit note', _startEdit),
-                  _menuItem('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/>', 'Add to collection', _addToCollection),
-                  _menuItem('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>', 'Share memory', _openShare),
+                  _menuItem('<path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>', _pinned ? l10n.rdMemoryUnpin : l10n.rdMemoryPinToTop, _togglePin),
+                  _menuItem('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', l10n.rdMemoryEditNote, _startEdit),
+                  _menuItem('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/>', l10n.rdCollectionAddTitle, _addToCollection),
+                  _menuItem('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>', l10n.rdMemoryShareMemory, _openShare),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), child: Divider(height: 1, color: rd.line)),
-                  _menuItem('<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>', 'Delete memory', () => setState(() { _menu = false; _confirm = true; }), danger: true),
+                  _menuItem('<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>', l10n.graphDeleteMemory, () => setState(() { _menu = false; _confirm = true; }), danger: true),
                 ],
               ),
             ),
@@ -1131,6 +1311,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   // overlay pill, distinct from the plain [_toast] SnackBar used elsewhere.
   Widget _savedToast() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Positioned(
       left: 0,
       right: 0,
@@ -1155,7 +1336,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               ),
               const SizedBox(width: 10),
               Text(
-                widget.isVoice ? 'Saved — Mira re-read your transcript' : 'Saved — Mira re-read this note',
+                widget.isVoice ? l10n.rdMemorySavedTranscript : l10n.rdMemorySavedNote,
                 style: GoogleFonts.vazirmatn(fontSize: 13.5, fontWeight: FontWeight.w500, color: rd.bg),
               ),
             ],
@@ -1184,7 +1365,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     await Clipboard.setData(ClipboardData(text: _shareText));
     if (!mounted) return;
     setState(() => _sharing = false);
-    _toast('Copied to clipboard');
+    _toast(AppLocalizations.of(context)!.rdMemoryCopiedToClipboard);
   }
 
   /// Hand off to a real OS app (mail / messaging). Falls back to a toast when no
@@ -1194,12 +1375,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!mounted) return;
       if (!ok) {
-        _toast('No app available for that');
+        _toast(AppLocalizations.of(context)!.rdMemoryNoAppAvailable);
         return;
       }
       setState(() => _sharing = false);
     } catch (_) {
-      if (mounted) _toast('No app available for that');
+      if (mounted) _toast(AppLocalizations.of(context)!.rdMemoryNoAppAvailable);
     }
   }
 
@@ -1213,6 +1394,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   Widget _shareSheet() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Positioned.fill(
       child: Stack(
         children: [
@@ -1246,7 +1428,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                           borderRadius: BorderRadius.circular(100)),
                     ),
                   ),
-                  Text('Share memory',
+                  Text(l10n.rdMemoryShareMemory,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.dosis(
                           fontSize: 19,
@@ -1264,21 +1446,21 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                     _linkCopied
                         ? '<path d="M20 6 9 17l-5-5"/>'
                         : '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
-                    _linkCopied ? 'Link copied' : 'Copy link',
+                    _linkCopied ? l10n.rdMemoryLinkCopied : l10n.rdMemoryCopyLink,
                     _copyLink,
                     highlight: _linkCopied,
                   ),
                   _shareRow(
                       '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>',
-                      'Copy as text',
+                      l10n.rdMemoryCopyAsText,
                       _copyText),
                   _shareRow(
                       '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>',
-                      'Email',
+                      l10n.rdMemoryEmail,
                       _shareMail),
                   _shareRow(
                       '<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/>',
-                      'Message',
+                      l10n.rdMemoryMessage,
                       _shareMessage),
                   const SizedBox(height: 8),
                   GestureDetector(
@@ -1286,7 +1468,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                     child: Container(
                         height: 48,
                         alignment: Alignment.center,
-                        child: Text('Done',
+                        child: Text(l10n.rdCommonDone,
                             style: GoogleFonts.vazirmatn(
                                 fontSize: 14.5,
                                 fontWeight: FontWeight.w600,
@@ -1340,6 +1522,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   Widget _deleteSheet() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final connectionCount = _links.isNotEmpty ? _links.length : 3;
     return Positioned.fill(
       child: Stack(
         children: [
@@ -1369,17 +1553,11 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                     child: const Center(child: RdIcon('<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>', size: 22, stroke: '#C0392B', strokeWidth: 1.8)),
                   ),
                   const SizedBox(height: 16),
-                  Text('Delete this memory?', style: GoogleFonts.dosis(fontSize: 21, fontWeight: FontWeight.w700, color: rd.ink)),
+                  Text(l10n.graphDeleteConfirmTitle, style: GoogleFonts.dosis(fontSize: 21, fontWeight: FontWeight.w700, color: rd.ink)),
                   const SizedBox(height: 9),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(text: '“$_title” and its '),
-                        TextSpan(text: '3 connections', style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w600, color: rd.ink)),
-                        const TextSpan(text: ' will be removed from your Library. This can’t be undone.'),
-                      ],
-                      style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.55, color: rd.muted),
-                    ),
+                  Text(
+                    l10n.rdMemoryDeleteConfirmBody(_title, connectionCount),
+                    style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.55, color: rd.muted),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 22),
@@ -1390,7 +1568,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                       height: 52,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(color: _danger, borderRadius: BorderRadius.circular(14)),
-                      child: Text('Delete memory', style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                      child: Text(l10n.graphDeleteMemory, style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1400,7 +1578,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                       width: double.infinity,
                       height: 48,
                       alignment: Alignment.center,
-                      child: Text('Keep it', style: GoogleFonts.vazirmatn(fontSize: 14.5, fontWeight: FontWeight.w600, color: rd.muted)),
+                      child: Text(l10n.rdMemoryKeepIt, style: GoogleFonts.vazirmatn(fontSize: 14.5, fontWeight: FontWeight.w600, color: rd.muted)),
                     ),
                   ),
                 ],

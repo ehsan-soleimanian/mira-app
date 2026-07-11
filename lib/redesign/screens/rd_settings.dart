@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/core/membership.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 
 import '../theme/rd_colors.dart';
@@ -42,10 +43,6 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
   bool _faceId = true;
   bool _autoLock = true;
 
-  /// Neutral placeholder name shown until the real profile loads, or if it
-  /// can't — never a fabricated identity.
-  static const _placeholderName = 'Your account';
-
   /// The signed-in user from `authRepository.fetchMe()`; null until loaded /
   /// unreachable, in which case a neutral placeholder shows.
   AuthUser? _user;
@@ -70,9 +67,9 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
     }
   }
 
-  String get _name {
+  String _name(AppLocalizations l10n) {
     final name = _user?.displayName.trim() ?? '';
-    return name.isEmpty ? _placeholderName : name;
+    return name.isEmpty ? l10n.rdAccountPlaceholderName : name;
   }
 
   String get _email {
@@ -83,7 +80,7 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
   /// First-letter initials for the avatar (e.g. "Ada Lovelace" → "AL").
   String get _initials {
     final parts =
-        _name.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+        _name(AppLocalizations.of(context)!).split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
     return (parts.first.characters.first + parts.last.characters.first)
@@ -115,46 +112,47 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
       // Best-effort — clear whatever we can and still return to the login flow.
     }
     if (!mounted) return;
-    _toast('Signed out');
+    _toast(AppLocalizations.of(context)!.rdAccountSignedOut);
     widget.go('splash'); // reset the whole authed stack back to first-run
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _AcScaffold(
       onBack: widget.onBack,
-      title: 'Account',
+      title: l10n.rdAccountTitle,
       children: [
-        _AcProfile(name: _name, email: _email, initials: _initials),
+        _AcProfile(name: _name(l10n), email: _email, initials: _initials),
         const SizedBox(height: 8),
         _AcSection(
-          label: 'Profile',
+          label: l10n.rdAccountSectionProfile,
           rows: [
-            _AcRow(icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', title: 'Name', value: _name),
-            _AcRow(icon: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>', title: 'Email', value: _email),
-            const _AcRow(icon: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>', title: 'Phone', value: '+1 (415) •••-2231'),
+            _AcRow(icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', title: l10n.rdAccountName, value: _name(l10n)),
+            _AcRow(icon: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>', title: l10n.rdAccountEmail, value: _email),
+            _AcRow(icon: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>', title: l10n.rdAccountPhone, value: '+1 (415) •••-2231'),
           ],
         ),
         _AcSection(
-          label: 'Security',
+          label: l10n.rdAccountSectionSecurity,
           rows: [
             _AcRow(
               icon: '<rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
-              title: 'Face ID unlock',
-              sub: 'Require Face ID to open Mira',
+              title: l10n.rdAccountFaceIdTitle,
+              sub: l10n.rdAccountFaceIdSub,
               chevron: false,
               trailing: _AcToggle(on: _faceId),
               onTap: () => setState(() => _faceId = !_faceId),
             ),
             _AcRow(
               icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-              title: 'Auto-lock',
-              sub: 'Lock after 5 minutes idle',
+              title: l10n.rdAccountAutoLockTitle,
+              sub: l10n.rdAccountAutoLockSub,
               chevron: false,
               trailing: _AcToggle(on: _autoLock),
               onTap: () => setState(() => _autoLock = !_autoLock),
             ),
-            const _AcRow(icon: '<rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/>', title: 'Change password'),
+            _AcRow(icon: '<rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/>', title: l10n.rdAccountChangePassword),
           ],
         ),
         // Plan row reflects real (client-side) membership: Free users see an
@@ -163,64 +161,64 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
         ValueListenableBuilder<bool>(
           valueListenable: Membership.isPlus,
           builder: (_, isPlus, _) => _AcSection(
-            label: 'Plan',
+            label: l10n.rdAccountSectionPlan,
             rows: [
               _AcRow(
                 icon: '<path d="M3 8l4 3 5-6 5 6 4-3-2 11H5L3 8Z"/>',
-                title: isPlus ? 'Mira Plus' : 'Mira Free',
+                title: isPlus ? l10n.rdAccountMiraPlus : l10n.rdAccountMiraFree,
                 sub: isPlus
-                    ? 'Active · \$8 / month'
-                    : '34 of 2,000 memories used',
-                value: isPlus ? 'Manage' : 'Upgrade',
+                    ? l10n.rdAccountPlusActiveSub
+                    : l10n.rdAccountFreeUsageSub(34, 2000),
+                value: isPlus ? l10n.rdCommonManage : l10n.rdCommonUpgrade,
                 onTap: () => widget.go('paywall'),
               ),
             ],
           ),
         ),
         _AcSection(
-          label: 'Preferences',
+          label: l10n.rdAccountSectionPreferences,
           rows: [
             _AcRow(
               icon: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
-              title: 'Notifications',
-              sub: 'Brief, reminders & quiet hours',
+              title: l10n.rdAccountNotificationsTitle,
+              sub: l10n.rdAccountNotificationsSub,
               onTap: () => widget.go('notifications'),
             ),
             _AcRow(
               icon: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
-              title: 'Reminders',
-              sub: 'Everything Mira is holding for you',
+              title: l10n.rdAccountRemindersTitle,
+              sub: l10n.rdAccountRemindersSub,
               onTap: () => widget.go('reminders'),
             ),
             _AcRow(
               icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
-              title: 'Appearance',
-              sub: 'Theme, accent, text size & motion',
+              title: l10n.rdAccountAppearanceTitle,
+              sub: l10n.rdAccountAppearanceSub,
               onTap: () => widget.go('appearance'),
             ),
             _AcRow(
               icon: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
-              title: 'Connected apps',
-              sub: 'Calendar, Notes, Photos & more',
+              title: l10n.rdAccountConnectedAppsTitle,
+              sub: l10n.rdAccountConnectedAppsSub,
               onTap: () => widget.go('connectedapps'),
             ),
           ],
         ),
         _AcSection(
-          label: 'Memory & data',
+          label: l10n.rdAccountSectionMemoryData,
           rows: [
             _AcStorage(onTap: () => widget.go('storage')),
-            const _AcRow(icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/>', title: 'Export my data', sub: 'Download everything Mira holds'),
-            const _AcRow(icon: '<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/>', title: 'Memory history', sub: 'See what was captured & when'),
+            _AcRow(icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/>', title: l10n.rdAccountExportData, sub: l10n.rdAccountExportDataSub),
+            _AcRow(icon: '<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/>', title: l10n.rdAccountMemoryHistory, sub: l10n.rdAccountMemoryHistorySub),
           ],
         ),
         _AcSection(
           rows: [
-            _AcRow(icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>', title: 'Sign out', chevron: false, onTap: _signOut),
-            _AcRow(icon: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/>', title: 'Delete account', chevron: false, danger: true),
+            _AcRow(icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>', title: l10n.rdAccountSignOut, chevron: false, onTap: _signOut),
+            _AcRow(icon: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/>', title: l10n.rdAccountDeleteAccount, chevron: false, danger: true),
           ],
         ),
-        const _AcFoot('Mira · Version 1.0'),
+        _AcFoot(l10n.rdAccountFootVersion),
       ],
     );
   }
@@ -243,6 +241,10 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
     'brief': true, 'briefResurface': true, 'timeSensitive': true, 'nudges': true,
     'captureConfirm': true, 'weekly': false, 'quiet': true, 'sound': true, 'haptics': true,
   };
+
+  TimeOfDay _briefTime = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _quietStart = const TimeOfDay(hour: 22, minute: 0);
+  TimeOfDay _quietEnd = const TimeOfDay(hour: 7, minute: 0);
 
   /// Maps each toggle key to its backend camelCase field on
   /// `/notification-settings`. Every toggle is backend-persisted.
@@ -315,50 +317,91 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
         onTap: () => _t(k),
       );
 
+  Future<void> _pickBriefTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _briefTime,
+    );
+    if (picked != null && mounted) setState(() => _briefTime = picked);
+  }
+
+  Future<void> _pickQuietSchedule() async {
+    final l10n = AppLocalizations.of(context)!;
+    final start = await showTimePicker(
+      context: context,
+      initialTime: _quietStart,
+      helpText: l10n.rdNotificationsQuietStartHelp,
+    );
+    if (start == null || !mounted) return;
+    final end = await showTimePicker(
+      context: context,
+      initialTime: _quietEnd,
+      helpText: l10n.rdNotificationsQuietEndHelp,
+    );
+    if (end == null || !mounted) return;
+    setState(() {
+      _quietStart = start;
+      _quietEnd = end;
+    });
+  }
+
+  String _fmt(TimeOfDay t, AppLocalizations l10n) {
+    final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
+    final m = t.minute.toString().padLeft(2, '0');
+    final ap = t.period == DayPeriod.am ? l10n.rdCommonAm : l10n.rdCommonPm;
+    return '$h:$m $ap';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _AcScaffold(
       onBack: widget.onBack,
-      title: 'Notifications',
-      intro: 'Mira stays quiet by default — and only speaks up when it truly helps.',
+      title: l10n.rdNotificationsTitle,
+      intro: l10n.rdNotificationsIntro,
       children: [
         _AcSection(
-          label: 'Daily Brief',
+          label: l10n.rdNotificationsSectionDailyBrief,
           rows: [
-            _toggleRow('<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>', 'Morning brief', 'A calm summary to start the day', 'brief'),
-            const _AcRow(icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', title: 'Brief time', value: '8:00 AM'),
-            _toggleRow('<path d="M12 3a9 9 0 1 0 9 9 6 6 0 0 1-9-9Z"/>', 'Resurface a memory', 'Occasionally revisit something worth holding', 'briefResurface'),
+            _toggleRow('<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>', l10n.rdNotificationsMorningBrief, l10n.rdNotificationsMorningBriefSub, 'brief'),
+            _AcRow(icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', title: l10n.rdNotificationsBriefTime, value: _fmt(_briefTime, l10n), onTap: _pickBriefTime),
+            _toggleRow('<path d="M12 3a9 9 0 1 0 9 9 6 6 0 0 1-9-9Z"/>', l10n.rdNotificationsResurfaceMemory, l10n.rdNotificationsResurfaceMemorySub, 'briefResurface'),
           ],
         ),
         _AcSection(
-          label: 'Reminders',
+          label: l10n.rdNotificationsSectionReminders,
           rows: [
-            _toggleRow('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>', 'Time-sensitive reminders', 'Dates, tickets, and things that expire', 'timeSensitive'),
-            _toggleRow('<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/>', 'Gentle nudges', 'Soft prompts for unfinished threads', 'nudges'),
+            _toggleRow('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>', l10n.rdNotificationsTimeSensitive, l10n.rdNotificationsTimeSensitiveSub, 'timeSensitive'),
+            _toggleRow('<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/>', l10n.rdNotificationsGentleNudges, l10n.rdNotificationsGentleNudgesSub, 'nudges'),
           ],
         ),
         _AcSection(
-          label: 'Captures',
+          label: l10n.rdNotificationsSectionCaptures,
           rows: [
-            _toggleRow('<path d="M20 6 9 17l-5-5"/>', 'Confirm before saving', 'Ask before adding a capture to your graph', 'captureConfirm'),
-            _toggleRow('<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>', 'Weekly recap', 'A Sunday look back at the week', 'weekly'),
+            _toggleRow('<path d="M20 6 9 17l-5-5"/>', l10n.rdNotificationsConfirmBeforeSaving, l10n.rdNotificationsConfirmBeforeSavingSub, 'captureConfirm'),
+            _toggleRow('<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>', l10n.rdNotificationsWeeklyRecap, l10n.rdNotificationsWeeklyRecapSub, 'weekly'),
           ],
         ),
         _AcSection(
-          label: 'Quiet hours',
+          label: l10n.rdNotificationsSectionQuietHours,
           rows: [
-            _toggleRow('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>', 'Quiet hours', 'Hold all notifications while you rest', 'quiet'),
-            const _AcRow(icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', title: 'Schedule', value: '10:00 PM – 7:00 AM'),
+            _toggleRow('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>', l10n.rdNotificationsQuietHours, l10n.rdNotificationsQuietHoursSub, 'quiet'),
+            _AcRow(
+              icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+              title: l10n.rdNotificationsSchedule,
+              value: '${_fmt(_quietStart, l10n)} – ${_fmt(_quietEnd, l10n)}',
+              onTap: _pickQuietSchedule,
+            ),
           ],
         ),
         _AcSection(
-          label: 'Delivery',
+          label: l10n.rdNotificationsSectionDelivery,
           rows: [
-            _toggleRow('<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>', 'Sound', null, 'sound'),
-            _toggleRow('<rect x="7" y="2" width="10" height="20" rx="3"/><path d="M11 18h2"/>', 'Haptics', null, 'haptics'),
+            _toggleRow('<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>', l10n.rdNotificationsSound, null, 'sound'),
+            _toggleRow('<rect x="7" y="2" width="10" height="20" rx="3"/><path d="M11 18h2"/>', l10n.rdNotificationsHaptics, null, 'haptics'),
           ],
         ),
-        const _AcFoot('Mira notifies you gently, or not at all.'),
+        _AcFoot(l10n.rdNotificationsFoot),
       ],
     );
   }
@@ -380,30 +423,31 @@ class _RdConnectedAppsScreenState extends State<RdConnectedAppsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return _AcScaffold(
       onBack: widget.onBack,
-      title: 'Connected apps',
-      intro: 'Mira quietly weaves these sources into your memory — nothing leaves without your say.',
+      title: l10n.rdConnectedAppsTitle,
+      intro: l10n.rdConnectedAppsIntro,
       children: [
         _AcSection(
-          label: 'Connected',
-          rows: const [
-            _AcRow(tile: (Color(0x20E94848), '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 3 8 5 8-5"/>'), title: 'Calendar', sub: 'Synced 2m ago · feeds your Brief', subDot: true),
-            _AcRow(tile: (Color(0x20F0B545), '<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/>'), title: 'Notes', sub: 'Synced 1h ago · 128 notes', subDot: true),
-            _AcRow(tile: (Color(0x205B8DEF), '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="m5 18 5-4 3 2 3-3 5 4"/>'), title: 'Photos', sub: 'Synced today · screenshots & scans', subDot: true),
+          label: l10n.rdConnectedAppsSectionConnected,
+          rows: [
+            _AcRow(tile: (Color(0x20E94848), '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 3 8 5 8-5"/>'), title: l10n.rdConnectedAppsCalendar, sub: l10n.rdConnectedAppsCalendarSub, subDot: true),
+            _AcRow(tile: (Color(0x20F0B545), '<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/>'), title: l10n.rdConnectedAppsNotes, sub: l10n.rdConnectedAppsNotesSub, subDot: true),
+            _AcRow(tile: (Color(0x205B8DEF), '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="m5 18 5-4 3 2 3-3 5 4"/>'), title: l10n.rdConnectedAppsPhotos, sub: l10n.rdConnectedAppsPhotosSub, subDot: true),
           ],
         ),
         _AcSection(
-          label: 'Available',
+          label: l10n.rdConnectedAppsSectionAvailable,
           rows: [
-            _available('gmail', const Color(0x20EA4335), '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3 7 9 6 9-6"/>', 'Gmail', 'Turn important mail into memories'),
-            _available('safari', const Color(0x202A9DF4), '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/>', 'Safari', 'Save pages & highlights as you browse'),
-            _available('readwise', const Color(0x207C6BEA), '<path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z"/><path d="M18 3v18"/>', 'Readwise', 'Import book & article highlights'),
-            _available('voice', const Color(0x20E86868), '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', 'Voice Memos', 'Transcribe recordings into your graph'),
+            _available('gmail', const Color(0x20EA4335), '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3 7 9 6 9-6"/>', l10n.rdConnectedAppsGmail, l10n.rdConnectedAppsGmailSub),
+            _available('safari', const Color(0x202A9DF4), '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/>', l10n.rdConnectedAppsSafari, l10n.rdConnectedAppsSafariSub),
+            _available('readwise', const Color(0x207C6BEA), '<path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z"/><path d="M18 3v18"/>', l10n.rdConnectedAppsReadwise, l10n.rdConnectedAppsReadwiseSub),
+            _available('voice', const Color(0x20E86868), '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', l10n.rdConnectedAppsVoiceMemos, l10n.rdConnectedAppsVoiceMemosSub),
           ],
         ),
         const _CaPrivacy(),
-        const _AcFoot('4 sources available to connect'),
+        _AcFoot(l10n.rdConnectedAppsFoot(4)),
       ],
     );
   }
@@ -422,7 +466,7 @@ class _RdConnectedAppsScreenState extends State<RdConnectedAppsScreen> {
               children: [
                 RdIcon(RdIcons.checkThick, size: 15, color: rd.success, strokeWidth: 2.4),
                 const SizedBox(width: 4),
-                Text('Connected', style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.success)),
+                Text(AppLocalizations.of(context)!.rdCommonConnected, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.success)),
               ],
             )
           : GestureDetector(
@@ -432,7 +476,7 @@ class _RdConnectedAppsScreenState extends State<RdConnectedAppsScreen> {
                 // Solid dark pill with white label — kept fixed so the white
                 // text stays legible in both themes (ink flips near-white).
                 decoration: BoxDecoration(color: RdColors.ink, borderRadius: BorderRadius.circular(100)),
-                child: Text('Connect', style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                child: Text(AppLocalizations.of(context)!.rdCommonConnect, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
               ),
             ),
     );
@@ -472,7 +516,7 @@ class _AcScaffold extends StatelessWidget {
                       children: [
                         RdIcon(RdIcons.chevronLeft, size: 20, color: rd.navy, strokeWidth: 2),
                         const SizedBox(width: 3),
-                        Text('Settings', style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.navy)),
+                        Text(AppLocalizations.of(context)!.rdCommonSettings, style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.navy)),
                       ],
                     ),
                   ),
@@ -756,7 +800,7 @@ class _AcProfile extends StatelessWidget {
                     children: [
                       Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: rd.success)),
                       const SizedBox(width: 5),
-                      Text('All memories synced', style: GoogleFonts.vazirmatn(fontSize: 11.5, fontWeight: FontWeight.w600, color: rd.success)),
+                      Text(AppLocalizations.of(context)!.rdAccountAllMemoriesSynced, style: GoogleFonts.vazirmatn(fontSize: 11.5, fontWeight: FontWeight.w600, color: rd.success)),
                     ],
                   ),
                 ),
@@ -794,9 +838,9 @@ class _AcStorage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text('34 memories', style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w700, color: rd.ink)),
+                Text(AppLocalizations.of(context)!.rdAccountStorageHeadline(34), style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w700, color: rd.ink)),
                 const SizedBox(width: 8),
-                Text('of 2,000 · plenty of room', style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+                Text(AppLocalizations.of(context)!.rdAccountStorageSubline(2000), style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
                 const Spacer(),
                 if (onTap != null)
                   RdIcon('<path d="m9 6 6 6-6 6"/>', size: 18, color: rd.faint, strokeWidth: 2),
@@ -849,7 +893,7 @@ class _CaPrivacy extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Mira only reads what you connect, and processes it privately. Disconnect anytime.',
+              AppLocalizations.of(context)!.rdConnectedAppsPrivacy,
               style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.5, color: rd.muted),
             ),
           ),

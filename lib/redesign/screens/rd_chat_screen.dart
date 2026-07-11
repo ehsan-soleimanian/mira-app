@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
 import '../theme/rd_theme.dart';
@@ -24,6 +25,8 @@ class RdChatScreen extends StatefulWidget {
     this.anchorTitle,
     this.anchorIsVoice = false,
     this.anchorId,
+    this.initialPrompt,
+    this.autoSend = false,
   });
 
   final RdGo go;
@@ -35,6 +38,12 @@ class RdChatScreen extends StatefulWidget {
   final String? anchorTitle;
   final bool anchorIsVoice;
   final String? anchorId;
+
+  /// Prefills compose (e.g. Listen → Chat with a transcript).
+  final String? initialPrompt;
+
+  /// Sends [initialPrompt] to the assistant immediately on open.
+  final bool autoSend;
 
   @override
   State<RdChatScreen> createState() => _RdChatScreenState();
@@ -52,27 +61,27 @@ class _Cite {
   final String? body;
 
   /// Builds a cite card from a real Library search match (preferred shape).
-  factory _Cite.fromMatch(LibrarySearchMatch match) {
+  factory _Cite.fromMatch(LibrarySearchMatch match, AppLocalizations l10n) {
     final item = match.item;
     final snippet = match.snippet.trim().isNotEmpty
         ? match.snippet.trim()
         : item.summary;
     return _Cite(
       _citeTypeFor(item.type),
-      item.title.trim().isNotEmpty ? item.title.trim() : 'Untitled memory',
-      _citeSub(item, snippet),
+      item.title.trim().isNotEmpty ? item.title.trim() : l10n.rdBriefFallbackUntitled,
+      _citeSub(item, snippet, l10n),
       id: item.id,
       body: snippet.isNotEmpty ? snippet : null,
     );
   }
 
   /// Builds a cite card from a legacy item-level citation.
-  factory _Cite.fromItem(LibraryItem item) {
+  factory _Cite.fromItem(LibraryItem item, AppLocalizations l10n) {
     final snippet = item.summary.trim();
     return _Cite(
       _citeTypeFor(item.type),
-      item.title.trim().isNotEmpty ? item.title.trim() : 'Untitled memory',
-      _citeSub(item, snippet),
+      item.title.trim().isNotEmpty ? item.title.trim() : l10n.rdBriefFallbackUntitled,
+      _citeSub(item, snippet, l10n),
       id: item.id,
       body: snippet.isNotEmpty ? snippet : null,
     );
@@ -98,18 +107,18 @@ String _citeTypeFor(String type) {
 
 /// A short secondary line for a cite card: prefer the snippet, else a
 /// human label derived from the item type.
-String _citeSub(LibraryItem item, String snippet) {
+String _citeSub(LibraryItem item, String snippet, AppLocalizations l10n) {
   if (snippet.isNotEmpty) return snippet;
   final t = _citeTypeFor(item.type);
   switch (t) {
     case 'voice':
-      return 'Voice · read by Mira';
+      return l10n.rdChatCiteVoiceSub;
     case 'photo':
-      return 'Photo · read by Mira';
+      return l10n.rdChatCitePhotoSub;
     case 'event':
-      return 'Event';
+      return l10n.rdCaptureTypeEvent;
     default:
-      return 'Note';
+      return l10n.rdCaptureTypeNote;
   }
 }
 
@@ -135,10 +144,6 @@ class _Answer {
   final bool action = false;
 }
 
-const _opening =
-    'Ask me anything about your memories — what you saved, what to follow up on, or I can draft something for you.';
-const _starters = ['What did I save recently?', 'What should I follow up on?', 'Draft a reminder'];
-
 class _RdChatScreenState extends State<RdChatScreen> {
   final _scroll = ScrollController();
   final _draftCtl = TextEditingController();
@@ -146,20 +151,48 @@ class _RdChatScreenState extends State<RdChatScreen> {
   late final String? _anchorTitle = widget.anchorTitle;
   late final bool _anchorIsVoice = widget.anchorIsVoice;
 
-  // Both anchored and unanchored chats get generic, memory-agnostic starters
-  // and a single neutral opening line — no fabricated conversation.
-  late final List<String> _starterChips = _anchored
-      ? const ['How does this connect?', 'Summarise this', 'Draft a reminder']
-      : _starters;
+  late List<_Msg> _msgs;
+  late List<String> _starterChips;
+  bool _l10nReady = false;
   final Set<String> _asked = <String>{};
 
-  late final List<_Msg> _msgs = [
-    _Msg.mira(_anchored ? _openingFor(_anchorTitle!) : _opening),
-  ];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_l10nReady) {
+      final l10n = AppLocalizations.of(context)!;
+      _msgs = [
+        _Msg.mira(
+          _anchored ? l10n.rdChatOpeningAnchored(_anchorTitle!) : l10n.rdChatOpening,
+        ),
+      ];
+      _starterChips = _anchored
+          ? [
+              l10n.rdChatStarterHowConnect,
+              l10n.rdChatStarterSummarise,
+              l10n.rdChatStarterDraftReminder,
+            ]
+          : [
+              l10n.rdAskSuggestionRecent,
+              l10n.rdAskSuggestionFollowUp,
+              l10n.rdChatStarterDraftReminder,
+            ];
+      _l10nReady = true;
+    }
+  }
 
-  static String _openingFor(String title) =>
-      'This one’s about “$title.” Ask me anything about it — what’s open, '
-      'how it connects, or I can draft something for you.';
+  @override
+  void initState() {
+    super.initState();
+    final prompt = widget.initialPrompt?.trim();
+    if (prompt != null && prompt.isNotEmpty) {
+      _draftCtl.text = prompt;
+      if (widget.autoSend) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _ask(prompt));
+      }
+    }
+  }
+
   bool _typing = false;
   bool _remSet = false;
 
@@ -167,11 +200,12 @@ class _RdChatScreenState extends State<RdChatScreen> {
     if (_remSet) return;
     setState(() => _remSet = true);
     try {
+      final l10n = AppLocalizations.of(context)!;
       final lastAsk = _msgs
           .lastWhere((m) => !m.mira, orElse: () => _Msg.me(''))
           .text
           .trim();
-      final title = lastAsk.isNotEmpty ? lastAsk : 'Follow up on this';
+      final title = lastAsk.isNotEmpty ? lastAsk : l10n.rdChatFollowUpDefault;
       final services = AppScope.servicesOf(context);
       await RemindersRepository(apiClient: services.apiClient).create(title: title);
     } catch (_) {
@@ -233,6 +267,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
   /// throws (offline, timeout), returns a scripted fallback so the chat still
   /// reads well.
   Future<_Answer> _resolveAnswer(String q) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final services = AppScope.servicesOf(context);
       final res = await services.assistantRepository.run(
@@ -242,29 +277,21 @@ class _RdChatScreenState extends State<RdChatScreen> {
       );
       final text = res.answer.trim().isNotEmpty
           ? res.answer.trim()
-          : 'I looked, but I don’t have anything on that yet — capture it and I’ll connect it here.';
+          : l10n.rdChatEmptyAnswer;
 
       final cites = <_Cite>[];
       if (res.sourceCitations.isNotEmpty) {
-        cites.addAll(res.sourceCitations.map(_Cite.fromMatch));
+        cites.addAll(res.sourceCitations.map((m) => _Cite.fromMatch(m, l10n)));
       } else if (res.citations.isNotEmpty) {
-        cites.addAll(res.citations.map(_Cite.fromItem));
+        cites.addAll(res.citations.map((i) => _Cite.fromItem(i, l10n)));
       }
       // The assistant contract carries no follow-up questions, so we keep the
       // static starter chips; a reminder-style "action" only makes sense for
       // the scripted flow, so real answers never render the reminder button.
       return _Answer(text, cites: cites);
     } catch (_) {
-      return _fallbackAnswer();
+      return _Answer(l10n.rdChatOfflineFallback);
     }
-  }
-
-  /// Neutral reply used only when the assistant call fails — no fabricated
-  /// content or citations.
-  _Answer _fallbackAnswer() {
-    return const _Answer(
-      'I couldn’t reach your memory just now. Try again in a moment.',
-    );
   }
 
   @override
@@ -325,6 +352,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
 
   Widget _header() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 6, 18, 14),
       child: Row(
@@ -335,7 +363,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ask Mira', style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink, height: 1)),
+                Text(l10n.rdChatTitle, style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink, height: 1)),
                 const SizedBox(height: 3),
                 Row(
                   children: [
@@ -349,7 +377,9 @@ class _RdChatScreenState extends State<RdChatScreen> {
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
-                          _anchored ? 'About “${_anchorTitle!}”' : 'Grounded in your memories',
+                          _anchored
+                              ? l10n.rdChatAboutTitle(_anchorTitle!)
+                              : l10n.rdChatGroundedInMemories,
                           overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
                     ),
                   ],
@@ -369,6 +399,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
 
   Widget _bubble(_Msg m) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     if (!m.mira) {
       return Align(
         alignment: Alignment.centerRight,
@@ -418,7 +449,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
               ),
               if (m.cites.isNotEmpty) ...[
                 const SizedBox(height: 9),
-                Text('FROM YOUR MEMORIES', style: GoogleFonts.vazirmatn(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.7, color: rd.faint)),
+                Text(l10n.rdChatFromYourMemories, style: GoogleFonts.vazirmatn(fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.7, color: rd.faint)),
                 const SizedBox(height: 5),
                 for (final c in m.cites) ...[
                   _CiteCard(cite: c, onTap: () => _openCite(c)),
@@ -446,7 +477,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          _remSet ? 'Reminder added' : 'Set this reminder',
+                          _remSet ? l10n.rdChatReminderAdded : l10n.rdChatSetReminder,
                           style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: _remSet ? rd.success : Colors.white),
                         ),
                       ],
@@ -463,6 +494,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
 
   Widget _compose(bool hasDraft) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: rd.line, width: 1))),
@@ -489,7 +521,7 @@ class _RdChatScreenState extends State<RdChatScreen> {
                 decoration: InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
-                  hintText: 'Ask about your memories…',
+                  hintText: l10n.rdChatComposeHint,
                   hintStyle: GoogleFonts.vazirmatn(fontSize: 14, color: rd.faint),
                 ),
               ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 
 import '../theme/rd_theme.dart';
@@ -48,6 +49,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     final mq = MediaQuery.of(context);
     // Clear the Android nav bar when the keyboard isn't already covering it.
     final navGap = (mq.viewPadding.bottom - mq.viewInsets.bottom).clamp(0.0, 64.0);
@@ -78,7 +80,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Add to collection',
+            l10n.rdCollectionAddTitle,
             style: GoogleFonts.dosis(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -87,7 +89,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
           ),
           const SizedBox(height: 12),
           if (_creating)
-            _newRow()
+            _newRow(l10n)
           else ...[
             if (widget.collections.isNotEmpty)
               ConstrainedBox(
@@ -99,7 +101,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
                   ),
                 ),
               ),
-            _createRow(),
+            _createRow(l10n),
           ],
         ],
       ),
@@ -145,7 +147,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
     );
   }
 
-  Widget _createRow() {
+  Widget _createRow(AppLocalizations l10n) {
     final rd = context.rd;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -164,7 +166,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
             ),
             const SizedBox(width: 12),
             Text(
-              'New collection',
+              l10n.rdCollectionNew,
               style: GoogleFonts.vazirmatn(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
@@ -177,7 +179,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
     );
   }
 
-  Widget _newRow() {
+  Widget _newRow(AppLocalizations l10n) {
     final rd = context.rd;
     return Row(
       children: [
@@ -199,7 +201,7 @@ class _RdCollectionPickerSheetState extends State<RdCollectionPickerSheet> {
                 decoration: InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
-                  hintText: 'Collection name',
+                  hintText: l10n.rdCollectionNameHint,
                   hintStyle:
                       GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
                 ),

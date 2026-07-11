@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/app/memory_store.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
@@ -11,7 +12,7 @@ import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_collection_picker.dart';
 import '../widgets/rd_icon.dart';
-import '../widgets/rd_voice_capture_sheet.dart';
+import '../widgets/rd_voice_search_overlay.dart';
 
 /// Library — browse every captured memory: search, type filters, Mira's
 /// collections, and a day-grouped list. Long-press a memory to enter
@@ -33,6 +34,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   String _filter = 'all';
   String _query = '';
   bool _selecting = false;
+  bool _voiceOverlay = false;
   final Set<String> _selected = {};
 
   /// User collections from the backend (null until loaded / unreachable).
@@ -100,17 +102,17 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     }
   }
 
-  static _LibMem _toLibMem(LibraryItem item) {
+  _LibMem _toLibMem(LibraryItem item) {
+    final l10n = AppLocalizations.of(context)!;
     final type = _memTypeFor(item.type);
     final title = item.title.trim();
     return _LibMem(
       id: item.id,
-      day: _dayBucket(item.createdAt),
+      dayBucket: _dayBucket(item.createdAt),
       type: type,
-      title: title.isEmpty ? 'Untitled' : title,
+      title: title.isEmpty ? l10n.rdLibraryUntitled : title,
       sub: item.summary,
-      metaType: _typeLabelFor(type),
-      metaTime: _relativeTime(item.createdAt),
+      createdAt: item.createdAt,
       searchText: '${item.title} ${item.summary}'.toLowerCase(),
       pinned: (item.metadata['pinned'] as bool?) ?? false,
     );
@@ -138,39 +140,40 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     }
   }
 
-  static String _typeLabelFor(_MemType t) {
+  String _typeLabelFor(AppLocalizations l10n, _MemType t) {
     switch (t) {
       case _MemType.voice:
-        return 'Voice';
+        return l10n.rdLibraryTypeVoice;
       case _MemType.link:
-        return 'Link';
+        return l10n.rdLibraryTypeLink;
       case _MemType.photo:
-        return 'Photo';
+        return l10n.rdLibraryTypePhoto;
       case _MemType.event:
-        return 'Event';
+        return l10n.rdLibraryTypeEvent;
       case _MemType.note:
-        return 'Note';
+        return l10n.rdLibraryTypeNote;
     }
   }
 
-  static String _dayBucket(DateTime dt) {
+  _DayBucket _dayBucket(DateTime dt) {
     final now = DateTime.now();
     final days = DateTime(now.year, now.month, now.day)
         .difference(DateTime(dt.year, dt.month, dt.day))
         .inDays;
-    if (days <= 0) return 'Today';
-    if (days < 7) return 'This week';
-    return 'Earlier';
+    if (days <= 0) return _DayBucket.today;
+    if (days < 7) return _DayBucket.thisWeek;
+    return _DayBucket.earlier;
   }
 
-  static String _relativeTime(DateTime dt) {
-    final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 30) return '${diff.inDays}d ago';
-    return '${dt.month}/${dt.day}';
+  String _dayBucketLabel(AppLocalizations l10n, _DayBucket bucket) {
+    switch (bucket) {
+      case _DayBucket.today:
+        return l10n.rdLibraryDayToday;
+      case _DayBucket.thisWeek:
+        return l10n.rdLibraryDayThisWeek;
+      case _DayBucket.earlier:
+        return l10n.rdLibraryDayEarlier;
+    }
   }
 
   @override
@@ -271,6 +274,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
           RdCollectionPickerSheet(collections: _cols ?? const []),
     );
     if (choice == null || !mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     try {
       final target = choice.collection ??
           await services.collectionsRepository.create(name: choice.name!);
@@ -280,9 +284,9 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
       if (!mounted) return;
       setState(() => _cols = refreshed);
       _exitSelect();
-      _toast('Added ${ids.length} to “${updated.name}”');
+      _toast(l10n.rdLibraryAddedToCollection(ids.length, updated.name));
     } catch (_) {
-      _toast('Couldn’t add to collection. Check your connection.');
+      _toast(AppLocalizations.of(context)!.rdLibraryAddToCollectionFailed);
     }
   }
 
@@ -320,19 +324,22 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     );
     if (choice == null || !mounted) return;
 
+    final l10n = AppLocalizations.of(context)!;
     try {
       // Resolve the target board (create it first when "New board" was chosen).
       final target = choice.board ?? await repo.create(title: choice.name!);
       // Re-fetch so we merge onto the freshest node set.
       final board = await repo.fetch(target.id);
-      final nodes = [...board.nodes, ..._boardNodesFor(mems, board.nodes)];
+      final nodes = [...board.nodes, ..._boardNodesFor(mems, board.nodes, l10n)];
       await repo.update(board.id, nodes: nodes);
       if (!mounted) return;
-      final name = board.title.trim().isEmpty ? 'board' : board.title.trim();
+      final name = board.title.trim().isEmpty
+          ? l10n.rdLibraryFallbackBoard
+          : board.title.trim();
       _exitSelect();
       _boardAddedToast(mems.length, name);
     } catch (_) {
-      _toast('Couldn’t add to board. Check your connection.');
+      _toast(l10n.rdLibraryAddToBoardFailed);
     }
   }
 
@@ -342,6 +349,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   List<Map<String, dynamic>> _boardNodesFor(
     List<_LibMem> mems,
     List<Map<String, dynamic>> existing,
+    AppLocalizations l10n,
   ) {
     const startLeft = 170.0;
     const stepX = 185.0;
@@ -375,7 +383,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         'rotation': 0.0,
         'title': m.title,
         if (sub.isNotEmpty) 'sub': sub,
-        'tag': _typeLabelFor(m.type),
+        'tag': _typeLabelFor(l10n, m.type),
         'memId': m.id,
       });
     }
@@ -401,6 +409,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   /// Confirms the add, with a shortcut to jump straight to the Canvas board.
   void _boardAddedToast(int n, String board) {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -409,11 +418,11 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
           behavior: SnackBarBehavior.floating,
           backgroundColor: rd.ink,
           content: Text(
-            'Added $n to “$board”',
+            l10n.rdLibraryAddedToBoard(n, board),
             style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.bg),
           ),
           action: SnackBarAction(
-            label: 'View',
+            label: l10n.rdCommonView,
             textColor: rd.peri,
             onPressed: () => widget.go('canvas'),
           ),
@@ -428,10 +437,11 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   /// window closes, so "Undo" is lossless — nothing is committed if you tap it.
   void _undoableRemove({
     required Set<String> ids,
-    required String verb,
+    required String Function(AppLocalizations l10n, int count) message,
     required Future<void> Function() commit,
   }) {
     if (ids.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
     final before = List<_LibMem>.of(_items ?? const <_LibMem>[]);
     setState(() => _items = before.where((m) => !ids.contains(m.id)).toList());
     _exitSelect();
@@ -445,11 +455,11 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             behavior: SnackBarBehavior.floating,
             backgroundColor: context.rd.ink,
             content: Text(
-              '$verb $n ${n == 1 ? "memory" : "memories"}',
+              message(l10n, n),
               style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
             ),
             action: SnackBarAction(
-              label: 'Undo',
+              label: l10n.rdCommonUndo,
               textColor: Colors.white,
               onPressed: () {
                 undone = true;
@@ -469,7 +479,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     final ids = _selected.toSet();
     _undoableRemove(
       ids: ids,
-      verb: 'Deleted',
+      message: (l10n, n) => l10n.rdLibraryDeletedCount(n),
       commit: () async {
         for (final id in ids) {
           services.memoryStore.removeLocal(id);
@@ -487,11 +497,13 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     if (ids.isEmpty) return;
     final services = AppScope.servicesOf(context);
     final n = ids.length;
+    final pinnedMessage = AppLocalizations.of(context)!.rdLibraryPinnedCount(n);
     _exitSelect();
     try {
       await services.libraryRepository.bulkAction(ids, 'pin');
     } catch (_) {}
-    _toast('Pinned $n ${n == 1 ? "memory" : "memories"}');
+    if (!mounted) return;
+    _toast(pinnedMessage);
   }
 
   /// "Archive" action — archive via bulk-actions and drop from the browse list
@@ -501,7 +513,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     final ids = _selected.toSet();
     _undoableRemove(
       ids: ids,
-      verb: 'Archived',
+      message: (l10n, n) => l10n.rdLibraryArchivedCount(n),
       commit: () async {
         for (final id in ids) {
           services.memoryStore.removeLocal(id);
@@ -536,15 +548,19 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   Future<void> _unarchive(_LibMem m) async {
     final services = AppScope.servicesOf(context);
+    final restoredMessage =
+        AppLocalizations.of(context)!.rdLibraryRestored(m.title);
     setState(() => _archivedItems =
         (_archivedItems ?? const []).where((x) => x.id != m.id).toList());
     try {
       await services.libraryRepository.bulkAction([m.id], 'restore');
     } catch (_) {}
-    _toast('Restored “${m.title}”');
+    if (!mounted) return;
+    _toast(restoredMessage);
   }
 
   Widget _archivedEntry() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -562,7 +578,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             RdIcon(RdIcons.archive, size: 17, color: rd.muted, strokeWidth: 1.8),
             const SizedBox(width: 12),
             Text(
-              'Archived',
+              l10n.rdLibraryArchivedTitle,
               style: GoogleFonts.vazirmatn(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -571,7 +587,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             ),
             const Spacer(),
             Text(
-              'View',
+              l10n.rdCommonView,
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -585,6 +601,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _archivedScaffold() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final items = _archivedItems;
     return Scaffold(
@@ -609,7 +626,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Archived',
+                    l10n.rdLibraryArchivedTitle,
                     style: GoogleFonts.dosis(
                       fontSize: 24,
                       fontWeight: FontWeight.w700,
@@ -627,7 +644,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(40),
                             child: Text(
-                              'Nothing archived.\nArchived memories rest here, out of the way.',
+                              l10n.rdLibraryArchivedEmpty,
                               textAlign: TextAlign.center,
                               style: GoogleFonts.vazirmatn(
                                 fontSize: 13.5,
@@ -652,6 +669,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   /// "See all" collections — a grid of every collection plus the Archived
   /// entry (mirrors the design's `view === "collections"` sub-view).
   Widget _collectionsScaffold() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final cols = _cols ?? const [];
     return Scaffold(
@@ -676,7 +694,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    'Collections',
+                    l10n.rdLibraryCollections,
                     style: GoogleFonts.dosis(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
@@ -714,11 +732,11 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                       setState(() => _collectionsGridView = false);
                       _openArchived();
                     },
-                    child: const _CollectionCard(
+                    child: _CollectionCard(
                       icon: RdIcons.archive,
-                      name: 'Archived',
-                      count: 'Out of the way',
-                      colors: [Color(0xFFF1F1F4), Color(0xFFE7E7EC)],
+                      name: l10n.rdLibraryArchivedTitle,
+                      count: l10n.rdLibraryOutOfTheWay,
+                      colors: const [Color(0xFFF1F1F4), Color(0xFFE7E7EC)],
                       expand: true,
                     ),
                   ),
@@ -732,6 +750,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _archivedTile(_LibMem m) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -778,7 +797,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                 borderRadius: BorderRadius.circular(100),
               ),
               child: Text(
-                'Restore',
+                l10n.rdLibraryRestore,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
@@ -798,9 +817,9 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     if (_archivedView) return _archivedScaffold();
     if (_collectionsGridView) return _collectionsScaffold();
     final visible = _visible;
-    final days = <String>[];
+    final days = <_DayBucket>[];
     for (final m in visible) {
-      if (!days.contains(m.day)) days.add(m.day);
+      if (!days.contains(m.dayBucket)) days.add(m.dayBucket);
     }
 
     return Scaffold(
@@ -834,7 +853,8 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                     else
                       for (final day in days) ...[
                         _dayLabel(day),
-                        for (final m in visible.where((x) => x.day == day))
+                        for (final m
+                            in visible.where((x) => x.dayBucket == day))
                           _MemTile(
                             mem: m,
                             selecting: _selecting,
@@ -875,6 +895,13 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                 child: RdBottomNav(active: 'library', go: widget.go),
               ),
             ),
+          if (_voiceOverlay)
+            Positioned.fill(
+              child: RdVoiceSearchOverlay(
+                onResult: _onVoiceResult,
+                onCancel: () => setState(() => _voiceOverlay = false),
+              ),
+            ),
         ],
       ),
     );
@@ -882,6 +909,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── header ──────────────────────────────────────────────────────────
   Widget _header() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
@@ -889,7 +917,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'YOUR MEMORY',
+            l10n.rdLibraryYourMemory,
             style: GoogleFonts.vazirmatn(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -906,7 +934,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Library',
+                      l10n.rdLibraryTitle,
                       style: GoogleFonts.dosis(
                         fontSize: 30,
                         fontWeight: FontWeight.w700,
@@ -916,7 +944,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$_keptCount ${_keptCount == 1 ? 'memory' : 'memories'}, all held safe',
+                      l10n.rdLibraryKeptCount(_keptCount),
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -976,6 +1004,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── search ──────────────────────────────────────────────────────────
   Widget _searchBar() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Container(
       margin: const EdgeInsets.fromLTRB(26, 20, 26, 0),
@@ -999,7 +1028,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
-                hintText: 'Search your memory…',
+                hintText: l10n.rdLibrarySearchHint,
                 hintStyle:
                     GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
               ),
@@ -1033,34 +1062,27 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   /// Voice search — record a phrase, transcribe it, and drop it into the query.
   Future<void> _voiceSearch() async {
-    final services = AppScope.servicesOf(context);
-    final text = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: false,
-      builder: (_) => RdVoiceCaptureSheet(
-        captureRepository: services.captureRepository,
-        prompt: 'Listening… tap to search',
-        busyLabel: 'Searching…',
-      ),
-    );
-    if (text != null && text.trim().isNotEmpty && mounted) {
-      setState(() {
-        _query = text.trim();
-        _searchCtl.text = text.trim();
-      });
-    }
+    setState(() => _voiceOverlay = true);
+  }
+
+  void _onVoiceResult(String text) {
+    setState(() {
+      _voiceOverlay = false;
+      _query = text.trim();
+      _searchCtl.text = text.trim();
+    });
   }
 
   // ── filter chips ────────────────────────────────────────────────────
   Widget _filters() {
-    const chips = [
-      ('all', 'All', null),
-      ('note', 'Notes', RdIcons.pencil),
-      ('voice', 'Voice', RdIcons.micSimple),
-      ('photo', 'Photos', RdIcons.photo),
-      ('link', 'Links', RdIcons.linkChain),
-      ('event', 'Events', RdIcons.calendar),
+    final l10n = AppLocalizations.of(context)!;
+    final chips = [
+      ('all', l10n.rdLibraryFilterAll, null),
+      ('note', l10n.rdLibraryFilterNotes, RdIcons.pencil),
+      ('voice', l10n.rdLibraryFilterVoice, RdIcons.micSimple),
+      ('photo', l10n.rdLibraryFilterPhotos, RdIcons.photo),
+      ('link', l10n.rdLibraryFilterLinks, RdIcons.linkChain),
+      ('event', l10n.rdLibraryFilterEvents, RdIcons.calendar),
     ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1083,6 +1105,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _searchSummary(int count) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final q = _query.trim();
     return Padding(
@@ -1095,23 +1118,22 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               TextSpan(
                 children: count == 0
                     ? [
-                        const TextSpan(text: 'No matches'),
-                        if (q.isNotEmpty) TextSpan(text: ' for “$q”'),
+                        TextSpan(text: l10n.rdLibraryNoMatches),
+                        if (q.isNotEmpty) TextSpan(text: l10n.rdLibrarySearchFor(q)),
                         if (_colFilterName != null)
-                          TextSpan(text: ' in ${_colFilterName!}'),
+                          TextSpan(text: l10n.rdLibrarySearchIn(_colFilterName!)),
                       ]
                     : [
                         TextSpan(
-                          text: '$count',
+                          text: l10n.rdLibraryMemoryCount(count),
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
                             color: rd.ink,
                           ),
                         ),
-                        TextSpan(text: count == 1 ? ' memory' : ' memories'),
-                        if (q.isNotEmpty) TextSpan(text: ' for “$q”'),
+                        if (q.isNotEmpty) TextSpan(text: l10n.rdLibrarySearchFor(q)),
                         if (_colFilterName != null)
-                          TextSpan(text: ' in ${_colFilterName!}'),
+                          TextSpan(text: l10n.rdLibrarySearchIn(_colFilterName!)),
                       ],
                 style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
               ),
@@ -1126,7 +1148,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               _searchCtl.clear();
             }),
             child: Text(
-              'Clear',
+              l10n.rdCommonClear,
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -1141,6 +1163,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── collections ─────────────────────────────────────────────────────
   Widget _collectionsLabel() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 26, 26, 12),
@@ -1152,7 +1175,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
               RdIcon(RdIcons.folder, size: 15, color: rd.peri, strokeWidth: 2),
               const SizedBox(width: 8),
               Text(
-                'MIRA GROUPED FOR YOU',
+                l10n.rdLibraryGroupedForYou,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -1166,7 +1189,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             behavior: HitTestBehavior.opaque,
             onTap: () => setState(() => _collectionsGridView = true),
             child: Text(
-              'See all',
+              l10n.rdSeeAll,
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,
@@ -1212,17 +1235,19 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _emptyCollections() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 4, 26, 4),
       child: Text(
-        'No collections yet.',
+        l10n.rdLibraryNoCollectionsYet,
         style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.faint),
       ),
     );
   }
 
-  static String _countLabel(int n) => '$n ${n == 1 ? "memory" : "memories"}';
+  String _countLabel(int n) =>
+      AppLocalizations.of(context)!.rdLibraryMemoryCount(n);
 
   static String _iconForCollection(String? icon) {
     switch ((icon ?? '').toLowerCase()) {
@@ -1255,17 +1280,19 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         _searchCtl.clear();
       });
     } catch (_) {
-      _toast('Couldn’t open “${c.name}”.');
+      _toast(AppLocalizations.of(context)!
+          .rdLibraryCouldntOpenCollection(c.name));
     }
   }
 
   // ── list scaffolding ────────────────────────────────────────────────
-  Widget _dayLabel(String day) {
+  Widget _dayLabel(_DayBucket day) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 24, 26, 4),
       child: Text(
-        day.toUpperCase(),
+        _dayBucketLabel(l10n, day).toUpperCase(),
         style: GoogleFonts.vazirmatn(
           fontSize: 12,
           fontWeight: FontWeight.w700,
@@ -1277,11 +1304,12 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _emptyHint() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 40, 40, 0),
       child: Text(
-        'Nothing here under this filter.\nEverything you capture will settle in quietly.',
+        l10n.rdLibraryEmptyFilter,
         textAlign: TextAlign.center,
         style: GoogleFonts.vazirmatn(
           fontSize: 13.5,
@@ -1298,11 +1326,12 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   Widget _end() {
     if (_keptCount == 0) return const SizedBox.shrink();
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 28, 40, 0),
       child: Text(
-        'You’ve kept $_keptCount ${_keptCount == 1 ? 'memory' : 'memories'}.\nMira holds them so you don’t have to.',
+        l10n.rdLibraryEndMessage(_keptCount),
         textAlign: TextAlign.center,
         style: GoogleFonts.vazirmatn(
           fontSize: 12.5,
@@ -1315,6 +1344,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   // ── selection chrome ────────────────────────────────────────────────
   Widget _selBar(List<String> ids) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final allSelected = ids.isNotEmpty && ids.every(_selected.contains);
     return Container(
@@ -1349,8 +1379,8 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
           Expanded(
             child: Text(
               _selected.isEmpty
-                  ? 'Select memories'
-                  : '${_selected.length} selected',
+                  ? l10n.rdLibrarySelectMemories
+                  : l10n.rdLibrarySelectedCount(_selected.length),
               style: GoogleFonts.dosis(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -1363,7 +1393,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
             child: Padding(
               padding: const EdgeInsets.all(8),
               child: Text(
-                allSelected ? 'Deselect all' : 'Select all',
+                allSelected ? l10n.rdLibraryDeselectAll : l10n.rdLibrarySelectAll,
                 style: GoogleFonts.vazirmatn(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -1378,6 +1408,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   }
 
   Widget _selActions() {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final enabled = _selected.isNotEmpty;
     return Container(
@@ -1390,31 +1421,31 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         children: [
           _SelAction(
             icon: RdIcons.folder,
-            label: 'Collection',
+            label: l10n.rdLibraryActionCollection,
             enabled: enabled,
             onTap: _addSelectedToCollection,
           ),
           _SelAction(
             icon: RdIcons.navCanvas,
-            label: 'Board',
+            label: l10n.rdLibraryActionBoard,
             enabled: enabled,
             onTap: _addSelectedToBoard,
           ),
           _SelAction(
             icon: RdIcons.pushpin,
-            label: 'Pin',
+            label: l10n.rdLibraryActionPin,
             enabled: enabled,
             onTap: _pinSelected,
           ),
           _SelAction(
             icon: RdIcons.archive,
-            label: 'Archive',
+            label: l10n.rdLibraryActionArchive,
             enabled: enabled,
             onTap: _archiveSelected,
           ),
           _SelAction(
             icon: RdIcons.trash,
-            label: 'Delete',
+            label: l10n.rdLibraryActionDelete,
             enabled: enabled,
             danger: true,
             onTap: _deleteSelected,
@@ -1426,6 +1457,8 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 }
 
 // ── data ──────────────────────────────────────────────────────────────
+enum _DayBucket { today, thisWeek, earlier }
+
 enum _MemType {
   note('note'),
   voice('voice'),
@@ -1440,23 +1473,21 @@ enum _MemType {
 class _LibMem {
   const _LibMem({
     required this.id,
-    required this.day,
+    required this.dayBucket,
     required this.type,
     required this.title,
     required this.sub,
-    required this.metaType,
-    required this.metaTime,
+    required this.createdAt,
     required this.searchText,
     this.pinned = false,
   });
 
   final String id;
-  final String day;
+  final _DayBucket dayBucket;
   final _MemType type;
   final String title;
   final String sub;
-  final String metaType;
-  final String metaTime;
+  final DateTime createdAt;
   final String searchText;
   final bool pinned;
 }
@@ -1574,7 +1605,7 @@ class _MemTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  _meta(rd),
+                  _meta(context, rd),
                 ],
               ),
             ),
@@ -1622,7 +1653,7 @@ class _MemTile extends StatelessWidget {
     );
   }
 
-  Widget _meta(RdTheme rd) {
+  Widget _meta(BuildContext context, RdTheme rd) {
     return Row(
       children: [
         Container(
@@ -1634,7 +1665,7 @@ class _MemTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
-            mem.metaType,
+            _typeLabel(context, mem.type),
             style: GoogleFonts.vazirmatn(
               fontSize: 10,
               fontWeight: FontWeight.w600,
@@ -1646,13 +1677,42 @@ class _MemTile extends StatelessWidget {
         const SizedBox(width: 8),
         Flexible(
           child: Text(
-            mem.metaTime,
+            _relativeTime(context, mem.createdAt),
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.vazirmatn(fontSize: 11.5, color: rd.faint),
           ),
         ),
       ],
     );
+  }
+
+  String _typeLabel(BuildContext context, _MemType t) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (t) {
+      case _MemType.voice:
+        return l10n.rdLibraryTypeVoice;
+      case _MemType.link:
+        return l10n.rdLibraryTypeLink;
+      case _MemType.photo:
+        return l10n.rdLibraryTypePhoto;
+      case _MemType.event:
+        return l10n.rdLibraryTypeEvent;
+      case _MemType.note:
+        return l10n.rdLibraryTypeNote;
+    }
+  }
+
+  String _relativeTime(BuildContext context, DateTime dt) {
+    final l10n = AppLocalizations.of(context)!;
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return l10n.rdLibraryTimeJustNow;
+    if (diff.inMinutes < 60) {
+      return l10n.rdLibraryTimeMinutesAgo(diff.inMinutes);
+    }
+    if (diff.inHours < 24) return l10n.rdLibraryTimeHoursAgo(diff.inHours);
+    if (diff.inDays == 1) return l10n.rdLibraryTimeYesterday;
+    if (diff.inDays < 30) return l10n.rdLibraryTimeDaysAgo(diff.inDays);
+    return l10n.rdLibraryTimeDate(dt.month, dt.day);
   }
 }
 
@@ -1905,6 +1965,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     final mq = MediaQuery.of(context);
     final navGap = (mq.viewPadding.bottom - mq.viewInsets.bottom).clamp(0.0, 64.0);
@@ -1935,7 +1996,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Add to board',
+            l10n.rdLibraryAddToBoard,
             style: GoogleFonts.dosis(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -1944,7 +2005,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
           ),
           const SizedBox(height: 12),
           if (_creating)
-            _newRow(rd)
+            _newRow(rd, l10n)
           else ...[
             if (widget.boards.isNotEmpty)
               ConstrainedBox(
@@ -1952,19 +2013,22 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: [for (final b in widget.boards) _row(rd, b)],
+                    children: [
+                      for (final b in widget.boards) _row(rd, b, l10n)
+                    ],
                   ),
                 ),
               ),
-            _createRow(rd),
+            _createRow(rd, l10n),
           ],
         ],
       ),
     );
   }
 
-  Widget _row(RdTheme rd, CanvasDto b) {
-    final title = b.title.trim().isEmpty ? 'Untitled board' : b.title.trim();
+  Widget _row(RdTheme rd, CanvasDto b, AppLocalizations l10n) {
+    final title =
+        b.title.trim().isEmpty ? l10n.rdLibraryUntitledBoard : b.title.trim();
     final count = b.nodes.length;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1995,7 +2059,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
               ),
             ),
             Text(
-              '$count ${count == 1 ? 'card' : 'cards'}',
+              l10n.rdLibraryCardCount(count),
               style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.faint),
             ),
           ],
@@ -2004,7 +2068,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
     );
   }
 
-  Widget _createRow(RdTheme rd) {
+  Widget _createRow(RdTheme rd, AppLocalizations l10n) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _creating = true),
@@ -2022,7 +2086,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
             ),
             const SizedBox(width: 12),
             Text(
-              'New board',
+              l10n.rdLibraryNewBoard,
               style: GoogleFonts.vazirmatn(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
@@ -2035,7 +2099,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
     );
   }
 
-  Widget _newRow(RdTheme rd) {
+  Widget _newRow(RdTheme rd, AppLocalizations l10n) {
     return Row(
       children: [
         Expanded(
@@ -2056,7 +2120,7 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
                 decoration: InputDecoration(
                   isCollapsed: true,
                   border: InputBorder.none,
-                  hintText: 'Board name',
+                  hintText: l10n.rdLibraryBoardNameHint,
                   hintStyle:
                       GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
                 ),

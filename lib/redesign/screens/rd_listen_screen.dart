@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
+import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 
 import '../theme/rd_theme.dart';
@@ -10,8 +13,8 @@ import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 import '../widgets/rd_orb.dart';
 
-/// Listen — the plain recording surface (the orb, a live timer, and a stop
-/// button). Faithful to `ListenScreen` in `app.jsx`. Stopping opens the chat.
+/// Listen — device-mic recording surface (orb, timer, stop). Stopping
+/// transcribes best-effort and opens Chat with the transcript prefilled.
 class RdListenScreen extends StatefulWidget {
   const RdListenScreen({super.key, required this.go, required this.onBack});
 
@@ -23,23 +26,65 @@ class RdListenScreen extends StatefulWidget {
 }
 
 class _RdListenScreenState extends State<RdListenScreen> {
+  final VoiceRecorderPort _recorder = createVoiceRecorder();
+  bool _busy = false;
   int _sec = 0;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _sec++));
+    unawaited(_recorder.start());
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => setState(() => _sec++),
+    );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    if (_recorder.isRecording) {
+      unawaited(_recorder.cancel().catchError((_) {}));
+    }
+    final r = _recorder;
+    if (r is DeviceVoiceRecorder) r.dispose();
     super.dispose();
   }
 
   String get _time =>
       '${(_sec ~/ 60).toString().padLeft(2, '0')}:${(_sec % 60).toString().padLeft(2, '0')}';
+
+  Future<void> _stop() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    _timer?.cancel();
+    var transcript = '';
+    final repo = AppScope.servicesOf(context).captureRepository;
+    try {
+      final result = await _recorder.stop();
+      final path = result.filePath;
+      if (!result.simulated && path != null && path.isNotEmpty) {
+        final res = await repo.transcribeVoice(
+          durationMs: result.duration.inMilliseconds,
+          audioPath: path,
+        );
+        if (!mounted) return;
+        transcript = res.text.trim();
+      }
+    } catch (_) {
+      // Fall through — still open chat like the design stop affordance.
+    }
+    if (!mounted) return;
+    if (transcript.isNotEmpty) {
+      widget.go(
+        'chat',
+        arg: RdChatArg(initialPrompt: transcript, autoSend: true),
+      );
+    } else {
+      widget.go('chat');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +121,7 @@ class _RdListenScreenState extends State<RdListenScreen> {
             const RdOrb(size: 145),
             const SizedBox(height: 34),
             Text(
-              l10n.rdListenTitle,
+              _busy ? l10n.rdListenTranscribing : l10n.rdListenTitle,
               style: GoogleFonts.dosis(fontSize: 34, fontWeight: FontWeight.w700, color: rd.ink),
             ),
             const SizedBox(height: 12),
@@ -87,22 +132,31 @@ class _RdListenScreenState extends State<RdListenScreen> {
             ),
             const Spacer(flex: 3),
             GestureDetector(
-              onTap: () => widget.go('capture'),
-              child: Container(
-                width: 72,
-                height: 72,
-                // Fixed pastel-periwinkle disc with a navy stop square — a
-                // colored control, constant across themes.
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFFC7D2FF),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 3)],
-                ),
-                child: Center(
-                  child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(color: const Color(0xFF00206B), borderRadius: BorderRadius.circular(4)),
+              onTap: _busy ? null : _stop,
+              child: Opacity(
+                opacity: _busy ? 0.55 : 1,
+                child: Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFC7D2FF),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 3,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF00206B),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -134,9 +188,6 @@ class _RingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
-    // Glass circle: keep the exact light glass (white 0.7 on the pale page) in
-    // light mode; on dark, sit it on a lifted card-tinted disc so it doesn't
-    // glare. The back-arrow glyph flips with the ink tone.
     final dark = Theme.of(context).brightness == Brightness.dark;
     final fill =
         dark ? rd.card.withValues(alpha: 0.7) : Colors.white.withValues(alpha: 0.7);
@@ -148,9 +199,17 @@ class _RingButton extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: fill,
-          boxShadow: [BoxShadow(color: const Color(0xFF141632).withValues(alpha: 0.07), blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF141632).withValues(alpha: 0.07),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        child: Center(child: RdIcon(icon, size: 22, stroke: '#1A1C29', strokeWidth: 1.6, color: rd.ink)),
+        child: Center(
+          child: RdIcon(icon, size: 22, stroke: '#1A1C29', strokeWidth: 1.6, color: rd.ink),
+        ),
       ),
     );
   }
