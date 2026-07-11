@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 
 import '../theme/rd_theme.dart';
 
@@ -82,6 +83,7 @@ class _RdVoiceSearchOverlayState extends State<RdVoiceSearchOverlay> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     return Material(
       color: const Color(0xFF141828).withValues(alpha: 0.44),
       child: GestureDetector(
@@ -110,7 +112,7 @@ class _RdVoiceSearchOverlayState extends State<RdVoiceSearchOverlay> {
                   const _VoiceBars(),
                   const SizedBox(height: 16),
                   Text(
-                    _busy ? 'SEARCHING' : 'LISTENING',
+                    _busy ? l10n.rdVoiceSearchSearching : l10n.rdVoiceSearchListening,
                     style: GoogleFonts.vazirmatn(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
@@ -120,7 +122,7 @@ class _RdVoiceSearchOverlayState extends State<RdVoiceSearchOverlay> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _busy ? 'One moment…' : 'Speak your search',
+                    _busy ? l10n.rdVoiceSearchBusy : l10n.rdVoiceSearchPrompt,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.dosis(
                       fontSize: 20,
@@ -143,7 +145,7 @@ class _RdVoiceSearchOverlayState extends State<RdVoiceSearchOverlay> {
                       TextButton(
                         onPressed: widget.onCancel,
                         child: Text(
-                          'Cancel',
+                          l10n.rdVoiceSearchCancel,
                           style: GoogleFonts.vazirmatn(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -155,7 +157,7 @@ class _RdVoiceSearchOverlayState extends State<RdVoiceSearchOverlay> {
                       TextButton(
                         onPressed: _finish,
                         child: Text(
-                          'Search',
+                          l10n.rdVoiceSearchAction,
                           style: GoogleFonts.vazirmatn(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,

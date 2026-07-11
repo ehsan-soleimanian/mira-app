@@ -762,4 +762,196 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get rdOnboardingLater => 'بعداً انجام می‌دهم';
+
+  @override
+  String get rdCaptureEntryTitle => 'ثبت یک خاطره';
+
+  @override
+  String get rdCaptureEntrySubtitle =>
+      'میرا می‌فهمد — قبل از ذخیره تأیید می‌کنی';
+
+  @override
+  String get rdCaptureModeVoice => 'صدا';
+
+  @override
+  String get rdCaptureModeVoiceHint => 'فقط حرف بزن';
+
+  @override
+  String get rdCaptureModePhoto => 'عکس';
+
+  @override
+  String get rdCaptureModePhotoHint => 'از صحنه عکس بگیر';
+
+  @override
+  String get rdCaptureModeScreenshot => 'اسکرین‌شات';
+
+  @override
+  String get rdCaptureModeScreenshotHint => 'از گالری';
+
+  @override
+  String get rdCaptureModeLink => 'لینک';
+
+  @override
+  String get rdCaptureModeLinkHint => 'آدرس را بچسبان';
+
+  @override
+  String get rdCaptureModeType => 'با متن بنویس';
+
+  @override
+  String get rdVoiceSearchListening => 'در حال گوش دادن';
+
+  @override
+  String get rdVoiceSearchSearching => 'در حال جستجو';
+
+  @override
+  String get rdVoiceSearchPrompt => 'جستجویت را بگو';
+
+  @override
+  String get rdVoiceSearchBusy => 'یک لحظه…';
+
+  @override
+  String get rdVoiceSearchCancel => 'لغو';
+
+  @override
+  String get rdVoiceSearchAction => 'جستجو';
+
+  @override
+  String get rdListenTranscribing => 'در حال تبدیل به متن…';
+
+  @override
+  String get rdMemoryFlagsAllChecked => 'همه بررسی شد — ممنون';
+
+  @override
+  String rdMemoryFlagsUnresolved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count کلمه که میرا مطمئن نبود',
+      one: '۱ کلمه که میرا مطمئن نبود',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdMemoryFlagsHint =>
+      'روی کلمهٔ پرچم‌دار بزن تا به آن بروی، یا مستقیم متن را ویرایش کن.';
+
+  @override
+  String get rdCanvasSuggestConnect =>
+      'این دو مرتبط به نظر می‌رسند — وصلشان کنیم؟';
+
+  @override
+  String get rdCanvasSuggestAction => 'وصل کن';
+
+  @override
+  String get rdPaywallComingSoon => 'پلاس به‌زودی — بهت خبر می‌دهیم.';
+
+  @override
+  String get rdPaywallWelcome => 'به میرا پلاس خوش آمدی ✨';
+
+  @override
+  String get rdPaywallCancelled => 'عضویت پلاس لغو شد.';
+
+  @override
+  String get rdPaywallBadge => 'میرا پلاس';
+
+  @override
+  String get rdPaywallTitle => 'به حافظه‌ات\nفضای بیشتری بده';
+
+  @override
+  String get rdPaywallSubtitle =>
+      'هر چیزی که ثبت می‌کنی، هرچقدر لازم باشد نگه داشته می‌شود — در یک حافظهٔ آرام و به‌هم‌پیوسته.';
+
+  @override
+  String get rdPaywallPrivacyNote =>
+      'پلاس آنچه میرا به خاطر می‌سپارد را تغییر می‌دهد — نه اینکه چه کسی ببیند. حافظه‌ات همیشه خصوصی می‌ماند.';
+
+  @override
+  String get rdPaywallFeatUnlimitedTitle => 'خاطرات نامحدود';
+
+  @override
+  String get rdPaywallFeatUnlimitedSub => 'بدون سقف — نسخهٔ رایگان ۲٬۰۰۰ مورد.';
+
+  @override
+  String get rdPaywallFeatGraphTitle => 'گراف کامل حافظه';
+
+  @override
+  String get rdPaywallFeatGraphSub => 'همهٔ ارتباط‌ها، نه فقط اخیرها.';
+
+  @override
+  String get rdPaywallFeatVoiceTitle => 'تاریخچه و صدای طولانی‌تر';
+
+  @override
+  String get rdPaywallFeatVoiceSub => 'سال‌ها خاطره و ضبط ۱۰ دقیقه‌ای.';
+
+  @override
+  String get rdPaywallFeatConnectTitle => 'اتصال همه‌چیز';
+
+  @override
+  String get rdPaywallFeatConnectSub => 'همهٔ اپ‌ها — رایگان فقط دو اتصال.';
+
+  @override
+  String get rdPaywallFeatBriefTitle => 'خلاصه روزانه و یادآورهای هوشمند';
+
+  @override
+  String get rdPaywallFeatBriefSub => 'میرا در زمان درست چیزها را برمی‌گرداند.';
+
+  @override
+  String get rdPaywallPlanAnnual => 'سالانه';
+
+  @override
+  String get rdPaywallPlanMonthly => 'ماهانه';
+
+  @override
+  String get rdPaywallPlanMonthlyNote => 'صورتحساب ماهانه';
+
+  @override
+  String get rdPaywallCtaTrial => '۱۴ روز پلاس رایگان';
+
+  @override
+  String get rdPaywallThenAnnual => 'بعد ۷۲ دلار در سال';
+
+  @override
+  String get rdPaywallThenMonthly => 'بعد ۸ دلار در ماه';
+
+  @override
+  String get rdPaywallRestore => 'بازیابی خرید';
+
+  @override
+  String get rdPaywallTerms => 'شرایط';
+
+  @override
+  String get rdPaywallPrivacy => 'حریم خصوصی';
+
+  @override
+  String get rdPaywallTermsToast => 'شرایط در مرورگر باز می‌شود.';
+
+  @override
+  String get rdPaywallPrivacyToast => 'حریم خصوصی در مرورگر باز می‌شود.';
+
+  @override
+  String get rdPaywallActiveBadge => 'میرا پلاس · فعال';
+
+  @override
+  String get rdPaywallActiveTitle => 'فضای کافی\nبرای به‌خاطر سپردن';
+
+  @override
+  String get rdPaywallActiveSubtitle =>
+      'ممنون که پلاس هستی. هر چیزی که ثبت می‌کنی کامل نگه داشته می‌شود — بدون سقف و فراموشی.';
+
+  @override
+  String get rdPaywallManage => 'مدیریت اشتراک';
+
+  @override
+  String get rdPaywallCancelNote =>
+      'اگر لغو کنی، چیزی حذف نمی‌شود — خاطرات می‌مانند و ثبت در سقف رایگان متوقف می‌شود.';
+
+  @override
+  String get rdPaywallCancelCta => 'لغو پلاس';
+
+  @override
+  String get rdPaywallDemoFree => 'رایگان';
+
+  @override
+  String get rdPaywallDemoPlus => 'عضو پلاس';
 }

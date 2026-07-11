@@ -24,6 +24,8 @@ class RdChatScreen extends StatefulWidget {
     this.anchorTitle,
     this.anchorIsVoice = false,
     this.anchorId,
+    this.initialPrompt,
+    this.autoSend = false,
   });
 
   final RdGo go;
@@ -35,6 +37,12 @@ class RdChatScreen extends StatefulWidget {
   final String? anchorTitle;
   final bool anchorIsVoice;
   final String? anchorId;
+
+  /// Prefills compose (e.g. Listen → Chat with a transcript).
+  final String? initialPrompt;
+
+  /// Sends [initialPrompt] to the assistant immediately on open.
+  final bool autoSend;
 
   @override
   State<RdChatScreen> createState() => _RdChatScreenState();
@@ -156,6 +164,18 @@ class _RdChatScreenState extends State<RdChatScreen> {
   late final List<_Msg> _msgs = [
     _Msg.mira(_anchored ? _openingFor(_anchorTitle!) : _opening),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    final prompt = widget.initialPrompt?.trim();
+    if (prompt != null && prompt.isNotEmpty) {
+      _draftCtl.text = prompt;
+      if (widget.autoSend) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _ask(prompt));
+      }
+    }
+  }
 
   static String _openingFor(String title) =>
       'This one’s about “$title.” Ask me anything about it — what’s open, '

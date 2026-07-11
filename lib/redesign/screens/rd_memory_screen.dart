@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 
 import '../theme/rd_theme.dart';
@@ -724,6 +725,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   Widget _bodyInput() {
     final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     final flags = widget.isVoice ? _transcriptFlags(_bodyCtl.text) : const <String>[];
     final unresolved = flags.length - _fixedFlags.length;
     return Column(
@@ -814,8 +816,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                   const SizedBox(width: 6),
                   Text(
                     unresolved <= 0
-                        ? 'All checked — thanks'
-                        : '$unresolved word${unresolved == 1 ? '' : 's'} Mira wasn\'t sure of',
+                        ? l10n.rdMemoryFlagsAllChecked
+                        : l10n.rdMemoryFlagsUnresolved(unresolved),
                     style: GoogleFonts.vazirmatn(fontSize: 12, color: const Color(0xFF8A6D2F)),
                   ),
                 ],
@@ -848,7 +850,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tap a flagged word to jump to it, or edit the transcript directly.',
+            l10n.rdMemoryFlagsHint,
             style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.faint),
           ),
         ],

@@ -761,4 +761,199 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdOnboardingLater => 'I\'ll do it later';
+
+  @override
+  String get rdCaptureEntryTitle => 'Capture a memory';
+
+  @override
+  String get rdCaptureEntrySubtitle =>
+      'Mira will understand it — you confirm before it\'s kept';
+
+  @override
+  String get rdCaptureModeVoice => 'Voice';
+
+  @override
+  String get rdCaptureModeVoiceHint => 'Just speak';
+
+  @override
+  String get rdCaptureModePhoto => 'Photo';
+
+  @override
+  String get rdCaptureModePhotoHint => 'Snap a scene';
+
+  @override
+  String get rdCaptureModeScreenshot => 'Screenshot';
+
+  @override
+  String get rdCaptureModeScreenshotHint => 'From your library';
+
+  @override
+  String get rdCaptureModeLink => 'Link';
+
+  @override
+  String get rdCaptureModeLinkHint => 'Paste a URL';
+
+  @override
+  String get rdCaptureModeType => 'Type it instead';
+
+  @override
+  String get rdVoiceSearchListening => 'LISTENING';
+
+  @override
+  String get rdVoiceSearchSearching => 'SEARCHING';
+
+  @override
+  String get rdVoiceSearchPrompt => 'Speak your search';
+
+  @override
+  String get rdVoiceSearchBusy => 'One moment…';
+
+  @override
+  String get rdVoiceSearchCancel => 'Cancel';
+
+  @override
+  String get rdVoiceSearchAction => 'Search';
+
+  @override
+  String get rdListenTranscribing => 'Transcribing…';
+
+  @override
+  String get rdMemoryFlagsAllChecked => 'All checked — thanks';
+
+  @override
+  String rdMemoryFlagsUnresolved(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count words Mira wasn\'t sure of',
+      one: '1 word Mira wasn\'t sure of',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rdMemoryFlagsHint =>
+      'Tap a flagged word to jump to it, or edit the transcript directly.';
+
+  @override
+  String get rdCanvasSuggestConnect => 'These two look related — connect them?';
+
+  @override
+  String get rdCanvasSuggestAction => 'Connect';
+
+  @override
+  String get rdPaywallComingSoon =>
+      'Plus is coming soon — we\'ll let you know.';
+
+  @override
+  String get rdPaywallWelcome => 'Welcome to Mira Plus ✨';
+
+  @override
+  String get rdPaywallCancelled => 'Your Plus membership was cancelled.';
+
+  @override
+  String get rdPaywallBadge => 'Mira Plus';
+
+  @override
+  String get rdPaywallTitle => 'Give your memory\nroom to grow';
+
+  @override
+  String get rdPaywallSubtitle =>
+      'Everything you capture, held for as long as you need — woven into one calm, connected memory.';
+
+  @override
+  String get rdPaywallPrivacyNote =>
+      'Plus changes what Mira remembers — never who can see it. Your memory stays private, always.';
+
+  @override
+  String get rdPaywallFeatUnlimitedTitle => 'Unlimited memories';
+
+  @override
+  String get rdPaywallFeatUnlimitedSub => 'Never hit a cap — Free holds 2,000.';
+
+  @override
+  String get rdPaywallFeatGraphTitle => 'The full memory graph';
+
+  @override
+  String get rdPaywallFeatGraphSub =>
+      'See every connection, not just recent ones.';
+
+  @override
+  String get rdPaywallFeatVoiceTitle => 'Longer history & voice';
+
+  @override
+  String get rdPaywallFeatVoiceSub =>
+      'Keep years of memories and 10-min captures.';
+
+  @override
+  String get rdPaywallFeatConnectTitle => 'Connect everything';
+
+  @override
+  String get rdPaywallFeatConnectSub => 'All your apps — Free links two.';
+
+  @override
+  String get rdPaywallFeatBriefTitle => 'Daily Brief & smart reminders';
+
+  @override
+  String get rdPaywallFeatBriefSub =>
+      'Mira resurfaces things at the right moment.';
+
+  @override
+  String get rdPaywallPlanAnnual => 'Annual';
+
+  @override
+  String get rdPaywallPlanMonthly => 'Monthly';
+
+  @override
+  String get rdPaywallPlanMonthlyNote => 'billed monthly';
+
+  @override
+  String get rdPaywallCtaTrial => 'Try Plus free for 14 days';
+
+  @override
+  String get rdPaywallThenAnnual => 'Then \$72/year';
+
+  @override
+  String get rdPaywallThenMonthly => 'Then \$8/month';
+
+  @override
+  String get rdPaywallRestore => 'Restore purchase';
+
+  @override
+  String get rdPaywallTerms => 'Terms';
+
+  @override
+  String get rdPaywallPrivacy => 'Privacy';
+
+  @override
+  String get rdPaywallTermsToast => 'Terms open in your browser.';
+
+  @override
+  String get rdPaywallPrivacyToast => 'Privacy opens in your browser.';
+
+  @override
+  String get rdPaywallActiveBadge => 'Mira Plus · Active';
+
+  @override
+  String get rdPaywallActiveTitle => 'You have room\nto remember';
+
+  @override
+  String get rdPaywallActiveSubtitle =>
+      'Thank you for being on Plus. Everything you capture is held in full — no caps, no forgetting.';
+
+  @override
+  String get rdPaywallManage => 'Manage subscription';
+
+  @override
+  String get rdPaywallCancelNote =>
+      'If you ever cancel, nothing is deleted — your memories stay, and captures pause at the Free limit.';
+
+  @override
+  String get rdPaywallCancelCta => 'Cancel Plus';
+
+  @override
+  String get rdPaywallDemoFree => 'Free';
+
+  @override
+  String get rdPaywallDemoPlus => 'Plus member';
 }

@@ -2873,6 +2873,7 @@ class _SuggestBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
       decoration: BoxDecoration(
@@ -2892,7 +2893,7 @@ class _SuggestBanner extends StatelessWidget {
           const SizedBox(width: 11),
           Expanded(
             child: Text(
-              'These two look related — connect them?',
+              l10n.rdCanvasSuggestConnect,
               style: GoogleFonts.vazirmatn(
                 fontSize: 12.5,
                 height: 1.4,
@@ -2910,7 +2911,7 @@ class _SuggestBanner extends StatelessWidget {
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: Text(
-              'Connect',
+              l10n.rdCanvasSuggestAction,
               style: GoogleFonts.vazirmatn(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,

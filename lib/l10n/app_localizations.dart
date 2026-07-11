@@ -1461,6 +1461,360 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'I\'ll do it later'**
   String get rdOnboardingLater;
+
+  /// No description provided for @rdCaptureEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Capture a memory'**
+  String get rdCaptureEntryTitle;
+
+  /// No description provided for @rdCaptureEntrySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira will understand it — you confirm before it\'s kept'**
+  String get rdCaptureEntrySubtitle;
+
+  /// No description provided for @rdCaptureModeVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice'**
+  String get rdCaptureModeVoice;
+
+  /// No description provided for @rdCaptureModeVoiceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Just speak'**
+  String get rdCaptureModeVoiceHint;
+
+  /// No description provided for @rdCaptureModePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get rdCaptureModePhoto;
+
+  /// No description provided for @rdCaptureModePhotoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Snap a scene'**
+  String get rdCaptureModePhotoHint;
+
+  /// No description provided for @rdCaptureModeScreenshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenshot'**
+  String get rdCaptureModeScreenshot;
+
+  /// No description provided for @rdCaptureModeScreenshotHint.
+  ///
+  /// In en, this message translates to:
+  /// **'From your library'**
+  String get rdCaptureModeScreenshotHint;
+
+  /// No description provided for @rdCaptureModeLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get rdCaptureModeLink;
+
+  /// No description provided for @rdCaptureModeLinkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a URL'**
+  String get rdCaptureModeLinkHint;
+
+  /// No description provided for @rdCaptureModeType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type it instead'**
+  String get rdCaptureModeType;
+
+  /// No description provided for @rdVoiceSearchListening.
+  ///
+  /// In en, this message translates to:
+  /// **'LISTENING'**
+  String get rdVoiceSearchListening;
+
+  /// No description provided for @rdVoiceSearchSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'SEARCHING'**
+  String get rdVoiceSearchSearching;
+
+  /// No description provided for @rdVoiceSearchPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak your search'**
+  String get rdVoiceSearchPrompt;
+
+  /// No description provided for @rdVoiceSearchBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'One moment…'**
+  String get rdVoiceSearchBusy;
+
+  /// No description provided for @rdVoiceSearchCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get rdVoiceSearchCancel;
+
+  /// No description provided for @rdVoiceSearchAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get rdVoiceSearchAction;
+
+  /// No description provided for @rdListenTranscribing.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribing…'**
+  String get rdListenTranscribing;
+
+  /// No description provided for @rdMemoryFlagsAllChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'All checked — thanks'**
+  String get rdMemoryFlagsAllChecked;
+
+  /// No description provided for @rdMemoryFlagsUnresolved.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 word Mira wasn\'t sure of} other{{count} words Mira wasn\'t sure of}}'**
+  String rdMemoryFlagsUnresolved(int count);
+
+  /// No description provided for @rdMemoryFlagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a flagged word to jump to it, or edit the transcript directly.'**
+  String get rdMemoryFlagsHint;
+
+  /// No description provided for @rdCanvasSuggestConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'These two look related — connect them?'**
+  String get rdCanvasSuggestConnect;
+
+  /// No description provided for @rdCanvasSuggestAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get rdCanvasSuggestAction;
+
+  /// No description provided for @rdPaywallComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Plus is coming soon — we\'ll let you know.'**
+  String get rdPaywallComingSoon;
+
+  /// No description provided for @rdPaywallWelcome.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Mira Plus ✨'**
+  String get rdPaywallWelcome;
+
+  /// No description provided for @rdPaywallCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Plus membership was cancelled.'**
+  String get rdPaywallCancelled;
+
+  /// No description provided for @rdPaywallBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira Plus'**
+  String get rdPaywallBadge;
+
+  /// No description provided for @rdPaywallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Give your memory\nroom to grow'**
+  String get rdPaywallTitle;
+
+  /// No description provided for @rdPaywallSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything you capture, held for as long as you need — woven into one calm, connected memory.'**
+  String get rdPaywallSubtitle;
+
+  /// No description provided for @rdPaywallPrivacyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Plus changes what Mira remembers — never who can see it. Your memory stays private, always.'**
+  String get rdPaywallPrivacyNote;
+
+  /// No description provided for @rdPaywallFeatUnlimitedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited memories'**
+  String get rdPaywallFeatUnlimitedTitle;
+
+  /// No description provided for @rdPaywallFeatUnlimitedSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Never hit a cap — Free holds 2,000.'**
+  String get rdPaywallFeatUnlimitedSub;
+
+  /// No description provided for @rdPaywallFeatGraphTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The full memory graph'**
+  String get rdPaywallFeatGraphTitle;
+
+  /// No description provided for @rdPaywallFeatGraphSub.
+  ///
+  /// In en, this message translates to:
+  /// **'See every connection, not just recent ones.'**
+  String get rdPaywallFeatGraphSub;
+
+  /// No description provided for @rdPaywallFeatVoiceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Longer history & voice'**
+  String get rdPaywallFeatVoiceTitle;
+
+  /// No description provided for @rdPaywallFeatVoiceSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep years of memories and 10-min captures.'**
+  String get rdPaywallFeatVoiceSub;
+
+  /// No description provided for @rdPaywallFeatConnectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect everything'**
+  String get rdPaywallFeatConnectTitle;
+
+  /// No description provided for @rdPaywallFeatConnectSub.
+  ///
+  /// In en, this message translates to:
+  /// **'All your apps — Free links two.'**
+  String get rdPaywallFeatConnectSub;
+
+  /// No description provided for @rdPaywallFeatBriefTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Brief & smart reminders'**
+  String get rdPaywallFeatBriefTitle;
+
+  /// No description provided for @rdPaywallFeatBriefSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira resurfaces things at the right moment.'**
+  String get rdPaywallFeatBriefSub;
+
+  /// No description provided for @rdPaywallPlanAnnual.
+  ///
+  /// In en, this message translates to:
+  /// **'Annual'**
+  String get rdPaywallPlanAnnual;
+
+  /// No description provided for @rdPaywallPlanMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get rdPaywallPlanMonthly;
+
+  /// No description provided for @rdPaywallPlanMonthlyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'billed monthly'**
+  String get rdPaywallPlanMonthlyNote;
+
+  /// No description provided for @rdPaywallCtaTrial.
+  ///
+  /// In en, this message translates to:
+  /// **'Try Plus free for 14 days'**
+  String get rdPaywallCtaTrial;
+
+  /// No description provided for @rdPaywallThenAnnual.
+  ///
+  /// In en, this message translates to:
+  /// **'Then \$72/year'**
+  String get rdPaywallThenAnnual;
+
+  /// No description provided for @rdPaywallThenMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Then \$8/month'**
+  String get rdPaywallThenMonthly;
+
+  /// No description provided for @rdPaywallRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore purchase'**
+  String get rdPaywallRestore;
+
+  /// No description provided for @rdPaywallTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms'**
+  String get rdPaywallTerms;
+
+  /// No description provided for @rdPaywallPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy'**
+  String get rdPaywallPrivacy;
+
+  /// No description provided for @rdPaywallTermsToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms open in your browser.'**
+  String get rdPaywallTermsToast;
+
+  /// No description provided for @rdPaywallPrivacyToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy opens in your browser.'**
+  String get rdPaywallPrivacyToast;
+
+  /// No description provided for @rdPaywallActiveBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira Plus · Active'**
+  String get rdPaywallActiveBadge;
+
+  /// No description provided for @rdPaywallActiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You have room\nto remember'**
+  String get rdPaywallActiveTitle;
+
+  /// No description provided for @rdPaywallActiveSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for being on Plus. Everything you capture is held in full — no caps, no forgetting.'**
+  String get rdPaywallActiveSubtitle;
+
+  /// No description provided for @rdPaywallManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage subscription'**
+  String get rdPaywallManage;
+
+  /// No description provided for @rdPaywallCancelNote.
+  ///
+  /// In en, this message translates to:
+  /// **'If you ever cancel, nothing is deleted — your memories stay, and captures pause at the Free limit.'**
+  String get rdPaywallCancelNote;
+
+  /// No description provided for @rdPaywallCancelCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel Plus'**
+  String get rdPaywallCancelCta;
+
+  /// No description provided for @rdPaywallDemoFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get rdPaywallDemoFree;
+
+  /// No description provided for @rdPaywallDemoPlus.
+  ///
+  /// In en, this message translates to:
+  /// **'Plus member'**
+  String get rdPaywallDemoPlus;
 }
 
 class _AppLocalizationsDelegate

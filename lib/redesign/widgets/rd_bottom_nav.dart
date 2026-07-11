@@ -28,6 +28,24 @@ class RdMemoryArg {
   final bool isVoice;
 }
 
+/// Argument for `go('chat', arg: ...)` — optional voice transcript from Listen.
+class RdChatArg {
+  const RdChatArg({
+    this.initialPrompt,
+    this.autoSend = false,
+    this.memory,
+  });
+
+  /// Prefills the compose bar (e.g. after Listen transcribes).
+  final String? initialPrompt;
+
+  /// When true, sends [initialPrompt] to the assistant on open.
+  final bool autoSend;
+
+  /// Optional memory anchor (same shape as memory detail navigation).
+  final RdMemoryArg? memory;
+}
+
 /// Carries onboarding context (email, display name, optional first capture)
 /// across the first-run flow screens.
 class RdOnboardingArg {
