@@ -419,12 +419,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   String get _time =>
       '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
 
-  /// System navigation-bar / gesture inset at the bottom of the window. Modal
-  /// bottom sheets live in their own route (outside this screen's `SafeArea`),
-  /// so their bottom padding must add this or their last row slides under the
-  /// Android nav buttons on phones like Samsung.
-  double get _safeBottom => MediaQuery.of(context).viewPadding.bottom;
-
   /// Confirm the review: persist the memory, create the reminder (if its toggle
   /// is on), and show the "kept in memory" screen. The persist is fire-and-forget
   /// and best-effort so the confirmation is instant and still shows even offline.
@@ -1162,40 +1156,43 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: BoxDecoration(
-          color: rd.card,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-        ),
-        padding: EdgeInsets.fromLTRB(18, 12, 18, 24 + _safeBottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 14),
-                decoration: BoxDecoration(
-                    color: rd.line, borderRadius: BorderRadius.circular(100)),
+      builder: (sheetContext) {
+        final navInset = sheetContext.rdNavBarInset;
+        return Container(
+          decoration: BoxDecoration(
+            color: rd.card,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          padding: EdgeInsets.fromLTRB(18, 12, 18, 24 + navInset),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 14),
+                  decoration: BoxDecoration(
+                      color: rd.line, borderRadius: BorderRadius.circular(100)),
+                ),
               ),
-            ),
-            Text(l10n.rdCaptureChangeType,
-                style: GoogleFonts.dosis(
-                    fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink)),
-            const SizedBox(height: 2),
-            Text(l10n.rdCaptureFilePrompt,
-                style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted)),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [for (final t in types) _typeOpt(t.$1, t.$2)],
-            ),
-          ],
-        ),
-      ),
+              Text(l10n.rdCaptureChangeType,
+                  style: GoogleFonts.dosis(
+                      fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink)),
+              const SizedBox(height: 2),
+              Text(l10n.rdCaptureFilePrompt,
+                  style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted)),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [for (final t in types) _typeOpt(t.$1, t.$2)],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

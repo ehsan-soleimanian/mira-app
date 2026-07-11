@@ -2,8 +2,10 @@ package com.mira.mira_app
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.os.Parcelable
 import android.provider.OpenableColumns
+import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -11,6 +13,12 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private var channel: MethodChannel? = null
     private var pendingSharedItem: Map<String, Any?>? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Report nav-bar insets to Flutter on Samsung / Android 15+ edge-to-edge.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        super.onCreate(savedInstanceState)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

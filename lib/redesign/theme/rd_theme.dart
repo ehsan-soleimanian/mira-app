@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Themeable redesign palette exposed as a [ThemeExtension] so screens can read
@@ -122,4 +124,12 @@ class RdTheme extends ThemeExtension<RdTheme> {
 /// code never has to null-check.
 extension RdThemeX on BuildContext {
   RdTheme get rd => Theme.of(this).extension<RdTheme>() ?? RdTheme.light;
+
+  /// Bottom inset for the system navigation bar (Samsung 3-button, gesture bar,
+  /// iOS home indicator). Prefer this over raw [MediaQuery.viewPadding] when
+  /// screens opt out of [SafeArea] bottom padding.
+  double get rdNavBarInset {
+    final mq = MediaQuery.of(this);
+    return math.max(mq.viewPadding.bottom, mq.padding.bottom);
+  }
 }

@@ -84,13 +84,14 @@ class RdBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final navInset = context.rdNavBarInset;
     return SizedBox(
-      height: 96,
+      height: 96 + navInset,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(30, 0, 30, 22),
+            padding: EdgeInsets.fromLTRB(30, 0, 30, 22 + navInset),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -124,7 +125,7 @@ class RdBottomNav extends StatelessWidget {
             ),
           ),
           Positioned(
-            bottom: 40,
+            bottom: 40 + navInset,
             left: 0,
             right: 0,
             child: Center(child: _NavMic(onTap: () => go('capture'))),

@@ -1166,8 +1166,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   Widget _actionBar() {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
+    final navInset = context.rdNavBarInset;
     return Container(
-      padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
+      padding: EdgeInsets.fromLTRB(22, 12, 22, 12 + navInset),
       decoration: BoxDecoration(border: Border(top: BorderSide(color: rd.line, width: 1))),
       child: _editing
           ? Row(
@@ -1408,7 +1409,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + context.rdNavBarInset),
               decoration: BoxDecoration(
                 color: rd.card,
                 borderRadius:
@@ -1537,7 +1538,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 26),
+              padding: EdgeInsets.fromLTRB(24, 12, 24, 26 + context.rdNavBarInset),
               decoration: BoxDecoration(
                 color: rd.card,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
