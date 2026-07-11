@@ -73,4 +73,12 @@ class MemoryStore extends ChangeNotifier {
   void removeLocal(String id) {
     if (_byId.remove(id) != null) notifyListeners();
   }
+
+  /// Inserts or replaces one library item after a successful create/import so
+  /// Library (and other listeners) reflect it without a full reload.
+  void upsertLocal(LibraryItem item) {
+    _byId[item.id] = item;
+    _loaded = true;
+    notifyListeners();
+  }
 }

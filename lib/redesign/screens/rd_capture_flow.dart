@@ -471,7 +471,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     required String content,
   }) async {
     try {
-      await services.libraryRepository.createNote(title: title, content: content);
+      final item = await services.libraryRepository.createNote(
+        title: title,
+        content: content,
+      );
+      services.memoryStore.upsertLocal(item);
     } catch (_) {
       // Best-effort — the capture is still shown as kept.
     }
@@ -629,7 +633,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     String? title,
   }) async {
     try {
-      await services.libraryRepository.importLink(url: url, title: title);
+      final item = await services.libraryRepository.importLink(
+        url: url,
+        title: title,
+      );
+      services.memoryStore.upsertLocal(item);
     } catch (_) {
       // Best-effort — the capture is still shown as kept.
     }
@@ -640,11 +648,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     PickedCaptureMedia media,
   ) async {
     try {
-      await services.libraryRepository.uploadBytes(
+      final item = await services.libraryRepository.uploadBytes(
         bytes: media.bytes,
         filename: media.filename,
         mimeType: media.mimeType,
       );
+      services.memoryStore.upsertLocal(item);
     } catch (_) {
       // Best-effort — the capture is still shown as kept.
     }
