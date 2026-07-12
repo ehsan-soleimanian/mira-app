@@ -265,6 +265,23 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             _realProposal = true;
           });
         }
+      case 'question_answer':
+        if (mounted) {
+          widget.go(
+            'chat',
+            arg: RdChatArg(initialPrompt: _transcript, autoSend: true),
+          );
+        }
+      case 'done':
+        final state = event.data['state']?.toString();
+        if (state == 'question_answered') {
+          if (mounted) {
+            widget.go(
+              'chat',
+              arg: RdChatArg(initialPrompt: _transcript, autoSend: true),
+            );
+          }
+        }
       default:
         break;
     }
@@ -381,10 +398,17 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               proposalJson = event.data;
             case 'error':
               streamOk = false;
+            case 'question_answer':
+              if (mounted) {
+                widget.go(
+                  'chat',
+                  arg: RdChatArg(initialPrompt: text, autoSend: true),
+                );
+              }
+              return;
             // Any clarification path means the pipeline wants a sub-flow we
             // deliberately do not build — treat as a fallback trigger.
             case 'clarification':
-            case 'question_answer':
             case 'time_clarification':
             case 'entity_clarification':
               clarificationOnly = true;
@@ -392,6 +416,15 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               final state = event.data['state']?.toString();
               // Only a clean awaiting_approval is a real, approvable result.
               if (state != null && state != 'awaiting_approval') {
+                if (state == 'question_answered') {
+                  if (mounted) {
+                    widget.go(
+                      'chat',
+                      arg: RdChatArg(initialPrompt: text, autoSend: true),
+                    );
+                  }
+                  return;
+                }
                 clarificationOnly = true;
               }
           }
