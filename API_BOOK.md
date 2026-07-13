@@ -92,6 +92,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `PATCH` | `/canvas/{id}` | `canvas_repository.dart` | Persist nodes, edges, and viewport |
 | `GET` | `/library/import-sources` | `library_repository.dart` | Fabric-style import source manifest |
 | `POST` | `/library/imports/link` | `library_repository.dart` | Import web/video/social URL metadata |
+| `POST` | `/library/imports/link/extract` | `library_repository.dart` | Import URL and return extracted text/chunks in one call |
 | `POST` | `/library/imports/text` | `library_repository.dart` | Import pasted text, exports, HTML, notes |
 | `POST` | `/library/search-v2` | `library_repository.dart` | Chunk-level Library search with snippets/citations |
 | `POST` | `/library/meetings` | `library_repository.dart` | Import meeting transcript or meeting media |
@@ -1433,6 +1434,46 @@ Creates a Library item from a URL. YouTube, TikTok, and Instagram/Reels links us
 ```
 
 **Response**: `LibraryItem` with `source: "import:{sourceId}"`.
+
+### Import link and extract (sync)
+`POST /library/imports/link/extract`
+
+Imports a URL and runs extraction **synchronously** in the same HTTP request. Use this when you want one call: URL in → extracted text + chunks out (no polling).
+
+Same request body as `POST /library/imports/link`:
+
+```json
+{
+  "url": "https://www.youtube.com/watch?v=abc",
+  "sourceId": "youtube",
+  "title": "Optional title",
+  "note": "Optional user note"
+}
+```
+
+**Response** `201`:
+
+```json
+{
+  "item": { "...": "LibraryItem fields" },
+  "importPath": "firecrawl",
+  "extractionStatus": "ready",
+  "text": "Combined chunk text",
+  "chunks": [{ "...": "LibraryChunk fields" }],
+  "extractionMetadata": {
+    "url": "https://example.com/",
+    "sourceId": "links",
+    "importPath": "firecrawl",
+    "durationMs": 1200,
+    "jobStatus": null,
+    "link_extraction_method": "firecrawl"
+  }
+}
+```
+
+- Web links (`import:links`): `importPath` is `firecrawl` (or HTTP reader fallback); extraction runs inline.
+- YouTube / Instagram / TikTok: `importPath` is `media_worker`; media pipeline runs inline (no Redis queue). May take longer (STT/download); client/nginx timeouts apply.
+- Final `extractionStatus` may still be `metadata_ready` or `needs_upload` when captions/transcript are unavailable.
 
 ### Import text
 `POST /library/imports/text`
