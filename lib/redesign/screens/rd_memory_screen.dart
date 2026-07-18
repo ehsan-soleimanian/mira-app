@@ -26,10 +26,7 @@ class _Person {
 
 /// A non-person graph entity (company, project, topic, …) linked to this memory.
 class _LinkedEntity {
-  const _LinkedEntity({
-    required this.name,
-    required this.typeLabel,
-  });
+  const _LinkedEntity({required this.name, required this.typeLabel});
 
   final String name;
   final String typeLabel;
@@ -114,12 +111,48 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   List<_MemLink>? _realLinks;
   List<_Person>? _realPeople;
   List<_LinkedEntity>? _realEntities;
+  bool _isGraphCapture = false;
+  Future<bool>? _graphCaptureProbe;
 
   List<_MemLink> get _links => _realLinks ?? const [];
 
   static const _wave = [
-    .28, .42, .6, .35, .5, .78, .55, .4, .66, .9, .62, .44, .3, .52, .72, .85,
-    .6, .38, .48, .7, .95, .68, .5, .34, .46, .64, .8, .58, .4, .3, .52, .68, .44, .36, .5, .26,
+    .28,
+    .42,
+    .6,
+    .35,
+    .5,
+    .78,
+    .55,
+    .4,
+    .66,
+    .9,
+    .62,
+    .44,
+    .3,
+    .52,
+    .72,
+    .85,
+    .6,
+    .38,
+    .48,
+    .7,
+    .95,
+    .68,
+    .5,
+    .34,
+    .46,
+    .64,
+    .8,
+    .58,
+    .4,
+    .3,
+    .52,
+    .68,
+    .44,
+    .36,
+    .5,
+    .26,
   ];
 
   bool _l10nReady = false;
@@ -129,7 +162,11 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     super.initState();
     _title = widget.title ?? '';
     _body = widget.body ?? '';
-    if (widget.id != null) unawaited(_loadDetail());
+    if (widget.id != null) {
+      final probe = _loadDetail();
+      _graphCaptureProbe = probe;
+      unawaited(probe);
+    }
   }
 
   @override
@@ -155,26 +192,30 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   /// sample insight / connections / people / tags with real data. Any failure
   /// (the id is a library item, the capture isn't in the graph, or the backend
   /// is offline) leaves the sample content untouched — this never throws.
-  Future<void> _loadDetail() async {
+  Future<bool> _loadDetail() async {
     final id = widget.id;
-    if (id == null) return;
+    if (id == null) return false;
     try {
-      final detail =
-          await AppScope.servicesOf(context).graphRepository.fetchCaptureDetail(id);
-      if (!mounted) return;
+      final detail = await AppScope.servicesOf(
+        context,
+      ).graphRepository.fetchCaptureDetail(id);
+      if (!mounted) return true;
       final l10n = AppLocalizations.of(context)!;
       final parsed = _parseDetail(detail, l10n);
       final uiState = detail['uiState'] as Map<String, dynamic>? ?? const {};
       final pinned = uiState['pinned'] as bool?;
       setState(() {
+        _isGraphCapture = true;
         if (parsed.links.isNotEmpty) _realLinks = parsed.links;
         if (parsed.people.isNotEmpty) _realPeople = parsed.people;
         if (parsed.entities.isNotEmpty) _realEntities = parsed.entities;
         if (parsed.insight != null) _realInsight = parsed.insight;
         if (pinned != null) _pinned = pinned;
       });
+      return true;
     } catch (_) {
       // Keep the sample content — the id may not be a graph capture.
+      return false;
     }
   }
 
@@ -187,7 +228,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     List<_Person> people,
     List<_LinkedEntity> entities,
     String? insight,
-  }) _parseDetail(Map<String, dynamic> detail, AppLocalizations l10n) {
+  })
+  _parseDetail(Map<String, dynamic> detail, AppLocalizations l10n) {
     final connections =
         detail['connections'] as Map<String, dynamic>? ?? const {};
     final nodes = (connections['nodes'] as List<dynamic>? ?? const [])
@@ -208,13 +250,15 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       final entityType = (node['entityType'] as String? ?? '').toUpperCase();
 
       if (kind == 'CAPTURE') {
-        links.add(_MemLink(
-          _linkTypeFor(entityType, subtitle),
-          title,
-          subtitle.isEmpty ? l10n.rdMemoryConnectedMemory : subtitle,
-          l10n.rdMemoryLinked,
-          id: nodeId,
-        ));
+        links.add(
+          _MemLink(
+            _linkTypeFor(entityType, subtitle),
+            title,
+            subtitle.isEmpty ? l10n.rdMemoryConnectedMemory : subtitle,
+            l10n.rdMemoryLinked,
+            id: nodeId,
+          ),
+        );
       } else if (kind == 'ENTITY') {
         if (entityType == 'PERSON') {
           final initial = title.characters.isEmpty
@@ -324,7 +368,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   Future<void> _createReminder() async {
     try {
       final services = AppScope.servicesOf(context);
-      await RemindersRepository(apiClient: services.apiClient).create(title: _title);
+      await RemindersRepository(
+        apiClient: services.apiClient,
+      ).create(title: _title);
     } catch (_) {
       // Best-effort — the toggle already reflects the change.
     }
@@ -367,9 +413,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     final id = widget.id;
     if (id == null) return;
     try {
-      await AppScope.servicesOf(context)
-          .graphRepository
-          .updateCaptureState(id, pinned: pinned);
+      await AppScope.servicesOf(
+        context,
+      ).graphRepository.updateCaptureState(id, pinned: pinned);
     } catch (_) {
       // Ignore — the id may not be a graph capture, or the backend is offline.
     }
@@ -393,9 +439,34 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   /// mid-sentence and long uncommon tokens (design: flagged-word chips).
   List<String> _transcriptFlags(String text) {
     const skip = {
-      'I', 'The', 'So', 'Let', 'People', 'Circle', 'And', 'But', 'We', 'It',
-      'This', 'That', 'They', 'There', 'Then', 'When', 'What', 'Who', 'How',
-      'Why', 'Not', 'For', 'With', 'From', 'Our', 'Your', 'She', 'He',
+      'I',
+      'The',
+      'So',
+      'Let',
+      'People',
+      'Circle',
+      'And',
+      'But',
+      'We',
+      'It',
+      'This',
+      'That',
+      'They',
+      'There',
+      'Then',
+      'When',
+      'What',
+      'Who',
+      'How',
+      'Why',
+      'Not',
+      'For',
+      'With',
+      'From',
+      'Our',
+      'Your',
+      'She',
+      'He',
     };
     final found = <String>[];
     final seen = <String>{};
@@ -414,7 +485,10 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     final text = _bodyCtl.text;
     final idx = text.indexOf(word);
     if (idx >= 0) {
-      _bodyCtl.selection = TextSelection(baseOffset: idx, extentOffset: idx + word.length);
+      _bodyCtl.selection = TextSelection(
+        baseOffset: idx,
+        extentOffset: idx + word.length,
+      );
       _bodyFocus.requestFocus();
     }
     setState(() {
@@ -427,9 +501,14 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   }
 
   void _saveEdit() {
-    final nextTitle =
-        _titleCtl.text.trim().isEmpty ? _title : _titleCtl.text.trim();
-    final nextBody = _bodyCtl.text.trim().isEmpty ? _body : _bodyCtl.text.trim();
+    final nextTitle = _titleCtl.text.trim().isEmpty
+        ? _title
+        : _titleCtl.text.trim();
+    final nextBody = _bodyCtl.text.trim().isEmpty
+        ? _body
+        : _bodyCtl.text.trim();
+    final titleChanged = nextTitle != _title;
+    final bodyChanged = nextBody != _body;
     setState(() {
       _title = nextTitle;
       _body = nextBody;
@@ -443,45 +522,46 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     // it hasn't cached anyway.
     final id = widget.id;
     if (id != null) {
-      AppScope.servicesOf(context)
-          .memoryStore
-          .applyLocalEdit(id, title: nextTitle, summary: nextBody);
+      AppScope.servicesOf(
+        context,
+      ).memoryStore.applyLocalEdit(id, title: nextTitle, summary: nextBody);
     }
-    // Best-effort persistence of the new title, plus a real re-ingest of the
-    // edited body so Mira re-reads it. `widget.id` may be a library item (not a
-    // graph capture), so failures are ignored — the local edit and the
-    // "re-read" toast already reflect the change.
-    unawaited(_persistTitle(nextTitle));
-    unawaited(_reread(nextBody));
+    // Use one semantic graph mutation. Running title-patch and correction in
+    // parallel can race because correction archives the old capture.
+    unawaited(
+      _persistMemoryEdit(
+        title: nextTitle,
+        body: nextBody,
+        titleChanged: titleChanged,
+        bodyChanged: bodyChanged,
+      ),
+    );
     Future.delayed(const Duration(milliseconds: 2800), () {
       if (mounted) setState(() => _saved = false);
     });
   }
 
-  Future<void> _persistTitle(String title) async {
+  Future<void> _persistMemoryEdit({
+    required String title,
+    required String body,
+    required bool titleChanged,
+    required bool bodyChanged,
+  }) async {
     final id = widget.id;
     if (id == null) return;
     try {
-      await AppScope.servicesOf(context).graphRepository.patchCaptureTitle(id, title);
+      final repository = AppScope.servicesOf(context).graphRepository;
+      if (bodyChanged && body.trim().isNotEmpty) {
+        await repository.correctCapture(id, body);
+      } else if (titleChanged) {
+        await repository.patchCaptureTitle(id, title);
+      }
     } catch (_) {
       // Ignore — the id may not be a graph capture, or the backend is offline.
     }
   }
 
-  /// Re-ingests the edited note/transcript body through the graph so Mira
-  /// re-reads the corrected content. Best-effort — a null id (sample memory) or
-  /// an offline backend is silently ignored.
-  Future<void> _reread(String text) async {
-    final id = widget.id;
-    if (id == null || text.trim().isEmpty) return;
-    try {
-      await AppScope.servicesOf(context).graphRepository.correctCapture(id, text);
-    } catch (_) {
-      // Ignore — the id may not be a graph capture, or the backend is offline.
-    }
-  }
-
-  /// Confirmed delete — best-effort remove from the Library, then leave to it.
+  /// Confirmed delete — archive graph captures or remove Library items.
   /// The navigation happens regardless so the flow stays consistent even when
   /// the id is a sample (null) or the backend is unreachable.
   Future<void> _deleteMemory() async {
@@ -494,7 +574,29 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     if (id != null) {
       final services = AppScope.servicesOf(context);
       services.memoryStore.removeLocal(id);
-      services.libraryRepository.delete(id).ignore();
+      unawaited(() async {
+        var isGraphCapture = _isGraphCapture;
+        final probe = _graphCaptureProbe;
+        if (!isGraphCapture && probe != null) {
+          isGraphCapture = await probe.timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => false,
+          );
+        }
+        try {
+          if (isGraphCapture) {
+            final receipt = await services.graphRepository.archiveCapture(id);
+            if (receipt.isPending) {
+              await services.graphRepository.waitForProjection(receipt);
+            }
+          } else {
+            await services.libraryRepository.delete(id);
+          }
+        } catch (_) {
+          // The local removal remains optimistic; durable graph events can be
+          // retried from the ledger if connectivity is interrupted.
+        }
+      }());
     }
     await Future<void>.delayed(const Duration(milliseconds: 460));
     if (!mounted) return;
@@ -523,7 +625,8 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     if (choice == null || !mounted) return;
     final id = widget.id;
     try {
-      final target = choice.collection ??
+      final target =
+          choice.collection ??
           await services.collectionsRepository.create(name: choice.name!);
       if (id != null) {
         await services.collectionsRepository.addItems(target.id, [id]);
@@ -593,10 +696,22 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
               child: Row(
                 children: [
-                  RdIcon('<path d="M15 5l-7 7 7 7"/>', size: 20, stroke: '#45464E', strokeWidth: 2, color: rd.ink),
+                  RdIcon(
+                    '<path d="M15 5l-7 7 7 7"/>',
+                    size: 20,
+                    stroke: '#45464E',
+                    strokeWidth: 2,
+                    color: rd.ink,
+                  ),
                   const SizedBox(width: 3),
-                  Text(widget.backLabel,
-                      style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: rd.ink)),
+                  Text(
+                    widget.backLabel,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: rd.ink,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -621,11 +736,13 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     );
   }
 
-  Widget _iconBtn(String icon,
-      {required VoidCallback onTap,
-      bool active = false,
-      double strokeWidth = 1.75,
-      String fill = 'none'}) {
+  Widget _iconBtn(
+    String icon, {
+    required VoidCallback onTap,
+    bool active = false,
+    double strokeWidth = 1.75,
+    String fill = 'none',
+  }) {
     final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
@@ -633,13 +750,15 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         width: 40,
         height: 40,
         alignment: Alignment.center,
-        child: RdIcon(icon,
-            size: 20,
-            stroke: active ? '#14328C' : '#45464E',
-            // Navy active state stays on-brand; inactive stroke is text-tone.
-            color: active ? null : rd.ink,
-            strokeWidth: strokeWidth,
-            fill: fill),
+        child: RdIcon(
+          icon,
+          size: 20,
+          stroke: active ? '#14328C' : '#45464E',
+          // Navy active state stays on-brand; inactive stroke is text-tone.
+          color: active ? null : rd.ink,
+          strokeWidth: strokeWidth,
+          fill: fill,
+        ),
       ),
     );
   }
@@ -653,20 +772,24 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       const SizedBox(height: 16),
       _editing
           ? _titleInput()
-          : Text(_title,
-              style: GoogleFonts.dosis(fontSize: 27, fontWeight: FontWeight.w700, height: 1.18, color: rd.ink)),
-      if (widget.isVoice && !_editing) ...[const SizedBox(height: 14), _player()],
+          : Text(
+              _title,
+              style: GoogleFonts.dosis(
+                fontSize: 27,
+                fontWeight: FontWeight.w700,
+                height: 1.18,
+                color: rd.ink,
+              ),
+            ),
+      if (widget.isVoice && !_editing) ...[
+        const SizedBox(height: 14),
+        _player(),
+      ],
       const SizedBox(height: 14),
       _editing ? _bodyInput() : _capture(),
       const SizedBox(height: 22),
-      if (_realInsight != null) ...[
-        _insight(),
-        const SizedBox(height: 26),
-      ],
-      if (_links.isNotEmpty) ...[
-        _connections(),
-        const SizedBox(height: 26),
-      ],
+      if (_realInsight != null) ...[_insight(), const SizedBox(height: 26)],
+      if (_links.isNotEmpty) ...[_connections(), const SizedBox(height: 26)],
       if ((_realPeople?.isNotEmpty ?? false) ||
           (_realEntities?.isNotEmpty ?? false)) ...[
         _peopleTags(),
@@ -684,26 +807,47 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         : l10n.rdCaptureTypeNote;
     final time = _edited
         ? l10n.rdMemoryEditedJustNow
-        : (widget.isVoice ? l10n.rdMemoryRecordedAgo : l10n.rdMemoryCapturedAgo);
+        : (widget.isVoice
+              ? l10n.rdMemoryRecordedAgo
+              : l10n.rdMemoryCapturedAgo);
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
-          decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(100)),
+          decoration: BoxDecoration(
+            color: rd.periSoft,
+            borderRadius: BorderRadius.circular(100),
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Icon stays navy on the periSoft badge (matches Library); the
               // label text uses `peri` so it reads on both light/dark periSoft.
-              RdIcon(widget.isVoice ? _voiceIcon : _noteIcon, size: 15, stroke: '#14328C', strokeWidth: 1.9),
+              RdIcon(
+                widget.isVoice ? _voiceIcon : _noteIcon,
+                size: 15,
+                stroke: '#14328C',
+                strokeWidth: 1.9,
+              ),
               const SizedBox(width: 7),
-              Text(label, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.peri)),
+              Text(
+                label,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: rd.peri,
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(time, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted), overflow: TextOverflow.ellipsis),
+          child: Text(
+            time,
+            style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
@@ -715,16 +859,30 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       padding: const EdgeInsets.only(top: 16),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-        decoration: BoxDecoration(color: const Color(0xFFEEF0F9), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEEF0F9),
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const RdIcon('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', size: 15, stroke: '#14328C', strokeWidth: 1.8),
+            const RdIcon(
+              '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+              size: 15,
+              stroke: '#14328C',
+              strokeWidth: 1.8,
+            ),
             const SizedBox(width: 9),
             Expanded(
               child: Text(
-                widget.isVoice ? l10n.rdMemoryEditTranscriptHint : l10n.rdMemoryEditNoteHint,
-                style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.4, color: const Color(0xFF46485A)),
+                widget.isVoice
+                    ? l10n.rdMemoryEditTranscriptHint
+                    : l10n.rdMemoryEditNoteHint,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12.5,
+                  height: 1.4,
+                  color: const Color(0xFF46485A),
+                ),
               ),
             ),
           ],
@@ -740,14 +898,25 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       controller: _titleCtl,
       cursorColor: rd.navy,
       maxLines: null,
-      style: GoogleFonts.dosis(fontSize: 27, fontWeight: FontWeight.w700, height: 1.18, color: rd.ink),
+      style: GoogleFonts.dosis(
+        fontSize: 27,
+        fontWeight: FontWeight.w700,
+        height: 1.18,
+        color: rd.ink,
+      ),
       decoration: InputDecoration(
         isCollapsed: true,
         contentPadding: const EdgeInsets.only(bottom: 6),
         hintText: l10n.rdMemoryTitleHint,
-        border: const UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
-        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
-        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: _peri, width: 1.5)),
+        border: const UnderlineInputBorder(
+          borderSide: BorderSide(color: _peri, width: 1.5),
+        ),
+        enabledBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: _peri, width: 1.5),
+        ),
+        focusedBorder: const UnderlineInputBorder(
+          borderSide: BorderSide(color: _peri, width: 1.5),
+        ),
       ),
     );
   }
@@ -755,7 +924,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   Widget _bodyInput() {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
-    final flags = widget.isVoice ? _transcriptFlags(_bodyCtl.text) : const <String>[];
+    final flags = widget.isVoice
+        ? _transcriptFlags(_bodyCtl.text)
+        : const <String>[];
     final unresolved = flags.length - _fixedFlags.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -799,7 +970,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                             margin: const EdgeInsets.symmetric(horizontal: 1),
                             height: h,
                             decoration: BoxDecoration(
-                              color: done ? const Color(0xFF1F8A5B) : const Color(0xFFD8E8DF),
+                              color: done
+                                  ? const Color(0xFF1F8A5B)
+                                  : const Color(0xFFD8E8DF),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -820,15 +993,30 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           cursorColor: rd.navy,
           maxLines: widget.isVoice ? 7 : 5,
           minLines: widget.isVoice ? 7 : 5,
-          style: GoogleFonts.vazirmatn(fontSize: 15.5, height: 1.62, color: rd.ink),
+          style: GoogleFonts.vazirmatn(
+            fontSize: 15.5,
+            height: 1.62,
+            color: rd.ink,
+          ),
           decoration: InputDecoration(
-            hintText: widget.isVoice ? l10n.rdMemoryTranscriptHint : l10n.rdMemoryWriteNoteHint,
+            hintText: widget.isVoice
+                ? l10n.rdMemoryTranscriptHint
+                : l10n.rdMemoryWriteNoteHint,
             filled: true,
             fillColor: rd.card,
             contentPadding: const EdgeInsets.all(14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: _peri, width: 1.5)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: _peri, width: 1.5)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: _peri, width: 1.5)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _peri, width: 1.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _peri, width: 1.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _peri, width: 1.5),
+            ),
           ),
         ),
         if (widget.isVoice && flags.isNotEmpty) ...[
@@ -841,13 +1029,21 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const RdIcon('<path d="M12 9v4M12 17h.01"/>', size: 14, stroke: '#C58E3F', strokeWidth: 2),
+                  const RdIcon(
+                    '<path d="M12 9v4M12 17h.01"/>',
+                    size: 14,
+                    stroke: '#C58E3F',
+                    strokeWidth: 2,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     unresolved <= 0
                         ? l10n.rdMemoryFlagsAllChecked
                         : l10n.rdMemoryFlagsUnresolved(unresolved),
-                    style: GoogleFonts.vazirmatn(fontSize: 12, color: const Color(0xFF8A6D2F)),
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 12,
+                      color: const Color(0xFF8A6D2F),
+                    ),
                   ),
                 ],
               ),
@@ -855,9 +1051,14 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                 GestureDetector(
                   onTap: () => _jumpToFlagWord(flags[i], i),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
-                      color: _fixedFlags.contains(i) ? const Color(0xFFE7F3EC) : const Color(0xFFFBF3E4),
+                      color: _fixedFlags.contains(i)
+                          ? const Color(0xFFE7F3EC)
+                          : const Color(0xFFFBF3E4),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
                         color: _fixedFlags.contains(i)
@@ -870,7 +1071,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                       style: GoogleFonts.vazirmatn(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
-                        color: _fixedFlags.contains(i) ? const Color(0xFF1F8A5B) : const Color(0xFF8A6D2F),
+                        color: _fixedFlags.contains(i)
+                            ? const Color(0xFF1F8A5B)
+                            : const Color(0xFF8A6D2F),
                       ),
                     ),
                   ),
@@ -905,17 +1108,34 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               children: [
                 _miniOrb(),
                 const SizedBox(width: 8),
-                Text(l10n.rdMemoryTranscribedByMira,
-                    style: GoogleFonts.vazirmatn(fontSize: 11.5, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: rd.peri)),
+                Text(
+                  l10n.rdMemoryTranscribedByMira,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                    color: rd.peri,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),
-            Text(_body, style: GoogleFonts.vazirmatn(fontSize: 15.5, height: 1.64, color: rd.ink)),
+            Text(
+              _body,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 15.5,
+                height: 1.64,
+                color: rd.ink,
+              ),
+            ),
           ],
         ),
       );
     }
-    return Text(_body, style: GoogleFonts.vazirmatn(fontSize: 15.5, height: 1.62, color: rd.ink));
+    return Text(
+      _body,
+      style: GoogleFonts.vazirmatn(fontSize: 15.5, height: 1.62, color: rd.ink),
+    );
   }
 
   /// Scrub the voice player to a fraction of its length (tap / drag the wave).
@@ -941,9 +1161,16 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               height: 48,
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(center: Alignment(-0.28, -0.4), colors: [Color(0xFF4A6AD8), Color(0xFF14328C)]),
+                gradient: RadialGradient(
+                  center: Alignment(-0.28, -0.4),
+                  colors: [Color(0xFF4A6AD8), Color(0xFF14328C)],
+                ),
               ),
-              child: Icon(_playing ? Icons.pause : Icons.play_arrow, color: Colors.white, size: 24),
+              child: Icon(
+                _playing ? Icons.pause : Icons.play_arrow,
+                color: Colors.white,
+                size: 24,
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -982,16 +1209,34 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('${_fmt(_pos)} / ${_fmt(_clip)}',
-                  style: GoogleFonts.vazirmatn(fontSize: 11.5, fontWeight: FontWeight.w600, color: rd.muted)),
+              Text(
+                '${_fmt(_pos)} / ${_fmt(_clip)}',
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: rd.muted,
+                ),
+              ),
               const SizedBox(height: 6),
               GestureDetector(
                 onTap: _cycleSpeed,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                  decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(100)),
-                  child: Text('${_speed == _speed.toInt() ? _speed.toInt() : _speed}×',
-                      style: GoogleFonts.vazirmatn(fontSize: 11, fontWeight: FontWeight.w700, color: rd.peri)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: rd.periSoft,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    '${_speed == _speed.toInt() ? _speed.toInt() : _speed}×',
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: rd.peri,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1007,7 +1252,11 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFF1F3FB), Color(0xFFE9ECF8)]),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF1F3FB), Color(0xFFE9ECF8)],
+        ),
         border: Border.all(color: _peri.withValues(alpha: 0.22), width: 1),
       ),
       child: Column(
@@ -1017,43 +1266,76 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             children: [
               _miniOrb(size: 24),
               const SizedBox(width: 10),
-              Text(l10n.rdMemoryMiraNoticed, style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: _navy)),
+              Text(
+                l10n.rdMemoryMiraNoticed,
+                style: GoogleFonts.dosis(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: _navy,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 11),
           Text(
             _realInsight ?? '',
-            style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.55, color: const Color(0xFF46485A)),
+            style: GoogleFonts.vazirmatn(
+              fontSize: 14,
+              height: 1.55,
+              color: const Color(0xFF46485A),
+            ),
           ),
           const SizedBox(height: 14),
           GestureDetector(
             onTap: _toggleReminder,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(13)),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(13),
+              ),
               child: Row(
                 children: [
                   Container(
                     width: 34,
                     height: 34,
-                    decoration: BoxDecoration(color: const Color(0xFFE7EBF8), borderRadius: BorderRadius.circular(10)),
-                    child: const Center(child: RdIcon('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M12 2h0M5 4 3 6M19 4l2 2"/>', size: 17, stroke: '#14328C', strokeWidth: 1.8)),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE7EBF8),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: RdIcon(
+                        '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M12 2h0M5 4 3 6M19 4l2 2"/>',
+                        size: 17,
+                        stroke: '#14328C',
+                        strokeWidth: 1.8,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(l10n.rdMemoryReminder,
-                            style: GoogleFonts.vazirmatn(fontSize: 13.5, fontWeight: FontWeight.w600, color: _ink)),
+                        Text(
+                          l10n.rdMemoryReminder,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w600,
+                            color: _ink,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           _reminded
                               ? (widget.isVoice
-                                  ? l10n.rdMemoryReminderOnBrief
-                                  : l10n.rdMemoryReminderOnBringUp)
+                                    ? l10n.rdMemoryReminderOnBrief
+                                    : l10n.rdMemoryReminderOnBringUp)
                               : l10n.rdMemoryReminderOff,
-                          style: GoogleFonts.vazirmatn(fontSize: 11.5, color: _muted),
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 11.5,
+                            color: _muted,
+                          ),
                         ),
                       ],
                     ),
@@ -1080,14 +1362,34 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           children: [
             Row(
               children: [
-                RdIcon('<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7"/><path d="M8.2 13.2 15.8 17"/>', size: 16, stroke: '#7E8BC9', strokeWidth: 1.9, color: rd.peri),
+                RdIcon(
+                  '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8 15.8 7"/><path d="M8.2 13.2 15.8 17"/>',
+                  size: 16,
+                  stroke: '#7E8BC9',
+                  strokeWidth: 1.9,
+                  color: rd.peri,
+                ),
                 const SizedBox(width: 8),
-                Text(l10n.rdMemoryConnectedMemories, style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: rd.ink)),
+                Text(
+                  l10n.rdMemoryConnectedMemories,
+                  style: GoogleFonts.dosis(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
               ],
             ),
             GestureDetector(
               onTap: () => widget.go('canvas'),
-              child: Text(l10n.rdMemorySeeInCanvas, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.navy)),
+              child: Text(
+                l10n.rdMemorySeeInCanvas,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: rd.navy,
+                ),
+              ),
             ),
           ],
         ),
@@ -1110,9 +1412,22 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       children: [
         Row(
           children: [
-            RdIcon('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', size: 16, stroke: '#7E8BC9', strokeWidth: 1.9, color: rd.peri),
+            RdIcon(
+              '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+              size: 16,
+              stroke: '#7E8BC9',
+              strokeWidth: 1.9,
+              color: rd.peri,
+            ),
             const SizedBox(width: 8),
-            Text(l10n.rdMemoryPeopleAndTags, style: GoogleFonts.dosis(fontSize: 14.5, fontWeight: FontWeight.w700, color: rd.ink)),
+            Text(
+              l10n.rdMemoryPeopleAndTags,
+              style: GoogleFonts.dosis(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+                color: rd.ink,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -1123,33 +1438,74 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             for (final person in people)
               Container(
                 padding: const EdgeInsets.fromLTRB(5, 5, 13, 5),
-                decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(100), border: Border.all(color: rd.line, width: 1)),
+                decoration: BoxDecoration(
+                  color: rd.card,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: rd.line, width: 1),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       width: 26,
                       height: 26,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: rd.periSoft),
-                      child: Center(child: Text(person.initial, style: GoogleFonts.dosis(fontSize: 13, fontWeight: FontWeight.w700, color: rd.peri))),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: rd.periSoft,
+                      ),
+                      child: Center(
+                        child: Text(
+                          person.initial,
+                          style: GoogleFonts.dosis(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: rd.peri,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text(person.name, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.ink)),
+                    Text(
+                      person.name,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: rd.ink,
+                      ),
+                    ),
                   ],
                 ),
               ),
             for (final entity in entities)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-                decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(100), border: Border.all(color: rd.line, width: 1)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: rd.card,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: rd.line, width: 1),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(entity.name, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.ink)),
+                    Text(
+                      entity.name,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: rd.ink,
+                      ),
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       entity.typeLabel,
-                      style: GoogleFonts.vazirmatn(fontSize: 11, fontWeight: FontWeight.w500, color: rd.muted),
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: rd.muted,
+                      ),
                     ),
                   ],
                 ),
@@ -1165,7 +1521,13 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
-        RdIcon(widget.isVoice ? _voiceIcon : _noteIcon, size: 15, stroke: '#B7B8BE', strokeWidth: 1.8, color: rd.faint),
+        RdIcon(
+          widget.isVoice ? _voiceIcon : _noteIcon,
+          size: 15,
+          stroke: '#B7B8BE',
+          strokeWidth: 1.8,
+          color: rd.faint,
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -1184,13 +1546,24 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     final navInset = context.rdNavBarInset;
     return Container(
       padding: EdgeInsets.fromLTRB(22, 12, 22, 12 + navInset),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: rd.line, width: 1))),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: rd.line, width: 1)),
+      ),
       child: _editing
           ? Row(
               children: [
-                _ghostButton(l10n.rdCommonCancel, () => setState(() => _editing = false)),
+                _ghostButton(
+                  l10n.rdCommonCancel,
+                  () => setState(() => _editing = false),
+                ),
                 const SizedBox(width: 10),
-                Expanded(child: _primaryButton(l10n.rdMemorySaveChanges, '<path d="M20 6 9 17l-5-5"/>', _saveEdit)),
+                Expanded(
+                  child: _primaryButton(
+                    l10n.rdMemorySaveChanges,
+                    '<path d="M20 6 9 17l-5-5"/>',
+                    _saveEdit,
+                  ),
+                ),
               ],
             )
           : Row(
@@ -1211,9 +1584,15 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                _sqButton('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', _startEdit),
+                _sqButton(
+                  '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+                  _startEdit,
+                ),
                 const SizedBox(width: 10),
-                _sqButton('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>', _openShare),
+                _sqButton(
+                  '<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>',
+                  _openShare,
+                ),
               ],
             ),
     );
@@ -1225,14 +1604,27 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       child: Container(
         height: 52,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: _navy, borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(
+          color: _navy,
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             RdIcon(icon, size: 19, stroke: '#FFFFFF', strokeWidth: 1.9),
             const SizedBox(width: 9),
-            Flexible(child: Text(label, overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white))),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -1246,8 +1638,20 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       child: Container(
         width: 52,
         height: 52,
-        decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: rd.line, width: 1)),
-        child: Center(child: RdIcon(icon, size: 20, stroke: '#55565F', strokeWidth: 1.8, color: rd.ink)),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: rd.line, width: 1),
+        ),
+        child: Center(
+          child: RdIcon(
+            icon,
+            size: 20,
+            stroke: '#55565F',
+            strokeWidth: 1.8,
+            color: rd.ink,
+          ),
+        ),
       ),
     );
   }
@@ -1260,8 +1664,19 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         height: 52,
         padding: const EdgeInsets.symmetric(horizontal: 22),
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: rd.line, width: 1)),
-        child: Text(label, style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: rd.ink)),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: rd.line, width: 1),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.vazirmatn(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: rd.ink,
+          ),
+        ),
       ),
     );
   }
@@ -1273,7 +1688,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     return Positioned.fill(
       child: Stack(
         children: [
-          Positioned.fill(child: GestureDetector(onTap: () => setState(() => _menu = false), behavior: HitTestBehavior.opaque)),
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => setState(() => _menu = false),
+              behavior: HitTestBehavior.opaque,
+            ),
+          ),
           Positioned(
             top: 50,
             right: 14,
@@ -1284,17 +1704,54 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                 color: rd.card,
                 borderRadius: BorderRadius.circular(15),
                 border: Border.all(color: rd.line, width: 1),
-                boxShadow: [BoxShadow(color: const Color(0xFF141A32).withValues(alpha: 0.28), blurRadius: 44, spreadRadius: -12, offset: const Offset(0, 18))],
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF141A32).withValues(alpha: 0.28),
+                    blurRadius: 44,
+                    spreadRadius: -12,
+                    offset: const Offset(0, 18),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _menuItem('<path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>', _pinned ? l10n.rdMemoryUnpin : l10n.rdMemoryPinToTop, _togglePin),
-                  _menuItem('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', l10n.rdMemoryEditNote, _startEdit),
-                  _menuItem('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/>', l10n.rdCollectionAddTitle, _addToCollection),
-                  _menuItem('<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>', l10n.rdMemoryShareMemory, _openShare),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), child: Divider(height: 1, color: rd.line)),
-                  _menuItem('<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>', l10n.graphDeleteMemory, () => setState(() { _menu = false; _confirm = true; }), danger: true),
+                  _menuItem(
+                    '<path d="M12 17v5M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>',
+                    _pinned ? l10n.rdMemoryUnpin : l10n.rdMemoryPinToTop,
+                    _togglePin,
+                  ),
+                  _menuItem(
+                    '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+                    l10n.rdMemoryEditNote,
+                    _startEdit,
+                  ),
+                  _menuItem(
+                    '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18"/>',
+                    l10n.rdCollectionAddTitle,
+                    _addToCollection,
+                  ),
+                  _menuItem(
+                    '<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7"/>',
+                    l10n.rdMemoryShareMemory,
+                    _openShare,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 5,
+                    ),
+                    child: Divider(height: 1, color: rd.line),
+                  ),
+                  _menuItem(
+                    '<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>',
+                    l10n.graphDeleteMemory,
+                    () => setState(() {
+                      _menu = false;
+                      _confirm = true;
+                    }),
+                    danger: true,
+                  ),
                 ],
               ),
             ),
@@ -1304,7 +1761,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     );
   }
 
-  Widget _menuItem(String icon, String label, VoidCallback onTap, {bool danger = false}) {
+  Widget _menuItem(
+    String icon,
+    String label,
+    VoidCallback onTap, {
+    bool danger = false,
+  }) {
     final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
@@ -1314,9 +1776,22 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         child: Row(
           children: [
             // Danger stays fixed red; the neutral items use the muted text tone.
-            RdIcon(icon, size: 17, stroke: danger ? '#C0392B' : '#8A8B92', strokeWidth: 1.8, color: danger ? null : rd.muted),
+            RdIcon(
+              icon,
+              size: 17,
+              stroke: danger ? '#C0392B' : '#8A8B92',
+              strokeWidth: 1.8,
+              color: danger ? null : rd.muted,
+            ),
             const SizedBox(width: 11),
-            Text(label, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w500, color: danger ? _danger : rd.ink)),
+            Text(
+              label,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: danger ? _danger : rd.ink,
+              ),
+            ),
           ],
         ),
       ),
@@ -1340,7 +1815,14 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             // legible over either background — mirrors the plain [_toast].
             color: rd.ink,
             borderRadius: BorderRadius.circular(100),
-            boxShadow: [BoxShadow(color: const Color(0xFF141A32).withValues(alpha: 0.5), blurRadius: 34, spreadRadius: -10, offset: const Offset(0, 14))],
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF141A32).withValues(alpha: 0.5),
+                blurRadius: 34,
+                spreadRadius: -10,
+                offset: const Offset(0, 14),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1348,12 +1830,24 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               Container(
                 width: 16,
                 height: 16,
-                decoration: const BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(center: Alignment(-0.3, -0.4), colors: [Color(0xFF9FB0EA), Color(0xFF14328C)])),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    center: Alignment(-0.3, -0.4),
+                    colors: [Color(0xFF9FB0EA), Color(0xFF14328C)],
+                  ),
+                ),
               ),
               const SizedBox(width: 10),
               Text(
-                widget.isVoice ? l10n.rdMemorySavedTranscript : l10n.rdMemorySavedNote,
-                style: GoogleFonts.vazirmatn(fontSize: 13.5, fontWeight: FontWeight.w500, color: rd.bg),
+                widget.isVoice
+                    ? l10n.rdMemorySavedTranscript
+                    : l10n.rdMemorySavedNote,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w500,
+                  color: rd.bg,
+                ),
               ),
             ],
           ),
@@ -1367,10 +1861,10 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   String get _shareLink => 'https://miramind.io/m/${widget.id ?? ''}';
 
   void _openShare() => setState(() {
-        _menu = false;
-        _linkCopied = false;
-        _sharing = true;
-      });
+    _menu = false;
+    _linkCopied = false;
+    _sharing = true;
+  });
 
   Future<void> _copyLink() async {
     await Clipboard.setData(ClipboardData(text: _shareLink));
@@ -1400,10 +1894,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     }
   }
 
-  void _shareMail() => _shareVia(Uri.parse(
-        'mailto:?subject=${Uri.encodeQueryComponent(_title)}'
-        '&body=${Uri.encodeQueryComponent(_shareText)}',
-      ));
+  void _shareMail() => _shareVia(
+    Uri.parse(
+      'mailto:?subject=${Uri.encodeQueryComponent(_title)}'
+      '&body=${Uri.encodeQueryComponent(_shareText)}',
+    ),
+  );
 
   void _shareMessage() =>
       _shareVia(Uri.parse('sms:?body=${Uri.encodeQueryComponent(_shareText)}'));
@@ -1424,11 +1920,17 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 24 + context.rdNavBarInset),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                12,
+                20,
+                24 + context.rdNavBarInset,
+              ),
               decoration: BoxDecoration(
                 color: rd.card,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(26)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(26),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1440,55 +1942,72 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                       height: 4,
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                          color: rd.line,
-                          borderRadius: BorderRadius.circular(100)),
+                        color: rd.line,
+                        borderRadius: BorderRadius.circular(100),
+                      ),
                     ),
                   ),
-                  Text(l10n.rdMemoryShareMemory,
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.dosis(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w700,
-                          color: rd.ink)),
+                  Text(
+                    l10n.rdMemoryShareMemory,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dosis(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                      color: rd.ink,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('“$_title”',
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+                  Text(
+                    '“$_title”',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 12.5,
+                      color: rd.muted,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   _shareRow(
                     _linkCopied
                         ? '<path d="M20 6 9 17l-5-5"/>'
                         : '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
-                    _linkCopied ? l10n.rdMemoryLinkCopied : l10n.rdMemoryCopyLink,
+                    _linkCopied
+                        ? l10n.rdMemoryLinkCopied
+                        : l10n.rdMemoryCopyLink,
                     _copyLink,
                     highlight: _linkCopied,
                   ),
                   _shareRow(
-                      '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>',
-                      l10n.rdMemoryCopyAsText,
-                      _copyText),
+                    '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>',
+                    l10n.rdMemoryCopyAsText,
+                    _copyText,
+                  ),
                   _shareRow(
-                      '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>',
-                      l10n.rdMemoryEmail,
-                      _shareMail),
+                    '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>',
+                    l10n.rdMemoryEmail,
+                    _shareMail,
+                  ),
                   _shareRow(
-                      '<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/>',
-                      l10n.rdMemoryMessage,
-                      _shareMessage),
+                    '<path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.6 8.6 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5Z"/>',
+                    l10n.rdMemoryMessage,
+                    _shareMessage,
+                  ),
                   const SizedBox(height: 8),
                   GestureDetector(
                     onTap: () => setState(() => _sharing = false),
                     child: Container(
-                        height: 48,
-                        alignment: Alignment.center,
-                        child: Text(l10n.rdCommonDone,
-                            style: GoogleFonts.vazirmatn(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w600,
-                                color: rd.muted))),
+                      height: 48,
+                      alignment: Alignment.center,
+                      child: Text(
+                        l10n.rdCommonDone,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: rd.muted,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1499,8 +2018,12 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     );
   }
 
-  Widget _shareRow(String icon, String label, VoidCallback onTap,
-      {bool highlight = false}) {
+  Widget _shareRow(
+    String icon,
+    String label,
+    VoidCallback onTap, {
+    bool highlight = false,
+  }) {
     final rd = context.rd;
     return GestureDetector(
       onTap: onTap,
@@ -1518,18 +2041,23 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                 border: Border.all(color: rd.line, width: 1),
               ),
               child: Center(
-                child: RdIcon(icon,
-                    size: 19,
-                    strokeWidth: 1.8,
-                    color: highlight ? Colors.white : rd.ink),
+                child: RdIcon(
+                  icon,
+                  size: 19,
+                  strokeWidth: 1.8,
+                  color: highlight ? Colors.white : rd.ink,
+                ),
               ),
             ),
             const SizedBox(width: 14),
-            Text(label,
-                style: GoogleFonts.vazirmatn(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w600,
-                    color: highlight ? rd.navy : rd.ink)),
+            Text(
+              label,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w600,
+                color: highlight ? rd.navy : rd.ink,
+              ),
+            ),
           ],
         ),
       ),
@@ -1553,27 +2081,63 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
             alignment: Alignment.bottomCenter,
             child: Container(
               width: double.infinity,
-              padding: EdgeInsets.fromLTRB(24, 12, 24, 26 + context.rdNavBarInset),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                12,
+                24,
+                26 + context.rdNavBarInset,
+              ),
               decoration: BoxDecoration(
                 color: rd.card,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(26),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 18), decoration: BoxDecoration(color: rd.line, borderRadius: BorderRadius.circular(100))),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 18),
+                    decoration: BoxDecoration(
+                      color: rd.line,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                  ),
                   Container(
                     width: 54,
                     height: 54,
-                    decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFFBEAE7)),
-                    child: const Center(child: RdIcon('<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>', size: 22, stroke: '#C0392B', strokeWidth: 1.8)),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFFBEAE7),
+                    ),
+                    child: const Center(
+                      child: RdIcon(
+                        '<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6"/><path d="M10 11v6M14 11v6"/>',
+                        size: 22,
+                        stroke: '#C0392B',
+                        strokeWidth: 1.8,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  Text(l10n.graphDeleteConfirmTitle, style: GoogleFonts.dosis(fontSize: 21, fontWeight: FontWeight.w700, color: rd.ink)),
+                  Text(
+                    l10n.graphDeleteConfirmTitle,
+                    style: GoogleFonts.dosis(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w700,
+                      color: rd.ink,
+                    ),
+                  ),
                   const SizedBox(height: 9),
                   Text(
                     l10n.rdMemoryDeleteConfirmBody(_title, connectionCount),
-                    style: GoogleFonts.vazirmatn(fontSize: 13.5, height: 1.55, color: rd.muted),
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 13.5,
+                      height: 1.55,
+                      color: rd.muted,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 22),
@@ -1583,8 +2147,18 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                       width: double.infinity,
                       height: 52,
                       alignment: Alignment.center,
-                      decoration: BoxDecoration(color: _danger, borderRadius: BorderRadius.circular(14)),
-                      child: Text(l10n.graphDeleteMemory, style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                      decoration: BoxDecoration(
+                        color: _danger,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        l10n.graphDeleteMemory,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1594,7 +2168,14 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
                       width: double.infinity,
                       height: 48,
                       alignment: Alignment.center,
-                      child: Text(l10n.rdMemoryKeepIt, style: GoogleFonts.vazirmatn(fontSize: 14.5, fontWeight: FontWeight.w600, color: rd.muted)),
+                      child: Text(
+                        l10n.rdMemoryKeepIt,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w600,
+                          color: rd.muted,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -1612,14 +2193,19 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       height: size,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
-        gradient: RadialGradient(center: Alignment(-0.28, -0.4), colors: [Color(0xFF8FA0DD), Color(0xFF14328C)]),
+        gradient: RadialGradient(
+          center: Alignment(-0.28, -0.4),
+          colors: [Color(0xFF8FA0DD), Color(0xFF14328C)],
+        ),
       ),
     );
   }
 }
 
-const _noteIcon = '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>';
-const _voiceIcon = '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/>';
+const _noteIcon =
+    '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>';
+const _voiceIcon =
+    '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/>';
 
 class _MemLink {
   const _MemLink(this.type, this.title, this.sub, this.rel, {this.id});
@@ -1636,13 +2222,28 @@ class _MemLink {
 ({Color bg, String stroke, String icon}) _linkStyle(String type) {
   switch (type) {
     case 'event':
-      return (bg: const Color(0xFFEDEFF8), stroke: '#14328C', icon: '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>');
+      return (
+        bg: const Color(0xFFEDEFF8),
+        stroke: '#14328C',
+        icon:
+            '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+      );
     case 'photo':
-      return (bg: const Color(0xFFE7EEFB), stroke: '#4E63A6', icon: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/>');
+      return (
+        bg: const Color(0xFFE7EEFB),
+        stroke: '#4E63A6',
+        icon:
+            '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/>',
+      );
     case 'voice':
       return (bg: const Color(0xFFE9F1EC), stroke: '#1F8A5B', icon: _voiceIcon);
     case 'link':
-      return (bg: const Color(0xFFEEECF8), stroke: '#6A5EA8', icon: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>');
+      return (
+        bg: const Color(0xFFEEECF8),
+        stroke: '#6A5EA8',
+        icon:
+            '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+      );
     default:
       return (bg: const Color(0xFFEDEFF8), stroke: '#14328C', icon: _noteIcon);
   }
@@ -1663,28 +2264,64 @@ class _LinkRow extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(15), border: Border.all(color: rd.line, width: 1)),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: rd.line, width: 1),
+        ),
         child: Row(
           children: [
             Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(color: s.bg, borderRadius: BorderRadius.circular(11)),
-              child: Center(child: RdIcon(s.icon, size: 18, stroke: s.stroke, strokeWidth: 1.8)),
+              decoration: BoxDecoration(
+                color: s.bg,
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Center(
+                child: RdIcon(
+                  s.icon,
+                  size: 18,
+                  stroke: s.stroke,
+                  strokeWidth: 1.8,
+                ),
+              ),
             ),
             const SizedBox(width: 13),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(link.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink)),
+                  Text(
+                    link.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: rd.ink,
+                    ),
+                  ),
                   const SizedBox(height: 3),
-                  Text(link.sub, style: GoogleFonts.vazirmatn(fontSize: 11.5, color: rd.muted)),
+                  Text(
+                    link.sub,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 11.5,
+                      color: rd.muted,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            Text(link.rel, style: GoogleFonts.vazirmatn(fontSize: 11, fontWeight: FontWeight.w600, color: rd.peri)),
+            Text(
+              link.rel,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: rd.peri,
+              ),
+            ),
           ],
         ),
       ),
@@ -1702,13 +2339,23 @@ class _MiniSwitch extends StatelessWidget {
     return Container(
       width: 44,
       height: 26,
-      decoration: BoxDecoration(color: on ? _navy : const Color(0xFFD3D5DE), borderRadius: BorderRadius.circular(100)),
+      decoration: BoxDecoration(
+        color: on ? _navy : const Color(0xFFD3D5DE),
+        borderRadius: BorderRadius.circular(100),
+      ),
       child: AnimatedAlign(
         duration: const Duration(milliseconds: 200),
         alignment: on ? Alignment.centerRight : Alignment.centerLeft,
         child: Padding(
           padding: const EdgeInsets.all(3),
-          child: Container(width: 20, height: 20, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );

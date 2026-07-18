@@ -65,7 +65,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/captures/{id}/clarify-intent` | `capture_repository.dart` | Resolve ambiguous question-vs-save intent |
 | `POST` | `/captures/{id}/follow-up` | `capture_repository.dart` | Continue or revise a pending approval draft |
 | `POST` | `/captures/{id}/confirm-entity-equivalence` | `capture_repository.dart` | Confirm cross-language same person |
-| `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Ingest approved capture into graph v2 |
+| `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Commit approved memory to ledger, then project Graph V2 |
 | `POST` | `/captures/{id}/dismiss` | `capture_repository.dart` | Discard capture |
 | `GET` | `/v2/graph` | `graph_repository.dart` | Knowledge / evidence / hybrid / tasks graph |
 | `PUT` | `/v2/graph/layout` | `graph_repository.dart` | Persist interactive layout |
@@ -78,6 +78,10 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `PATCH` | `/v2/captures/{id}/state` | redesigned memory detail | Pin/reminder/collection UI state for a memory |
 | `POST` | `/v2/captures/{id}/correct` | `graph_repository.dart` | Semantic correction (re-ingest) |
 | `POST` | `/v2/assertions/{id}/reject` | `graph_repository.dart` | Reject assertion from entity sheet |
+| `POST` | `/v2/memory/patches` | `graph_repository.dart` | Durable merge/split/archive/assertion/task/title mutation |
+| `GET` | `/v2/memory/events` | diagnostics / sync UI | User-owned memory event projection receipts |
+| `GET` | `/v2/memory/events/{id}` | diagnostics / sync UI | One durable memory event receipt |
+| `POST` | `/v2/memory/events/{id}/retry` | diagnostics / sync UI | Retry a pending/failed projection safely |
 | `GET` | `/v2/search` | — | Hybrid entity + capture search |
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
 | `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
@@ -926,7 +930,7 @@ data: {"detail": "..."}
 ### Approve proposal
 `POST /captures/{capture_id}/approve`
 
-Runs graph v2 ingest: creates `:Capture`, `:Entity`, `:Assertion`, tasks/preferences, and materialized edges per predicate registry. Purges capture from Redis. Raw text is persisted on the `:Capture` node at approve time only.
+Commits the approved proposal to the MariaDB Memory Ledger and transactional outbox first, then attempts Graph V2 projection. A temporary Neo4j failure does **not** lose the approved memory: the projection worker retries it. The transient Redis capture is purged after the durable commit.
 
 **Request Body** (optional edits) — legacy v1 fields are ignored; proposal v2 comes from Redis/SSE.
 
@@ -938,11 +942,14 @@ Runs graph v2 ingest: creates `:Capture`, `:Entity`, `:Assertion`, tasks/prefere
   "createdAssertions": ["asrt_e5f6g7h8"],
   "materializedEdges": ["edge_1"],
   "tasks": ["task_9abc"],
-  "preferences": []
+  "preferences": [],
+  "ledgerEventId": "1456ab0a-6f7d-4c82-aad9-94699cedaba0",
+  "projectionStatus": "APPLIED",
+  "projectionError": null
 }
 ```
 
-Use `createdEntities[0]` as `highlightNodeId` on `MemoryGraphScreen` after save.
+`projectionStatus` is `APPLIED` on the inline fast path. `PENDING`, `PROCESSING`, or `RETRY` means the memory is durably saved but Neo4j is still syncing; show a non-blocking “saved, syncing” state. `DEAD` requires diagnostics/manual retry. Use `createdEntities[0]` as `highlightNodeId` only when projected IDs are present.
 
 **Errors**: `409` wrong state · `404` · `403`
 
@@ -1023,7 +1030,7 @@ Returns nodes, edges, and optional saved layout for the authenticated user.
 | `nodes[].id` | string | `ent_*`, `task_*`, `cap_*`, … |
 | `nodes[].kind` | string | `USER` (knowledge hub), `ENTITY`, `TASK`, `CAPTURE`, … |
 | `nodes[].entityType` | string \| null | `Person`, `Activity`, `Organization`, … |
-| `edges[].type` | string | Materialized rel (`AFFILIATED_WITH`, `HAS_ROLE_RELATION`, …) |
+| `edges[].type` | string | Registered materialized rel or open-world semantic key projected safely through `SEMANTIC_RELATION` |
 | `layout` | object \| null | Omitted until first `PUT /v2/graph/layout` |
 
 **Errors**: `401`
@@ -1052,11 +1059,84 @@ Persists node positions (normalized `0.0`–`1.0`) and viewport pan/zoom. Node I
 ---
 
 ### Entity detail
-`GET /v2/entities/{entity_id}`
+`GET /v2/entities/{entity_id}?includeHistory=false`
 
-Returns entity metadata, assertions (with capture citations), and mention snippets.
+Returns entity metadata, active assertions (with capture citations and temporal
+fields), and mention snippets. Set `includeHistory=true` to include `SUPERSEDED`
+assertions with `validFrom`, `validTo`, `recordedAt`, and `expiredAt`.
 
 **Errors**: `401` · `404`
+
+---
+
+### Durable memory Graph Patch
+`POST /v2/memory/patches`
+
+This is the canonical mutation API for new clients. The older direct merge,
+assertion, task, capture-archive, and title endpoints remain temporarily for
+backward compatibility and are marked deprecated in OpenAPI. Their handlers
+also route internally through Graph Patch, so no supported write path bypasses
+the Ledger/Outbox durability boundary.
+
+Canonical endpoint for user-approved graph mutations. The request is committed to the Memory Ledger/outbox before projection, supports client idempotency, and remains safe to retry after partial infrastructure failure.
+
+**Request**
+```json
+{
+  "idempotencyKey": "canvas-split-018f8f9d",
+  "operations": [
+    {
+      "op": "split_entity",
+      "sourceId": "ent_akbar",
+      "newEntity": {
+        "canonicalName": "Akbar",
+        "entityType": "Person",
+        "identityHint": "Akbar from the design team",
+        "aliases": [],
+        "facets": ["design team"]
+      },
+      "assertionIds": ["asrt_7"],
+      "captureIds": []
+    }
+  ]
+}
+```
+
+`operations[].op` supports:
+
+| Operation | Required fields | Effect |
+|---|---|---|
+| `merge_entities` | `sourceId`, `targetId` | Rewire all owned evidence/knowledge and leave a merged redirect |
+| `split_entity` | `sourceId`, `newEntity`, at least one assertion/capture id | Create a disambiguated identity and move selected evidence |
+| `archive_capture` | `captureId` | Retract capture evidence and unsupported edges |
+| `set_assertion_status` | `assertionId`, `status` | Set `ACTIVE` or `REJECTED` |
+| `update_task` | `taskId` plus changed `status`, `title`, or `dueAt` | Update task projection |
+| `update_capture_title` | `captureId`, `title` | Display-text update without re-extraction |
+
+**Response** `200`
+```json
+{
+  "eventId": "14daf659-3ed8-4d5b-a30d-02f52c4e1cff",
+  "status": "APPLIED",
+  "attempts": 1,
+  "result": {
+    "operations": [
+      {"index": 0, "op": "split_entity", "status": "applied", "newEntityId": "ent_new"}
+    ]
+  },
+  "error": null
+}
+```
+
+When `status` is `RETRY`, the mutation is durably accepted and the client should show a syncing state. Do not send a different mutation to compensate; retry the same event or let the projection worker finish it.
+
+### Memory projection receipts
+
+- `GET /v2/memory/events?limit=50&beforePosition=1234`
+- `GET /v2/memory/events/{event_id}`
+- `POST /v2/memory/events/{event_id}/retry`
+
+All routes are user-scoped. Event responses include `eventType`, aggregate metadata, creation time, and a nested projection receipt. Retry is idempotent and does not create a new business event.
 
 ---
 
@@ -1184,7 +1264,9 @@ Returns matching entities (full-text + vector) and captures.
 ### Ontology catalog
 `GET /v2/ontology`
 
-Public predicate registry, entity types, and ontology version for client rendering.
+Public predicate registry, preferred core entity types, and ontology version for
+client rendering. `openWorldEntityTypes` and `openWorldPredicates` are `true`:
+clients must render unknown safe labels generically instead of discarding them.
 
 **Errors**: none (no auth required in dev; Bearer optional)
 

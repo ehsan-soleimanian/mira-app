@@ -46,4 +46,37 @@ void main() {
       expect(res.edgesDemoted, 3);
     });
   });
+
+  group('durable memory projection', () {
+    test('parses a retryable capture approval receipt', () {
+      final response = GraphIngestResponse.fromJson({
+        'captureId': 'cap_3',
+        'ledgerEventId': 'event_3',
+        'projectionStatus': 'RETRY',
+        'projectionError': 'Neo4j is temporarily unavailable',
+      });
+
+      expect(response.ledgerEventId, 'event_3');
+      expect(response.isProjected, isFalse);
+      expect(response.isProjectionPending, isTrue);
+      expect(response.projectionError, isNotNull);
+    });
+
+    test('parses an applied graph patch receipt', () {
+      final receipt = MemoryProjectionReceipt.fromJson({
+        'eventId': 'event_4',
+        'status': 'APPLIED',
+        'attempts': 1,
+        'result': {
+          'operations': [
+            {'op': 'merge_entities', 'status': 'applied'},
+          ],
+        },
+      });
+
+      expect(receipt.isApplied, isTrue);
+      expect(receipt.isPending, isFalse);
+      expect(receipt.attempts, 1);
+    });
+  });
 }

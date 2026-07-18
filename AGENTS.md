@@ -478,7 +478,7 @@ Radial memory graph — **no extra pub package**; `InteractiveViewer` + `CustomP
 | File | Role |
 |------|------|
 | `features/graph/screens/memory_graph_screen.dart` | `GET /v2/graph`, debounced `PUT /v2/graph/layout`, refresh on mutation |
-| `features/graph/graph_repository.dart` | Fetch graph + `updateTaskStatus`, `archiveCapture`, `patchCaptureTitle`, `correctCapture`, `rejectAssertion` |
+| `features/graph/graph_repository.dart` | Fetch graph + legacy mutations + durable `applyGraphPatch`, merge/split/reject batch, projection retry |
 | `features/graph/widgets/memory_graph_canvas.dart` | Drag nodes, spring physics, pinch-zoom, tap |
 | `features/graph/graph_physics_engine.dart` | Repulsion + edge springs between connected nodes |
 | `features/graph/widgets/graph_node_detail_sheet.dart` | Blur sheet + actions by node kind (task/capture/entity) |
@@ -492,7 +492,7 @@ Tap the psychology icon (top-right) during capture or voice recording. Tap any n
 |-----------|---------|
 | `TASK` | Mark done (`DONE`), cancel (`CANCELLED`) |
 | `CAPTURE` | Edit memory (title-only `PATCH` or semantic `POST /correct`), delete (`DELETE` archive) |
-| `ENTITY` | Assertion list from `GET /v2/entities/{id}`; reject per assertion |
+| `ENTITY` | Assertion list from `GET /v2/entities/{id}`; reject, merge, or split selected evidence through Graph Patch |
 
 Daily brief task checkbox toggles `OPEN` ↔ `DONE` optimistically via `GraphRepository`.
 
@@ -616,11 +616,17 @@ Backend `ContextualGraphExtractor` wraps `LlmGraphExtractorV2` when `contextual_
 - retrieval-aware graph context from existing entities/assertions/captures/tasks/neighborhood;
 - a final Graph V2 schema proposal from the LLM and validator.
 
-NER is only a candidate layer. It can help context packing and entity reuse, but Graph V2 LLM output + schema/ontology validation remain the source of truth.
+NER is only an optional candidate layer and is safe to keep disabled. It can help context packing and entity reuse, but Graph V2 LLM output + schema/ontology validation remain the source of truth; extraction and retrieval must not depend on NER.
 
 Long captures are segmented in backend, but still produce one approval proposal. Assertions/tasks should keep segment-local `evidenceText` so debugging and resync stay precise.
 
 Context packing is intentionally small for latency/cost: max 12 entities, 8 assertions, 6 captures, 6 tasks, and 12 neighborhood edges. Backend retrieval order is cheap alias/fulltext/mention first, vector only on low confidence when enabled, then capped 1-hop neighborhood by default. Flutter must not implement or tune this retrieval path.
+
+### Durable approval and Graph Patch
+
+Capture approval now commits to the backend Memory Ledger + transactional outbox before Neo4j projection. `GraphIngestResponse` includes `ledgerEventId`, `projectionStatus`, and `projectionError`. `APPLIED` exposes projected graph IDs; `PENDING`/`PROCESSING`/`RETRY` means the memory is safely stored but still syncing, so Flutter shows a non-blocking sync message rather than asking the user to repeat the action.
+
+Canvas merge/split/unlink operations use `POST /v2/memory/patches` and receive `MemoryProjectionReceipt`. Split requires an identity hint and explicit assertion selection. Ontology and rewiring remain backend-owned. Event status/retry endpoints are documented in `API_BOOK.md`; Dart must reuse the same `eventId`/idempotency key rather than inventing compensating graph mutations.
 
 Feature flags currently relevant to this path:
 
@@ -669,7 +675,7 @@ Admin endpoints are backend-only (`/admin/api/users/{user_id}/graph?view=...`) a
 - Ontology version **production**: `ontology.2026_06_25` — **40 predicate keys** (work, education, personal, health, travel, …). Full list: `GET /v2/ontology` or `mira-backend/AGENTS.md` ontology table.
 - `predicate_key` is ontology-driven and resolved server-side from Graph V2 registry (`registry.py` + `everyday_predicates.py`).
 - LLM outputs `predicateKey` and/or `predicateFamily` + `role`; backend `resolve_predicate_key()` normalizes aliases before ingest.
-- Unknown/unsupported predicates still persist as assertion evidence; they may not materialize to knowledge edges.
+- Unknown entity-to-entity predicates persist as assertion evidence and materialize through backend-owned `SEMANTIC_RELATION` with the original `semanticType` property; literal/invalid relations may remain evidence-only.
 - `NEEDS_REVIEW`/`UNKNOWN` assertions are backend review concerns; Flutter should continue rendering capture/question flows without assuming domain edge creation.
 - Evidence view fixed behavior: `SUPPORTED_BY` is assertion -> capture (no assertion self-loop).
 

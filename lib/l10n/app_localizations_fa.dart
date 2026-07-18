@@ -2825,6 +2825,56 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCanvasUnlinkFail => 'حذف ارتباط ممکن نشد';
 
   @override
+  String get rdCanvasSyncPending =>
+      'با اطمینان ثبت شد — گراف حافظه در حال همگام‌سازی است';
+
+  @override
+  String get rdCaptureSyncPending =>
+      'حافظه ذخیره شد؛ ارتباط‌ها در حال همگام‌سازی‌اند';
+
+  @override
+  String get rdCaptureSyncComplete => 'ارتباط‌های حافظه آماده شدند';
+
+  @override
+  String get rdCaptureSyncFailed =>
+      'حافظه ذخیره شد، اما همگام‌سازی ارتباط‌ها نیاز به تلاش دوباره دارد';
+
+  @override
+  String get rdCaptureMemorySaveFailed =>
+      'ذخیره این حافظه تأیید نشد؛ لطفاً دوباره تلاش کن.';
+
+  @override
+  String get rdCanvasSplitMixedIdentity => 'جدا کردن هویت‌های ترکیب‌شده';
+
+  @override
+  String rdCanvasSplitIdentity(String label) {
+    return 'جدا کردن اطلاعات از «$label»';
+  }
+
+  @override
+  String get rdCanvasSplitHint =>
+      'هویت واقعی جدا را توصیف کن، سپس فقط اطلاعات متعلق به همان هویت را انتخاب کن.';
+
+  @override
+  String get rdCanvasSplitDescription => 'نشانهٔ هویت؛ مثلاً تعمیرکار شهرک غرب';
+
+  @override
+  String get rdCanvasSplitSelectFacts => 'اطلاعاتی که منتقل می‌شوند';
+
+  @override
+  String get rdCanvasSplitApply => 'ساخت هویت جدا';
+
+  @override
+  String get rdCanvasSplitSuccess => 'هویت جدا شد و ارتباط‌ها حفظ شدند';
+
+  @override
+  String get rdCanvasSplitFail => 'جدا کردن این هویت ممکن نشد';
+
+  @override
+  String get rdCanvasSplitNoFacts =>
+      'اطلاعات قابل‌انتقالی برای این هویت پیدا نشد';
+
+  @override
   String get rdCanvasMyBoard => 'بورد من';
 
   @override

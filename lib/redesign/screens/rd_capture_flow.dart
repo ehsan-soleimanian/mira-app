@@ -13,6 +13,7 @@ import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/capture_models.dart';
+import 'package:mira_app/models/api/graph_models.dart';
 
 import '../models/rd_capture_mode.dart';
 import '../theme/rd_theme.dart';
@@ -127,7 +128,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       case RdCaptureMode.link:
         setState(() => _view = 'link_capture');
       case RdCaptureMode.type:
-        WidgetsBinding.instance.addPostFrameCallback((_) => _openTextEntry(fromSheet: true));
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _openTextEntry(fromSheet: true),
+        );
     }
   }
 
@@ -184,19 +187,24 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _typeIcon = null;
     });
     unawaited(_beginRecording());
-    _secTimer = Timer.periodic(const Duration(seconds: 1), (_) => setState(() => _sec++));
+    _secTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => setState(() => _sec++),
+    );
     // Demo auto-advance: on platforms without a real mic (web / desktop /
     // denied permission) nothing streams and the ✓ is never tapped, so move to
     // processing after a short window. On a real device a live recording is in
     // progress — the user taps ✓ to finish and this no-ops.
-    _timers.add(Timer(const Duration(seconds: 6), () {
-      if (mounted &&
-          _view == 'listen' &&
-          !_recorderActive &&
-          !_useRealtimePath) {
-        _toProc();
-      }
-    }));
+    _timers.add(
+      Timer(const Duration(seconds: 6), () {
+        if (mounted &&
+            _view == 'listen' &&
+            !_recorderActive &&
+            !_useRealtimePath) {
+          _toProc();
+        }
+      }),
+    );
   }
 
   /// Start recording — tries realtime voice first, then batch file capture.
@@ -206,8 +214,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
     try {
       _durationCompleter = Completer<int>();
-      final session =
-          await services.captureRepository.startRealtimeVoiceSession();
+      final session = await services.captureRepository
+          .startRealtimeVoiceSession();
       final started = await recorder.startRealtime();
       final audioStream = recorder.realtimeAudioStream;
       if (started && audioStream != null) {
@@ -334,7 +342,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     // to these timers anymore — it is driven by `_driveVoiceUnderstanding` below
     // so the real pipeline (which runs concurrently) can populate the review.
     for (var k = 0; k < 3; k++) {
-      _timers.add(Timer(Duration(milliseconds: 500 + k * 650), () => setState(() => _steps = k + 1)));
+      _timers.add(
+        Timer(
+          Duration(milliseconds: 500 + k * 650),
+          () => setState(() => _steps = k + 1),
+        ),
+      );
     }
     unawaited(_driveVoiceUnderstanding());
   }
@@ -381,7 +394,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     if (trimmed.isEmpty) return;
     final services = AppScope.servicesOf(context);
     try {
-      final capture = await services.captureRepository.createTextCapture(trimmed);
+      final capture = await services.captureRepository.createTextCapture(
+        trimmed,
+      );
       final captureId = capture.captureId;
 
       // Seed from the create response if it already carries a proposal.
@@ -390,9 +405,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       var streamOk = true;
 
       try {
-        await for (final event in services.captureRepository
-            .streamCapture(captureId)
-            .timeout(const Duration(seconds: 12))) {
+        await for (final event
+            in services.captureRepository
+                .streamCapture(captureId)
+                .timeout(const Duration(seconds: 12))) {
           switch (event.event) {
             case 'proposal':
               proposalJson = event.data;
@@ -455,8 +471,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     }
   }
 
-  String get _time =>
-      '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
+  String get _time => '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
 
   /// Confirm the review: persist the memory, create the reminder (if its toggle
   /// is on), and show the "kept in memory" screen. The persist is fire-and-forget
@@ -484,18 +499,30 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           unawaited(_approveCapture(services, captureId));
         } else {
           unawaited(
-              _persistNote(services, title: _transcriptTitle, content: _transcript));
+            _persistNote(
+              services,
+              title: _transcriptTitle,
+              content: _transcript,
+            ),
+          );
         }
     }
     if (_remind) unawaited(_createReminder(services));
     setState(() => _view = 'added');
   }
 
-  Future<void> _confirmLinkMemory(MiraServices services, String captureId) async {
+  Future<void> _confirmLinkMemory(
+    MiraServices services,
+    String captureId,
+  ) async {
     if (_savingLink) return;
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _savingLink = true);
     try {
-      await services.captureRepository.approve(captureId, title: _pendingTitle);
+      final result = await services.captureRepository.approve(
+        captureId,
+        title: _pendingTitle,
+      );
       await services.memoryStore.load(force: true);
       if (_remind) await _createReminder(services);
       if (!mounted) return;
@@ -503,26 +530,72 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
         _savingLink = false;
         _view = 'added';
       });
+      if (result.isProjectionPending) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncPending)));
+        _watchCaptureProjection(services, result);
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _savingLink = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.rdCaptureLinkSaveFailed)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureLinkSaveFailed)));
     }
   }
 
   /// Approve the live capture, promoting the extracted proposal into the graph.
-  /// Best-effort: a failure (offline, auth, expired capture) falls back to a
-  /// one-shot note write so the capture is still kept.
+  /// A temporary graph failure is represented by a durable projection receipt;
+  /// do not create a second Library note because the server may already have
+  /// committed the ledger event even when the response is interrupted.
   Future<void> _approveCapture(MiraServices services, String captureId) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
-      await services.captureRepository.approve(captureId);
+      final result = await services.captureRepository.approve(captureId);
       await services.memoryStore.load(force: true);
+      if (!mounted) return;
+      if (result.isProjectionPending) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncPending)));
+        _watchCaptureProjection(services, result);
+      }
     } catch (_) {
-      // The real approve failed after the fact — still keep the memory.
-      await _persistNote(services, title: _transcriptTitle, content: _transcript);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureMemorySaveFailed)));
     }
+  }
+
+  void _watchCaptureProjection(
+    MiraServices services,
+    GraphIngestResponse result,
+  ) {
+    final eventId = result.ledgerEventId;
+    if (eventId == null || !result.isProjectionPending) return;
+    unawaited(() async {
+      final receipt = await services.graphRepository.waitForProjection(
+        MemoryProjectionReceipt(
+          eventId: eventId,
+          status: result.projectionStatus,
+          error: result.projectionError,
+        ),
+      );
+      if (receipt.isApplied) await services.memoryStore.load(force: true);
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      if (receipt.isApplied) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncComplete)));
+      } else if (receipt.isDead) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncFailed)));
+      }
+    }());
   }
 
   /// Create a real note memory in the backend library. Best-effort: a failure
@@ -551,9 +624,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           ? _transcriptTitle.trim()
           : _transcript.trim();
       if (title.isEmpty) return;
-      await RemindersRepository(apiClient: services.apiClient).create(
-        title: title,
-      );
+      await RemindersRepository(
+        apiClient: services.apiClient,
+      ).create(title: title);
     } catch (_) {
       // Best-effort — the capture is still kept.
     }
@@ -615,9 +688,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       const Duration(milliseconds: 500 + 3 * 650 + 500),
     );
     for (var k = 0; k < 3; k++) {
-      _timers.add(Timer(Duration(milliseconds: 500 + k * 650), () {
-        if (mounted && _view == 'proc') setState(() => _steps = k + 1);
-      }));
+      _timers.add(
+        Timer(Duration(milliseconds: 500 + k * 650), () {
+          if (mounted && _view == 'proc') setState(() => _steps = k + 1);
+        }),
+      );
     }
     await _runPipeline(text);
     await minShown;
@@ -639,9 +714,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _linkCrawlMethod = null;
     });
     for (var k = 0; k < 3; k++) {
-      _timers.add(Timer(Duration(milliseconds: 500 + k * 650), () {
-        if (mounted && _view == 'proc') setState(() => _steps = k + 1);
-      }));
+      _timers.add(
+        Timer(Duration(milliseconds: 500 + k * 650), () {
+          if (mounted && _view == 'proc') setState(() => _steps = k + 1);
+        }),
+      );
     }
     final minShown = Future<void>.delayed(
       const Duration(milliseconds: 500 + 3 * 650 + 500),
@@ -675,9 +752,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
       if (proposalJson == null) {
         try {
-          await for (final event in services.captureRepository
-              .streamCapture(created.captureId)
-              .timeout(const Duration(seconds: 15))) {
+          await for (final event
+              in services.captureRepository
+                  .streamCapture(created.captureId)
+                  .timeout(const Duration(seconds: 15))) {
             if (event.event == 'proposal') proposalJson = event.data;
           }
         } on TimeoutException {
@@ -686,7 +764,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       }
 
       for (var attempt = 0; proposalJson == null && attempt < 5; attempt++) {
-        final current = await services.captureRepository.getCapture(created.captureId);
+        final current = await services.captureRepository.getCapture(
+          created.captureId,
+        );
         absorb(current);
         if (proposalJson == null) {
           await Future<void>.delayed(const Duration(milliseconds: 700));
@@ -703,7 +783,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       final display = resolveProposalDisplay(proposal);
       if (!display.hasContent) return false;
 
-      final scraped = metadata['is_scraped_url'] == true ||
+      final scraped =
+          metadata['is_scraped_url'] == true ||
           metadata['isScrapedUrl'] == true;
       final method = metadata['link_extraction_method']?.toString();
       final scrapedTitle = metadata['scraped_title']?.toString().trim() ?? '';
@@ -754,12 +835,18 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       _steps = 0;
     });
     for (var k = 0; k < 3; k++) {
-      _timers.add(Timer(Duration(milliseconds: 500 + k * 650),
-          () => mounted ? setState(() => _steps = k + 1) : null));
+      _timers.add(
+        Timer(
+          Duration(milliseconds: 500 + k * 650),
+          () => mounted ? setState(() => _steps = k + 1) : null,
+        ),
+      );
     }
-    _timers.add(Timer(const Duration(milliseconds: 500 + 3 * 650 + 500), () {
-      if (mounted && _view == 'proc') setState(() => _view = 'review');
-    }));
+    _timers.add(
+      Timer(const Duration(milliseconds: 500 + 3 * 650 + 500), () {
+        if (mounted && _view == 'proc') setState(() => _view = 'review');
+      }),
+    );
   }
 
   /// Paste a URL (optional title) → Understanding → review → (confirm) import as
@@ -935,20 +1022,37 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                   Container(
                     width: 64,
                     height: 64,
-                    decoration: BoxDecoration(color: rd.periSoft, shape: BoxShape.circle),
-                    child: Center(child: RdIcon(RdIcons.linkChain, size: 28, color: rd.peri)),
+                    decoration: BoxDecoration(
+                      color: rd.periSoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: RdIcon(
+                        RdIcons.linkChain,
+                        size: 28,
+                        color: rd.peri,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     l10n.rdCaptureLinkFailedTitle,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.dosis(fontSize: 25, fontWeight: FontWeight.w700, color: rd.ink),
+                    style: GoogleFonts.dosis(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w700,
+                      color: rd.ink,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     l10n.rdCaptureLinkFailedBody,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.55, color: rd.muted),
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14,
+                      height: 1.55,
+                      color: rd.muted,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
@@ -956,11 +1060,16 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                     style: FilledButton.styleFrom(
                       backgroundColor: rd.navy,
                       minimumSize: const Size(210, 52),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                     child: Text(
                       l10n.rdCaptureLinkRetry,
-                      style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -990,7 +1099,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
         children: chips
             .map(
               (c) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: rd.card,
                   borderRadius: BorderRadius.circular(100),
@@ -1022,16 +1134,40 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _circBtn('<path d="M6 6l12 12M18 6 6 18"/>', () => widget.go('home')),
+              _circBtn(
+                '<path d="M6 6l12 12M18 6 6 18"/>',
+                () => widget.go('home'),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(100), border: Border.all(color: rd.line, width: 1)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: rd.card,
+                  borderRadius: BorderRadius.circular(100),
+                  border: Border.all(color: rd.line, width: 1),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(width: 8, height: 8, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE24B4A))),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFE24B4A),
+                      ),
+                    ),
                     const SizedBox(width: 7),
-                    Text(_time, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.ink)),
+                    Text(
+                      _time,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: rd.ink,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1046,7 +1182,15 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             children: [
-              Text(l10n.rdCaptureListening, style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: rd.peri)),
+              Text(
+                l10n.rdCaptureListening,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                  color: rd.peri,
+                ),
+              ),
               const SizedBox(height: 12),
               // Live transcript streaming from the mic. Empty until the first
               // words arrive (or on platforms without a real transcriber).
@@ -1054,7 +1198,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 Text(
                   _transcript,
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.vazirmatn(fontSize: 19, height: 1.5, color: rd.ink),
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 19,
+                    height: 1.5,
+                    color: rd.ink,
+                  ),
                 ),
               ..._liveEntityChips(),
             ],
@@ -1069,12 +1217,17 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           runSpacing: 10,
           children: [
             _entryChip(RdIcons.pencil, l10n.rdCaptureEntryType, _openTextEntry),
-            _entryChip(RdIcons.linkChain, l10n.rdCaptureEntryLink, _openLinkEntry),
+            _entryChip(
+              RdIcons.linkChain,
+              l10n.rdCaptureEntryLink,
+              _openLinkEntry,
+            ),
             _entryChip(RdIcons.photo, l10n.rdCaptureEntryPhoto, _pickPhoto),
             _entryChip(
-                '<rect x="4" y="3" width="16" height="14" rx="2"/><path d="M8 21h8"/>',
-                l10n.rdCaptureModeScreenshot,
-                () => _pickPhoto(screenshot: true)),
+              '<rect x="4" y="3" width="16" height="14" rx="2"/><path d="M8 21h8"/>',
+              l10n.rdCaptureModeScreenshot,
+              () => _pickPhoto(screenshot: true),
+            ),
           ],
         ),
         const SizedBox(height: 22),
@@ -1083,7 +1236,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _circBtn('<path d="M6 6l12 12M18 6 6 18"/>', () => widget.go('home'), size: 52),
+            _circBtn(
+              '<path d="M6 6l12 12M18 6 6 18"/>',
+              () => widget.go('home'),
+              size: 52,
+            ),
             const SizedBox(width: 40),
             GestureDetector(
               onTap: _toProc,
@@ -1093,10 +1250,27 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 // Brand orb button — fixed navy gradient + shadow across themes.
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const RadialGradient(center: Alignment(-0.28, -0.4), colors: [Color(0xFF3A5AD0), _navy]),
-                  boxShadow: [BoxShadow(color: const Color(0xFF14328C).withValues(alpha: 0.5), blurRadius: 20, spreadRadius: -6, offset: const Offset(0, 10))],
+                  gradient: const RadialGradient(
+                    center: Alignment(-0.28, -0.4),
+                    colors: [Color(0xFF3A5AD0), _navy],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF14328C).withValues(alpha: 0.5),
+                      blurRadius: 20,
+                      spreadRadius: -6,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-                child: const Center(child: RdIcon('<path d="m5 12 5 5 9-11"/>', size: 30, stroke: '#FFFFFF', strokeWidth: 2.4)),
+                child: const Center(
+                  child: RdIcon(
+                    '<path d="m5 12 5 5 9-11"/>',
+                    size: 30,
+                    stroke: '#FFFFFF',
+                    strokeWidth: 2.4,
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 40),
@@ -1104,7 +1278,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           ],
         ),
         const SizedBox(height: 14),
-        Text(l10n.rdCaptureTapWhenFinished, style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+        Text(
+          l10n.rdCaptureTapWhenFinished,
+          style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
+        ),
         const SizedBox(height: 40),
       ],
     );
@@ -1125,7 +1302,15 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
         children: [
           const RdOrb(size: 120),
           const SizedBox(height: 26),
-          Text(l10n.rdCaptureUnderstanding, style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: rd.peri)),
+          Text(
+            l10n.rdCaptureUnderstanding,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+              color: rd.peri,
+            ),
+          ),
           const SizedBox(height: 22),
           for (var k = 0; k < labels.length; k++)
             Padding(
@@ -1140,11 +1325,30 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                       width: 22,
                       height: 22,
                       // Completed step → fixed navy fill; pending → adaptive hairline.
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: k < _steps ? rd.navy : rd.line),
-                      child: k < _steps ? const Center(child: RdIcon('<path d="m5 12 5 5 9-11"/>', size: 12, stroke: '#FFFFFF', strokeWidth: 3)) : null,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: k < _steps ? rd.navy : rd.line,
+                      ),
+                      child: k < _steps
+                          ? const Center(
+                              child: RdIcon(
+                                '<path d="m5 12 5 5 9-11"/>',
+                                size: 12,
+                                stroke: '#FFFFFF',
+                                strokeWidth: 3,
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 11),
-                    Text(labels[k], style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w500, color: rd.ink)),
+                    Text(
+                      labels[k],
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: rd.ink,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1189,7 +1393,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   /// The chips actually shown: the user's edited list once they've touched it,
   /// otherwise the computed source (so real extraction still flows through).
-  List<String> _currentChips(AppLocalizations l10n) => _chips ?? _computedChips(l10n);
+  List<String> _currentChips(AppLocalizations l10n) =>
+      _chips ?? _computedChips(l10n);
 
   void _removeChip(int i, AppLocalizations l10n) {
     final list = [..._currentChips(l10n)]..removeAt(i);
@@ -1297,8 +1502,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       case 'screenshot':
         return l10n.rdCaptureRemindLater;
       default:
-        final deadline =
-            _realProposal ? (_proposal?.deadline.trim() ?? '') : '';
+        final deadline = _realProposal
+            ? (_proposal?.deadline.trim() ?? '')
+            : '';
         if (deadline.isNotEmpty) return l10n.rdCaptureRemindBefore(deadline);
         return l10n.rdCaptureRemindLater;
     }
@@ -1318,9 +1524,17 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       ];
     } else {
       rows = [
-        (calendar, l10n.rdCaptureActionCalendar, l10n.rdCaptureActionCalendarSub),
+        (
+          calendar,
+          l10n.rdCaptureActionCalendar,
+          l10n.rdCaptureActionCalendarSub,
+        ),
         (topic, l10n.rdCaptureActionAddTopic, l10n.rdCaptureActionAddTopicSub),
-        (person, l10n.rdCaptureActionAddPeople, l10n.rdCaptureActionAddPeopleSub),
+        (
+          person,
+          l10n.rdCaptureActionAddPeople,
+          l10n.rdCaptureActionAddPeopleSub,
+        ),
       ];
     }
     final on = [_conn1, _conn2, _conn3];
@@ -1338,7 +1552,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   }
 
   // ── change type ─────────────────────────────────────────────────────
-  String get _currentTypeLabel => _typeName ?? _autoTypeLabel(AppLocalizations.of(context)!);
+  String get _currentTypeLabel =>
+      _typeName ?? _autoTypeLabel(AppLocalizations.of(context)!);
 
   String _autoTypeLabel(AppLocalizations l10n) {
     switch (_kind) {
@@ -1407,15 +1622,24 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 14),
                   decoration: BoxDecoration(
-                      color: rd.line, borderRadius: BorderRadius.circular(100)),
+                    color: rd.line,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
                 ),
               ),
-              Text(l10n.rdCaptureChangeType,
-                  style: GoogleFonts.dosis(
-                      fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink)),
+              Text(
+                l10n.rdCaptureChangeType,
+                style: GoogleFonts.dosis(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w700,
+                  color: rd.ink,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(l10n.rdCaptureFilePrompt,
-                  style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted)),
+              Text(
+                l10n.rdCaptureFilePrompt,
+                style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
+              ),
               const SizedBox(height: 14),
               Wrap(
                 spacing: 10,
@@ -1447,18 +1671,27 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           color: cur ? rd.navy.withValues(alpha: 0.08) : rd.bg,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: cur ? rd.navy : rd.line, width: cur ? 1.4 : 1),
+            color: cur ? rd.navy : rd.line,
+            width: cur ? 1.4 : 1,
+          ),
         ),
         child: Column(
           children: [
-            RdIcon(icon,
-                size: 22, color: cur ? rd.navy : rd.ink, strokeWidth: 1.8),
+            RdIcon(
+              icon,
+              size: 22,
+              color: cur ? rd.navy : rd.ink,
+              strokeWidth: 1.8,
+            ),
             const SizedBox(height: 7),
-            Text(label,
-                style: GoogleFonts.vazirmatn(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: cur ? rd.navy : rd.ink)),
+            Text(
+              label,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: cur ? rd.navy : rd.ink,
+              ),
+            ),
           ],
         ),
       ),
@@ -1481,8 +1714,17 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             color: rd.card,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
           ),
-          padding: EdgeInsets.fromLTRB(20, 12, 20,
-              22 + math.max(0.0, MediaQuery.of(ctx).viewPadding.bottom - MediaQuery.of(ctx).viewInsets.bottom)),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            22 +
+                math.max(
+                  0.0,
+                  MediaQuery.of(ctx).viewPadding.bottom -
+                      MediaQuery.of(ctx).viewInsets.bottom,
+                ),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1493,12 +1735,19 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                      color: rd.line, borderRadius: BorderRadius.circular(100)),
+                    color: rd.line,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
                 ),
               ),
-              Text(l10n.rdCaptureAddDetail,
-                  style: GoogleFonts.dosis(
-                      fontSize: 18, fontWeight: FontWeight.w700, color: rd.ink)),
+              Text(
+                l10n.rdCaptureAddDetail,
+                style: GoogleFonts.dosis(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: rd.ink,
+                ),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: ctl,
@@ -1508,18 +1757,24 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.ink),
                 decoration: InputDecoration(
                   hintText: l10n.rdCaptureAddDetailHint,
-                  hintStyle:
-                      GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
+                  hintStyle: GoogleFonts.vazirmatn(
+                    fontSize: 15,
+                    color: rd.faint,
+                  ),
                   filled: true,
                   fillColor: rd.bg,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: rd.line, width: 1)),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: rd.line, width: 1),
+                  ),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(color: rd.navy, width: 1.4)),
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: rd.navy, width: 1.4),
+                  ),
                 ),
               ),
             ],
@@ -1559,18 +1814,22 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(100)),
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(100),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           RdIcon(icon, size: 13, stroke: '#FFFFFF', strokeWidth: 1.9),
           const SizedBox(width: 6),
-          Text(label,
-              style: GoogleFonts.vazirmatn(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white)),
+          Text(
+            label,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
         ],
       ),
     );
@@ -1625,21 +1884,26 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             Positioned(
               left: 10,
               top: 10,
-              child: _previewBadge(l10n.rdCaptureLinkBadge(_linkHost(_pendingUrl)),
-                  '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>'),
+              child: _previewBadge(
+                l10n.rdCaptureLinkBadge(_linkHost(_pendingUrl)),
+                '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+              ),
             ),
             Positioned(
               left: 16,
               right: 16,
               bottom: 14,
-              child: Text(_understoodText(l10n),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.dosis(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 1.1)),
+              child: Text(
+                _understoodText(l10n),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dosis(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  height: 1.1,
+                ),
+              ),
             ),
           ],
         ),
@@ -1704,17 +1968,18 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               children: [
                 _eyebrow(_reviewEyebrow(l10n)),
                 const SizedBox(height: 12),
-                if (preview != null) ...[
-                  preview,
-                  const SizedBox(height: 14),
-                ],
+                if (preview != null) ...[preview, const SizedBox(height: 14)],
                 if (_kind == 'link') ...[
                   _linkCrawlStatus(l10n),
                   const SizedBox(height: 14),
                 ],
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(18), border: Border.all(color: rd.line, width: 1)),
+                  decoration: BoxDecoration(
+                    color: rd.card,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: rd.line, width: 1),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1729,9 +1994,21 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                             behavior: HitTestBehavior.opaque,
                             child: Row(
                               children: [
-                                RdIcon('<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>', size: 13, color: rd.muted, strokeWidth: 2),
+                                RdIcon(
+                                  '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+                                  size: 13,
+                                  color: rd.muted,
+                                  strokeWidth: 2,
+                                ),
                                 const SizedBox(width: 5),
-                                Text(l10n.rdCaptureChangeType, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: rd.muted)),
+                                Text(
+                                  l10n.rdCaptureChangeType,
+                                  style: GoogleFonts.vazirmatn(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: rd.muted,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -1742,7 +2019,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                       // extracted proposal (or the link/photo summary).
                       Text(
                         _understoodText(l10n),
-                        style: GoogleFonts.vazirmatn(fontSize: 16, height: 1.5, color: rd.ink),
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 16,
+                          height: 1.5,
+                          color: rd.ink,
+                        ),
                       ),
                     ],
                   ),
@@ -1754,17 +2035,33 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 GestureDetector(
                   onTap: () => setState(() => _remind = !_remind),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                    decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 13,
+                    ),
+                    decoration: BoxDecoration(
+                      color: rd.periSoft,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     child: Row(
                       children: [
                         // On-periSoft icon + text → rd.peri (navy vanishes on dark periSoft).
-                        RdIcon('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M12 2h0M9 2h6"/>', size: 20, color: rd.peri, strokeWidth: 1.8),
+                        RdIcon(
+                          '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M12 2h0M9 2h6"/>',
+                          size: 20,
+                          color: rd.peri,
+                          strokeWidth: 1.8,
+                        ),
                         const SizedBox(width: 11),
                         Expanded(
                           child: Text(
                             _reminderText(l10n),
-                            style: GoogleFonts.vazirmatn(fontSize: 13, height: 1.4, fontWeight: FontWeight.w600, color: rd.peri),
+                            style: GoogleFonts.vazirmatn(
+                              fontSize: 13,
+                              height: 1.4,
+                              fontWeight: FontWeight.w600,
+                              color: rd.peri,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1814,17 +2111,39 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               // Success orb — fixed brand green gradient across themes.
               decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1F8A5B), Color(0xFF34A56F)]),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1F8A5B), Color(0xFF34A56F)],
+                ),
               ),
-              child: const Center(child: RdIcon('<path d="m5 12 5 5 9-11"/>', size: 40, stroke: '#FFFFFF', strokeWidth: 2.4)),
+              child: const Center(
+                child: RdIcon(
+                  '<path d="m5 12 5 5 9-11"/>',
+                  size: 40,
+                  stroke: '#FFFFFF',
+                  strokeWidth: 2.4,
+                ),
+              ),
             ),
             const SizedBox(height: 24),
-            Text(l10n.rdCaptureKeptTitle, style: GoogleFonts.dosis(fontSize: 28, fontWeight: FontWeight.w700, color: rd.ink)),
+            Text(
+              l10n.rdCaptureKeptTitle,
+              style: GoogleFonts.dosis(
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                color: rd.ink,
+              ),
+            ),
             const SizedBox(height: 10),
             Text(
               _addedSummary(l10n),
               textAlign: TextAlign.center,
-              style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: rd.muted),
+              style: GoogleFonts.vazirmatn(
+                fontSize: 14,
+                height: 1.5,
+                color: rd.muted,
+              ),
             ),
             const SizedBox(height: 28),
             Row(
@@ -1845,8 +2164,18 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 height: 52,
                 alignment: Alignment.center,
                 // Fixed navy CTA.
-                decoration: BoxDecoration(color: rd.navy, borderRadius: BorderRadius.circular(14)),
-                child: Text(l10n.rdCaptureDone, style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                decoration: BoxDecoration(
+                  color: rd.navy,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  l10n.rdCaptureDone,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1869,13 +2198,32 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                RdIcon('<path d="M15 18l-6-6 6-6"/>', size: 18, color: rd.muted, strokeWidth: 2),
+                RdIcon(
+                  '<path d="M15 18l-6-6 6-6"/>',
+                  size: 18,
+                  color: rd.muted,
+                  strokeWidth: 2,
+                ),
                 const SizedBox(width: 3),
-                Text(backLabel, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w500, color: rd.muted)),
+                Text(
+                  backLabel,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: rd.muted,
+                  ),
+                ),
               ],
             ),
           ),
-          Text(l10n.rdCaptureReview, style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w600, color: rd.ink)),
+          Text(
+            l10n.rdCaptureReview,
+            style: GoogleFonts.dosis(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: rd.ink,
+            ),
+          ),
           const SizedBox(width: 60),
         ],
       ),
@@ -1887,7 +2235,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: rd.line, width: 1))),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: rd.line, width: 1)),
+      ),
       child: Row(
         children: [
           GestureDetector(
@@ -1896,8 +2246,19 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: rd.line, width: 1)),
-              child: Text(l10n.rdCaptureDiscard, style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: rd.muted)),
+              decoration: BoxDecoration(
+                color: rd.card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: rd.line, width: 1),
+              ),
+              child: Text(
+                l10n.rdCaptureDiscard,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: rd.muted,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -1909,16 +2270,28 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
                 alignment: Alignment.center,
                 // Fixed navy CTA. Label reflects how many connections/actions
                 // are toggled on (design's "Add · linking N").
-                decoration: BoxDecoration(color: rd.navy, borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(
+                  color: rd.navy,
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 child: _savingLink
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : Text(
-                        _linkCount > 0 ? l10n.rdCaptureAddLinking(_linkCount) : l10n.rdCaptureAddToMemory,
-                        style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
+                        _linkCount > 0
+                            ? l10n.rdCaptureAddLinking(_linkCount)
+                            : l10n.rdCaptureAddToMemory,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
                       ),
               ),
             ),
@@ -1932,9 +2305,21 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     final rd = context.rd;
     return Row(
       children: [
-        Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: rd.peri)),
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: rd.peri),
+        ),
         const SizedBox(width: 8),
-        Text(text.toUpperCase(), style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: rd.faint)),
+        Text(
+          text.toUpperCase(),
+          style: GoogleFonts.vazirmatn(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+            color: rd.faint,
+          ),
+        ),
       ],
     );
   }
@@ -1942,7 +2327,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   Widget _fieldLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(top: 22, bottom: 12),
-      child: Text(text, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w500, color: context.rd.muted)),
+      child: Text(
+        text,
+        style: GoogleFonts.vazirmatn(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          color: context.rd.muted,
+        ),
+      ),
     );
   }
 
@@ -1950,46 +2342,84 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-      decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(100)),
+      decoration: BoxDecoration(
+        color: rd.periSoft,
+        borderRadius: BorderRadius.circular(100),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           // On-periSoft badge → rd.peri (navy vanishes on dark periSoft).
           RdIcon(icon, size: 14, color: rd.peri, strokeWidth: 2),
           const SizedBox(width: 6),
-          Text(label, style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w600, color: rd.peri)),
+          Text(
+            label,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: rd.peri,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _connRow(String icon, String name, String sub, bool on, VoidCallback onTap) {
+  Widget _connRow(
+    String icon,
+    String name,
+    String sub,
+    bool on,
+    VoidCallback onTap,
+  ) {
     final rd = context.rd;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: rd.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: rd.line, width: 1)),
+      decoration: BoxDecoration(
+        color: rd.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: rd.line, width: 1),
+      ),
       child: Row(
         children: [
           Container(
             width: 34,
             height: 34,
-            decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: rd.periSoft,
+              borderRadius: BorderRadius.circular(10),
+            ),
             // On-periSoft icon → rd.peri (navy vanishes on dark periSoft).
-            child: Center(child: RdIcon(icon, size: 18, color: rd.peri, strokeWidth: 1.8)),
+            child: Center(
+              child: RdIcon(icon, size: 18, color: rd.peri, strokeWidth: 1.8),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.vazirmatn(fontSize: 14, fontWeight: FontWeight.w600, color: rd.ink)),
+                Text(
+                  name,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: rd.ink,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(sub, style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted)),
+                Text(
+                  sub,
+                  style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted),
+                ),
               ],
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(onTap: onTap, child: _Tog(on: on)),
+          GestureDetector(
+            onTap: onTap,
+            child: _Tog(on: on),
+          ),
         ],
       ),
     );
@@ -2002,8 +2432,19 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       child: Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: rd.card, border: Border.all(color: rd.line, width: 1)),
-        child: Center(child: RdIcon(icon, size: size * 0.4, color: rd.gearIcon, strokeWidth: 2.1)),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: rd.card,
+          border: Border.all(color: rd.line, width: 1),
+        ),
+        child: Center(
+          child: RdIcon(
+            icon,
+            size: size * 0.4,
+            color: rd.gearIcon,
+            strokeWidth: 2.1,
+          ),
+        ),
       ),
     );
   }
@@ -2025,7 +2466,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           children: [
             RdIcon(icon, size: 15, color: rd.gearIcon, strokeWidth: 1.9),
             const SizedBox(width: 7),
-            Text(label, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.ink)),
+            Text(
+              label,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: rd.ink,
+              ),
+            ),
           ],
         ),
       ),
@@ -2041,14 +2489,22 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
       // periSoft fill + peri border so they read on both themes.
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: hub ? const RadialGradient(colors: [Color(0xFFAEB9E8), Color(0xFF6472B6)]) : null,
+        gradient: hub
+            ? const RadialGradient(
+                colors: [Color(0xFFAEB9E8), Color(0xFF6472B6)],
+              )
+            : null,
         color: hub ? null : rd.periSoft,
         border: hub ? null : Border.all(color: rd.peri, width: 1.5),
       ),
     );
   }
 
-  Widget _graphLine() => Container(width: 34, height: 1.5, color: context.rd.peri.withValues(alpha: 0.5));
+  Widget _graphLine() => Container(
+    width: 34,
+    height: 1.5,
+    color: context.rd.peri.withValues(alpha: 0.5),
+  );
 }
 
 /// SVG glyphs for the nine memory types in the "Change type" picker.
@@ -2096,7 +2552,10 @@ class _EChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: add ? Colors.transparent : rd.card,
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: add ? rd.peri.withValues(alpha: 0.5) : rd.line, width: 1),
+        border: Border.all(
+          color: add ? rd.peri.withValues(alpha: 0.5) : rd.line,
+          width: 1,
+        ),
       ),
       // The "+ Add" chip sits on the page bg (not periSoft) → rd.peri to stay
       // legible on dark; genuine detail chips use ink text.
@@ -2105,21 +2564,34 @@ class _EChip extends StatelessWidget {
         children: [
           Text(
             label,
-            style: GoogleFonts.vazirmatn(fontSize: 12.5, fontWeight: FontWeight.w500, color: add ? rd.peri : rd.ink),
+            style: GoogleFonts.vazirmatn(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w500,
+              color: add ? rd.peri : rd.ink,
+            ),
           ),
           if (onRemove != null) ...[
             const SizedBox(width: 6),
             GestureDetector(
               onTap: onRemove,
               behavior: HitTestBehavior.opaque,
-              child: RdIcon('<path d="M6 6l12 12M18 6 6 18"/>', size: 12, color: rd.faint, strokeWidth: 2.4),
+              child: RdIcon(
+                '<path d="M6 6l12 12M18 6 6 18"/>',
+                size: 12,
+                color: rd.faint,
+                strokeWidth: 2.4,
+              ),
             ),
           ],
         ],
       ),
     );
     if (onTap != null) {
-      return GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: chip);
+      return GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: chip,
+      );
     }
     return chip;
   }
@@ -2134,18 +2606,29 @@ class _Tog extends StatelessWidget {
   Widget build(BuildContext context) {
     // On-track is brand navy (fixed accent). Off-track has no token: keep the
     // exact light literal, and use a lifted neutral on dark for contrast.
-    final offTrack =
-        _isDark(context) ? const Color(0xFF3A3B44) : const Color(0xFFD3D5DE);
+    final offTrack = _isDark(context)
+        ? const Color(0xFF3A3B44)
+        : const Color(0xFFD3D5DE);
     return Container(
       width: 44,
       height: 26,
-      decoration: BoxDecoration(color: on ? context.rd.navy : offTrack, borderRadius: BorderRadius.circular(100)),
+      decoration: BoxDecoration(
+        color: on ? context.rd.navy : offTrack,
+        borderRadius: BorderRadius.circular(100),
+      ),
       child: AnimatedAlign(
         duration: const Duration(milliseconds: 180),
         alignment: on ? Alignment.centerRight : Alignment.centerLeft,
         child: Padding(
           padding: const EdgeInsets.all(3),
-          child: Container(width: 20, height: 20, decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white)),
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
@@ -2159,8 +2642,12 @@ class _Waveform extends StatefulWidget {
   State<_Waveform> createState() => _WaveformState();
 }
 
-class _WaveformState extends State<_Waveform> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
+class _WaveformState extends State<_Waveform>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
 
   @override
   void dispose() {
@@ -2183,8 +2670,19 @@ class _WaveformState extends State<_Waveform> with SingleTickerProviderStateMixi
                 if (i > 0) const SizedBox(width: 3),
                 Container(
                   width: 3,
-                  height: 6 + 26 * (0.5 + 0.5 * math.sin((_c.value * 2 * math.pi) + i * 0.55)).abs(),
-                  decoration: BoxDecoration(color: peri.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(2)),
+                  height:
+                      6 +
+                      26 *
+                          (0.5 +
+                                  0.5 *
+                                      math.sin(
+                                        (_c.value * 2 * math.pi) + i * 0.55,
+                                      ))
+                              .abs(),
+                  decoration: BoxDecoration(
+                    color: peri.withValues(alpha: 0.75),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ],
             ],
@@ -2252,9 +2750,14 @@ class _ComposeSheetState extends State<_ComposeSheet> {
           autofocus: true,
           maxLines: widget.multiline ? 5 : 1,
           minLines: widget.multiline ? 3 : 1,
-          textInputAction:
-              widget.multiline ? TextInputAction.newline : TextInputAction.done,
-          style: GoogleFonts.vazirmatn(fontSize: 15, height: 1.5, color: context.rd.ink),
+          textInputAction: widget.multiline
+              ? TextInputAction.newline
+              : TextInputAction.done,
+          style: GoogleFonts.vazirmatn(
+            fontSize: 15,
+            height: 1.5,
+            color: context.rd.ink,
+          ),
           decoration: _fieldDecoration(context, widget.hint),
         ),
         const SizedBox(height: 14),
@@ -2322,7 +2825,10 @@ class _LinkSheetState extends State<_LinkSheet> {
           controller: _titleController,
           textInputAction: TextInputAction.done,
           style: GoogleFonts.vazirmatn(fontSize: 15, color: context.rd.ink),
-          decoration: _fieldDecoration(context, l10n.rdCaptureLinkTitleOptional),
+          decoration: _fieldDecoration(
+            context,
+            l10n.rdCaptureLinkTitleOptional,
+          ),
         ),
         const SizedBox(height: 14),
         _SheetSubmit(
@@ -2378,7 +2884,10 @@ class _SheetShell extends StatelessWidget {
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(color: rd.line, borderRadius: BorderRadius.circular(100)),
+                decoration: BoxDecoration(
+                  color: rd.line,
+                  borderRadius: BorderRadius.circular(100),
+                ),
               ),
             ),
             const SizedBox(height: 18),
@@ -2387,12 +2896,29 @@ class _SheetShell extends StatelessWidget {
                 Container(
                   width: 34,
                   height: 34,
-                  decoration: BoxDecoration(color: rd.periSoft, borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(
+                    color: rd.periSoft,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   // On-periSoft icon → rd.peri (navy vanishes on dark periSoft).
-                  child: Center(child: RdIcon(icon, size: 18, color: rd.peri, strokeWidth: 1.8)),
+                  child: Center(
+                    child: RdIcon(
+                      icon,
+                      size: 18,
+                      color: rd.peri,
+                      strokeWidth: 1.8,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 11),
-                Text(title, style: GoogleFonts.dosis(fontSize: 19, fontWeight: FontWeight.w700, color: rd.ink)),
+                Text(
+                  title,
+                  style: GoogleFonts.dosis(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -2426,8 +2952,18 @@ class _SheetSubmit extends StatelessWidget {
         child: Container(
           height: 52,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: _navy, borderRadius: BorderRadius.circular(14)),
-          child: Text(label, style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+          decoration: BoxDecoration(
+            color: _navy,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );

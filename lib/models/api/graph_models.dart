@@ -161,6 +161,9 @@ class GraphIngestResponse {
     this.materializedEdges = const [],
     this.tasks = const [],
     this.preferences = const [],
+    this.ledgerEventId,
+    this.projectionStatus = 'APPLIED',
+    this.projectionError,
   });
 
   factory GraphIngestResponse.fromJson(Map<String, dynamic> json) =>
@@ -190,6 +193,16 @@ class GraphIngestResponse {
         preferences: (json['preferences'] as List<dynamic>? ?? const [])
             .map((e) => e.toString())
             .toList(),
+        ledgerEventId:
+            json['ledgerEventId'] as String? ??
+            json['ledger_event_id'] as String?,
+        projectionStatus:
+            json['projectionStatus'] as String? ??
+            json['projection_status'] as String? ??
+            'APPLIED',
+        projectionError:
+            json['projectionError'] as String? ??
+            json['projection_error'] as String?,
       );
 
   final String captureId;
@@ -198,9 +211,48 @@ class GraphIngestResponse {
   final List<String> materializedEdges;
   final List<String> tasks;
   final List<String> preferences;
+  final String? ledgerEventId;
+  final String projectionStatus;
+  final String? projectionError;
+
+  bool get isProjected => projectionStatus == 'APPLIED';
+  bool get isProjectionPending =>
+      projectionStatus == 'PENDING' ||
+      projectionStatus == 'PROCESSING' ||
+      projectionStatus == 'RETRY';
 
   String? get highlightEntityId =>
       createdEntities.isNotEmpty ? createdEntities.first : null;
+}
+
+class MemoryProjectionReceipt {
+  const MemoryProjectionReceipt({
+    required this.eventId,
+    required this.status,
+    this.attempts = 0,
+    this.result = const {},
+    this.error,
+  });
+
+  factory MemoryProjectionReceipt.fromJson(Map<String, dynamic> json) =>
+      MemoryProjectionReceipt(
+        eventId: json['eventId'] as String? ?? json['event_id'] as String,
+        status: json['status'] as String? ?? 'PENDING',
+        attempts: json['attempts'] as int? ?? 0,
+        result: (json['result'] as Map<String, dynamic>?) ?? const {},
+        error: json['error'] as String?,
+      );
+
+  final String eventId;
+  final String status;
+  final int attempts;
+  final Map<String, dynamic> result;
+  final String? error;
+
+  bool get isApplied => status == 'APPLIED';
+  bool get isPending =>
+      status == 'PENDING' || status == 'PROCESSING' || status == 'RETRY';
+  bool get isDead => status == 'DEAD';
 }
 
 class GraphTaskDto {

@@ -92,10 +92,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   }
 
   Future<void> _loadGraph() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final services = AppScope.servicesOf(context);
       final graph = await services.graphRepository.fetchGraph();
-      final l10n = AppLocalizations.of(context)!;
       final (nodes, edges, edgeAssertions) = _mapGraphToNodes(graph, l10n);
       final clusters = _buildClustersFromNodes(nodes, edges, l10n);
       if (!mounted || nodes.isEmpty) return;
@@ -103,10 +103,11 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
         _mapNodes = nodes;
         _mapEdges = edges;
         _clusters = clusters;
-        _mapContext =
-            AppLocalizations.of(context)!.rdCanvasMapContext(nodes.length, edges.length);
-        _clusterContext =
-            l10n.rdCanvasClusterContext(_clusters.length, nodes.length);
+        _mapContext = l10n.rdCanvasMapContext(nodes.length, edges.length);
+        _clusterContext = l10n.rdCanvasClusterContext(
+          _clusters.length,
+          nodes.length,
+        );
         _mapEdgeAssertions = edgeAssertions;
         _mapEpoch++; // force the map to rebuild from the fresh graph
       });
@@ -119,41 +120,186 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: context.rd.ink,
-        content: Text(message,
-            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white)),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: context.rd.ink,
+          content: Text(
+            message,
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+          ),
+        ),
+      );
+  }
+
+  Future<void> _settleGraphMutation(
+    MemoryProjectionReceipt receipt, {
+    required String successMessage,
+    required String failureMessage,
+  }) async {
+    var latest = receipt;
+    if (latest.isPending) {
+      _mapToast(AppLocalizations.of(context)!.rdCanvasSyncPending);
+      latest = await AppScope.servicesOf(
+        context,
+      ).graphRepository.waitForProjection(latest);
+    }
+    if (!mounted) return;
+    if (latest.isApplied) {
+      _mapToast(successMessage);
+      await _loadGraph();
+    } else if (latest.isDead) {
+      _mapToast(failureMessage);
+    }
   }
 
   /// Merges [sourceId] into [targetId] on the real knowledge graph, then reloads
   /// so the absorbed node disappears. Best-effort with a toast either way.
   Future<void> _mergeEntities(String sourceId, String targetId) async {
+    final l10n = AppLocalizations.of(context)!;
+    final repository = AppScope.servicesOf(context).graphRepository;
     try {
-      await AppScope.servicesOf(context)
-          .graphRepository
-          .mergeEntities(sourceId: sourceId, targetId: targetId);
-      _mapToast(AppLocalizations.of(context)!.rdCanvasMergeSuccess);
-      await _loadGraph();
+      final receipt = await repository.mergeEntities(
+        sourceId: sourceId,
+        targetId: targetId,
+      );
+      await _settleGraphMutation(
+        receipt,
+        successMessage: l10n.rdCanvasMergeSuccess,
+        failureMessage: l10n.rdCanvasMergeFail,
+      );
     } catch (_) {
-      _mapToast(AppLocalizations.of(context)!.rdCanvasMergeFail);
+      _mapToast(l10n.rdCanvasMergeFail);
     }
   }
 
   /// Unlinks a connection by rejecting the assertions backing it, then reloads.
   Future<void> _unlinkEdge(List<String> assertionIds) async {
     if (assertionIds.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    final repo = AppScope.servicesOf(context).graphRepository;
     try {
-      final repo = AppScope.servicesOf(context).graphRepository;
-      for (final id in assertionIds) {
-        await repo.rejectAssertion(id);
-      }
-      _mapToast(AppLocalizations.of(context)!.rdCanvasUnlinkSuccess);
-      await _loadGraph();
+      final receipt = await repo.rejectAssertions(assertionIds);
+      await _settleGraphMutation(
+        receipt,
+        successMessage: l10n.rdCanvasUnlinkSuccess,
+        failureMessage: l10n.rdCanvasUnlinkFail,
+      );
     } catch (_) {
-      _mapToast(AppLocalizations.of(context)!.rdCanvasUnlinkFail);
+      _mapToast(l10n.rdCanvasUnlinkFail);
     }
+  }
+
+  Future<void> _splitEntity(_GNode node) async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final repository = AppScope.servicesOf(context).graphRepository;
+      final detail = await repository.fetchEntityDetail(node.id);
+      final assertions = (detail['assertions'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(_SplitEvidence.fromJson)
+          .where((item) => item.assertionId.isNotEmpty)
+          .toList();
+      if (assertions.isEmpty) {
+        _mapToast(l10n.rdCanvasSplitNoFacts);
+        return;
+      }
+      if (!mounted) return;
+      final selection = await _showSplitDialog(node, assertions);
+      if (selection == null || !mounted) return;
+      final receipt = await repository.splitEntity(
+        sourceId: node.id,
+        canonicalName: node.label,
+        entityType: node.entityType ?? 'Person',
+        identityHint: selection.identityHint,
+        assertionIds: selection.assertionIds,
+        facets: [selection.identityHint],
+      );
+      await _settleGraphMutation(
+        receipt,
+        successMessage: l10n.rdCanvasSplitSuccess,
+        failureMessage: l10n.rdCanvasSplitFail,
+      );
+    } catch (_) {
+      _mapToast(l10n.rdCanvasSplitFail);
+    }
+  }
+
+  Future<_SplitSelection?> _showSplitDialog(
+    _GNode node,
+    List<_SplitEvidence> assertions,
+  ) async {
+    final controller = TextEditingController();
+    final selected = <String>{};
+    final result = await showDialog<_SplitSelection>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final l10n = AppLocalizations.of(context)!;
+          return AlertDialog(
+            title: Text(l10n.rdCanvasSplitIdentity(node.label)),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.rdCanvasSplitHint),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      decoration: InputDecoration(
+                        labelText: l10n.rdCanvasSplitDescription,
+                      ),
+                      onChanged: (_) => setDialogState(() {}),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(l10n.rdCanvasSplitSelectFacts),
+                    const SizedBox(height: 6),
+                    for (final assertion in assertions)
+                      CheckboxListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        value: selected.contains(assertion.assertionId),
+                        title: Text(assertion.label),
+                        onChanged: (checked) => setDialogState(() {
+                          if (checked ?? false) {
+                            selected.add(assertion.assertionId);
+                          } else {
+                            selected.remove(assertion.assertionId);
+                          }
+                        }),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  MaterialLocalizations.of(context).cancelButtonLabel,
+                ),
+              ),
+              FilledButton(
+                onPressed: controller.text.trim().isEmpty || selected.isEmpty
+                    ? null
+                    : () => Navigator.of(dialogContext).pop(
+                        _SplitSelection(
+                          identityHint: controller.text.trim(),
+                          assertionIds: selected.toList(),
+                        ),
+                      ),
+                child: Text(l10n.rdCanvasSplitApply),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    controller.dispose();
+    return result;
   }
 
   CanvasRepository get _canvasRepo =>
@@ -164,11 +310,12 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   /// best-effort: on any failure the Board view falls back to the designed
   /// sample cards so it still reads well offline.
   Future<void> _loadBoards() async {
+    final myBoardTitle = AppLocalizations.of(context)!.rdCanvasMyBoard;
     try {
       final repo = _canvasRepo;
       var boards = await repo.list();
       if (boards.isEmpty) {
-        final created = await repo.create(title: AppLocalizations.of(context)!.rdCanvasMyBoard);
+        final created = await repo.create(title: myBoardTitle);
         boards = [created];
       }
 
@@ -219,7 +366,9 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   /// Creates a new empty board, appends it, and switches to it.
   Future<void> _createBoard() async {
     try {
-      final created = await _canvasRepo.create(title: AppLocalizations.of(context)!.rdCanvasNewBoard);
+      final created = await _canvasRepo.create(
+        title: AppLocalizations.of(context)!.rdCanvasNewBoard,
+      );
       if (!mounted) return;
       setState(() {
         _boards = [..._boards, created];
@@ -242,7 +391,9 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
 
   String _boardLabel(String title, int count) {
     final l10n = AppLocalizations.of(context)!;
-    final name = title.trim().isEmpty ? l10n.rdCanvasBoardDefault : title.trim();
+    final name = title.trim().isEmpty
+        ? l10n.rdCanvasBoardDefault
+        : title.trim();
     return l10n.rdCanvasBoardLabel(name, count);
   }
 
@@ -254,10 +405,8 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     final result = await showDialog<_SwitcherResult>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
-      builder: (_) => _BoardSwitcherSheet(
-        boards: _boards,
-        activeId: _activeBoardId,
-      ),
+      builder: (_) =>
+          _BoardSwitcherSheet(boards: _boards, activeId: _activeBoardId),
     );
     if (result == null || !mounted) return;
     switch (result.action) {
@@ -281,11 +430,17 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
         final rd = ctx.rd;
         return AlertDialog(
           backgroundColor: rd.card,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(AppLocalizations.of(context)!.rdCanvasRenameTitle,
-              style: GoogleFonts.dosis(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: rd.ink)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            AppLocalizations.of(context)!.rdCanvasRenameTitle,
+            style: GoogleFonts.dosis(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: rd.ink,
+            ),
+          ),
           content: TextField(
             controller: controller,
             autofocus: true,
@@ -296,24 +451,32 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
               hintText: AppLocalizations.of(context)!.rdCanvasBoardNameHint,
               hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: rd.line, width: 1)),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: rd.line, width: 1),
+              ),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: rd.navy, width: 1.4)),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: rd.navy, width: 1.4),
+              ),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(AppLocalizations.of(context)!.rdCommonCancel,
-                  style: GoogleFonts.vazirmatn(color: rd.muted)),
+              child: Text(
+                AppLocalizations.of(context)!.rdCommonCancel,
+                style: GoogleFonts.vazirmatn(color: rd.muted),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(controller.text),
-              child: Text(AppLocalizations.of(context)!.rdCommonSave,
-                  style: GoogleFonts.vazirmatn(
-                      color: rd.navy, fontWeight: FontWeight.w600)),
+              child: Text(
+                AppLocalizations.of(context)!.rdCommonSave,
+                style: GoogleFonts.vazirmatn(
+                  color: rd.navy,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
         );
@@ -361,29 +524,30 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
           Positioned.fill(
             child: switch (_mode) {
               'board' => _BoardView(
-                  key: ValueKey('board-$_boardEpoch-${_activeBoardId ?? ''}'),
-                  board: _activeBoard,
-                  repository: _boards.isEmpty ? null : _canvasRepo,
-                  onContext: _onBoardContext,
-                ),
+                key: ValueKey('board-$_boardEpoch-${_activeBoardId ?? ''}'),
+                board: _activeBoard,
+                repository: _boards.isEmpty ? null : _canvasRepo,
+                onContext: _onBoardContext,
+              ),
               'clusters' => _ClusterOverview(
-                  key: ValueKey('clusters-${_clusters.length}'),
-                  clusters: _clusters,
-                  onOpen: _openCluster,
-                ),
+                key: ValueKey('clusters-${_clusters.length}'),
+                clusters: _clusters,
+                onOpen: _openCluster,
+              ),
               _ => _MapView(
-                  key: ValueKey(
-                    live
-                        ? 'map-live-$_mapEpoch-${_mapFocusNodeId ?? ''}'
-                        : 'map-sample-${_mapFocusNodeId ?? ''}',
-                  ),
-                  nodes: _mapNodes ?? const <_GNode>[],
-                  edges: live ? _mapEdges : const <List<String>>[],
-                  initialSelectedId: _mapFocusNodeId,
-                  onMerge: live ? _mergeEntities : null,
-                  edgeAssertions: live ? _mapEdgeAssertions : const {},
-                  onUnlink: live ? _unlinkEdge : null,
+                key: ValueKey(
+                  live
+                      ? 'map-live-$_mapEpoch-${_mapFocusNodeId ?? ''}'
+                      : 'map-sample-${_mapFocusNodeId ?? ''}',
                 ),
+                nodes: _mapNodes ?? const <_GNode>[],
+                edges: live ? _mapEdges : const <List<String>>[],
+                initialSelectedId: _mapFocusNodeId,
+                onMerge: live ? _mergeEntities : null,
+                onSplit: live ? _splitEntity : null,
+                edgeAssertions: live ? _mapEdgeAssertions : const {},
+                onUnlink: live ? _unlinkEdge : null,
+              ),
             },
           ),
           // mode toggle + context (top)
@@ -417,8 +581,10 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
                     if (context_.isNotEmpty) ...[
                       const SizedBox(height: 7),
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: rd.bg.withValues(alpha: 0.7),
                           borderRadius: BorderRadius.circular(100),
@@ -547,7 +713,9 @@ class _BoardSwitcherButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final rd = context.rd;
     final label = (title == null || title!.trim().isEmpty)
-        ? (loading ? AppLocalizations.of(context)!.rdCanvasLoading : AppLocalizations.of(context)!.rdCanvasBoardDefault)
+        ? (loading
+              ? AppLocalizations.of(context)!.rdCanvasLoading
+              : AppLocalizations.of(context)!.rdCanvasBoardDefault)
         : title!.trim();
     return GestureDetector(
       onTap: loading ? null : onTap,
@@ -601,19 +769,19 @@ enum _SwitcherAction { select, create, rename, archive }
 
 class _SwitcherResult {
   const _SwitcherResult.select(String this.boardId)
-      : action = _SwitcherAction.select,
-        title = null;
+    : action = _SwitcherAction.select,
+      title = null;
   const _SwitcherResult.create()
-      : action = _SwitcherAction.create,
-        boardId = null,
-        title = null;
+    : action = _SwitcherAction.create,
+      boardId = null,
+      title = null;
 
   /// Rename requested — [title] carries the current title to prefill the editor.
   const _SwitcherResult.rename(String this.boardId, String this.title)
-      : action = _SwitcherAction.rename;
+    : action = _SwitcherAction.rename;
   const _SwitcherResult.archive(String this.boardId)
-      : action = _SwitcherAction.archive,
-        title = null;
+    : action = _SwitcherAction.archive,
+      title = null;
 
   final _SwitcherAction action;
   final String? boardId;
@@ -637,7 +805,11 @@ class _BoardSwitcherSheet extends StatelessWidget {
     final media = MediaQuery.of(context);
     // Anchor near the top, under the mode bar, matching where the button lives.
     return Padding(
-      padding: EdgeInsets.only(top: media.padding.top + 52, left: 14, right: 14),
+      padding: EdgeInsets.only(
+        top: media.padding.top + 52,
+        left: 14,
+        right: 14,
+      ),
       child: Align(
         alignment: Alignment.topCenter,
         child: Material(
@@ -692,11 +864,17 @@ class _BoardSwitcherSheet extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     child: Row(
                       children: [
-                        RdIcon(RdIcons.plusCircle,
-                            size: 18, color: rd.peri, strokeWidth: 2),
+                        RdIcon(
+                          RdIcons.plusCircle,
+                          size: 18,
+                          color: rd.peri,
+                          strokeWidth: 2,
+                        ),
                         const SizedBox(width: 11),
                         Text(
                           AppLocalizations.of(context)!.rdCanvasNewBoard,
@@ -719,7 +897,9 @@ class _BoardSwitcherSheet extends StatelessWidget {
   }
 
   Widget _row(BuildContext context, RdTheme rd, CanvasDto b, bool active) {
-    final title = b.title.trim().isEmpty ? AppLocalizations.of(context)!.rdCanvasUntitledBoard : b.title.trim();
+    final title = b.title.trim().isEmpty
+        ? AppLocalizations.of(context)!.rdCanvasUntitledBoard
+        : b.title.trim();
     final count = b.nodes.length;
     return GestureDetector(
       onTap: () => Navigator.of(context).pop(_SwitcherResult.select(b.id)),
@@ -756,27 +936,33 @@ class _BoardSwitcherSheet extends StatelessWidget {
               ),
             ),
             GestureDetector(
-              onTap: () => Navigator.of(context)
-                  .pop(_SwitcherResult.rename(b.id, b.title)),
+              onTap: () => Navigator.of(
+                context,
+              ).pop(_SwitcherResult.rename(b.id, b.title)),
               behavior: HitTestBehavior.opaque,
               child: Padding(
                 padding: const EdgeInsets.all(6),
                 child: RdIcon(
-                    '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-                    size: 15,
-                    color: rd.muted,
-                    strokeWidth: 1.9),
+                  '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+                  size: 15,
+                  color: rd.muted,
+                  strokeWidth: 1.9,
+                ),
               ),
             ),
             if (boards.length > 1)
               GestureDetector(
-                onTap: () => Navigator.of(context)
-                    .pop(_SwitcherResult.archive(b.id)),
+                onTap: () =>
+                    Navigator.of(context).pop(_SwitcherResult.archive(b.id)),
                 behavior: HitTestBehavior.opaque,
                 child: Padding(
                   padding: const EdgeInsets.all(6),
-                  child: RdIcon('<path d="M6 6l12 12M18 6 6 18"/>',
-                      size: 15, color: rd.faint, strokeWidth: 2),
+                  child: RdIcon(
+                    '<path d="M6 6l12 12M18 6 6 18"/>',
+                    size: 15,
+                    color: rd.faint,
+                    strokeWidth: 2,
+                  ),
                 ),
               ),
             if (active) ...[
@@ -789,8 +975,12 @@ class _BoardSwitcherSheet extends StatelessWidget {
                   color: rd.peri,
                 ),
                 child: const Center(
-                  child: RdIcon(RdIcons.checkThick,
-                      size: 11, stroke: '#FFFFFF', strokeWidth: 3),
+                  child: RdIcon(
+                    RdIcons.checkThick,
+                    size: 11,
+                    stroke: '#FFFFFF',
+                    strokeWidth: 3,
+                  ),
                 ),
               ),
             ],
@@ -804,6 +994,41 @@ class _BoardSwitcherSheet extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════
 // Map view — Mira's memory graph
 // ══════════════════════════════════════════════════════════════════════
+
+class _SplitEvidence {
+  const _SplitEvidence({required this.assertionId, required this.label});
+
+  factory _SplitEvidence.fromJson(Map<String, dynamic> json) {
+    final predicate =
+        json['predicateKey'] as String? ??
+        json['predicate_key'] as String? ??
+        'fact';
+    final object =
+        json['objectName'] ?? json['object_name'] ?? json['value'] ?? '';
+    return _SplitEvidence(
+      assertionId:
+          json['assertionId'] as String? ??
+          json['assertion_id'] as String? ??
+          '',
+      label: object.toString().trim().isEmpty
+          ? predicate
+          : '$predicate · ${object.toString()}',
+    );
+  }
+
+  final String assertionId;
+  final String label;
+}
+
+class _SplitSelection {
+  const _SplitSelection({
+    required this.identityHint,
+    required this.assertionIds,
+  });
+
+  final String identityHint;
+  final List<String> assertionIds;
+}
 
 enum _GType {
   person,
@@ -828,6 +1053,7 @@ class _GNode {
     required this.label,
     required this.typ,
     required this.sub,
+    this.entityType,
     this.initial,
   });
 
@@ -839,6 +1065,7 @@ class _GNode {
   final String label;
   final String typ;
   final String sub;
+  final String? entityType;
   final String? initial;
 }
 
@@ -871,8 +1098,10 @@ String _gTypeIcon(_GType t) {
 /// laying nodes out in a deterministic sunflower spiral (higher-degree hubs
 /// nearer the centre) since the backend layout is optional. Bounded to keep
 /// the graph legible on a phone.
-(List<_GNode>, List<List<String>>, Map<String, List<String>>)
-    _mapGraphToNodes(GraphResponse g, AppLocalizations l10n) {
+(List<_GNode>, List<List<String>>, Map<String, List<String>>) _mapGraphToNodes(
+  GraphResponse g,
+  AppLocalizations l10n,
+) {
   final nodes = g.nodes.take(40).toList();
   final ids = {for (final n in nodes) n.id};
   final edges = <List<String>>[];
@@ -908,21 +1137,24 @@ String _gTypeIcon(_GType t) {
     final deg = degree[n.id] ?? 0;
     final type = _gTypeForNode(n);
     final label = _shortGLabel(n.title.isEmpty ? n.summary : n.title);
-    out.add(_GNode(
-      id: n.id,
-      x: cx + r * math.cos(angle),
-      y: cy + r * math.sin(angle),
-      disc: deg >= 5 ? 68 : (deg >= 2 ? 52 : 44),
-      type: type,
-      label: label,
-      typ: _gTypeLabelFor(type, l10n),
-      sub: n.summary.trim().isEmpty
-          ? l10n.rdCanvasLinkedCount(deg)
-          : n.summary,
-      initial: type == _GType.person && label.isNotEmpty
-          ? label.substring(0, 1).toUpperCase()
-          : null,
-    ));
+    out.add(
+      _GNode(
+        id: n.id,
+        x: cx + r * math.cos(angle),
+        y: cy + r * math.sin(angle),
+        disc: deg >= 5 ? 68 : (deg >= 2 ? 52 : 44),
+        type: type,
+        label: label,
+        typ: _gTypeLabelFor(type, l10n),
+        sub: n.summary.trim().isEmpty
+            ? l10n.rdCanvasLinkedCount(deg)
+            : n.summary,
+        entityType: n.entityType,
+        initial: type == _GType.person && label.isNotEmpty
+            ? label.substring(0, 1).toUpperCase()
+            : null,
+      ),
+    );
   }
   return (out, edges, edgeAssertions);
 }
@@ -988,12 +1220,36 @@ class _ClusterPalette {
 }
 
 const _clusterPalettes = <String, _ClusterPalette>{
-  'navy': _ClusterPalette(Color(0xFFE4EAF6), Color(0xFF14328C), Color(0xFF14328C)),
-  'peri': _ClusterPalette(Color(0xFFE7E9F5), Color(0xFF7E8BC9), Color(0xFF46508C)),
-  'rose': _ClusterPalette(Color(0xFFF3E4E6), Color(0xFFC27E88), Color(0xFF8E4650)),
-  'teal': _ClusterPalette(Color(0xFFDEECEC), Color(0xFF5E9B9B), Color(0xFF2C5E5E)),
-  'amber': _ClusterPalette(Color(0xFFF4EBDA), Color(0xFFC79A54), Color(0xFF8A6420)),
-  'plum': _ClusterPalette(Color(0xFFECE4F0), Color(0xFF9A7BB0), Color(0xFF5E3E77)),
+  'navy': _ClusterPalette(
+    Color(0xFFE4EAF6),
+    Color(0xFF14328C),
+    Color(0xFF14328C),
+  ),
+  'peri': _ClusterPalette(
+    Color(0xFFE7E9F5),
+    Color(0xFF7E8BC9),
+    Color(0xFF46508C),
+  ),
+  'rose': _ClusterPalette(
+    Color(0xFFF3E4E6),
+    Color(0xFFC27E88),
+    Color(0xFF8E4650),
+  ),
+  'teal': _ClusterPalette(
+    Color(0xFFDEECEC),
+    Color(0xFF5E9B9B),
+    Color(0xFF2C5E5E),
+  ),
+  'amber': _ClusterPalette(
+    Color(0xFFF4EBDA),
+    Color(0xFFC79A54),
+    Color(0xFF8A6420),
+  ),
+  'plum': _ClusterPalette(
+    Color(0xFFECE4F0),
+    Color(0xFF9A7BB0),
+    Color(0xFF5E3E77),
+  ),
 };
 
 class _ClusterSpec {
@@ -1233,6 +1489,7 @@ class _MapView extends StatefulWidget {
     this.edges = const <List<String>>[],
     this.initialSelectedId,
     this.onMerge,
+    this.onSplit,
     this.edgeAssertions = const {},
     this.onUnlink,
   });
@@ -1245,6 +1502,8 @@ class _MapView extends StatefulWidget {
   /// offline sample (nothing to persist).
   final void Function(String source, String target)? onMerge;
 
+  final ValueChanged<_GNode>? onSplit;
+
   /// Assertions backing each edge, keyed "a|b" (both directions).
   final Map<String, List<String>> edgeAssertions;
 
@@ -1255,10 +1514,13 @@ class _MapView extends StatefulWidget {
   State<_MapView> createState() => _MapViewState();
 }
 
-class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin {
+class _MapViewState extends State<_MapView>
+    with SingleTickerProviderStateMixin {
   static const _initialPan = Offset(30, 96);
 
-  late final Map<String, _GNode> _byId = {for (final n in widget.nodes) n.id: n};
+  late final Map<String, _GNode> _byId = {
+    for (final n in widget.nodes) n.id: n,
+  };
   late final Map<String, List<String>> _adj = _buildAdjacency();
 
   String? _selected;
@@ -1277,13 +1539,14 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
     setState(() => _scale = (_scale + delta).clamp(0.6, 2.4));
   }
 
-  late final AnimationController _panCtl = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 450),
-  )..addListener(() {
-      final a = _panAnim;
-      if (a != null) setState(() => _pan = a.value);
-    });
+  late final AnimationController _panCtl =
+      AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 450),
+      )..addListener(() {
+        final a = _panAnim;
+        if (a != null) setState(() => _pan = a.value);
+      });
   Animation<Offset>? _panAnim;
 
   Map<String, List<String>> _buildAdjacency() {
@@ -1314,8 +1577,10 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
   }
 
   void _animatePanTo(Offset target) {
-    _panAnim = Tween(begin: _pan, end: target)
-        .animate(CurvedAnimation(parent: _panCtl, curve: Curves.easeOutCubic));
+    _panAnim = Tween(
+      begin: _pan,
+      end: target,
+    ).animate(CurvedAnimation(parent: _panCtl, curve: Curves.easeOutCubic));
     _panCtl.forward(from: 0);
   }
 
@@ -1383,38 +1648,39 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                     child: SizedBox(
                       width: 480,
                       height: 820,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: _EdgePainter(
-                              nodes: _byId,
-                              edges: widget.edges,
-                              selected: _selected,
-                              color: rd.peri,
-                            ),
-                          ),
-                        ),
-                        for (final n in widget.nodes)
-                          if (visible(n.id))
-                            Positioned(
-                              left: n.x,
-                              top: n.y,
-                              child: FractionalTranslation(
-                                translation: const Offset(-0.5, -0.5),
-                                child: _GNodeWidget(
-                                  node: n,
-                                  selected: _selected == n.id,
-                                  dimmed:
-                                      _selected != null && !near.contains(n.id),
-                                  onTap: () => _select(n.id, width),
-                                ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _EdgePainter(
+                                nodes: _byId,
+                                edges: widget.edges,
+                                selected: _selected,
+                                color: rd.peri,
                               ),
                             ),
-                      ],
+                          ),
+                          for (final n in widget.nodes)
+                            if (visible(n.id))
+                              Positioned(
+                                left: n.x,
+                                top: n.y,
+                                child: FractionalTranslation(
+                                  translation: const Offset(-0.5, -0.5),
+                                  child: _GNodeWidget(
+                                    node: n,
+                                    selected: _selected == n.id,
+                                    dimmed:
+                                        _selected != null &&
+                                        !near.contains(n.id),
+                                    onTap: () => _select(n.id, width),
+                                  ),
+                                ),
+                              ),
+                        ],
+                      ),
                     ),
-                  ),
                   ),
                 ),
                 // Neutral empty state when there's no memory graph yet.
@@ -1425,7 +1691,9 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                         child: Text(
                           AppLocalizations.of(context)!.rdCanvasGraphEmpty,
                           style: GoogleFonts.vazirmatn(
-                              fontSize: 13, color: rd.muted),
+                            fontSize: 13,
+                            color: rd.muted,
+                          ),
                         ),
                       ),
                     ),
@@ -1473,18 +1741,25 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                     onMerge: (widget.onMerge == null || _selected == null)
                         ? null
                         : (sourceId) => widget.onMerge!(sourceId, _selected!),
+                    onSplit: (widget.onSplit == null || _selected == null)
+                        ? null
+                        : () => widget.onSplit!(_byId[_selected!]!),
                     mergeCandidates: widget.onMerge == null
                         ? const []
                         : [
                             for (final n in widget.nodes)
-                              if (n.id != _selected) n
+                              if (n.id != _selected &&
+                                  n.entityType != null &&
+                                  n.entityType == _byId[_selected]?.entityType)
+                                n,
                           ],
                     onUnlink: widget.onUnlink,
                     connectionAssertions: _selected == null
                         ? const {}
                         : {
                             for (final id in _adj[_selected]!)
-                              id: widget.edgeAssertions['${_selected!}|$id'] ??
+                              id:
+                                  widget.edgeAssertions['${_selected!}|$id'] ??
                                   const <String>[],
                           },
                   ),
@@ -1500,15 +1775,18 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                         onTap: _exitFocus,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 9),
+                            horizontal: 14,
+                            vertical: 9,
+                          ),
                           decoration: BoxDecoration(
                             color: rd.navy,
                             borderRadius: BorderRadius.circular(100),
                             boxShadow: [
                               BoxShadow(
-                                  color: rd.navy.withValues(alpha: 0.3),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4)),
+                                color: rd.navy.withValues(alpha: 0.3),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
                             ],
                           ),
                           child: Row(
@@ -1516,17 +1794,24 @@ class _MapViewState extends State<_MapView> with SingleTickerProviderStateMixin 
                             children: [
                               Flexible(
                                 child: Text(
-                                  AppLocalizations.of(context)!.rdCanvasFocusedOn(_byId[_focus]!.label),
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.rdCanvasFocusedOn(_byId[_focus]!.label),
                                   overflow: TextOverflow.ellipsis,
                                   style: GoogleFonts.vazirmatn(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.white),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const RdIcon('<path d="M6 6l12 12M18 6 6 18"/>',
-                                  size: 14, stroke: '#FFFFFF', strokeWidth: 2.4),
+                              const RdIcon(
+                                '<path d="M6 6l12 12M18 6 6 18"/>',
+                                size: 14,
+                                stroke: '#FFFFFF',
+                                strokeWidth: 2.4,
+                              ),
                             ],
                           ),
                         ),
@@ -1582,7 +1867,9 @@ class _GNodeWidget extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.vazirmatn(
                   fontSize: node.disc >= 68 ? 12.5 : 11.5,
-                  fontWeight: node.disc >= 68 ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: node.disc >= 68
+                      ? FontWeight.w600
+                      : FontWeight.w500,
                   color: rd.ink,
                   height: 1.25,
                 ),
@@ -1636,8 +1923,12 @@ class _GNodeWidget extends StatelessWidget {
             width: selected ? 2 : 1.5,
           ),
         );
-        inner = RdIcon(_gTypeIcon(node.type),
-            size: iconSize, stroke: '#14328C', strokeWidth: 2);
+        inner = RdIcon(
+          _gTypeIcon(node.type),
+          size: iconSize,
+          stroke: '#14328C',
+          strokeWidth: 2,
+        );
       case _GType.organization:
       case _GType.project:
       case _GType.place:
@@ -1649,8 +1940,12 @@ class _GNodeWidget extends StatelessWidget {
             width: selected ? 2 : 1.5,
           ),
         );
-        inner = RdIcon(_gTypeIcon(node.type),
-            size: iconSize, stroke: '#14328C', strokeWidth: 2);
+        inner = RdIcon(
+          _gTypeIcon(node.type),
+          size: iconSize,
+          stroke: '#14328C',
+          strokeWidth: 2,
+        );
       default:
         decoration = BoxDecoration(
           shape: BoxShape.circle,
@@ -1668,8 +1963,12 @@ class _GNodeWidget extends StatelessWidget {
             ),
           ],
         );
-        inner = RdIcon(_gTypeIcon(node.type),
-            size: iconSize, color: rd.peri, strokeWidth: 1.8);
+        inner = RdIcon(
+          _gTypeIcon(node.type),
+          size: iconSize,
+          color: rd.peri,
+          strokeWidth: 1.8,
+        );
     }
 
     return Container(
@@ -1706,8 +2005,7 @@ class _EdgePainter extends CustomPainter {
       final dim = selected != null && !hot;
 
       final paint = Paint()
-        ..color = color.withValues(
-            alpha: hot ? 0.9 : (dim ? 0.08 : 0.28))
+        ..color = color.withValues(alpha: hot ? 0.9 : (dim ? 0.08 : 0.28))
         ..strokeWidth = hot ? 2 : 1.4
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(Offset(a.x, a.y), Offset(b.x, b.y), paint);
@@ -1756,6 +2054,7 @@ class _DetailPanel extends StatelessWidget {
     required this.onSelectConnected,
     this.onFocus,
     this.onMerge,
+    this.onSplit,
     this.mergeCandidates = const [],
     this.onUnlink,
     this.connectionAssertions = const {},
@@ -1773,6 +2072,8 @@ class _DetailPanel extends StatelessWidget {
   /// Merge a duplicate entity (its id) into this node on the real graph. Null
   /// hides the button (offline sample).
   final ValueChanged<String>? onMerge;
+
+  final VoidCallback? onSplit;
 
   /// Other nodes offered as merge targets.
   final List<_GNode> mergeCandidates;
@@ -1808,31 +2109,47 @@ class _DetailPanel extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        constraints:
-            BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.6),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.6,
+        ),
         decoration: BoxDecoration(
-            color: rd.card,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(26))),
+          color: rd.card,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        ),
         padding: EdgeInsets.fromLTRB(
-            18, 12, 18, 20 + MediaQuery.of(ctx).viewPadding.bottom),
+          18,
+          12,
+          18,
+          20 + MediaQuery.of(ctx).viewPadding.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
-                child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                        color: rd.line,
-                        borderRadius: BorderRadius.circular(100)))),
-            Text(AppLocalizations.of(context)!.rdCanvasMergeInto(current.label),
-                style: GoogleFonts.dosis(
-                    fontSize: 18, fontWeight: FontWeight.w700, color: rd.ink)),
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: rd.line,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
+            ),
+            Text(
+              AppLocalizations.of(context)!.rdCanvasMergeInto(current.label),
+              style: GoogleFonts.dosis(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: rd.ink,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(AppLocalizations.of(context)!.rdCanvasMergePickDuplicate,
-                style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+            Text(
+              AppLocalizations.of(context)!.rdCanvasMergePickDuplicate,
+              style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
+            ),
             const SizedBox(height: 12),
             Flexible(
               child: ListView(
@@ -1853,29 +2170,40 @@ class _DetailPanel extends StatelessWidget {
                               width: 34,
                               height: 34,
                               decoration: BoxDecoration(
-                                  color: rd.periSoft,
-                                  borderRadius: BorderRadius.circular(10)),
+                                color: rd.periSoft,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                               child: Center(
-                                  child: RdIcon(_gTypeIcon(c.type),
-                                      size: 17,
-                                      stroke: '#14328C',
-                                      strokeWidth: 1.8)),
+                                child: RdIcon(
+                                  _gTypeIcon(c.type),
+                                  size: 17,
+                                  stroke: '#14328C',
+                                  strokeWidth: 1.8,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 11),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(c.label,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: GoogleFonts.vazirmatn(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: rd.ink)),
-                                  Text(c.typ,
-                                      style: GoogleFonts.vazirmatn(
-                                          fontSize: 11.5, color: rd.muted)),
+                                  Text(
+                                    c.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.vazirmatn(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: rd.ink,
+                                    ),
+                                  ),
+                                  Text(
+                                    c.typ,
+                                    style: GoogleFonts.vazirmatn(
+                                      fontSize: 11.5,
+                                      color: rd.muted,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -1939,8 +2267,12 @@ class _DetailPanel extends StatelessWidget {
                             color: Colors.white,
                           ),
                         )
-                      : RdIcon(_gTypeIcon(n.type),
-                          size: 22, stroke: '#14328C', strokeWidth: 1.8),
+                      : RdIcon(
+                          _gTypeIcon(n.type),
+                          size: 22,
+                          stroke: '#14328C',
+                          strokeWidth: 1.8,
+                        ),
                 ),
               ),
               const SizedBox(width: 13),
@@ -2013,16 +2345,22 @@ class _DetailPanel extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       RdIcon(
-                          '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
-                          size: 15,
-                          color: rd.navy,
-                          strokeWidth: 2),
+                        '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+                        size: 15,
+                        color: rd.navy,
+                        strokeWidth: 2,
+                      ),
                       const SizedBox(width: 7),
-                      Text(AppLocalizations.of(context)!.rdCanvasFocusConstellation,
-                          style: GoogleFonts.vazirmatn(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: rd.navy)),
+                      Text(
+                        AppLocalizations.of(
+                          context,
+                        )!.rdCanvasFocusConstellation,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: rd.navy,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -2045,16 +2383,58 @@ class _DetailPanel extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       RdIcon(
-                          '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3M9 12h6"/>',
-                          size: 15,
-                          color: rd.muted,
-                          strokeWidth: 2),
+                        '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3M9 12h6"/>',
+                        size: 15,
+                        color: rd.muted,
+                        strokeWidth: 2,
+                      ),
                       const SizedBox(width: 7),
-                      Text(AppLocalizations.of(context)!.rdCanvasMergeDuplicate,
-                          style: GoogleFonts.vazirmatn(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: rd.muted)),
+                      Text(
+                        AppLocalizations.of(context)!.rdCanvasMergeDuplicate,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: rd.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          if (onSplit != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: GestureDetector(
+                onTap: onSplit,
+                child: Container(
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: rd.card,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: rd.line, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      RdIcon(
+                        '<path d="M12 3v18M5 7c3 0 4 2 7 5M19 17c-3 0-4-2-7-5"/>',
+                        size: 15,
+                        color: rd.muted,
+                        strokeWidth: 2,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        AppLocalizations.of(
+                          context,
+                        )!.rdCanvasSplitMixedIdentity,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: rd.muted,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -2063,7 +2443,9 @@ class _DetailPanel extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 14, bottom: 8),
             child: Text(
-              AppLocalizations.of(context)!.rdCanvasConnectedTo(connected.length),
+              AppLocalizations.of(
+                context,
+              )!.rdCanvasConnectedTo(connected.length),
               style: GoogleFonts.vazirmatn(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -2107,14 +2489,18 @@ class _DetailPanel extends StatelessWidget {
                           ),
                         ),
                         if (onUnlink != null &&
-                            (connectionAssertions[c.id]?.isNotEmpty ?? false)) ...[
+                            (connectionAssertions[c.id]?.isNotEmpty ??
+                                false)) ...[
                           const SizedBox(width: 7),
                           GestureDetector(
-                            onTap: () =>
-                                onUnlink!(connectionAssertions[c.id]!),
+                            onTap: () => onUnlink!(connectionAssertions[c.id]!),
                             behavior: HitTestBehavior.opaque,
-                            child: RdIcon('<path d="M6 6l12 12M18 6 6 18"/>',
-                                size: 11, color: rd.faint, strokeWidth: 2.4),
+                            child: RdIcon(
+                              '<path d="M6 6l12 12M18 6 6 18"/>',
+                              size: 11,
+                              color: rd.faint,
+                              strokeWidth: 2.4,
+                            ),
                           ),
                         ],
                       ],
@@ -2251,9 +2637,11 @@ class _BoardViewState extends State<_BoardView> {
           .map(_edgeFromJson)
           .whereType<_BoardEdge>()
           // Drop edges whose endpoints no longer exist.
-          .where((e) =>
-              _cards.any((c) => c.id == e.from) &&
-              _cards.any((c) => c.id == e.to))
+          .where(
+            (e) =>
+                _cards.any((c) => c.id == e.from) &&
+                _cards.any((c) => c.id == e.to),
+          )
           .toList();
     }
 
@@ -2320,11 +2708,13 @@ class _BoardViewState extends State<_BoardView> {
         // Tapping the source again cancels the selection.
         _connectSource = null;
       } else {
-        _edges.add(_BoardEdge(
-          from: _connectSource!,
-          to: id,
-          label: _relationLabel(_connectSource!, id),
-        ));
+        _edges.add(
+          _BoardEdge(
+            from: _connectSource!,
+            to: id,
+            label: _relationLabel(_connectSource!, id),
+          ),
+        );
         _connectSource = null;
         created = true;
       }
@@ -2338,8 +2728,9 @@ class _BoardViewState extends State<_BoardView> {
     if (idx == -1) return;
     final removedCard = _cards[idx];
     final removedPos = _positions[id];
-    final removedEdges =
-        _edges.where((e) => e.from == id || e.to == id).toList();
+    final removedEdges = _edges
+        .where((e) => e.from == id || e.to == id)
+        .toList();
     setState(() {
       _cards = _cards.where((c) => c.id != id).toList();
       _edges = _edges.where((e) => e.from != id && e.to != id).toList();
@@ -2354,8 +2745,10 @@ class _BoardViewState extends State<_BoardView> {
         SnackBar(
           behavior: SnackBarBehavior.floating,
           backgroundColor: context.rd.ink,
-          content: Text(AppLocalizations.of(context)!.rdCanvasCardRemoved,
-              style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white)),
+          content: Text(
+            AppLocalizations.of(context)!.rdCanvasCardRemoved,
+            style: GoogleFonts.vazirmatn(fontSize: 13, color: Colors.white),
+          ),
           action: SnackBarAction(
             label: AppLocalizations.of(context)!.rdCommonUndo,
             textColor: Colors.white,
@@ -2394,14 +2787,19 @@ class _BoardViewState extends State<_BoardView> {
           color: const Color(0xFFC0392B),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 2)),
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: const Center(
-          child: RdIcon('<path d="M6 6l12 12M18 6 6 18"/>',
-              size: 14, stroke: '#FFFFFF', strokeWidth: 2.6),
+          child: RdIcon(
+            '<path d="M6 6l12 12M18 6 6 18"/>',
+            size: 14,
+            stroke: '#FFFFFF',
+            strokeWidth: 2.6,
+          ),
         ),
       ),
     );
@@ -2451,17 +2849,19 @@ class _BoardViewState extends State<_BoardView> {
           color: context.rd.navy,
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 8,
-                offset: const Offset(0, 2)),
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: const Center(
           child: RdIcon(
-              '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-              size: 13,
-              stroke: '#FFFFFF',
-              strokeWidth: 2),
+            '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+            size: 13,
+            stroke: '#FFFFFF',
+            strokeWidth: 2,
+          ),
         ),
       ),
     );
@@ -2479,37 +2879,59 @@ class _BoardViewState extends State<_BoardView> {
       builder: (ctx) {
         final rd = context.rd;
         return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: Container(
             decoration: BoxDecoration(
-                color: rd.card,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(26))),
-            padding: EdgeInsets.fromLTRB(20, 12, 20, 22 +
-                (MediaQuery.of(ctx).viewPadding.bottom -
-                        MediaQuery.of(ctx).viewInsets.bottom)
-                    .clamp(0.0, 64.0)),
+              color: rd.card,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
+            ),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              12,
+              20,
+              22 +
+                  (MediaQuery.of(ctx).viewPadding.bottom -
+                          MediaQuery.of(ctx).viewInsets.bottom)
+                      .clamp(0.0, 64.0),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                    child: Container(
-                        width: 40,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                            color: rd.line,
-                            borderRadius: BorderRadius.circular(100)))),
-                Text(AppLocalizations.of(context)!.rdCanvasEditCard,
-                    style: GoogleFonts.dosis(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        color: rd.ink)),
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: rd.line,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                  ),
+                ),
+                Text(
+                  AppLocalizations.of(context)!.rdCanvasEditCard,
+                  style: GoogleFonts.dosis(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
                 const SizedBox(height: 12),
-                _editField(titleCtl, AppLocalizations.of(context)!.rdCanvasEditTitle, autofocus: true),
+                _editField(
+                  titleCtl,
+                  AppLocalizations.of(context)!.rdCanvasEditTitle,
+                  autofocus: true,
+                ),
                 const SizedBox(height: 10),
-                _editField(subCtl, AppLocalizations.of(context)!.rdCanvasEditNoteOptional),
+                _editField(
+                  subCtl,
+                  AppLocalizations.of(context)!.rdCanvasEditNoteOptional,
+                ),
                 const SizedBox(height: 16),
                 GestureDetector(
                   onTap: () => Navigator.of(ctx).pop(true),
@@ -2517,13 +2939,17 @@ class _BoardViewState extends State<_BoardView> {
                     height: 50,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                        color: rd.navy,
-                        borderRadius: BorderRadius.circular(14)),
-                    child: Text(AppLocalizations.of(context)!.rdCommonSave,
-                        style: GoogleFonts.vazirmatn(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white)),
+                      color: rd.navy,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      AppLocalizations.of(context)!.rdCommonSave,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -2537,10 +2963,14 @@ class _BoardViewState extends State<_BoardView> {
       final s = subCtl.text.trim();
       setState(() {
         _cards = _cards
-            .map((c) => c.id == id
-                ? c.copyWith(
-                    title: t.isEmpty ? c.title : t, sub: s.isEmpty ? null : s)
-                : c)
+            .map(
+              (c) => c.id == id
+                  ? c.copyWith(
+                      title: t.isEmpty ? c.title : t,
+                      sub: s.isEmpty ? null : s,
+                    )
+                  : c,
+            )
             .toList();
       });
       _scheduleSave();
@@ -2549,8 +2979,11 @@ class _BoardViewState extends State<_BoardView> {
     subCtl.dispose();
   }
 
-  Widget _editField(TextEditingController ctl, String hint,
-      {bool autofocus = false}) {
+  Widget _editField(
+    TextEditingController ctl,
+    String hint, {
+    bool autofocus = false,
+  }) {
     final rd = context.rd;
     return TextField(
       controller: ctl,
@@ -2561,17 +2994,21 @@ class _BoardViewState extends State<_BoardView> {
         hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
         filled: true,
         fillColor: rd.bg,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: rd.line, width: 1)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: rd.line, width: 1),
+        ),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: rd.navy, width: 1.4)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: rd.navy, width: 1.4),
+        ),
       ),
     );
   }
-
 
   String get _boardTitle => widget.board?.title ?? '';
 
@@ -2612,8 +3049,11 @@ class _BoardViewState extends State<_BoardView> {
   }
 
   /// Serializes a user connection to its persisted edge JSON `{a, b, label}`.
-  Map<String, dynamic> _jsonFromEdge(_BoardEdge e) =>
-      {'a': e.from, 'b': e.to, 'label': e.label};
+  Map<String, dynamic> _jsonFromEdge(_BoardEdge e) => {
+    'a': e.from,
+    'b': e.to,
+    'label': e.label,
+  };
 
   /// Suggested relation text for a new edge, biased by card content so the
   /// midpoint pill reads sensibly (e.g. "with someone", "reminder").
@@ -2634,15 +3074,15 @@ class _BoardViewState extends State<_BoardView> {
   }
 
   _CardSpec _specById(String id) => _cards.firstWhere(
-        (c) => c.id == id,
-        orElse: () => const _CardSpec(
-          id: '',
-          kind: _CardKind.note,
-          left: 0,
-          top: 0,
-          rotation: 0,
-        ),
-      );
+    (c) => c.id == id,
+    orElse: () => const _CardSpec(
+      id: '',
+      kind: _CardKind.note,
+      left: 0,
+      top: 0,
+      rotation: 0,
+    ),
+  );
 
   /// Centre of a card in board coordinates, from its live position + size.
   Offset _centerOf(String id) {
@@ -2658,7 +3098,8 @@ class _BoardViewState extends State<_BoardView> {
       builder: (context, constraints) {
         final viewport = Size(constraints.maxWidth, constraints.maxHeight);
         // Draw the dragging card last so it floats above its siblings.
-        final ordered = [..._cards]..sort((a, b) {
+        final ordered = [..._cards]
+          ..sort((a, b) {
             if (a.id == _draggingId) return 1;
             if (b.id == _draggingId) return -1;
             return 0;
@@ -2701,8 +3142,7 @@ class _BoardViewState extends State<_BoardView> {
                             ),
                           ),
                           // midpoint relation-label pills for user edges
-                          for (final e in _edges)
-                            _relationPill(rd, e),
+                          for (final e in _edges) _relationPill(rd, e),
                           for (final c in ordered)
                             Positioned(
                               left: _positions[c.id]!.dx,
@@ -2722,11 +3162,18 @@ class _BoardViewState extends State<_BoardView> {
                                     onPanEnd: _onCardDragEnd,
                                     onTap: () => _onCardTap(c.id),
                                   ),
-                                  if (_selectedCard == c.id && !_connectMode) ...[
+                                  if (_selectedCard == c.id &&
+                                      !_connectMode) ...[
                                     Positioned(
-                                        top: -9, right: -9, child: _cardDelete(c.id)),
+                                      top: -9,
+                                      right: -9,
+                                      child: _cardDelete(c.id),
+                                    ),
                                     Positioned(
-                                        top: -9, left: -9, child: _cardEdit(c.id)),
+                                      top: -9,
+                                      left: -9,
+                                      child: _cardEdit(c.id),
+                                    ),
                                   ],
                                 ],
                               ),
@@ -2745,8 +3192,10 @@ class _BoardViewState extends State<_BoardView> {
                   child: Center(
                     child: Text(
                       AppLocalizations.of(context)!.rdCanvasBoardEmpty,
-                      style:
-                          GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 13,
+                        color: rd.muted,
+                      ),
                     ),
                   ),
                 ),
@@ -2834,10 +3283,7 @@ class _BoardViewState extends State<_BoardView> {
           decoration: BoxDecoration(
             color: rd.card,
             borderRadius: BorderRadius.circular(100),
-            border: Border.all(
-              color: rd.peri.withValues(alpha: 0.5),
-              width: 1,
-            ),
+            border: Border.all(color: rd.peri.withValues(alpha: 0.5), width: 1),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF141628).withValues(alpha: 0.12),
@@ -3008,8 +3454,12 @@ class _ConnectBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const RdIcon(RdIcons.connect,
-              size: 18, stroke: '#FFFFFF', strokeWidth: 2),
+          const RdIcon(
+            RdIcons.connect,
+            size: 18,
+            stroke: '#FFFFFF',
+            strokeWidth: 2,
+          ),
           const SizedBox(width: 11),
           Expanded(
             child: Text(
@@ -3077,8 +3527,12 @@ class _AddBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const RdIcon(RdIcons.addCard,
-              size: 18, stroke: '#FFFFFF', strokeWidth: 2),
+          const RdIcon(
+            RdIcons.addCard,
+            size: 18,
+            stroke: '#FFFFFF',
+            strokeWidth: 2,
+          ),
           const SizedBox(width: 11),
           Expanded(
             child: Text(
@@ -3167,8 +3621,16 @@ class _BoardEdgePainter extends CustomPainter {
       ..strokeWidth = 2
       ..strokeCap = StrokeCap.round;
 
-    void bez(double ax, double ay, double c1x, double c1y, double c2x,
-        double c2y, double bx, double by) {
+    void bez(
+      double ax,
+      double ay,
+      double c1x,
+      double c1y,
+      double c2x,
+      double c2y,
+      double bx,
+      double by,
+    ) {
       final path = Path()
         ..moveTo(ax, ay)
         ..cubicTo(c1x, c1y, c2x, c2y, bx, by);
@@ -3274,16 +3736,16 @@ class _CardSpec {
   final String? memId;
 
   _CardSpec copyWith({String? title, String? sub, String? tag}) => _CardSpec(
-        id: id,
-        kind: kind,
-        left: left,
-        top: top,
-        rotation: rotation,
-        title: title ?? this.title,
-        sub: sub ?? this.sub,
-        tag: tag ?? this.tag,
-        memId: memId,
-      );
+    id: id,
+    kind: kind,
+    left: left,
+    top: top,
+    rotation: rotation,
+    title: title ?? this.title,
+    sub: sub ?? this.sub,
+    tag: tag ?? this.tag,
+    memId: memId,
+  );
 
   /// Approximate rendered size per card kind — used to derive card centres for
   /// connect-mode edges. Widths mirror the layout constants in `_BoardCard`;
@@ -3417,30 +3879,29 @@ class _BoardCard extends StatelessWidget {
 
   /// Border colour/width picks up the connect-source highlight.
   Border _borderOf(RdTheme rd) => Border.all(
-        color: highlighted ? rd.peri : rd.line,
-        width: highlighted ? 2 : 1,
-      );
+    color: highlighted ? rd.peri : rd.line,
+    width: highlighted ? 2 : 1,
+  );
 
   BoxDecoration _shellOf(RdTheme rd) => BoxDecoration(
-        color: rd.card,
-        borderRadius: BorderRadius.circular(16),
-        border: _borderOf(rd),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF141628)
-                .withValues(alpha: lifted ? 0.42 : 0.28),
-            blurRadius: lifted ? 40 : 24,
-            spreadRadius: lifted ? -10 : -14,
-            offset: Offset(0, lifted ? 20 : 10),
-          ),
-          if (highlighted)
-            BoxShadow(
-              color: rd.peri.withValues(alpha: 0.45),
-              blurRadius: 0,
-              spreadRadius: 3,
-            ),
-        ],
-      );
+    color: rd.card,
+    borderRadius: BorderRadius.circular(16),
+    border: _borderOf(rd),
+    boxShadow: [
+      BoxShadow(
+        color: const Color(0xFF141628).withValues(alpha: lifted ? 0.42 : 0.28),
+        blurRadius: lifted ? 40 : 24,
+        spreadRadius: lifted ? -10 : -14,
+        offset: Offset(0, lifted ? 20 : 10),
+      ),
+      if (highlighted)
+        BoxShadow(
+          color: rd.peri.withValues(alpha: 0.45),
+          blurRadius: 0,
+          spreadRadius: 3,
+        ),
+    ],
+  );
 
   Widget _tagPill(String tag) {
     final style = _tagStyle(tag);
@@ -3461,7 +3922,9 @@ class _BoardCard extends StatelessWidget {
             style: GoogleFonts.vazirmatn(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: Color(int.parse('FF${style.stroke.substring(1)}', radix: 16)),
+              color: Color(
+                int.parse('FF${style.stroke.substring(1)}', radix: 16),
+              ),
             ),
           ),
         ],
@@ -3470,26 +3933,26 @@ class _BoardCard extends StatelessWidget {
   }
 
   Widget _title(RdTheme rd) => Text(
-        spec.title,
-        style: GoogleFonts.vazirmatn(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w600,
-          color: rd.ink,
-          height: 1.32,
-        ),
-      );
+    spec.title,
+    style: GoogleFonts.vazirmatn(
+      fontSize: 13.5,
+      fontWeight: FontWeight.w600,
+      color: rd.ink,
+      height: 1.32,
+    ),
+  );
 
   Widget _sub(RdTheme rd) => Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Text(
-          spec.sub!,
-          style: GoogleFonts.vazirmatn(
-            fontSize: 11.5,
-            color: rd.muted,
-            height: 1.4,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(top: 4),
+    child: Text(
+      spec.sub!,
+      style: GoogleFonts.vazirmatn(
+        fontSize: 11.5,
+        color: rd.muted,
+        height: 1.4,
+      ),
+    ),
+  );
 
   Widget _basic(RdTheme rd) {
     return Container(
@@ -3509,10 +3972,7 @@ class _BoardCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              children: [
-                _title(rd),
-                if (spec.sub != null) _sub(rd),
-              ],
+              children: [_title(rd), if (spec.sub != null) _sub(rd)],
             ),
           ),
         ],
@@ -3571,8 +4031,9 @@ class _BoardCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF78641E)
-                .withValues(alpha: lifted ? 0.42 : 0.28),
+            color: const Color(
+              0xFF78641E,
+            ).withValues(alpha: lifted ? 0.42 : 0.28),
             blurRadius: lifted ? 40 : 24,
             spreadRadius: lifted ? -10 : -14,
             offset: Offset(0, lifted ? 20 : 10),
@@ -3734,7 +4195,11 @@ class _Toolbar extends StatelessWidget {
 }
 
 class _ZoomChip extends StatelessWidget {
-  const _ZoomChip({required this.level, required this.onOut, required this.onIn});
+  const _ZoomChip({
+    required this.level,
+    required this.onOut,
+    required this.onIn,
+  });
 
   final double level;
   final VoidCallback onOut;
@@ -3781,14 +4246,9 @@ class _ZoomChip extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: TextStyle(
-            fontSize: 18,
-            color: rd.muted,
-            height: 1,
-          ),
+          style: TextStyle(fontSize: 18, color: rd.muted, height: 1),
         ),
       ),
     );
   }
 }
-

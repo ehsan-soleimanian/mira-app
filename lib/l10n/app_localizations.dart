@@ -5050,6 +5050,90 @@ abstract class AppLocalizations {
   /// **'Couldn\'t remove that connection'**
   String get rdCanvasUnlinkFail;
 
+  /// No description provided for @rdCanvasSyncPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved safely — syncing the memory graph'**
+  String get rdCanvasSyncPending;
+
+  /// No description provided for @rdCaptureSyncPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved safely — memory connections are syncing'**
+  String get rdCaptureSyncPending;
+
+  /// No description provided for @rdCaptureSyncComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory connections are ready'**
+  String get rdCaptureSyncComplete;
+
+  /// No description provided for @rdCaptureSyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved, but memory connections need another sync attempt'**
+  String get rdCaptureSyncFailed;
+
+  /// No description provided for @rdCaptureMemorySaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira couldn\'t confirm this save. Please try again.'**
+  String get rdCaptureMemorySaveFailed;
+
+  /// No description provided for @rdCanvasSplitMixedIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Split mixed identity'**
+  String get rdCanvasSplitMixedIdentity;
+
+  /// No description provided for @rdCanvasSplitIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Split facts from \"{label}\"'**
+  String rdCanvasSplitIdentity(String label);
+
+  /// No description provided for @rdCanvasSplitHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the separate real-world identity, then choose only the facts that belong to it.'**
+  String get rdCanvasSplitHint;
+
+  /// No description provided for @rdCanvasSplitDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity hint, e.g. Shahrak Gharb mechanic'**
+  String get rdCanvasSplitDescription;
+
+  /// No description provided for @rdCanvasSplitSelectFacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Facts to move'**
+  String get rdCanvasSplitSelectFacts;
+
+  /// No description provided for @rdCanvasSplitApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Create separate identity'**
+  String get rdCanvasSplitApply;
+
+  /// No description provided for @rdCanvasSplitSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity split and connections preserved'**
+  String get rdCanvasSplitSuccess;
+
+  /// No description provided for @rdCanvasSplitFail.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t split this identity'**
+  String get rdCanvasSplitFail;
+
+  /// No description provided for @rdCanvasSplitNoFacts.
+  ///
+  /// In en, this message translates to:
+  /// **'No movable facts were found for this identity'**
+  String get rdCanvasSplitNoFacts;
+
   /// No description provided for @rdCanvasMyBoard.
   ///
   /// In en, this message translates to:

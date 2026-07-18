@@ -2837,6 +2837,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCanvasUnlinkFail => 'Couldn\'t remove that connection';
 
   @override
+  String get rdCanvasSyncPending => 'Saved safely — syncing the memory graph';
+
+  @override
+  String get rdCaptureSyncPending =>
+      'Saved safely — memory connections are syncing';
+
+  @override
+  String get rdCaptureSyncComplete => 'Memory connections are ready';
+
+  @override
+  String get rdCaptureSyncFailed =>
+      'Saved, but memory connections need another sync attempt';
+
+  @override
+  String get rdCaptureMemorySaveFailed =>
+      'Mira couldn\'t confirm this save. Please try again.';
+
+  @override
+  String get rdCanvasSplitMixedIdentity => 'Split mixed identity';
+
+  @override
+  String rdCanvasSplitIdentity(String label) {
+    return 'Split facts from \"$label\"';
+  }
+
+  @override
+  String get rdCanvasSplitHint =>
+      'Describe the separate real-world identity, then choose only the facts that belong to it.';
+
+  @override
+  String get rdCanvasSplitDescription =>
+      'Identity hint, e.g. Shahrak Gharb mechanic';
+
+  @override
+  String get rdCanvasSplitSelectFacts => 'Facts to move';
+
+  @override
+  String get rdCanvasSplitApply => 'Create separate identity';
+
+  @override
+  String get rdCanvasSplitSuccess => 'Identity split and connections preserved';
+
+  @override
+  String get rdCanvasSplitFail => 'Couldn\'t split this identity';
+
+  @override
+  String get rdCanvasSplitNoFacts =>
+      'No movable facts were found for this identity';
+
+  @override
   String get rdCanvasMyBoard => 'My board';
 
   @override
