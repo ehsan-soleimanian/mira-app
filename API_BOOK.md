@@ -110,8 +110,9 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/publish` | `publish_repository.dart` | Create private publish link |
 | `GET` | `/p/{token}` | Browser / API clients | Resolve private publish link as HTML or JSON |
 | `GET` | `/plugins` | `plugin_repository.dart` | Connector registry and status |
-| `POST` | `/plugins/{id}/connect` | `plugin_repository.dart` | Configure connector adapter |
-| `POST` | `/plugins/{id}/sync` | `plugin_repository.dart` | Manual connector sync into Library |
+| `POST` | `/plugins/{id}/connect` | `plugin_repository.dart` | Create a user-scoped Composio Connect Link |
+| `GET` | `/plugins/{id}/status` | `plugin_repository.dart` | Refresh OAuth connection state after returning to Mira |
+| `POST` | `/plugins/{id}/sync` | server/agent | Verify on-demand MCP retrieval readiness (no fake import) |
 | `GET` | `/reminders` | `reminders_repository.dart` | List reminders (optional `?done=true\|false`) |
 | `POST` | `/reminders` | `reminders_repository.dart` | Create a reminder |
 | `GET` | `/reminders/{id}` | `reminders_repository.dart` | Get one reminder |
@@ -1420,7 +1421,7 @@ Canvas node `type` values include `sticky`, `text`, `shape`, `arrow`, `library_i
 
 Returns provider connectors only. Manual-only sources such as WhatsApp, Telegram, Bale, PDFs, local files, and social video links are not plugins; they appear in `GET /library/import-sources`.
 
-Google connectors report `implementationStatus: "native_sync"` and can connect/sync in v1. Other provider manifests may report `implementationStatus: "adapter_ready"` for future rollout, but direct connect/sync returns `409` until provider auth is enabled.
+Connectors report `implementationStatus: "composio"` and `enabled: true` only when `COMPOSIO_API_KEY` is configured. Otherwise they remain visible in the API as `unavailable`/disabled and the Flutter UI hides them. OAuth tokens are owned and refreshed by Composio; they are never accepted from or returned to Flutter.
 
 **Response** `200`
 ```json
@@ -1431,7 +1432,7 @@ Google connectors report `implementationStatus: "native_sync"` and can connect/s
     "name": "Notion",
     "description": "Pages, databases, and project knowledge.",
     "category": "Knowledge",
-    "implementationStatus": "adapter_ready",
+    "implementationStatus": "composio",
     "authType": "oauth2",
     "scopes": ["pages.read", "databases.read"],
     "capabilities": ["import", "search", "link_objects"],
@@ -1447,33 +1448,35 @@ Google connectors report `implementationStatus: "native_sync"` and can connect/s
 ### Connect connector
 `POST /plugins/{id}/connect`
 
-Creates or updates the user's connector configuration for enabled native-sync connectors. OAuth/API-token exchange remains provider-specific; v1 accepts an optional token and stores connector state for sync.
+Creates a sandbox-disabled, toolkit-scoped Composio session and returns a secure Connect Link. The request body is empty; Mira never receives provider credentials.
 
-**Request**
-```json
-{ "token": "<optional-provider-token>" }
-```
-
-**Response** `200`
-```json
-{ "pluginId": "gmail", "configured": true }
-```
-
-**Errors**: `404` unknown connector, `409` connector manifest exists but direct sync is not enabled.
-
-### Sync connector
-`POST /plugins/{id}/sync`
-
-Runs a manual native connector sync and creates a provenance-tagged `LibraryItem` with `source: "plugin:{id}"`.
+**Request** `{}`
 
 **Response** `200`
 ```json
 {
-  "status": "ok",
   "pluginId": "gmail",
-  "adapter": "native_sync",
-  "imported": 1,
-  "item_id": "550e8400-e29b-41d4-a716-446655440000"
+  "status": "authorization_pending",
+  "connectUrl": "https://connect.composio.dev/link/..."
+}
+```
+
+After the browser returns, call `GET /plugins/{id}/status`. It returns `{ "pluginId": "gmail", "status": "connected", "connected": true }` once OAuth is complete.
+
+**Errors**: `404` unknown connector, `409` Composio or the requested toolkit is unavailable.
+
+### Sync connector
+`POST /plugins/{id}/sync`
+
+Verifies the connection and makes the connector available to server-side, user-scoped MCP retrieval. It does not create a fabricated Library item. Materialization into Library must come from a real tool result with provenance.
+
+**Response** `200`
+```json
+{
+  "status": "ready",
+  "pluginId": "gmail",
+  "mode": "mcp_on_demand",
+  "imported": 0
 }
 ```
 
@@ -1646,7 +1649,7 @@ title=Weekly sync
 transcript=Decision: ship annotations.
 ```
 
-Text transcript imports return a ready `LibraryItem`; audio/video files are stored securely and queued for media-worker transcription.
+Text transcript imports return a ready `LibraryItem`; audio/video files are stored securely and queued for media-worker transcription. Long recordings are normalized into bounded timestamped parts, retried independently at job level, and indexed as timestamped chunks. Importing does not mutate Memory/Graph until the explicit save/approval boundary.
 
 ### Library chunks
 `GET /library/items/{id}/chunks`

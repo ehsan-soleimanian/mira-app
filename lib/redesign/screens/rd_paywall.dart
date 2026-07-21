@@ -94,9 +94,9 @@ class _RdPaywallScreenState extends State<RdPaywallScreen> {
         children: [
           Positioned.fill(
             child: SafeArea(
-              bottom: false,
+              maintainBottomViewPadding: true,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(22, 0, 22, 40),
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
                 child: _member ? _memberView() : _upgradeView(),
               ),
             ),

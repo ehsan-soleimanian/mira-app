@@ -408,17 +408,17 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
 }
 
 // ══ Connected apps ═════════════════════════════════════════════════════
-class RdConnectedAppsScreen extends StatefulWidget {
-  const RdConnectedAppsScreen({super.key, required this.go, required this.onBack});
+class _LegacyConnectedAppsScreen extends StatefulWidget {
+  const _LegacyConnectedAppsScreen({required this.go, required this.onBack});
 
   final RdGo go;
   final VoidCallback onBack;
 
   @override
-  State<RdConnectedAppsScreen> createState() => _RdConnectedAppsScreenState();
+  State<_LegacyConnectedAppsScreen> createState() => _LegacyConnectedAppsScreenState();
 }
 
-class _RdConnectedAppsScreenState extends State<RdConnectedAppsScreen> {
+class _LegacyConnectedAppsScreenState extends State<_LegacyConnectedAppsScreen> {
   final Map<String, bool> _conn = {'gmail': false, 'safari': false, 'readwise': false, 'voice': false};
 
   @override
@@ -498,9 +498,9 @@ class _AcScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
-        bottom: false,
+        maintainBottomViewPadding: true,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 48),
+          padding: const EdgeInsets.only(bottom: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

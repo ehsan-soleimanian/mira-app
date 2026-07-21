@@ -8,6 +8,7 @@ import 'screens/rd_ask_screen.dart';
 import 'screens/rd_canvas_screen.dart';
 import 'screens/rd_capture_flow.dart';
 import 'screens/rd_chat_screen.dart';
+import 'screens/rd_connected_apps.dart';
 import 'screens/rd_daily_brief_screen.dart';
 import 'screens/rd_home_screen.dart';
 import 'screens/rd_library_screen.dart';

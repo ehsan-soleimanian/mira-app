@@ -607,7 +607,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
-        bottom: false,
+        maintainBottomViewPadding: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -675,7 +675,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
-        bottom: false,
+        maintainBottomViewPadding: true,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2153,4 +2153,3 @@ class _BoardPickerSheetState extends State<_BoardPickerSheet> {
     );
   }
 }
-

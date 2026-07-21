@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -53,7 +55,8 @@ bool _isDark(BuildContext context) =>
 const _voiceTranscript = '';
 const _voiceTitle = '';
 
-class _RdCaptureFlowState extends State<RdCaptureFlow> {
+class _RdCaptureFlowState extends State<RdCaptureFlow>
+    with WidgetsBindingObserver {
   String _view = 'listen';
   int _sec = 0;
   int _steps = 0;
@@ -108,6 +111,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   String _linkCrawlState = 'idle'; // idle | ready | metadata_only | failed
   String? _linkCrawlMethod;
   bool _savingLink = false;
+  VoiceRecordingResult? _meetingRecording;
+  bool _meetingSaving = false;
 
   Timer? _secTimer;
   final List<Timer> _timers = [];
@@ -117,16 +122,22 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fromEntrySheet = widget.initialMode != RdCaptureMode.voice;
     switch (widget.initialMode) {
       case RdCaptureMode.voice:
         _startListen();
+      case RdCaptureMode.meeting:
+        _view = 'meeting';
+        WidgetsBinding.instance.addPostFrameCallback((_) => _startMeeting());
       case RdCaptureMode.photo:
         setState(() => _view = 'photo_cam');
       case RdCaptureMode.screenshot:
         setState(() => _view = 'shot_pick');
       case RdCaptureMode.link:
         setState(() => _view = 'link_capture');
+      case RdCaptureMode.file:
+        WidgetsBinding.instance.addPostFrameCallback((_) => _pickLibraryFile());
       case RdCaptureMode.type:
         WidgetsBinding.instance.addPostFrameCallback(
           (_) => _openTextEntry(fromSheet: true),
@@ -136,6 +147,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _secTimer?.cancel();
     for (final t in _timers) {
       t.cancel();
@@ -151,12 +163,143 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Samsung/Android may pause the activity for a call, permission surface, or
+    // battery policy. Finalize the local recording so the user can safely save
+    // it after returning instead of losing a long meeting.
+    if (_view == 'meeting' &&
+        _recorderActive &&
+        (state == AppLifecycleState.paused ||
+            state == AppLifecycleState.inactive)) {
+      unawaited(_stopMeeting());
+    }
+  }
+
   void _clearTimers() {
     _secTimer?.cancel();
     for (final t in _timers) {
       t.cancel();
     }
     _timers.clear();
+  }
+
+  Future<void> _startMeeting() async {
+    _clearTimers();
+    final recorder = _recorder ??= createVoiceRecorder();
+    try {
+      final started = await recorder.start();
+      if (!mounted) return;
+      setState(() {
+        _recorderActive = started;
+        _meetingRecording = null;
+        _sec = 0;
+      });
+      if (started) {
+        _secTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (mounted) setState(() => _sec++);
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _recorderActive = false);
+    }
+  }
+
+  Future<void> _stopMeeting() async {
+    final recorder = _recorder;
+    if (recorder == null || !_recorderActive) return;
+    _secTimer?.cancel();
+    try {
+      final result = await recorder.stop();
+      if (!mounted) return;
+      setState(() {
+        _recorderActive = false;
+        _meetingRecording = result;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _recorderActive = false);
+    }
+  }
+
+  Future<void> _saveMeeting() async {
+    if (_meetingSaving) return;
+    if (_recorderActive) await _stopMeeting();
+    final recording = _meetingRecording;
+    final path = recording?.filePath;
+    if (!mounted) return;
+    if (path == null || path.isEmpty) {
+      _showCaptureError(AppLocalizations.of(context)!.meetingRecorderNoAudio);
+      return;
+    }
+    setState(() => _meetingSaving = true);
+    try {
+      final services = AppScope.servicesOf(context);
+      final item = await services.libraryRepository.importMeetingAudio(
+        title: AppLocalizations.of(context)!.meetingRecorderDefaultTitle,
+        audioPath: path,
+      );
+      services.memoryStore.upsertLocal(item);
+      if (!mounted) return;
+      setState(() {
+        _kind = 'meeting';
+        _meetingSaving = false;
+        _remind = false;
+        _view = 'added';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _meetingSaving = false);
+      _showCaptureError(
+        AppLocalizations.of(context)!.meetingRecorderSaveFailed,
+      );
+    }
+  }
+
+  Future<void> _pickLibraryFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: kIsWeb,
+      );
+      if (!mounted) return;
+      if (result == null || result.files.isEmpty) {
+        widget.go('home');
+        return;
+      }
+      final file = result.files.single;
+      if (file.path == null && (file.bytes == null || file.bytes!.isEmpty)) {
+        throw StateError('empty file selection');
+      }
+      final services = AppScope.servicesOf(context);
+      final item = file.path != null
+          ? await services.libraryRepository.uploadFilePath(
+              path: file.path!,
+              filename: file.name,
+            )
+          : await services.libraryRepository.uploadBytes(
+              bytes: file.bytes ?? const <int>[],
+              filename: file.name,
+            );
+      services.memoryStore.upsertLocal(item);
+      if (!mounted) return;
+      setState(() {
+        _kind = 'file';
+        _remind = false;
+        _view = 'added';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      _showCaptureError(
+        AppLocalizations.of(context)!.rdCaptureFileUploadFailed,
+      );
+      widget.go('home');
+    }
+  }
+
+  void _showCaptureError(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _startListen() {
@@ -938,6 +1081,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
     switch (_view) {
       case 'listen':
         return _listen();
+      case 'meeting':
+        return _meeting();
       case 'photo_cam':
         return _photoCam();
       case 'shot_pick':
@@ -1283,6 +1428,130 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
           style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
         ),
         const SizedBox(height: 40),
+      ],
+    );
+  }
+
+  Widget _meeting() {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final ready = _meetingRecording?.filePath != null;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+          child: Row(
+            children: [
+              _circBtn('<path d="M6 6l12 12M18 6 6 18"/>', () async {
+                await _recorder?.cancel();
+                if (mounted) widget.go('home');
+              }),
+              const Spacer(),
+              Text(
+                l10n.meetingRecorderTitle,
+                style: GoogleFonts.dosis(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: rd.ink,
+                ),
+              ),
+              const Spacer(),
+              const SizedBox(width: 42),
+            ],
+          ),
+        ),
+        const Spacer(),
+        Container(
+          width: 132,
+          height: 132,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _recorderActive ? const Color(0x18E24B4A) : rd.periSoft,
+          ),
+          child: Center(
+            child: RdIcon(
+              '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+              size: 54,
+              color: _recorderActive ? const Color(0xFFE24B4A) : rd.navy,
+              strokeWidth: 1.7,
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          _time,
+          style: GoogleFonts.dosis(
+            fontSize: 42,
+            fontWeight: FontWeight.w700,
+            color: rd.ink,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _recorderActive
+              ? l10n.meetingRecorderRecording
+              : ready
+              ? l10n.meetingRecorderReady
+              : l10n.meetingRecorderStarting,
+          style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.muted),
+        ),
+        const SizedBox(height: 14),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 38),
+          child: Text(
+            l10n.meetingRecorderBody,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 13,
+              height: 1.55,
+              color: rd.muted,
+            ),
+          ),
+        ),
+        const Spacer(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 18),
+          child: SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: FilledButton(
+              onPressed: _meetingSaving
+                  ? null
+                  : _recorderActive
+                  ? _stopMeeting
+                  : ready
+                  ? _saveMeeting
+                  : _startMeeting,
+              style: FilledButton.styleFrom(
+                backgroundColor: rd.navy,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: _meetingSaving
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      _recorderActive
+                          ? l10n.meetingRecorderStop
+                          : ready
+                          ? l10n.meetingRecorderSave
+                          : l10n.meetingRecorderTitle,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -2083,6 +2352,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow> {
   /// The confirmation sentence, reflecting the real connection count, whether a
   /// reminder was set, and who (if anyone) will be notified.
   String _addedSummary(AppLocalizations l10n) {
+    if (_kind == 'meeting') return l10n.meetingRecorderSaved;
+    if (_kind == 'file') return l10n.rdCaptureFileQueued;
     final parts = <String>[];
     final n = _linkCount;
     if (n > 0) parts.add(l10n.rdCaptureLinkedMemories(n));

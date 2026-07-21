@@ -313,9 +313,9 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
-        bottom: false,
+        maintainBottomViewPadding: true,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 48),
+          padding: const EdgeInsets.only(bottom: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

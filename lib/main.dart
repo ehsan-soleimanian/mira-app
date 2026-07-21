@@ -24,6 +24,7 @@ Future<void> main() async {
       statusBarIconBrightness: Brightness.dark,
       systemNavigationBarColor: RdColors.bg,
       systemNavigationBarIconBrightness: Brightness.dark,
+      systemNavigationBarContrastEnforced: false,
     ),
   );
 

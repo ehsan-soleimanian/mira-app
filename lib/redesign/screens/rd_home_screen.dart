@@ -98,6 +98,7 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
 
   Future<void> _load() async {
     final services = AppScope.servicesOf(context);
+    final l10n = AppLocalizations.of(context)!;
     try {
       final user = await services.authRepository.fetchMe();
       final first = user.displayName.trim().split(' ').first;
@@ -106,7 +107,6 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
 
     try {
       final update = await services.dailyBriefRepository.fetchDailyUpdate();
-      final l10n = AppLocalizations.of(context)!;
       final items = update.items.take(6).map((i) => _toRecent(i, l10n)).toList();
       if (mounted) setState(() => _recents = items);
     } catch (_) {}

@@ -804,6 +804,12 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureModeVoiceHint => 'فقط حرف بزن';
 
   @override
+  String get rdCaptureModeMeeting => 'جلسه';
+
+  @override
+  String get rdCaptureModeMeetingHint => 'ضبط طولانی و پردازش پس‌زمینه';
+
+  @override
   String get rdCaptureModePhoto => 'عکس';
 
   @override
@@ -823,6 +829,19 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get rdCaptureModeType => 'با متن بنویس';
+
+  @override
+  String get rdCaptureModeFile => 'فایل یا ویدئو';
+
+  @override
+  String get rdCaptureModeFileHint => 'آپلود و پردازش در پس‌زمینه';
+
+  @override
+  String get rdCaptureFileUploadFailed => 'فایل آپلود نشد.';
+
+  @override
+  String get rdCaptureFileQueued =>
+      'فایل در کتابخانه ذخیره شد و در پس‌زمینه پردازش می‌شود.';
 
   @override
   String get rdVoiceSearchListening => 'در حال گوش دادن';
@@ -2477,6 +2496,19 @@ class AppLocalizationsFa extends AppLocalizations {
   String rdConnectedAppsFoot(int count) {
     return '$count منبع برای اتصال در دسترس است';
   }
+
+  @override
+  String get rdConnectedAppsUnavailable => 'اتصال‌ها هنوز در دسترس نیستند';
+
+  @override
+  String get rdConnectedAppsManagedByComposio =>
+      'اتصال خصوصی OAuth با مدیریت Composio';
+
+  @override
+  String get rdConnectedAppsAuthorizing => 'تکمیل اتصال';
+
+  @override
+  String get rdConnectedAppsOpenFailed => 'صفحه امن اتصال باز نشد.';
 
   @override
   String get rdAppearanceTitle => 'ظاهر';

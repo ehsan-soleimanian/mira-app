@@ -159,7 +159,7 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
           if (_scanning) ...[
             AnimatedBuilder(
               animation: _scan,
-              builder: (_, __) {
+              builder: (_, _) {
                 return Positioned(
                   left: MediaQuery.sizeOf(context).width * 0.08,
                   right: MediaQuery.sizeOf(context).width * 0.08,

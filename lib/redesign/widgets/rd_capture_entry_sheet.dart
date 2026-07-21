@@ -76,10 +76,7 @@ class RdCaptureEntrySheet extends StatelessWidget {
                   Text(
                     l10n.rdCaptureEntrySubtitle,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.vazirmatn(
-                      fontSize: 13,
-                      color: rd.muted,
-                    ),
+                    style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
                   ),
                   const SizedBox(height: 20),
                   GridView.count(
@@ -99,17 +96,23 @@ class RdCaptureEntrySheet extends StatelessWidget {
                       ),
                       _ModeTile(
                         icon:
+                            '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+                        name: l10n.rdCaptureModeMeeting,
+                        hint: l10n.rdCaptureModeMeetingHint,
+                        onTap: () => onPick(RdCaptureMode.meeting),
+                      ),
+                      _ModeTile(
+                        icon:
                             '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="12" cy="12" r="3.2"/>',
                         name: l10n.rdCaptureModePhoto,
                         hint: l10n.rdCaptureModePhotoHint,
                         onTap: () => onPick(RdCaptureMode.photo),
                       ),
                       _ModeTile(
-                        icon:
-                            '<rect x="4" y="3" width="16" height="14" rx="2"/><path d="M8 21h8"/>',
-                        name: l10n.rdCaptureModeScreenshot,
-                        hint: l10n.rdCaptureModeScreenshotHint,
-                        onTap: () => onPick(RdCaptureMode.screenshot),
+                        icon: '<path d="M4 6h6l2 2h8v10H4Z"/>',
+                        name: l10n.rdCaptureModeFile,
+                        hint: l10n.rdCaptureModeFileHint,
+                        onTap: () => onPick(RdCaptureMode.file),
                       ),
                       _ModeTile(
                         icon:
@@ -117,6 +120,13 @@ class RdCaptureEntrySheet extends StatelessWidget {
                         name: l10n.rdCaptureModeLink,
                         hint: l10n.rdCaptureModeLinkHint,
                         onTap: () => onPick(RdCaptureMode.link),
+                      ),
+                      _ModeTile(
+                        icon:
+                            '<rect x="4" y="3" width="16" height="14" rx="2"/><path d="M8 21h8"/>',
+                        name: l10n.rdCaptureModeScreenshot,
+                        hint: l10n.rdCaptureModeScreenshotHint,
+                        onTap: () => onPick(RdCaptureMode.screenshot),
                       ),
                     ],
                   ),

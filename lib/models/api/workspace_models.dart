@@ -488,6 +488,27 @@ class PluginManifestDto {
   final List<String> scopes;
   final DateTime? lastSyncAt;
 
-  bool get isNativeSync => implementationStatus == 'native_sync';
+  bool get isNativeSync =>
+      implementationStatus == 'native_sync' ||
+      implementationStatus == 'composio';
   bool get canRun => enabled;
+}
+
+class PluginConnectResult {
+  const PluginConnectResult({
+    required this.pluginId,
+    required this.status,
+    this.connectUrl,
+  });
+
+  factory PluginConnectResult.fromJson(Map<String, dynamic> json) =>
+      PluginConnectResult(
+        pluginId: json['pluginId'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        connectUrl: json['connectUrl'] as String?,
+      );
+
+  final String pluginId;
+  final String status;
+  final String? connectUrl;
 }

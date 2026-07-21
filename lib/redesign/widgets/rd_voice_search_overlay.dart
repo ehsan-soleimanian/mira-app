@@ -54,6 +54,7 @@ class _RdVoiceSearchOverlayState extends State<RdVoiceSearchOverlay> {
 
   Future<void> _finish() async {
     if (_busy) return;
+    final captureRepository = AppScope.servicesOf(context).captureRepository;
     setState(() => _busy = true);
     _timer?.cancel();
     try {
@@ -61,8 +62,7 @@ class _RdVoiceSearchOverlayState extends State<RdVoiceSearchOverlay> {
       final path = result.filePath;
       var text = '';
       if (!result.simulated && path != null && path.isNotEmpty) {
-        final repo = AppScope.servicesOf(context).captureRepository;
-        final transcript = await repo.transcribeVoice(
+        final transcript = await captureRepository.transcribeVoice(
           durationMs: result.duration.inMilliseconds,
           audioPath: path,
         );
@@ -201,7 +201,7 @@ class _VoiceBarsState extends State<_VoiceBars>
     final rd = context.rd;
     return AnimatedBuilder(
       animation: _c,
-      builder: (_, __) {
+      builder: (_, _) {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: List.generate(3, (i) {

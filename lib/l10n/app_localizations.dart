@@ -1540,6 +1540,18 @@ abstract class AppLocalizations {
   /// **'Just speak'**
   String get rdCaptureModeVoiceHint;
 
+  /// No description provided for @rdCaptureModeMeeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting'**
+  String get rdCaptureModeMeeting;
+
+  /// No description provided for @rdCaptureModeMeetingHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Record a long session'**
+  String get rdCaptureModeMeetingHint;
+
   /// No description provided for @rdCaptureModePhoto.
   ///
   /// In en, this message translates to:
@@ -1581,6 +1593,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Type it instead'**
   String get rdCaptureModeType;
+
+  /// No description provided for @rdCaptureModeFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File or video'**
+  String get rdCaptureModeFile;
+
+  /// No description provided for @rdCaptureModeFileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload for background processing'**
+  String get rdCaptureModeFileHint;
+
+  /// No description provided for @rdCaptureFileUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be uploaded.'**
+  String get rdCaptureFileUploadFailed;
+
+  /// No description provided for @rdCaptureFileQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Your file is safe in Library and will be processed in the background.'**
+  String get rdCaptureFileQueued;
 
   /// No description provided for @rdVoiceSearchListening.
   ///
@@ -4449,6 +4485,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} sources available to connect'**
   String rdConnectedAppsFoot(int count);
+
+  /// No description provided for @rdConnectedAppsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Connections are not available yet'**
+  String get rdConnectedAppsUnavailable;
+
+  /// No description provided for @rdConnectedAppsManagedByComposio.
+  ///
+  /// In en, this message translates to:
+  /// **'Private OAuth connection managed by Composio'**
+  String get rdConnectedAppsManagedByComposio;
+
+  /// No description provided for @rdConnectedAppsAuthorizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish setup'**
+  String get rdConnectedAppsAuthorizing;
+
+  /// No description provided for @rdConnectedAppsOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the secure connection page.'**
+  String get rdConnectedAppsOpenFailed;
 
   /// No description provided for @rdAppearanceTitle.
   ///

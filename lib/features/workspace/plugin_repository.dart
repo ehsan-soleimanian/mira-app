@@ -15,11 +15,18 @@ class PluginRepository {
         .toList();
   }
 
-  Future<void> connect(String id) async {
-    await _dio.post<void>('/plugins/$id/connect', data: {});
+  Future<PluginConnectResult> connect(String id) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/plugins/$id/connect',
+      data: <String, dynamic>{},
+    );
+    return PluginConnectResult.fromJson(response.data ?? const {});
   }
 
-  Future<void> sync(String id) async {
-    await _dio.post<void>('/plugins/$id/sync');
+  Future<bool> refreshStatus(String id) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/plugins/$id/status',
+    );
+    return response.data?['connected'] as bool? ?? false;
   }
 }

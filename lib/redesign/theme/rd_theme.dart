@@ -130,6 +130,13 @@ extension RdThemeX on BuildContext {
   /// screens opt out of [SafeArea] bottom padding.
   double get rdNavBarInset {
     final mq = MediaQuery.of(this);
-    return math.max(mq.viewPadding.bottom, mq.padding.bottom);
+    final view = View.maybeOf(this);
+    final physicalInset = view == null
+        ? 0.0
+        : view.padding.bottom / view.devicePixelRatio;
+    return math.max(
+      physicalInset,
+      math.max(mq.viewPadding.bottom, mq.padding.bottom),
+    );
   }
 }

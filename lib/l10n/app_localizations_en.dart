@@ -803,6 +803,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureModeVoiceHint => 'Just speak';
 
   @override
+  String get rdCaptureModeMeeting => 'Meeting';
+
+  @override
+  String get rdCaptureModeMeetingHint => 'Record a long session';
+
+  @override
   String get rdCaptureModePhoto => 'Photo';
 
   @override
@@ -822,6 +828,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdCaptureModeType => 'Type it instead';
+
+  @override
+  String get rdCaptureModeFile => 'File or video';
+
+  @override
+  String get rdCaptureModeFileHint => 'Upload for background processing';
+
+  @override
+  String get rdCaptureFileUploadFailed => 'The file could not be uploaded.';
+
+  @override
+  String get rdCaptureFileQueued =>
+      'Your file is safe in Library and will be processed in the background.';
 
   @override
   String get rdVoiceSearchListening => 'LISTENING';
@@ -2486,6 +2505,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String rdConnectedAppsFoot(int count) {
     return '$count sources available to connect';
   }
+
+  @override
+  String get rdConnectedAppsUnavailable => 'Connections are not available yet';
+
+  @override
+  String get rdConnectedAppsManagedByComposio =>
+      'Private OAuth connection managed by Composio';
+
+  @override
+  String get rdConnectedAppsAuthorizing => 'Finish setup';
+
+  @override
+  String get rdConnectedAppsOpenFailed =>
+      'Could not open the secure connection page.';
 
   @override
   String get rdAppearanceTitle => 'Appearance';

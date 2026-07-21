@@ -174,6 +174,28 @@ class LibraryRepository {
     return LibraryItem.fromJson(response.data!);
   }
 
+  Future<LibraryItem> uploadFilePath({
+    required String path,
+    required String filename,
+    String? mimeType,
+  }) async {
+    final resolvedMimeType = mimeType ?? _mimeTypeFromFilename(filename);
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        path,
+        filename: filename,
+        contentType: resolvedMimeType == null
+            ? null
+            : DioMediaType.parse(resolvedMimeType),
+      ),
+    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/library/uploads',
+      data: formData,
+    );
+    return LibraryItem.fromJson(response.data!);
+  }
+
   Future<LibraryItem> importLink({
     required String url,
     String? title,

@@ -126,9 +126,9 @@ class _RdStorageScreenState extends State<RdStorageScreen> {
     return Scaffold(
       backgroundColor: rd.bg,
       body: SafeArea(
-        bottom: false,
+        maintainBottomViewPadding: true,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 48),
+          padding: const EdgeInsets.only(bottom: 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

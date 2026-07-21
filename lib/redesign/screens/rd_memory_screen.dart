@@ -645,7 +645,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     return Scaffold(
       backgroundColor: context.rd.bg,
       body: SafeArea(
-        bottom: false,
+        maintainBottomViewPadding: true,
         child: Stack(
           children: [
             AnimatedScale(
