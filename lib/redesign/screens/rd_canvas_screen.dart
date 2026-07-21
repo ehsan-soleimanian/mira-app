@@ -1727,7 +1727,10 @@ class _MapViewState extends State<_MapView>
                 Positioned(
                   left: 14,
                   right: 14,
-                  bottom: 108,
+                  // Keep the detail card fully above the shared navigation.
+                  // On Android 3-button navigation the system inset is large;
+                  // omitting it made the app nav visibly overlap the card.
+                  bottom: 108 + context.rdNavBarInset,
                   child: _DetailPanel(
                     node: _selected == null ? null : _byId[_selected],
                     connected: _selected == null

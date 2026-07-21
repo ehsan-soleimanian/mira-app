@@ -156,6 +156,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   ];
 
   bool _l10nReady = false;
+  bool _storeHydrated = false;
 
   @override
   void initState() {
@@ -172,10 +173,45 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_storeHydrated) {
+      _storeHydrated = true;
+      _hydrateFromStore();
+    }
     if (!_l10nReady) {
       final l10n = AppLocalizations.of(context)!;
       if (_title.isEmpty) _title = l10n.rdBriefFallbackUntitled;
       _l10nReady = true;
+    }
+  }
+
+  /// Navigation from Home/Daily may only carry an id and title. Resolve the
+  /// complete Library item from the shared cache so Memory never renders an
+  /// empty page while `contentText` is already available locally.
+  void _hydrateFromStore() {
+    final id = widget.id;
+    if (id == null) return;
+    final store = AppScope.servicesOf(context).memoryStore;
+
+    void applyCachedItem() {
+      if (!mounted) return;
+      final item = store.get(id);
+      if (item == null) return;
+      final content = item.contentText?.trim() ?? '';
+      final summary = item.summary.trim();
+      final cachedTitle = item.title.trim();
+      final nextBody = content.isNotEmpty ? content : summary;
+      if (cachedTitle.isEmpty && nextBody.isEmpty) return;
+      setState(() {
+        if ((_title.isEmpty || _title == 'Memory') && cachedTitle.isNotEmpty) {
+          _title = cachedTitle;
+        }
+        if (_body.trim().isEmpty && nextBody.isNotEmpty) _body = nextBody;
+      });
+    }
+
+    applyCachedItem();
+    if (!store.loaded) {
+      unawaited(store.load().then((_) => applyCachedItem()));
     }
   }
 
