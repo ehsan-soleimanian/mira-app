@@ -1004,6 +1004,8 @@
   "rdCanvasSplitSuccess": "Identity split and connections preserved",
   "rdCanvasSplitFail": "Couldn't split this identity",
   "rdCanvasSplitNoFacts": "No movable facts were found for this identity",
+  "rdCanvasIdentityAmbiguous": "Several people share this name in your memory. Use the role/place labels to tell them apart.",
+  "rdCanvasIdentityAmbiguousAction": "Split mixed identity",
   "rdCanvasMyBoard": "My board",
   "rdCanvasNewBoard": "New board",
   "rdCanvasBoardDefault": "Board",

@@ -76,12 +76,18 @@ class GraphNode {
     this.labels = const [],
     this.captureId,
     this.createdAt,
+    this.disambiguator,
+    this.identityAmbiguous = false,
   });
 
   factory GraphNode.fromJson(Map<String, dynamic> json) {
     final kind = json['kind'] as String? ?? 'ENTITY';
     final entityType =
         json['entityType'] as String? ?? json['entity_type'] as String?;
+    final disambiguator =
+        (json['disambiguator'] as String?)?.trim().isEmpty == true
+        ? null
+        : (json['disambiguator'] as String?)?.trim();
     return GraphNode(
       id: json['id'] as String,
       kind: kind,
@@ -97,6 +103,11 @@ class GraphNode {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String).toLocal()
           : null,
+      disambiguator: disambiguator,
+      identityAmbiguous:
+          json['identityAmbiguous'] as bool? ??
+          json['identity_ambiguous'] as bool? ??
+          false,
     );
   }
 
@@ -110,6 +121,18 @@ class GraphNode {
   final List<String> labels;
   final String? captureId;
   final DateTime? createdAt;
+
+  /// Short role/place/org hint when multiple people share [title].
+  final String? disambiguator;
+  final bool identityAmbiguous;
+
+  /// UI label: «علی رضایی (تعمیرکار، شیراز)» when ambiguous.
+  String get displayTitle {
+    final hint = disambiguator?.trim() ?? '';
+    if (!identityAmbiguous || hint.isEmpty) return title;
+    if (title.contains(hint)) return title;
+    return '$title ($hint)';
+  }
 }
 
 class GraphEdge {

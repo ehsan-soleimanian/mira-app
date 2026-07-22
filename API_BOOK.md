@@ -1003,6 +1003,8 @@ Returns nodes, edges, and optional saved layout for the authenticated user.
       "labels": ["Entity", "Person"],
       "title": "Alex",
       "subtitle": null,
+      "disambiguator": null,
+      "identityAmbiguous": false,
       "status": "ACTIVE"
     }
   ],
@@ -1031,6 +1033,8 @@ Returns nodes, edges, and optional saved layout for the authenticated user.
 | `nodes[].id` | string | `ent_*`, `task_*`, `cap_*`, … |
 | `nodes[].kind` | string | `USER` (knowledge hub), `ENTITY`, `TASK`, `CAPTURE`, … |
 | `nodes[].entityType` | string \| null | `Person`, `Activity`, `Organization`, … |
+| `nodes[].disambiguator` | string \| null | Short role/place/org hint for same-name people (e.g. «تعمیرکار، شیراز») |
+| `nodes[].identityAmbiguous` | bool \| null | `true` when other Person nodes share the same display name |
 | `edges[].type` | string | Registered materialized rel or open-world semantic key projected safely through `SEMANTIC_RELATION` |
 | `layout` | object \| null | Omitted until first `PUT /v2/graph/layout` |
 
@@ -1065,6 +1069,15 @@ Persists node positions (normalized `0.0`–`1.0`) and viewport pan/zoom. Node I
 Returns entity metadata, active assertions (with capture citations and temporal
 fields), and mention snippets. Set `includeHistory=true` to include `SUPERSEDED`
 assertions with `validFrom`, `validTo`, `recordedAt`, and `expiredAt`.
+
+When Graphiti is the semantic source, Person responses may also include:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `entity.disambiguator` | string \| null | Short role/place/org hint |
+| `entity.identityAmbiguous` | bool \| null | Same-name peers or merge-conflict smell |
+| `sameNamePeers` | array | Other Person identities with the same display name |
+| `identityClarification` | object \| null | `{ kind, name, message, candidateIds, candidates }` for UI clarification |
 
 **Errors**: `401` · `404`
 

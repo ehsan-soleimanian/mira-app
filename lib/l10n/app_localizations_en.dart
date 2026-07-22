@@ -2920,6 +2920,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'No movable facts were found for this identity';
 
   @override
+  String get rdCanvasIdentityAmbiguous =>
+      'Several people share this name in your memory. Use the role/place labels to tell them apart.';
+
+  @override
+  String get rdCanvasIdentityAmbiguousAction => 'Split mixed identity';
+
+  @override
   String get rdCanvasMyBoard => 'My board';
 
   @override

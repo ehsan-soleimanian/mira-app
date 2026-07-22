@@ -5194,6 +5194,18 @@ abstract class AppLocalizations {
   /// **'No movable facts were found for this identity'**
   String get rdCanvasSplitNoFacts;
 
+  /// No description provided for @rdCanvasIdentityAmbiguous.
+  ///
+  /// In en, this message translates to:
+  /// **'Several people share this name in your memory. Use the role/place labels to tell them apart.'**
+  String get rdCanvasIdentityAmbiguous;
+
+  /// No description provided for @rdCanvasIdentityAmbiguousAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Split mixed identity'**
+  String get rdCanvasIdentityAmbiguousAction;
+
   /// No description provided for @rdCanvasMyBoard.
   ///
   /// In en, this message translates to:

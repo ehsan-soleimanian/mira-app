@@ -2907,6 +2907,13 @@ class AppLocalizationsFa extends AppLocalizations {
       'اطلاعات قابل‌انتقالی برای این هویت پیدا نشد';
 
   @override
+  String get rdCanvasIdentityAmbiguous =>
+      'چند نفر با این نام در حافظه‌ات هست. از برچسب نقش/شهر برای تشخیص استفاده کن.';
+
+  @override
+  String get rdCanvasIdentityAmbiguousAction => 'جدا کردن هویت‌های قاطی‌شده';
+
+  @override
   String get rdCanvasMyBoard => 'بورد من';
 
   @override

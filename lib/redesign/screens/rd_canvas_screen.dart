@@ -1055,6 +1055,8 @@ class _GNode {
     required this.sub,
     this.entityType,
     this.initial,
+    this.disambiguator,
+    this.identityAmbiguous = false,
   });
 
   final String id;
@@ -1067,6 +1069,8 @@ class _GNode {
   final String sub;
   final String? entityType;
   final String? initial;
+  final String? disambiguator;
+  final bool identityAmbiguous;
 }
 
 String _gTypeIcon(_GType t) {
@@ -1137,6 +1141,7 @@ String _gTypeIcon(_GType t) {
     final deg = degree[n.id] ?? 0;
     final type = _gTypeForNode(n);
     final label = _shortGLabel(n.title.isEmpty ? n.summary : n.title);
+    final hint = n.disambiguator?.trim();
     out.add(
       _GNode(
         id: n.id,
@@ -1146,13 +1151,17 @@ String _gTypeIcon(_GType t) {
         type: type,
         label: label,
         typ: _gTypeLabelFor(type, l10n),
-        sub: n.summary.trim().isEmpty
-            ? l10n.rdCanvasLinkedCount(deg)
-            : n.summary,
+        sub: (hint != null && hint.isNotEmpty)
+            ? hint
+            : (n.summary.trim().isEmpty
+                  ? l10n.rdCanvasLinkedCount(deg)
+                  : n.summary),
         entityType: n.entityType,
         initial: type == _GType.person && label.isNotEmpty
             ? label.substring(0, 1).toUpperCase()
             : null,
+        disambiguator: hint,
+        identityAmbiguous: n.identityAmbiguous,
       ),
     );
   }
@@ -2294,7 +2303,10 @@ class _DetailPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      n.label,
+                      n.identityAmbiguous &&
+                              (n.disambiguator?.trim().isNotEmpty ?? false)
+                          ? '${n.label} (${n.disambiguator!.trim()})'
+                          : n.label,
                       style: GoogleFonts.dosis(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -2332,6 +2344,48 @@ class _DetailPanel extends StatelessWidget {
               ),
             ),
           ),
+          if (n.identityAmbiguous)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                decoration: BoxDecoration(
+                  color: rd.periSoft,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: rd.line, width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.rdCanvasIdentityAmbiguous,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 12.5,
+                        height: 1.45,
+                        color: rd.navy,
+                      ),
+                    ),
+                    if (onSplit != null) ...[
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: onSplit,
+                        child: Text(
+                          AppLocalizations.of(
+                            context,
+                          )!.rdCanvasIdentityAmbiguousAction,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: rd.peri,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
           if (onFocus != null)
             Padding(
               padding: const EdgeInsets.only(top: 14),
