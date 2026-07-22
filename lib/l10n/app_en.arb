@@ -1005,6 +1005,7 @@
   "rdCanvasSplitFail": "Couldn't split this identity",
   "rdCanvasSplitNoFacts": "No movable facts were found for this identity",
   "rdCanvasIdentityAmbiguous": "Several people share this name in your memory. Use the role/place labels to tell them apart.",
+  "rdCanvasIdentityMergedSmell": "Facts for this person look mixed (e.g. startup role and mechanic). Split into separate identities.",
   "rdCanvasIdentityAmbiguousAction": "Split mixed identity",
   "rdCanvasMyBoard": "My board",
   "rdCanvasNewBoard": "New board",

@@ -1057,6 +1057,7 @@ class _GNode {
     this.initial,
     this.disambiguator,
     this.identityAmbiguous = false,
+    this.identityReviewKind,
   });
 
   final String id;
@@ -1071,6 +1072,7 @@ class _GNode {
   final String? initial;
   final String? disambiguator;
   final bool identityAmbiguous;
+  final String? identityReviewKind;
 }
 
 String _gTypeIcon(_GType t) {
@@ -1162,6 +1164,7 @@ String _gTypeIcon(_GType t) {
             : null,
         disambiguator: hint,
         identityAmbiguous: n.identityAmbiguous,
+        identityReviewKind: n.identityReviewKind,
       ),
     );
   }
@@ -2359,7 +2362,13 @@ class _DetailPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      AppLocalizations.of(context)!.rdCanvasIdentityAmbiguous,
+                      n.identityReviewKind == 'possible_merged_homonym'
+                          ? AppLocalizations.of(
+                              context,
+                            )!.rdCanvasIdentityMergedSmell
+                          : AppLocalizations.of(
+                              context,
+                            )!.rdCanvasIdentityAmbiguous,
                       style: GoogleFonts.vazirmatn(
                         fontSize: 12.5,
                         height: 1.45,

@@ -5200,6 +5200,12 @@ abstract class AppLocalizations {
   /// **'Several people share this name in your memory. Use the role/place labels to tell them apart.'**
   String get rdCanvasIdentityAmbiguous;
 
+  /// No description provided for @rdCanvasIdentityMergedSmell.
+  ///
+  /// In en, this message translates to:
+  /// **'Facts for this person look mixed (e.g. startup role and mechanic). Split into separate identities.'**
+  String get rdCanvasIdentityMergedSmell;
+
   /// No description provided for @rdCanvasIdentityAmbiguousAction.
   ///
   /// In en, this message translates to:

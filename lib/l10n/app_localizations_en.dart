@@ -2924,6 +2924,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Several people share this name in your memory. Use the role/place labels to tell them apart.';
 
   @override
+  String get rdCanvasIdentityMergedSmell =>
+      'Facts for this person look mixed (e.g. startup role and mechanic). Split into separate identities.';
+
+  @override
   String get rdCanvasIdentityAmbiguousAction => 'Split mixed identity';
 
   @override

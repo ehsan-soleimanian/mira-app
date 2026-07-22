@@ -2911,6 +2911,10 @@ class AppLocalizationsFa extends AppLocalizations {
       'چند نفر با این نام در حافظه‌ات هست. از برچسب نقش/شهر برای تشخیص استفاده کن.';
 
   @override
+  String get rdCanvasIdentityMergedSmell =>
+      'فکت‌های این فرد قاطی به‌نظر می‌رسد (مثلاً نقش استارت‌آپ و تعمیرکار). بهتر است هویت‌ها را جدا کنی.';
+
+  @override
   String get rdCanvasIdentityAmbiguousAction => 'جدا کردن هویت‌های قاطی‌شده';
 
   @override

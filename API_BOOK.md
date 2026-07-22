@@ -1034,7 +1034,8 @@ Returns nodes, edges, and optional saved layout for the authenticated user.
 | `nodes[].kind` | string | `USER` (knowledge hub), `ENTITY`, `TASK`, `CAPTURE`, … |
 | `nodes[].entityType` | string \| null | `Person`, `Activity`, `Organization`, … |
 | `nodes[].disambiguator` | string \| null | Short role/place/org hint for same-name people (e.g. «تعمیرکار، شیراز») |
-| `nodes[].identityAmbiguous` | bool \| null | `true` when other Person nodes share the same display name |
+| `nodes[].identityAmbiguous` | bool \| null | `true` when same-name peers exist or merge-smell is detected |
+| `nodes[].identityReviewKind` | string \| null | `same_name_peers` or `possible_merged_homonym` |
 | `edges[].type` | string | Registered materialized rel or open-world semantic key projected safely through `SEMANTIC_RELATION` |
 | `layout` | object \| null | Omitted until first `PUT /v2/graph/layout` |
 

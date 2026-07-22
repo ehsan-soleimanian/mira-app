@@ -78,6 +78,7 @@ class GraphNode {
     this.createdAt,
     this.disambiguator,
     this.identityAmbiguous = false,
+    this.identityReviewKind,
   });
 
   factory GraphNode.fromJson(Map<String, dynamic> json) {
@@ -88,6 +89,9 @@ class GraphNode {
         (json['disambiguator'] as String?)?.trim().isEmpty == true
         ? null
         : (json['disambiguator'] as String?)?.trim();
+    final reviewKind =
+        (json['identityReviewKind'] as String?) ??
+        (json['identity_review_kind'] as String?);
     return GraphNode(
       id: json['id'] as String,
       kind: kind,
@@ -108,6 +112,9 @@ class GraphNode {
           json['identityAmbiguous'] as bool? ??
           json['identity_ambiguous'] as bool? ??
           false,
+      identityReviewKind: reviewKind?.trim().isEmpty == true
+          ? null
+          : reviewKind?.trim(),
     );
   }
 
@@ -126,6 +133,9 @@ class GraphNode {
   final String? disambiguator;
   final bool identityAmbiguous;
 
+  /// `same_name_peers` | `possible_merged_homonym`
+  final String? identityReviewKind;
+
   /// UI label: «علی رضایی (تعمیرکار، شیراز)» when ambiguous.
   String get displayTitle {
     final hint = disambiguator?.trim() ?? '';
@@ -133,6 +143,9 @@ class GraphNode {
     if (title.contains(hint)) return title;
     return '$title ($hint)';
   }
+
+  bool get needsMergedIdentitySplit =>
+      identityReviewKind == 'possible_merged_homonym';
 }
 
 class GraphEdge {
