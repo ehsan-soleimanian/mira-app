@@ -3064,6 +3064,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String rdCanvasConnectedVia(String relation, String name) {
+    return '$relation · $name';
+  }
+
+  @override
   String get rdCanvasCardRemoved => 'Card removed';
 
   @override

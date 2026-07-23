@@ -68,6 +68,9 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   /// "unlink" a connection by rejecting them.
   Map<String, List<String>> _mapEdgeAssertions = const {};
 
+  /// Domain relation type per undirected pair ("a|b"), e.g. WORKS_ON.
+  Map<String, String> _mapEdgeRelations = const {};
+
   /// Board-level context label (title · N cards), reported up from the live
   /// `_BoardView` so the top pill mirrors what's on screen.
   String _boardContext = '';
@@ -96,7 +99,8 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     try {
       final services = AppScope.servicesOf(context);
       final graph = await services.graphRepository.fetchGraph();
-      final (nodes, edges, edgeAssertions) = _mapGraphToNodes(graph, l10n);
+      final (nodes, edges, edgeAssertions, edgeRelations) =
+          _mapGraphToNodes(graph, l10n);
       final clusters = _buildClustersFromNodes(nodes, edges, l10n);
       if (!mounted || nodes.isEmpty) return;
       setState(() {
@@ -109,6 +113,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
           nodes.length,
         );
         _mapEdgeAssertions = edgeAssertions;
+        _mapEdgeRelations = edgeRelations;
         _mapEpoch++; // force the map to rebuild from the fresh graph
       });
     } catch (_) {
@@ -546,6 +551,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
                 onMerge: live ? _mergeEntities : null,
                 onSplit: live ? _splitEntity : null,
                 edgeAssertions: live ? _mapEdgeAssertions : const {},
+                edgeRelations: live ? _mapEdgeRelations : const {},
                 onUnlink: live ? _unlinkEdge : null,
               ),
             },
@@ -1104,7 +1110,8 @@ String _gTypeIcon(_GType t) {
 /// laying nodes out in a deterministic sunflower spiral (higher-degree hubs
 /// nearer the centre) since the backend layout is optional. Bounded to keep
 /// the graph legible on a phone.
-(List<_GNode>, List<List<String>>, Map<String, List<String>>) _mapGraphToNodes(
+(List<_GNode>, List<List<String>>, Map<String, List<String>>, Map<String, String>)
+_mapGraphToNodes(
   GraphResponse g,
   AppLocalizations l10n,
 ) {
@@ -1114,11 +1121,17 @@ String _gTypeIcon(_GType t) {
   // Undirected lookup of the assertions backing each edge, keyed "a|b" (both
   // directions), so the Map can "unlink" a connection by rejecting them.
   final edgeAssertions = <String, List<String>>{};
+  final edgeRelations = <String, String>{};
   for (final e in g.edges) {
     if (e.sourceId != e.targetId &&
         ids.contains(e.sourceId) &&
         ids.contains(e.targetId)) {
       edges.add([e.sourceId, e.targetId]);
+      final rel = e.relationship.trim();
+      if (rel.isNotEmpty) {
+        edgeRelations['${e.sourceId}|${e.targetId}'] = rel;
+        edgeRelations['${e.targetId}|${e.sourceId}'] = rel;
+      }
       if (e.assertionIds.isNotEmpty) {
         edgeAssertions['${e.sourceId}|${e.targetId}'] = e.assertionIds;
         edgeAssertions['${e.targetId}|${e.sourceId}'] = e.assertionIds;
@@ -1168,7 +1181,7 @@ String _gTypeIcon(_GType t) {
       ),
     );
   }
-  return (out, edges, edgeAssertions);
+  return (out, edges, edgeAssertions, edgeRelations);
 }
 
 _GType _gTypeForNode(GraphNode n) {
@@ -1503,6 +1516,7 @@ class _MapView extends StatefulWidget {
     this.onMerge,
     this.onSplit,
     this.edgeAssertions = const {},
+    this.edgeRelations = const {},
     this.onUnlink,
   });
 
@@ -1518,6 +1532,9 @@ class _MapView extends StatefulWidget {
 
   /// Assertions backing each edge, keyed "a|b" (both directions).
   final Map<String, List<String>> edgeAssertions;
+
+  /// Domain relation type per undirected pair ("a|b"), e.g. WORKS_ON.
+  final Map<String, String> edgeRelations;
 
   /// Unlinks a connection by rejecting its backing assertions. Null offline.
   final void Function(List<String> assertionIds)? onUnlink;
@@ -1670,6 +1687,7 @@ class _MapViewState extends State<_MapView>
                                 edges: widget.edges,
                                 selected: _selected,
                                 color: rd.peri,
+                                relations: widget.edgeRelations,
                               ),
                             ),
                           ),
@@ -1776,6 +1794,15 @@ class _MapViewState extends State<_MapView>
                               id:
                                   widget.edgeAssertions['${_selected!}|$id'] ??
                                   const <String>[],
+                          },
+                    connectionRelations: _selected == null
+                        ? const {}
+                        : {
+                            for (final id in _adj[_selected]!)
+                              if ((widget.edgeRelations['${_selected!}|$id'] ??
+                                      '')
+                                  .isNotEmpty)
+                                id: widget.edgeRelations['${_selected!}|$id']!,
                           },
                   ),
                 ),
@@ -2001,6 +2028,7 @@ class _EdgePainter extends CustomPainter {
     required this.edges,
     required this.selected,
     required this.color,
+    this.relations = const {},
   });
 
   final Map<String, _GNode> nodes;
@@ -2010,6 +2038,9 @@ class _EdgePainter extends CustomPainter {
   /// Edge tint — the periwinkle accent, passed from the widget so it tracks the
   /// active [RdTheme] (painters cannot read `context`).
   final Color color;
+
+  /// Optional relation labels keyed "a|b".
+  final Map<String, String> relations;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2023,13 +2054,59 @@ class _EdgePainter extends CustomPainter {
         ..color = color.withValues(alpha: hot ? 0.9 : (dim ? 0.08 : 0.28))
         ..strokeWidth = hot ? 2 : 1.4
         ..strokeCap = StrokeCap.round;
-      canvas.drawLine(Offset(a.x, a.y), Offset(b.x, b.y), paint);
+      final from = Offset(a.x, a.y);
+      final to = Offset(b.x, b.y);
+      canvas.drawLine(from, to, paint);
+
+      if (!hot) continue;
+      final rel = relations['${e[0]}|${e[1]}'] ?? relations['${e[1]}|${e[0]}'];
+      if (rel == null || rel.isEmpty) continue;
+      final label = _humanizeRelation(rel);
+      final mid = Offset((from.dx + to.dx) / 2, (from.dy + to.dy) / 2);
+      final tp = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: TextStyle(
+            color: color.withValues(alpha: 0.95),
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout(maxWidth: 120);
+      final bg = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: mid,
+          width: tp.width + 10,
+          height: tp.height + 6,
+        ),
+        const Radius.circular(8),
+      );
+      canvas.drawRRect(
+        bg,
+        Paint()..color = const Color(0xFF141628).withValues(alpha: 0.72),
+      );
+      tp.paint(canvas, Offset(mid.dx - tp.width / 2, mid.dy - tp.height / 2));
     }
   }
 
   @override
   bool shouldRepaint(_EdgePainter old) =>
-      old.selected != selected || old.color != color;
+      old.selected != selected ||
+      old.color != color ||
+      old.relations != relations;
+}
+
+String _humanizeRelation(String raw) {
+  final cleaned = raw.trim().replaceAll(RegExp(r'_+'), ' ');
+  if (cleaned.isEmpty) return raw;
+  return cleaned
+      .split(' ')
+      .where((w) => w.isNotEmpty)
+      .map((w) => '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+      .join(' ');
 }
 
 class _GraphHint extends StatelessWidget {
@@ -2073,6 +2150,7 @@ class _DetailPanel extends StatelessWidget {
     this.mergeCandidates = const [],
     this.onUnlink,
     this.connectionAssertions = const {},
+    this.connectionRelations = const {},
   });
 
   final _GNode? node;
@@ -2099,6 +2177,9 @@ class _DetailPanel extends StatelessWidget {
 
   /// Assertions backing each connection (connected node id → assertion ids).
   final Map<String, List<String>> connectionAssertions;
+
+  /// Relation type for each connected neighbour id (e.g. WORKS_ON).
+  final Map<String, String> connectionRelations;
 
   @override
   Widget build(BuildContext context) {
@@ -2548,7 +2629,16 @@ class _DetailPanel extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          c.label,
+                          () {
+                            final rel = connectionRelations[c.id];
+                            if (rel == null || rel.isEmpty) return c.label;
+                            return AppLocalizations.of(
+                              context,
+                            )!.rdCanvasConnectedVia(
+                              _humanizeRelation(rel),
+                              c.label,
+                            );
+                          }(),
                           style: GoogleFonts.vazirmatn(
                             fontSize: 12.5,
                             color: rd.ink,

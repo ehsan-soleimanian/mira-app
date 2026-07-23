@@ -5416,6 +5416,12 @@ abstract class AppLocalizations {
   /// **'CONNECTED TO {count}'**
   String rdCanvasConnectedTo(int count);
 
+  /// No description provided for @rdCanvasConnectedVia.
+  ///
+  /// In en, this message translates to:
+  /// **'{relation} · {name}'**
+  String rdCanvasConnectedVia(String relation, String name);
+
   /// No description provided for @rdCanvasCardRemoved.
   ///
   /// In en, this message translates to:

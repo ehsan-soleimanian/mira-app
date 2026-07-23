@@ -1047,6 +1047,13 @@
   "rdCanvasMergeDuplicate": "Merge a duplicate",
   "rdCanvasConnectedTo": "CONNECTED TO {count}",
   "@rdCanvasConnectedTo": {"placeholders": {"count": {"type": "int"}}},
+  "rdCanvasConnectedVia": "{relation} · {name}",
+  "@rdCanvasConnectedVia": {
+    "placeholders": {
+      "relation": {"type": "String"},
+      "name": {"type": "String"}
+    }
+  },
   "rdCanvasCardRemoved": "Card removed",
   "rdCanvasNewNoteTitle": "New note",
   "rdCanvasNewNoteSub": "Tap to edit later.",

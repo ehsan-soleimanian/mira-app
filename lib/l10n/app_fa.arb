@@ -998,6 +998,13 @@
   "rdCanvasMergeDuplicate": "ادغام تکراری",
   "rdCanvasConnectedTo": "وصل به {count}",
   "@rdCanvasConnectedTo": {"placeholders": {"count": {"type": "int"}}},
+  "rdCanvasConnectedVia": "{relation} · {name}",
+  "@rdCanvasConnectedVia": {
+    "placeholders": {
+      "relation": {"type": "String"},
+      "name": {"type": "String"}
+    }
+  },
   "rdCanvasCardRemoved": "کارت حذف شد",
   "rdCanvasNewNoteTitle": "یادداشت جدید",
   "rdCanvasNewNoteSub": "برای ویرایش بعداً بزن.",
