@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:mira_app/core/locale/device_locale_context.dart';
+import 'package:mira_app/models/api/reminder_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -49,12 +51,19 @@ class NotificationService {
   static const _notificationsEnabledKey = 'mira_settings_notifications';
   static const _permissionGrantedKey = 'mira_notification_permission_granted';
   static const _leadMinutesKey = 'mira_notification_lead_minutes';
+  static const _quietEnabledKey = 'mira_notification_quiet_enabled';
+  static const _quietStartKey = 'mira_notification_quiet_start';
+  static const _quietEndKey = 'mira_notification_quiet_end';
   static const defaultLeadTime = Duration(minutes: 10);
 
   Future<void> initialize() async {
     if (_initialized) return;
     tz_data.initializeTimeZones();
-    tz.setLocalLocation(tz.getLocation('Asia/Tehran'));
+    try {
+      tz.setLocalLocation(tz.getLocation(DeviceLocaleContext.timezone));
+    } catch (_) {
+      tz.setLocalLocation(tz.UTC);
+    }
 
     await _plugin.initialize(
       settings: const InitializationSettings(
@@ -143,6 +152,17 @@ class NotificationService {
     await prefs.setInt(_leadMinutesKey, leadTime.inMinutes);
   }
 
+  Future<void> setQuietHours({
+    required bool enabled,
+    required String start,
+    required String end,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_quietEnabledKey, enabled);
+    await prefs.setString(_quietStartKey, start);
+    await prefs.setString(_quietEndKey, end);
+  }
+
   Future<void> cancelAllTaskReminders() async {
     await initialize();
     final prefs = await SharedPreferences.getInstance();
@@ -163,8 +183,7 @@ class NotificationService {
       return;
     }
 
-    final granted = await requestPermissions();
-    if (!granted) return;
+    if (prefs.getBool(_permissionGrantedKey) != true) return;
 
     for (final id
         in prefs.getStringList(_scheduledIdsKey) ?? const <String>[]) {
@@ -184,6 +203,98 @@ class NotificationService {
       scheduled.add(reminder.taskId);
     }
     await prefs.setStringList(_scheduledIdsKey, scheduled);
+  }
+
+  Future<void> syncReminders(Iterable<Reminder> reminders) async {
+    await initialize();
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_notificationsEnabledKey) == false) {
+      await cancelAllTaskReminders();
+      return;
+    }
+    // Permission is requested from the explicit notification-settings flow,
+    // never as a surprise when the app starts or a list refreshes.
+    if (prefs.getBool(_permissionGrantedKey) != true) return;
+
+    for (final id
+        in prefs.getStringList(_scheduledIdsKey) ?? const <String>[]) {
+      await _plugin.cancel(id: _notificationId(id));
+    }
+    final now = DateTime.now();
+    final scheduled = <String>[];
+    for (final reminder in reminders) {
+      final when = reminder.effectiveRemindAt;
+      if (reminder.done ||
+          when == null ||
+          !when.isAfter(now.add(const Duration(minutes: 1)))) {
+        continue;
+      }
+      final scheduledAt = _applyQuietHours(when, prefs);
+      await _plugin.zonedSchedule(
+        id: _notificationId(reminder.id),
+        scheduledDate: tz.TZDateTime.from(scheduledAt, tz.local),
+        title: 'Mira',
+        body: reminder.remindText ?? reminder.title,
+        payload: jsonEncode({
+          'type': 'reminder',
+          'reminderId': reminder.id,
+          if (reminder.taskId != null) 'taskId': reminder.taskId,
+        }),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription:
+                'Reminders you explicitly asked Mira to deliver.',
+            importance: Importance.high,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+          macOS: DarwinNotificationDetails(),
+        ),
+      );
+      scheduled.add(reminder.id);
+    }
+    await prefs.setStringList(_scheduledIdsKey, scheduled);
+  }
+
+  DateTime _applyQuietHours(DateTime when, SharedPreferences prefs) {
+    if (prefs.getBool(_quietEnabledKey) != true) return when;
+    final start = _parseClock(prefs.getString(_quietStartKey) ?? '22:00');
+    final end = _parseClock(prefs.getString(_quietEndKey) ?? '07:00');
+    if (start == null || end == null || start == end) return when;
+    final minute = when.hour * 60 + when.minute;
+    final inside = start < end
+        ? minute >= start && minute < end
+        : minute >= start || minute < end;
+    if (!inside) return when;
+    final endHour = end ~/ 60;
+    final endMinute = end % 60;
+    final afterStart = start > end && minute >= start;
+    return DateTime(
+      when.year,
+      when.month,
+      when.day + (afterStart ? 1 : 0),
+      endHour,
+      endMinute,
+    );
+  }
+
+  int? _parseClock(String value) {
+    final parts = value.split(':');
+    if (parts.length != 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+    return hour * 60 + minute;
   }
 
   Future<void> cancelTaskReminder(String taskId) async {

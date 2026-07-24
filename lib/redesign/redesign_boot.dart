@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/config/api_endpoint_resolver.dart';
+import 'package:mira_app/core/locale/device_locale_context.dart';
 import 'package:mira_app/app/mira_services.dart';
 
 /// Boots the real service container the redesign runs on. Mirrors the shipping
@@ -12,6 +13,7 @@ Future<MiraServices> bootstrapMiraServices() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await ApiConfig.init();
+  await DeviceLocaleContext.initialize();
   final services = MiraServices.create();
 
   // Notifications aren't available on every preview target (e.g. web) — never

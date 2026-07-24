@@ -493,6 +493,7 @@ Requires `Authorization: Bearer <access_token>`.
 ```json
 {
   "preferred_language": "en",
+  "timezone": "Europe/Berlin",
   "theme_mode": "system",
   "notifications_enabled": true,
   "daily_brief_enabled": true,
@@ -512,6 +513,7 @@ Requires `Authorization: Bearer <access_token>`.
 ```json
 {
   "preferred_language": "fa",
+  "timezone": "Asia/Tehran",
   "theme_mode": "dark",
   "notifications_enabled": false,
   "daily_brief_enabled": true,
@@ -522,7 +524,8 @@ Requires `Authorization: Bearer <access_token>`.
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `preferred_language` | string | optional, enum: `en`, `fa` |
+| `preferred_language` | string | optional, BCP-47 tag such as `fa-IR` or `de-DE` |
+| `timezone` | string | optional, valid IANA timezone such as `Asia/Tehran` |
 | `theme_mode` | string | optional, enum: `system`, `light`, `dark` |
 | `notifications_enabled` | boolean | optional |
 | `daily_brief_enabled` | boolean | optional |
@@ -591,7 +594,9 @@ Accepts text, enqueues processing. With worker running, poll `GET /captures/{id}
 {
   "type": "text",
   "text": "Task: send deck to Sara by Friday",
-  "channel": "mobile"
+  "channel": "mobile",
+  "timezone": "Europe/Berlin",
+  "locale": "de-DE"
 }
 ```
 
@@ -600,6 +605,8 @@ Accepts text, enqueues processing. With worker running, poll `GET /captures/{id}
 | `type` | string | required, enum: `text` (phase 2) |
 | `text` | string | required, min 1, max 10000 |
 | `channel` | string | optional, default `mobile` — `mobile`, `web`, `telegram`, `whatsapp`, `bale` |
+| `timezone` | string | optional IANA timezone; falls back to the user's saved timezone |
+| `locale` | string | optional BCP-47 context; never treated as proof of culture/calendar |
 
 **Response** `202`
 ```json
@@ -1156,11 +1163,11 @@ All routes are user-scoped. Event responses include `eventType`, aggregate metad
 ---
 
 ### Tasks
-`GET /v2/tasks?status=OPEN&entityId={entity_id}`
+`GET /v2/tasks?status=OPEN&entityId={entity_id}&limit=200&offset=0`
 
 Returns task nodes for the tasks graph view / daily brief integration. Optional `entityId` filters tasks linked to that project/entity via `ABOUT` or `INVOLVES` edges.
 
-Each task response includes `dueAt` when the capture contained a resolvable deadline/date/time. `duePrecision` is `datetime` for explicit times and `date` for date-only reminders.
+Each task response includes `dueAt` when the capture contained a resolvable deadline/date/time. `duePrecision` is `datetime` for explicit times and `date` for date-only reminders. `dueTimezone`, lifecycle timestamps, `statusActor`, and `statusReason` make cross-device state auditable. Completed/cancelled tasks can be reopened to `OPEN`.
 
 **Errors**: `401`
 
@@ -1176,7 +1183,10 @@ Update task lifecycle or metadata. Typical client use: mark `DONE` or `CANCELLED
 {
   "status": "DONE",
   "title": "Optional new title",
-  "dueAt": "2026-06-25T18:00:00+00:00"
+  "dueAt": "2026-06-25T18:00:00+00:00",
+  "dueTimezone": "Europe/Berlin",
+  "clearDueAt": false,
+  "statusReason": "Completed from reminder"
 }
 ```
 
@@ -1193,6 +1203,11 @@ All fields optional; send only what changes.
   "dueAt": "2026-06-25T18:00:00+00:00",
   "duePrecision": "datetime",
   "dueText": "Friday at 6 PM",
+  "dueTimezone": "Europe/Berlin",
+  "statusChangedAt": "2026-06-25T17:20:00+00:00",
+  "completedAt": "2026-06-25T17:20:00+00:00",
+  "statusActor": "user",
+  "statusReason": "Completed from reminder",
   "captureId": "cap_xyz"
 }
 ```
@@ -1847,7 +1862,9 @@ App-facing reminders the user attaches to captures, tasks, and memories (Daily B
 {
   "title": "Call John to confirm the Q3 scope",
   "remind_at": "2026-08-01T09:00:00Z",
-  "source_node_id": "capture-or-entity-id"
+  "timezone": "Europe/Berlin",
+  "source_node_id": "capture-or-entity-id",
+  "task_id": "task_abc"
 }
 ```
 
@@ -1855,7 +1872,9 @@ App-facing reminders the user attaches to captures, tasks, and memories (Daily B
 |-------|------|----------|-------|
 | `title` | string | yes | 1–500 chars |
 | `remind_at` | string (ISO 8601) \| null | no | when to surface it |
+| `timezone` | string | no | IANA timezone; defaults to the user's saved timezone |
 | `source_node_id` | string \| null | no | graph node this reminder relates to |
+| `task_id` | string \| null | no | links completion/reopen to the canonical task |
 
 **Response** `201`
 ```json
@@ -1864,6 +1883,9 @@ App-facing reminders the user attaches to captures, tasks, and memories (Daily B
   "title": "Call John to confirm the Q3 scope",
   "remind_at": "2026-08-01T09:00:00+00:00",
   "source_node_id": "capture-or-entity-id",
+  "task_id": "task_abc",
+  "status": "PENDING",
+  "timezone": "Europe/Berlin",
   "done": false,
   "created_at": "2026-07-07T12:00:00+00:00",
   "updated_at": "2026-07-07T12:00:00+00:00"
@@ -1905,6 +1927,21 @@ Partial update — only fields present in the body are changed. Commonly used to
 { "done": true }
 ```
 **Response** `200` (the updated reminder) · **404** when not found · **422** on validation error.
+
+### Snooze reminder
+`POST /reminders/{id}/snooze`
+
+```json
+{ "until": "2026-08-02T09:00:00Z" }
+```
+
+Moves the reminder to `SNOOZED`. A later explicit reschedule clears the previous snooze.
+
+### Mark reminder sent
+`POST /reminders/{id}/sent`
+
+Acknowledges app-facing delivery. The backend delivery lease uses `CLAIMED` and
+`DELIVERY_RETRY` internally so concurrent workers cannot double-send.
 
 ### Delete reminder
 `DELETE /reminders/{id}` — User Bearer. **Response** `204` · **404** when not found.

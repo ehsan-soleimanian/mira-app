@@ -9,6 +9,7 @@ import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.time.ZoneId
 
 class MainActivity : FlutterActivity() {
     private var channel: MethodChannel? = null
@@ -31,6 +32,15 @@ class MainActivity : FlutterActivity() {
                     }
                     else -> result.notImplemented()
                 }
+            }
+        }
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            DEVICE_CONTEXT_CHANNEL,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getTimezone" -> result.success(ZoneId.systemDefault().id)
+                else -> result.notImplemented()
             }
         }
         pendingSharedItem = sharedItemFromIntent(intent)
@@ -115,5 +125,6 @@ class MainActivity : FlutterActivity() {
 
     private companion object {
         const val CHANNEL = "mira/shared_import"
+        const val DEVICE_CONTEXT_CHANNEL = "mira/device_context"
     }
 }

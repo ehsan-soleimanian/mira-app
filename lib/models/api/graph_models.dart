@@ -301,6 +301,13 @@ class GraphTaskDto {
     this.dueAt,
     this.duePrecision,
     this.dueText,
+    this.dueTimezone = 'UTC',
+    this.updatedAt,
+    this.statusChangedAt,
+    this.completedAt,
+    this.cancelledAt,
+    this.statusActor,
+    this.statusReason,
   });
 
   factory GraphTaskDto.fromJson(Map<String, dynamic> json) => GraphTaskDto(
@@ -315,6 +322,24 @@ class GraphTaskDto {
     duePrecision:
         json['duePrecision'] as String? ?? json['due_precision'] as String?,
     dueText: json['dueText'] as String? ?? json['due_text'] as String?,
+    dueTimezone:
+        json['dueTimezone'] as String? ??
+        json['due_timezone'] as String? ??
+        'UTC',
+    updatedAt: _parseOptionalDate(json['updatedAt'] ?? json['updated_at']),
+    statusChangedAt: _parseOptionalDate(
+      json['statusChangedAt'] ?? json['status_changed_at'],
+    ),
+    completedAt: _parseOptionalDate(
+      json['completedAt'] ?? json['completed_at'],
+    ),
+    cancelledAt: _parseOptionalDate(
+      json['cancelledAt'] ?? json['cancelled_at'],
+    ),
+    statusActor:
+        json['statusActor'] as String? ?? json['status_actor'] as String?,
+    statusReason:
+        json['statusReason'] as String? ?? json['status_reason'] as String?,
   );
 
   final String taskId;
@@ -325,6 +350,13 @@ class GraphTaskDto {
   final DateTime? dueAt;
   final String? duePrecision;
   final String? dueText;
+  final String dueTimezone;
+  final DateTime? updatedAt;
+  final DateTime? statusChangedAt;
+  final DateTime? completedAt;
+  final DateTime? cancelledAt;
+  final String? statusActor;
+  final String? statusReason;
 
   static DateTime? _parseOptionalDate(Object? value) {
     if (value is! String || value.trim().isEmpty) return null;

@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:mira_app/core/api/api_client.dart';
 import 'package:mira_app/core/auth/token_storage.dart';
 import 'package:mira_app/core/config/api_config.dart';
+import 'package:mira_app/core/locale/device_locale_context.dart';
 import 'package:mira_app/features/capture/capture_mock_data.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 import 'package:mira_app/models/api/graph_models.dart';
@@ -23,7 +24,13 @@ class CaptureRepository {
   Future<CaptureResponse> createTextCapture(String text) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures',
-      data: {'type': 'text', 'text': text, 'channel': 'mobile'},
+      data: {
+        'type': 'text',
+        'text': text,
+        'channel': 'mobile',
+        'timezone': DeviceLocaleContext.timezone,
+        'locale': DeviceLocaleContext.languageTag,
+      },
     );
     return CaptureResponse.fromJson(response.data!);
   }
@@ -41,6 +48,8 @@ class CaptureRepository {
         if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
         if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
         'channel': 'mobile',
+        'timezone': DeviceLocaleContext.timezone,
+        'locale': DeviceLocaleContext.languageTag,
       },
       // Firecrawl may legitimately fall back to a direct reader before the
       // capture is queued; keep this request above the global 60s ceiling.
@@ -164,6 +173,8 @@ class CaptureRepository {
     final formData = FormData.fromMap({
       'duration_ms': durationMs,
       'channel': 'mobile',
+      'timezone': DeviceLocaleContext.timezone,
+      'locale': DeviceLocaleContext.languageTag,
       if (audioPath != null)
         'file': await MultipartFile.fromFile(audioPath, filename: 'voice.m4a'),
     });
@@ -243,6 +254,8 @@ class CaptureRepository {
       if (caption != null && caption.trim().isNotEmpty)
         'caption': caption.trim(),
       'channel': 'mobile',
+      'timezone': DeviceLocaleContext.timezone,
+      'locale': DeviceLocaleContext.languageTag,
       'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
     final response = await _dio.post<Map<String, dynamic>>(
@@ -261,6 +274,8 @@ class CaptureRepository {
       if (caption != null && caption.trim().isNotEmpty)
         'caption': caption.trim(),
       'channel': 'mobile',
+      'timezone': DeviceLocaleContext.timezone,
+      'locale': DeviceLocaleContext.languageTag,
       'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
     final response = await _dio.post<Map<String, dynamic>>(

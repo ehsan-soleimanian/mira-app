@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:mira_app/app/app_scope.dart';
-import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/reminder_models.dart';
 
@@ -55,8 +54,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
   Future<void> _load() async {
     try {
       final services = AppScope.servicesOf(context);
-      final items =
-          await RemindersRepository(apiClient: services.apiClient).list();
+      final items = await services.remindersRepository.list();
       if (mounted) setState(() => _items = items);
     } catch (_) {
       // Backend unreachable — leave _items null so the empty state renders.
@@ -99,10 +97,12 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     final now = DateTime.now();
     final end = _startOfTomorrow;
     return _open
-        .where((r) =>
-            r.remindAt != null &&
-            !r.remindAt!.isBefore(now) &&
-            r.remindAt!.isBefore(end))
+        .where(
+          (r) =>
+              r.remindAt != null &&
+              !r.remindAt!.isBefore(now) &&
+              r.remindAt!.isBefore(end),
+        )
         .toList();
   }
 
@@ -113,7 +113,8 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
         .toList();
   }
 
-  List<Reminder> get _waiting => _open.where((r) => r.remindAt == null).toList();
+  List<Reminder> get _waiting =>
+      _open.where((r) => r.remindAt == null).toList();
 
   /// Builds a titled group of open reminders (empty groups render nothing).
   List<Widget> _openSection(String label, List<Reminder> items) {
@@ -135,7 +136,10 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
   void _openSource(Reminder r) {
     final id = r.sourceNodeId;
     if (id == null) return;
-    widget.go('memory', arg: RdMemoryArg(id: id, title: r.title));
+    widget.go(
+      'memory',
+      arg: RdMemoryArg(id: id, title: r.title),
+    );
   }
 
   void _toast(String message) {
@@ -189,8 +193,17 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
   Future<void> _pushDone(Reminder r, bool done) async {
     try {
       final services = AppScope.servicesOf(context);
-      await RemindersRepository(apiClient: services.apiClient)
-          .update(r.id, done: done);
+      if (r.taskId != null) {
+        await services.graphRepository.updateTask(
+          r.taskId!,
+          status: done ? 'DONE' : 'OPEN',
+          statusReason: done
+              ? 'Completed from reminder'
+              : 'Reopened from reminder undo',
+        );
+      } else {
+        await services.remindersRepository.update(r.id, done: done);
+      }
     } catch (_) {}
   }
 
@@ -220,16 +233,13 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     setState(() => _replace(r, remindAt: next));
     try {
       final services = AppScope.servicesOf(context);
-      await RemindersRepository(apiClient: services.apiClient)
-          .update(r.id, remindAt: next);
+      await services.remindersRepository.snooze(r.id, next);
     } catch (_) {}
     _toastUndo(l10n.rdRemindersSnoozedTomorrow, () {
       if (prev == null) return;
       setState(() => _replace(r, remindAt: prev));
       final services = AppScope.servicesOf(context);
-      RemindersRepository(apiClient: services.apiClient)
-          .update(r.id, remindAt: prev)
-          .ignore();
+      services.remindersRepository.update(r.id, remindAt: prev).ignore();
     });
   }
 
@@ -239,7 +249,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     _toast(AppLocalizations.of(context)!.rdRemindersDeleted);
     try {
       final services = AppScope.servicesOf(context);
-      await RemindersRepository(apiClient: services.apiClient).delete(r.id);
+      await services.remindersRepository.delete(r.id);
     } catch (_) {
       // Optimistic — the card is already gone locally.
     }
@@ -273,11 +283,16 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
     _toast(AppLocalizations.of(context)!.rdRemindersSet);
     try {
       final services = AppScope.servicesOf(context);
-      final created = await RemindersRepository(apiClient: services.apiClient)
-          .create(title: title, remindAt: remindAt);
+      final created = await services.remindersRepository.create(
+        title: title,
+        remindAt: remindAt,
+      );
       if (mounted) {
-        setState(() => _items =
-            _source.map((x) => x.id == temp.id ? created : x).toList());
+        setState(
+          () => _items = _source
+              .map((x) => x.id == temp.id ? created : x)
+              .toList(),
+        );
       }
     } catch (_) {
       // Keep the optimistic row — the reminder still reads locally.
@@ -288,17 +303,30 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
   /// changes (used for optimistic done / snooze updates).
   void _replace(Reminder r, {bool? done, DateTime? remindAt}) {
     _items = _source
-        .map((x) => x.id == r.id
-            ? Reminder(
-                id: x.id,
-                title: x.title,
-                done: done ?? x.done,
-                remindAt: remindAt ?? x.remindAt,
-                sourceNodeId: x.sourceNodeId,
-                createdAt: x.createdAt,
-                updatedAt: DateTime.now(),
-              )
-            : x)
+        .map(
+          (x) => x.id == r.id
+              ? Reminder(
+                  id: x.id,
+                  title: x.title,
+                  done: done ?? x.done,
+                  remindAt: remindAt ?? x.remindAt,
+                  sourceNodeId: x.sourceNodeId,
+                  taskId: x.taskId,
+                  captureId: x.captureId,
+                  status: done == true
+                      ? 'DONE'
+                      : done == false
+                      ? 'PENDING'
+                      : x.status,
+                  timezone: x.timezone,
+                  remindText: x.remindText,
+                  lastSentAt: x.lastSentAt,
+                  snoozedUntil: remindAt ?? x.snoozedUntil,
+                  createdAt: x.createdAt,
+                  updatedAt: DateTime.now(),
+                )
+              : x,
+        )
         .toList();
   }
 
@@ -335,8 +363,9 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
                       reminder: r,
                       onDelete: () => _delete(r),
                       onUncomplete: () => _uncomplete(r),
-                      onOpenSource:
-                          r.sourceNodeId == null ? null : () => _openSource(r),
+                      onOpenSource: r.sourceNodeId == null
+                          ? null
+                          : () => _openSource(r),
                     ),
                 ],
               ],
@@ -359,7 +388,12 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              RdIcon(RdIcons.chevronLeft, size: 20, color: rd.navy, strokeWidth: 2),
+              RdIcon(
+                RdIcons.chevronLeft,
+                size: 20,
+                color: rd.navy,
+                strokeWidth: 2,
+              ),
               const SizedBox(width: 3),
               Text(
                 _resolvedBackLabel(l10n),
@@ -396,8 +430,8 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
                   openCount == 0
                       ? l10n.rdRemindersSubtitleEmpty
                       : openCount == 1
-                          ? l10n.rdRemindersSubtitleOne
-                          : l10n.rdRemindersSubtitleMany(openCount),
+                      ? l10n.rdRemindersSubtitleOne
+                      : l10n.rdRemindersSubtitleMany(openCount),
                   style: GoogleFonts.vazirmatn(
                     fontSize: 14,
                     height: 1.5,
@@ -418,8 +452,12 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Center(
-                child: RdIcon('<path d="M12 5v14M5 12h14"/>',
-                    size: 22, stroke: '#FFFFFF', strokeWidth: 2.1),
+                child: RdIcon(
+                  '<path d="M12 5v14M5 12h14"/>',
+                  size: 22,
+                  stroke: '#FFFFFF',
+                  strokeWidth: 2.1,
+                ),
               ),
             ),
           ),
@@ -491,7 +529,6 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
       ),
     );
   }
-
 }
 
 /// A single reminder card — title, a relative time from `remindAt` when present,
@@ -524,7 +561,8 @@ class _ReminderCard extends StatelessWidget {
     final rd = context.rd;
     final done = reminder.done;
     final when = _relativeTime(l10n, reminder.remindAt);
-    final overdue = !done &&
+    final overdue =
+        !done &&
         reminder.remindAt != null &&
         reminder.remindAt!.isBefore(DateTime.now());
     // Overdue chips read in the danger tone; otherwise the calm periwinkle.
@@ -553,8 +591,7 @@ class _ReminderCard extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: done ? rd.success : Colors.transparent,
-                border:
-                    done ? null : Border.all(color: rd.faint, width: 1.8),
+                border: done ? null : Border.all(color: rd.faint, width: 1.8),
               ),
               child: done
                   ? const Center(
@@ -582,8 +619,9 @@ class _ReminderCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     height: 1.35,
                     color: done ? rd.faint : rd.ink,
-                    decoration:
-                        done ? TextDecoration.lineThrough : TextDecoration.none,
+                    decoration: done
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
                     decorationColor: rd.faint,
                   ),
                 ),
@@ -591,8 +629,12 @@ class _ReminderCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      RdIcon(RdIcons.clock,
-                          size: 13, color: chipColor, strokeWidth: 2),
+                      RdIcon(
+                        RdIcons.clock,
+                        size: 13,
+                        color: chipColor,
+                        strokeWidth: 2,
+                      ),
                       const SizedBox(width: 5),
                       Text(
                         when,
@@ -613,39 +655,41 @@ class _ReminderCard extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        RdIcon(RdIcons.link,
-                            size: 12, color: rd.muted, strokeWidth: 2),
+                        RdIcon(
+                          RdIcons.link,
+                          size: 12,
+                          color: rd.muted,
+                          strokeWidth: 2,
+                        ),
                         const SizedBox(width: 5),
-                        Text(l10n.rdRemindersFromMemory,
-                            style: GoogleFonts.vazirmatn(
-                                fontSize: 11.5,
-                                fontWeight: FontWeight.w500,
-                                color: rd.muted)),
+                        Text(
+                          l10n.rdRemindersFromMemory,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: rd.muted,
+                          ),
+                        ),
                         const SizedBox(width: 3),
-                        RdIcon('<path d="M9 6l6 6-6 6"/>',
-                            size: 11, color: rd.faint, strokeWidth: 2),
+                        RdIcon(
+                          '<path d="M9 6l6 6-6 6"/>',
+                          size: 11,
+                          color: rd.faint,
+                          strokeWidth: 2,
+                        ),
                       ],
                     ),
                   ),
                 ],
-                if (!done && (onSnooze != null || onDone != null)) ...[
+                if (!done && onSnooze != null) ...[
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      if (onDone != null)
-                        _CardAction(
-                          icon: RdIcons.check,
-                          label: l10n.rdRemindersDone,
-                          onTap: onDone!,
-                        ),
-                      if (onSnooze != null) ...[
-                        const SizedBox(width: 8),
-                        _CardAction(
-                          icon: RdIcons.resurface,
-                          label: l10n.rdRemindersSnooze,
-                          onTap: onSnooze!,
-                        ),
-                      ],
+                      _CardAction(
+                        icon: RdIcons.resurface,
+                        label: l10n.rdRemindersSnooze,
+                        onTap: onSnooze!,
+                      ),
                     ],
                   ),
                 ],
@@ -659,8 +703,12 @@ class _ReminderCard extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.all(6),
-              child: RdIcon(RdIcons.trash,
-                  size: 18, color: rd.faint, strokeWidth: 1.8),
+              child: RdIcon(
+                RdIcons.trash,
+                size: 18,
+                color: rd.faint,
+                strokeWidth: 1.8,
+              ),
             ),
           ),
         ],
@@ -831,7 +879,10 @@ class _ComposeSheetState extends State<_ComposeSheet> {
     final rd = context.rd;
     final canSet = _title.text.trim().isNotEmpty;
     final mq = MediaQuery.of(context);
-    final navGap = (mq.viewPadding.bottom - mq.viewInsets.bottom).clamp(0.0, 64.0);
+    final navGap = (mq.viewPadding.bottom - mq.viewInsets.bottom).clamp(
+      0.0,
+      64.0,
+    );
     return Padding(
       padding: EdgeInsets.only(bottom: mq.viewInsets.bottom),
       child: Container(
@@ -850,12 +901,19 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                    color: rd.line, borderRadius: BorderRadius.circular(100)),
+                  color: rd.line,
+                  borderRadius: BorderRadius.circular(100),
+                ),
               ),
             ),
-            Text(l10n.rdRemindersComposeTitle,
-                style: GoogleFonts.dosis(
-                    fontSize: 20, fontWeight: FontWeight.w700, color: rd.ink)),
+            Text(
+              l10n.rdRemindersComposeTitle,
+              style: GoogleFonts.dosis(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: rd.ink,
+              ),
+            ),
             const SizedBox(height: 14),
             TextField(
               controller: _title,
@@ -869,60 +927,86 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                 hintStyle: GoogleFonts.vazirmatn(fontSize: 15, color: rd.faint),
                 filled: true,
                 fillColor: rd.bg,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: rd.line, width: 1)),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: rd.line, width: 1),
+                ),
                 focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: rd.navy, width: 1.4)),
-                suffixIconConstraints:
-                    const BoxConstraints(minWidth: 46, minHeight: 46),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: rd.navy, width: 1.4),
+                ),
+                suffixIconConstraints: const BoxConstraints(
+                  minWidth: 46,
+                  minHeight: 46,
+                ),
                 suffixIcon: GestureDetector(
                   onTap: _dictate,
                   behavior: HitTestBehavior.opaque,
                   child: Center(
                     widthFactor: 1,
                     child: RdIcon(
-                        '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/>',
-                        size: 18,
-                        color: rd.peri,
-                        strokeWidth: 1.9),
+                      '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 19v3"/>',
+                      size: 18,
+                      color: rd.peri,
+                      strokeWidth: 1.9,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 18),
-            Text(l10n.rdRemindersWhenLabel,
-                style: GoogleFonts.vazirmatn(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                    color: rd.faint)),
+            Text(
+              l10n.rdRemindersWhenLabel,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: rd.faint,
+              ),
+            ),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _chip(l10n.rdRemindersLaterToday, _when == _When.laterToday,
-                    () => setState(() => _when = _When.laterToday)),
-                _chip(l10n.rdRemindersThisEvening, _when == _When.thisEvening,
-                    () => setState(() => _when = _When.thisEvening)),
-                _chip(l10n.rdSnoozeTomorrow, _when == _When.tomorrow,
-                    () => setState(() => _when = _When.tomorrow)),
-                _chip(l10n.rdRemindersNextWeek, _when == _When.nextWeek,
-                    () => setState(() => _when = _When.nextWeek)),
-                _chip(l10n.rdWhenMomentRight, _when == _When.someday,
-                    () => setState(() => _when = _When.someday)),
+                _chip(
+                  l10n.rdRemindersLaterToday,
+                  _when == _When.laterToday,
+                  () => setState(() => _when = _When.laterToday),
+                ),
+                _chip(
+                  l10n.rdRemindersThisEvening,
+                  _when == _When.thisEvening,
+                  () => setState(() => _when = _When.thisEvening),
+                ),
+                _chip(
+                  l10n.rdSnoozeTomorrow,
+                  _when == _When.tomorrow,
+                  () => setState(() => _when = _When.tomorrow),
+                ),
+                _chip(
+                  l10n.rdRemindersNextWeek,
+                  _when == _When.nextWeek,
+                  () => setState(() => _when = _When.nextWeek),
+                ),
+                _chip(
+                  l10n.rdWhenMomentRight,
+                  _when == _When.someday,
+                  () => setState(() => _when = _When.someday),
+                ),
                 _chip(_customLabel(l10n), _when == _When.custom, _pickCustom),
               ],
             ),
             const SizedBox(height: 20),
             GestureDetector(
               onTap: canSet
-                  ? () =>
-                      Navigator.of(context).pop((_title.text.trim(), _resolve()))
+                  ? () => Navigator.of(
+                      context,
+                    ).pop((_title.text.trim(), _resolve()))
                   : null,
               child: Opacity(
                 opacity: canSet ? 1 : 0.45,
@@ -931,12 +1015,17 @@ class _ComposeSheetState extends State<_ComposeSheet> {
                   width: double.infinity,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                      color: rd.navy, borderRadius: BorderRadius.circular(14)),
-                  child: Text(l10n.rdRemindersSetReminder,
-                      style: GoogleFonts.vazirmatn(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white)),
+                    color: rd.navy,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Text(
+                    l10n.rdRemindersSetReminder,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -957,11 +1046,14 @@ class _ComposeSheetState extends State<_ComposeSheet> {
           borderRadius: BorderRadius.circular(100),
           border: Border.all(color: active ? rd.navy : rd.line, width: 1),
         ),
-        child: Text(label,
-            style: GoogleFonts.vazirmatn(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: active ? Colors.white : rd.ink)),
+        child: Text(
+          label,
+          style: GoogleFonts.vazirmatn(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: active ? Colors.white : rd.ink,
+          ),
+        ),
       ),
     );
   }

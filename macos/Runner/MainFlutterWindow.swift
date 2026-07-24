@@ -10,6 +10,18 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
+    let deviceContextChannel = FlutterMethodChannel(
+      name: "mira/device_context",
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    deviceContextChannel.setMethodCallHandler { call, result in
+      if call.method == "getTimezone" {
+        result(TimeZone.current.identifier)
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
+
     super.awakeFromNib()
   }
 }

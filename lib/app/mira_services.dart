@@ -9,6 +9,7 @@ import 'package:mira_app/features/auth/onboarding_repository.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
 import 'package:mira_app/features/daily_brief/daily_brief_repository.dart';
 import 'package:mira_app/features/graph/graph_repository.dart';
+import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/features/settings/settings_repository.dart';
 import 'package:mira_app/features/workspace/assistant_repository.dart';
 import 'package:mira_app/features/workspace/canvas_repository.dart';
@@ -31,6 +32,7 @@ class MiraServices {
     required this.captureRepository,
     required this.dailyBriefRepository,
     required this.graphRepository,
+    required this.remindersRepository,
     required this.settingsRepository,
     required this.appReleaseRepository,
     required this.libraryRepository,
@@ -64,6 +66,11 @@ class MiraServices {
     );
     final dailyBriefRepository = DailyBriefRepository(apiClient: apiClient);
     final graphRepository = GraphRepository(apiClient: apiClient);
+    final notificationService = NotificationService();
+    final remindersRepository = RemindersRepository(
+      apiClient: apiClient,
+      notificationService: notificationService,
+    );
     final settingsRepository = SettingsRepository(apiClient: apiClient);
     final appReleaseRepository = AppReleaseRepository(apiClient: apiClient);
     final libraryRepository = LibraryRepository(apiClient: apiClient);
@@ -74,7 +81,6 @@ class MiraServices {
     final canvasRepository = CanvasRepository(apiClient: apiClient);
     final publishRepository = PublishRepository(apiClient: apiClient);
     final pluginRepository = PluginRepository(apiClient: apiClient);
-    final notificationService = NotificationService();
     return MiraServices._(
       tokenStorage: tokenStorage,
       apiClient: apiClient,
@@ -84,6 +90,7 @@ class MiraServices {
       captureRepository: captureRepository,
       dailyBriefRepository: dailyBriefRepository,
       graphRepository: graphRepository,
+      remindersRepository: remindersRepository,
       settingsRepository: settingsRepository,
       appReleaseRepository: appReleaseRepository,
       libraryRepository: libraryRepository,
@@ -106,6 +113,7 @@ class MiraServices {
   final CaptureRepository captureRepository;
   final DailyBriefRepository dailyBriefRepository;
   final GraphRepository graphRepository;
+  final RemindersRepository remindersRepository;
   final SettingsRepository settingsRepository;
   final AppReleaseRepository appReleaseRepository;
   final LibraryRepository libraryRepository;

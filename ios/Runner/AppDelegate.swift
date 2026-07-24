@@ -12,5 +12,16 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    let deviceContextChannel = FlutterMethodChannel(
+      name: "mira/device_context",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    deviceContextChannel.setMethodCallHandler { call, result in
+      if call.method == "getTimezone" {
+        result(TimeZone.current.identifier)
+      } else {
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 }

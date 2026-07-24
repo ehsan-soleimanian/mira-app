@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +10,7 @@ import 'package:mira_app/core/app_theme_controller.dart';
 import 'package:mira_app/core/auth/google_sign_in_config.dart';
 import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/config/api_endpoint_resolver.dart';
+import 'package:mira_app/core/locale/device_locale_context.dart';
 import 'package:mira_app/app/mira_services.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/core/update/app_update_listener.dart';
@@ -29,6 +32,7 @@ Future<void> main() async {
   );
 
   await ApiConfig.init();
+  await DeviceLocaleContext.initialize();
   await GoogleSignInConfig.ensureLoaded();
   final services = MiraServices.create();
   await services.notificationService.initialize();
@@ -53,6 +57,14 @@ Future<void> main() async {
   // token is refreshed lazily by the API client's 401 interceptor, so a mere
   // token-present check is enough here.
   final loggedIn = await services.authRepository.isLoggedIn();
+  if (loggedIn) {
+    try {
+      await _syncSessionContext(services);
+    } catch (_) {
+      // Device context and local reminder reconciliation are best-effort at
+      // boot; the normal authenticated screens retry when connectivity returns.
+    }
+  }
 
   runApp(
     MiraApp(
@@ -61,6 +73,21 @@ Future<void> main() async {
       initial: loggedIn ? 'home' : 'splash',
     ),
   );
+}
+
+Future<void> _syncSessionContext(MiraServices services) async {
+  await DeviceLocaleContext.initialize();
+  await services.settingsRepository.syncDeviceContext();
+  final delivery = await services.settingsRepository.notificationSettings();
+  await services.notificationService.setNotificationsEnabled(
+    delivery['remindersEnabled'] as bool? ?? true,
+  );
+  await services.notificationService.setQuietHours(
+    enabled: delivery['quietHoursEnabled'] as bool? ?? false,
+    start: delivery['quietStart'] as String? ?? '22:00',
+    end: delivery['quietEnd'] as String? ?? '07:00',
+  );
+  await services.remindersRepository.syncLocalNotifications();
 }
 
 class MiraApp extends StatelessWidget {
@@ -107,12 +134,62 @@ class MiraApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
-            home: AppUpdateListener(child: RdRoot(initial: initial)),
+            home: AppUpdateListener(
+              child: _SessionSyncLifecycle(
+                services: services,
+                child: RdRoot(initial: initial),
+              ),
+            ),
           );
         },
       ),
     );
   }
+}
+
+class _SessionSyncLifecycle extends StatefulWidget {
+  const _SessionSyncLifecycle({required this.services, required this.child});
+
+  final MiraServices services;
+  final Widget child;
+
+  @override
+  State<_SessionSyncLifecycle> createState() => _SessionSyncLifecycleState();
+}
+
+class _SessionSyncLifecycleState extends State<_SessionSyncLifecycle>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_sync());
+    }
+  }
+
+  Future<void> _sync() async {
+    try {
+      if (!await widget.services.authRepository.isLoggedIn()) return;
+      await _syncSessionContext(widget.services);
+    } catch (_) {
+      // Connectivity and platform notification state are retried on the next
+      // foreground transition or reminder screen refresh.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Light theme — matches the current app. Carries [RdTheme.light] so migrated

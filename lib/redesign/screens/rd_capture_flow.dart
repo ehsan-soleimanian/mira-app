@@ -12,7 +12,6 @@ import 'package:mira_app/features/capture/media/capture_media_picker.dart';
 import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
-import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 import 'package:mira_app/models/api/graph_models.dart';
@@ -667,6 +666,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         title: _pendingTitle,
       );
       await services.memoryStore.load(force: true);
+      await services.remindersRepository.syncLocalNotifications();
       if (_remind) await _createReminder(services);
       if (!mounted) return;
       setState(() {
@@ -697,6 +697,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     try {
       final result = await services.captureRepository.approve(captureId);
       await services.memoryStore.load(force: true);
+      await services.remindersRepository.syncLocalNotifications();
       if (!mounted) return;
       if (result.isProjectionPending) {
         ScaffoldMessenger.of(
@@ -726,7 +727,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           error: result.projectionError,
         ),
       );
-      if (receipt.isApplied) await services.memoryStore.load(force: true);
+      if (receipt.isApplied) {
+        await services.memoryStore.load(force: true);
+        await services.remindersRepository.syncLocalNotifications();
+      }
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       if (receipt.isApplied) {
@@ -767,9 +771,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           ? _transcriptTitle.trim()
           : _transcript.trim();
       if (title.isEmpty) return;
-      await RemindersRepository(
-        apiClient: services.apiClient,
-      ).create(title: title);
+      await services.remindersRepository.create(title: title);
     } catch (_) {
       // Best-effort — the capture is still kept.
     }

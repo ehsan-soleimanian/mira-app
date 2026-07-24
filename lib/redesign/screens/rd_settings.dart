@@ -79,8 +79,9 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
 
   /// First-letter initials for the avatar (e.g. "Ada Lovelace" → "AL").
   String get _initials {
-    final parts =
-        _name(AppLocalizations.of(context)!).split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    final parts = _name(
+      AppLocalizations.of(context)!,
+    ).split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
     if (parts.isEmpty) return '';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
     return (parts.first.characters.first + parts.last.characters.first)
@@ -128,16 +129,32 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
         _AcSection(
           label: l10n.rdAccountSectionProfile,
           rows: [
-            _AcRow(icon: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', title: l10n.rdAccountName, value: _name(l10n)),
-            _AcRow(icon: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>', title: l10n.rdAccountEmail, value: _email),
-            _AcRow(icon: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>', title: l10n.rdAccountPhone, value: '+1 (415) •••-2231'),
+            _AcRow(
+              icon:
+                  '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+              title: l10n.rdAccountName,
+              value: _name(l10n),
+            ),
+            _AcRow(
+              icon:
+                  '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>',
+              title: l10n.rdAccountEmail,
+              value: _email,
+            ),
+            _AcRow(
+              icon:
+                  '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>',
+              title: l10n.rdAccountPhone,
+              value: '+1 (415) •••-2231',
+            ),
           ],
         ),
         _AcSection(
           label: l10n.rdAccountSectionSecurity,
           rows: [
             _AcRow(
-              icon: '<rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+              icon:
+                  '<rect x="4" y="10" width="16" height="10" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
               title: l10n.rdAccountFaceIdTitle,
               sub: l10n.rdAccountFaceIdSub,
               chevron: false,
@@ -152,7 +169,11 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
               trailing: _AcToggle(on: _autoLock),
               onTap: () => setState(() => _autoLock = !_autoLock),
             ),
-            _AcRow(icon: '<rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/>', title: l10n.rdAccountChangePassword),
+            _AcRow(
+              icon:
+                  '<rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 10 0v3"/>',
+              title: l10n.rdAccountChangePassword,
+            ),
           ],
         ),
         // Plan row reflects real (client-side) membership: Free users see an
@@ -179,25 +200,29 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
           label: l10n.rdAccountSectionPreferences,
           rows: [
             _AcRow(
-              icon: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+              icon:
+                  '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
               title: l10n.rdAccountNotificationsTitle,
               sub: l10n.rdAccountNotificationsSub,
               onTap: () => widget.go('notifications'),
             ),
             _AcRow(
-              icon: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+              icon:
+                  '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
               title: l10n.rdAccountRemindersTitle,
               sub: l10n.rdAccountRemindersSub,
               onTap: () => widget.go('reminders'),
             ),
             _AcRow(
-              icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
+              icon:
+                  '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
               title: l10n.rdAccountAppearanceTitle,
               sub: l10n.rdAccountAppearanceSub,
               onTap: () => widget.go('appearance'),
             ),
             _AcRow(
-              icon: '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+              icon:
+                  '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
               title: l10n.rdAccountConnectedAppsTitle,
               sub: l10n.rdAccountConnectedAppsSub,
               onTap: () => widget.go('connectedapps'),
@@ -208,14 +233,35 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
           label: l10n.rdAccountSectionMemoryData,
           rows: [
             _AcStorage(onTap: () => widget.go('storage')),
-            _AcRow(icon: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/>', title: l10n.rdAccountExportData, sub: l10n.rdAccountExportDataSub),
-            _AcRow(icon: '<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/>', title: l10n.rdAccountMemoryHistory, sub: l10n.rdAccountMemoryHistorySub),
+            _AcRow(
+              icon:
+                  '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/>',
+              title: l10n.rdAccountExportData,
+              sub: l10n.rdAccountExportDataSub,
+            ),
+            _AcRow(
+              icon: '<path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/>',
+              title: l10n.rdAccountMemoryHistory,
+              sub: l10n.rdAccountMemoryHistorySub,
+            ),
           ],
         ),
         _AcSection(
           rows: [
-            _AcRow(icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>', title: l10n.rdAccountSignOut, chevron: false, onTap: _signOut),
-            _AcRow(icon: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/>', title: l10n.rdAccountDeleteAccount, chevron: false, danger: true),
+            _AcRow(
+              icon:
+                  '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
+              title: l10n.rdAccountSignOut,
+              chevron: false,
+              onTap: _signOut,
+            ),
+            _AcRow(
+              icon:
+                  '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M6 6v14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6"/>',
+              title: l10n.rdAccountDeleteAccount,
+              chevron: false,
+              danger: true,
+            ),
           ],
         ),
         _AcFoot(l10n.rdAccountFootVersion),
@@ -226,7 +272,11 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
 
 // ══ Notifications ══════════════════════════════════════════════════════
 class RdNotificationsScreen extends StatefulWidget {
-  const RdNotificationsScreen({super.key, required this.go, required this.onBack});
+  const RdNotificationsScreen({
+    super.key,
+    required this.go,
+    required this.onBack,
+  });
 
   final RdGo go;
   final VoidCallback onBack;
@@ -238,8 +288,15 @@ class RdNotificationsScreen extends StatefulWidget {
 class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
   // Designed defaults — shown until backend settings load, or if unreachable.
   final Map<String, bool> _st = {
-    'brief': true, 'briefResurface': true, 'timeSensitive': true, 'nudges': true,
-    'captureConfirm': true, 'weekly': false, 'quiet': true, 'sound': true, 'haptics': true,
+    'brief': true,
+    'briefResurface': true,
+    'timeSensitive': true,
+    'nudges': true,
+    'captureConfirm': true,
+    'weekly': false,
+    'quiet': true,
+    'sound': true,
+    'haptics': true,
   };
 
   TimeOfDay _briefTime = const TimeOfDay(hour: 8, minute: 0);
@@ -273,16 +330,24 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
 
   Future<void> _load() async {
     try {
-      final data = await AppScope.servicesOf(context)
-          .settingsRepository
-          .notificationSettings();
+      final data = await AppScope.servicesOf(
+        context,
+      ).settingsRepository.notificationSettings();
       if (!mounted) return;
       setState(() {
         _backendField.forEach((key, field) {
           final value = data[field];
           if (value is bool) _st[key] = value;
         });
+        _briefTime = _parseTime(data['dailyBriefTime'], fallback: _briefTime);
+        _quietStart = _parseTime(data['quietStart'], fallback: _quietStart);
+        _quietEnd = _parseTime(data['quietEnd'], fallback: _quietEnd);
       });
+      await AppScope.servicesOf(context).notificationService.setQuietHours(
+        enabled: _st['quiet'] ?? false,
+        start: _apiTime(_quietStart),
+        end: _apiTime(_quietEnd),
+      );
     } catch (_) {
       // Backend unreachable — keep the designed defaults.
     }
@@ -290,32 +355,57 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
 
   /// Optimistically flip the toggle, then PATCH the mapped backend field
   /// best-effort. Local-only toggles simply update the UI.
-  void _t(String k) {
+  Future<void> _t(String k) async {
     final next = !(_st[k] ?? false);
+    final services = AppScope.servicesOf(context);
+    if (k == 'nudges' && next) {
+      final granted = await services.notificationService.requestPermissions();
+      if (!mounted) return;
+      if (!granted) {
+        setState(() => _st[k] = false);
+        await services.notificationService.setNotificationsEnabled(false);
+        await _push(_backendField[k]!, false);
+        return;
+      }
+    }
     setState(() => _st[k] = next);
+    if (k == 'nudges') {
+      await services.notificationService.setNotificationsEnabled(next);
+      if (next) {
+        await services.remindersRepository.syncLocalNotifications();
+      }
+    }
+    if (k == 'quiet') {
+      await services.notificationService.setQuietHours(
+        enabled: next,
+        start: _apiTime(_quietStart),
+        end: _apiTime(_quietEnd),
+      );
+      await services.remindersRepository.syncLocalNotifications();
+    }
     final field = _backendField[k];
     if (field == null) return;
-    unawaited(_push(field, next));
+    await _push(field, next);
   }
 
-  Future<void> _push(String field, bool value) async {
+  Future<void> _push(String field, Object value) async {
     try {
-      await AppScope.servicesOf(context)
-          .settingsRepository
-          .updateNotificationSettings({field: value});
+      await AppScope.servicesOf(
+        context,
+      ).settingsRepository.updateNotificationSettings({field: value});
     } catch (_) {
       // Best-effort — the optimistic UI stays; nothing to roll back offline.
     }
   }
 
   _AcRow _toggleRow(String icon, String title, String? sub, String k) => _AcRow(
-        icon: icon,
-        title: title,
-        sub: sub,
-        chevron: false,
-        trailing: _AcToggle(on: _st[k] ?? false),
-        onTap: () => _t(k),
-      );
+    icon: icon,
+    title: title,
+    sub: sub,
+    chevron: false,
+    trailing: _AcToggle(on: _st[k] ?? false),
+    onTap: () => unawaited(_t(k)),
+  );
 
   Future<void> _pickBriefTime() async {
     final picked = await showTimePicker(
@@ -323,6 +413,9 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
       initialTime: _briefTime,
     );
     if (picked != null && mounted) setState(() => _briefTime = picked);
+    if (picked != null) {
+      await _push('dailyBriefTime', _apiTime(picked));
+    }
   }
 
   Future<void> _pickQuietSchedule() async {
@@ -343,7 +436,39 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
       _quietStart = start;
       _quietEnd = end;
     });
+    final services = AppScope.servicesOf(context);
+    await services.settingsRepository.updateNotificationSettings({
+      'quietStart': _apiTime(start),
+      'quietEnd': _apiTime(end),
+    });
+    await services.notificationService.setQuietHours(
+      enabled: _st['quiet'] ?? false,
+      start: _apiTime(start),
+      end: _apiTime(end),
+    );
+    await services.remindersRepository.syncLocalNotifications();
   }
+
+  TimeOfDay _parseTime(Object? value, {required TimeOfDay fallback}) {
+    if (value is! String) return fallback;
+    final parts = value.split(':');
+    if (parts.length != 2) return fallback;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return fallback;
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+
+  String _apiTime(TimeOfDay value) =>
+      '${value.hour.toString().padLeft(2, '0')}:'
+      '${value.minute.toString().padLeft(2, '0')}';
 
   String _fmt(TimeOfDay t, AppLocalizations l10n) {
     final h = t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod;
@@ -363,29 +488,69 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
         _AcSection(
           label: l10n.rdNotificationsSectionDailyBrief,
           rows: [
-            _toggleRow('<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>', l10n.rdNotificationsMorningBrief, l10n.rdNotificationsMorningBriefSub, 'brief'),
-            _AcRow(icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', title: l10n.rdNotificationsBriefTime, value: _fmt(_briefTime, l10n), onTap: _pickBriefTime),
-            _toggleRow('<path d="M12 3a9 9 0 1 0 9 9 6 6 0 0 1-9-9Z"/>', l10n.rdNotificationsResurfaceMemory, l10n.rdNotificationsResurfaceMemorySub, 'briefResurface'),
+            _toggleRow(
+              '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/>',
+              l10n.rdNotificationsMorningBrief,
+              l10n.rdNotificationsMorningBriefSub,
+              'brief',
+            ),
+            _AcRow(
+              icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+              title: l10n.rdNotificationsBriefTime,
+              value: _fmt(_briefTime, l10n),
+              onTap: _pickBriefTime,
+            ),
+            _toggleRow(
+              '<path d="M12 3a9 9 0 1 0 9 9 6 6 0 0 1-9-9Z"/>',
+              l10n.rdNotificationsResurfaceMemory,
+              l10n.rdNotificationsResurfaceMemorySub,
+              'briefResurface',
+            ),
           ],
         ),
         _AcSection(
           label: l10n.rdNotificationsSectionReminders,
           rows: [
-            _toggleRow('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>', l10n.rdNotificationsTimeSensitive, l10n.rdNotificationsTimeSensitiveSub, 'timeSensitive'),
-            _toggleRow('<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/>', l10n.rdNotificationsGentleNudges, l10n.rdNotificationsGentleNudgesSub, 'nudges'),
+            _toggleRow(
+              '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+              l10n.rdNotificationsTimeSensitive,
+              l10n.rdNotificationsTimeSensitiveSub,
+              'timeSensitive',
+            ),
+            _toggleRow(
+              '<path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/>',
+              l10n.rdNotificationsGentleNudges,
+              l10n.rdNotificationsGentleNudgesSub,
+              'nudges',
+            ),
           ],
         ),
         _AcSection(
           label: l10n.rdNotificationsSectionCaptures,
           rows: [
-            _toggleRow('<path d="M20 6 9 17l-5-5"/>', l10n.rdNotificationsConfirmBeforeSaving, l10n.rdNotificationsConfirmBeforeSavingSub, 'captureConfirm'),
-            _toggleRow('<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>', l10n.rdNotificationsWeeklyRecap, l10n.rdNotificationsWeeklyRecapSub, 'weekly'),
+            _toggleRow(
+              '<path d="M20 6 9 17l-5-5"/>',
+              l10n.rdNotificationsConfirmBeforeSaving,
+              l10n.rdNotificationsConfirmBeforeSavingSub,
+              'captureConfirm',
+            ),
+            _toggleRow(
+              '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+              l10n.rdNotificationsWeeklyRecap,
+              l10n.rdNotificationsWeeklyRecapSub,
+              'weekly',
+            ),
           ],
         ),
         _AcSection(
           label: l10n.rdNotificationsSectionQuietHours,
           rows: [
-            _toggleRow('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>', l10n.rdNotificationsQuietHours, l10n.rdNotificationsQuietHoursSub, 'quiet'),
+            _toggleRow(
+              '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>',
+              l10n.rdNotificationsQuietHours,
+              l10n.rdNotificationsQuietHoursSub,
+              'quiet',
+            ),
             _AcRow(
               icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
               title: l10n.rdNotificationsSchedule,
@@ -397,8 +562,18 @@ class _RdNotificationsScreenState extends State<RdNotificationsScreen> {
         _AcSection(
           label: l10n.rdNotificationsSectionDelivery,
           rows: [
-            _toggleRow('<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>', l10n.rdNotificationsSound, null, 'sound'),
-            _toggleRow('<rect x="7" y="2" width="10" height="20" rx="3"/><path d="M11 18h2"/>', l10n.rdNotificationsHaptics, null, 'haptics'),
+            _toggleRow(
+              '<path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>',
+              l10n.rdNotificationsSound,
+              null,
+              'sound',
+            ),
+            _toggleRow(
+              '<rect x="7" y="2" width="10" height="20" rx="3"/><path d="M11 18h2"/>',
+              l10n.rdNotificationsHaptics,
+              null,
+              'haptics',
+            ),
           ],
         ),
         _AcFoot(l10n.rdNotificationsFoot),
@@ -415,11 +590,18 @@ class _LegacyConnectedAppsScreen extends StatefulWidget {
   final VoidCallback onBack;
 
   @override
-  State<_LegacyConnectedAppsScreen> createState() => _LegacyConnectedAppsScreenState();
+  State<_LegacyConnectedAppsScreen> createState() =>
+      _LegacyConnectedAppsScreenState();
 }
 
-class _LegacyConnectedAppsScreenState extends State<_LegacyConnectedAppsScreen> {
-  final Map<String, bool> _conn = {'gmail': false, 'safari': false, 'readwise': false, 'voice': false};
+class _LegacyConnectedAppsScreenState
+    extends State<_LegacyConnectedAppsScreen> {
+  final Map<String, bool> _conn = {
+    'gmail': false,
+    'safari': false,
+    'readwise': false,
+    'voice': false,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -432,18 +614,66 @@ class _LegacyConnectedAppsScreenState extends State<_LegacyConnectedAppsScreen> 
         _AcSection(
           label: l10n.rdConnectedAppsSectionConnected,
           rows: [
-            _AcRow(tile: (Color(0x20E94848), '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 3 8 5 8-5"/>'), title: l10n.rdConnectedAppsCalendar, sub: l10n.rdConnectedAppsCalendarSub, subDot: true),
-            _AcRow(tile: (Color(0x20F0B545), '<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/>'), title: l10n.rdConnectedAppsNotes, sub: l10n.rdConnectedAppsNotesSub, subDot: true),
-            _AcRow(tile: (Color(0x205B8DEF), '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="m5 18 5-4 3 2 3-3 5 4"/>'), title: l10n.rdConnectedAppsPhotos, sub: l10n.rdConnectedAppsPhotosSub, subDot: true),
+            _AcRow(
+              tile: (
+                Color(0x20E94848),
+                '<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 3 8 5 8-5"/>',
+              ),
+              title: l10n.rdConnectedAppsCalendar,
+              sub: l10n.rdConnectedAppsCalendarSub,
+              subDot: true,
+            ),
+            _AcRow(
+              tile: (
+                Color(0x20F0B545),
+                '<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+              ),
+              title: l10n.rdConnectedAppsNotes,
+              sub: l10n.rdConnectedAppsNotesSub,
+              subDot: true,
+            ),
+            _AcRow(
+              tile: (
+                Color(0x205B8DEF),
+                '<rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="m5 18 5-4 3 2 3-3 5 4"/>',
+              ),
+              title: l10n.rdConnectedAppsPhotos,
+              sub: l10n.rdConnectedAppsPhotosSub,
+              subDot: true,
+            ),
           ],
         ),
         _AcSection(
           label: l10n.rdConnectedAppsSectionAvailable,
           rows: [
-            _available('gmail', const Color(0x20EA4335), '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3 7 9 6 9-6"/>', l10n.rdConnectedAppsGmail, l10n.rdConnectedAppsGmailSub),
-            _available('safari', const Color(0x202A9DF4), '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/>', l10n.rdConnectedAppsSafari, l10n.rdConnectedAppsSafariSub),
-            _available('readwise', const Color(0x207C6BEA), '<path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z"/><path d="M18 3v18"/>', l10n.rdConnectedAppsReadwise, l10n.rdConnectedAppsReadwiseSub),
-            _available('voice', const Color(0x20E86868), '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>', l10n.rdConnectedAppsVoiceMemos, l10n.rdConnectedAppsVoiceMemosSub),
+            _available(
+              'gmail',
+              const Color(0x20EA4335),
+              '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3 7 9 6 9-6"/>',
+              l10n.rdConnectedAppsGmail,
+              l10n.rdConnectedAppsGmailSub,
+            ),
+            _available(
+              'safari',
+              const Color(0x202A9DF4),
+              '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/>',
+              l10n.rdConnectedAppsSafari,
+              l10n.rdConnectedAppsSafariSub,
+            ),
+            _available(
+              'readwise',
+              const Color(0x207C6BEA),
+              '<path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2Z"/><path d="M18 3v18"/>',
+              l10n.rdConnectedAppsReadwise,
+              l10n.rdConnectedAppsReadwiseSub,
+            ),
+            _available(
+              'voice',
+              const Color(0x20E86868),
+              '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+              l10n.rdConnectedAppsVoiceMemos,
+              l10n.rdConnectedAppsVoiceMemosSub,
+            ),
           ],
         ),
         const _CaPrivacy(),
@@ -464,19 +694,44 @@ class _LegacyConnectedAppsScreenState extends State<_LegacyConnectedAppsScreen> 
           ? Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                RdIcon(RdIcons.checkThick, size: 15, color: rd.success, strokeWidth: 2.4),
+                RdIcon(
+                  RdIcons.checkThick,
+                  size: 15,
+                  color: rd.success,
+                  strokeWidth: 2.4,
+                ),
                 const SizedBox(width: 4),
-                Text(AppLocalizations.of(context)!.rdCommonConnected, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: rd.success)),
+                Text(
+                  AppLocalizations.of(context)!.rdCommonConnected,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: rd.success,
+                  ),
+                ),
               ],
             )
           : GestureDetector(
               onTap: () => setState(() => _conn[k] = true),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 // Solid dark pill with white label — kept fixed so the white
                 // text stays legible in both themes (ink flips near-white).
-                decoration: BoxDecoration(color: RdColors.ink, borderRadius: BorderRadius.circular(100)),
-                child: Text(AppLocalizations.of(context)!.rdCommonConnect, style: GoogleFonts.vazirmatn(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                decoration: BoxDecoration(
+                  color: RdColors.ink,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: Text(
+                  AppLocalizations.of(context)!.rdCommonConnect,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
     );
@@ -485,7 +740,12 @@ class _LegacyConnectedAppsScreenState extends State<_LegacyConnectedAppsScreen> 
 
 // ══ shared primitives ══════════════════════════════════════════════════
 class _AcScaffold extends StatelessWidget {
-  const _AcScaffold({required this.onBack, required this.title, required this.children, this.intro});
+  const _AcScaffold({
+    required this.onBack,
+    required this.title,
+    required this.children,
+    this.intro,
+  });
 
   final VoidCallback onBack;
   final String title;
@@ -514,9 +774,20 @@ class _AcScaffold extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        RdIcon(RdIcons.chevronLeft, size: 20, color: rd.navy, strokeWidth: 2),
+                        RdIcon(
+                          RdIcons.chevronLeft,
+                          size: 20,
+                          color: rd.navy,
+                          strokeWidth: 2,
+                        ),
                         const SizedBox(width: 3),
-                        Text(AppLocalizations.of(context)!.rdCommonSettings, style: GoogleFonts.vazirmatn(fontSize: 15, color: rd.navy)),
+                        Text(
+                          AppLocalizations.of(context)!.rdCommonSettings,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 15,
+                            color: rd.navy,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -524,12 +795,26 @@ class _AcScaffold extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(26, 12, 26, 4),
-                child: Text(title, style: GoogleFonts.dosis(fontSize: 30, fontWeight: FontWeight.w700, color: rd.ink)),
+                child: Text(
+                  title,
+                  style: GoogleFonts.dosis(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
               ),
               if (intro != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 4, 28, 0),
-                  child: Text(intro!, style: GoogleFonts.vazirmatn(fontSize: 14, height: 1.5, color: rd.muted)),
+                  child: Text(
+                    intro!,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14,
+                      height: 1.5,
+                      color: rd.muted,
+                    ),
+                  ),
                 ),
               ...children,
             ],
@@ -559,7 +844,12 @@ class _AcSection extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(6, 0, 6, 9),
               child: Text(
                 label!.toUpperCase(),
-                style: GoogleFonts.vazirmatn(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: rd.faint),
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                  color: rd.faint,
+                ),
               ),
             ),
           Container(
@@ -629,7 +919,12 @@ class _AcRow extends StatelessWidget {
             ] else if (icon != null) ...[
               SizedBox(
                 width: 24,
-                child: RdIcon(icon!, size: 19, color: danger ? _danger : rd.peri, strokeWidth: 1.8),
+                child: RdIcon(
+                  icon!,
+                  size: 19,
+                  color: danger ? _danger : rd.peri,
+                  strokeWidth: 1.8,
+                ),
               ),
               const SizedBox(width: 14),
             ],
@@ -653,14 +948,20 @@ class _AcRow extends StatelessWidget {
                           Container(
                             width: 6,
                             height: 6,
-                            decoration: BoxDecoration(shape: BoxShape.circle, color: rd.success),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: rd.success,
+                            ),
                           ),
                           const SizedBox(width: 6),
                         ],
                         Flexible(
                           child: Text(
                             sub!,
-                            style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
+                            style: GoogleFonts.vazirmatn(
+                              fontSize: 12.5,
+                              color: rd.muted,
+                            ),
                           ),
                         ),
                       ],
@@ -672,14 +973,22 @@ class _AcRow extends StatelessWidget {
             if (value != null)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: Text(value!, style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.muted)),
+                child: Text(
+                  value!,
+                  style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.muted),
+                ),
               ),
             if (trailing != null)
               Padding(padding: const EdgeInsets.only(left: 8), child: trailing!)
             else if (chevron)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: RdIcon('<path d="m9 6 6 6-6 6"/>', size: 18, color: rd.faint, strokeWidth: 2),
+                child: RdIcon(
+                  '<path d="m9 6 6 6-6 6"/>',
+                  size: 18,
+                  color: rd.faint,
+                  strokeWidth: 2,
+                ),
               ),
           ],
         ),
@@ -701,8 +1010,13 @@ class _AcTile extends StatelessWidget {
     return Container(
       width: 34,
       height: 34,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10)),
-      child: Center(child: RdIcon(icon, size: 19, color: context.rd.ink, strokeWidth: 1.9)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Center(
+        child: RdIcon(icon, size: 19, color: context.rd.ink, strokeWidth: 1.9),
+      ),
     );
   }
 }
@@ -716,8 +1030,9 @@ class _AcToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     // On-track is brand navy (fixed accent). Off-track has no token: keep the
     // exact light literal, and use a lifted neutral on dark for contrast.
-    final offTrack =
-        _isDark(context) ? const Color(0xFF3A3B44) : const Color(0xFFD8D8D2);
+    final offTrack = _isDark(context)
+        ? const Color(0xFF3A3B44)
+        : const Color(0xFFD8D8D2);
     return Container(
       width: 46,
       height: 28,
@@ -733,7 +1048,10 @@ class _AcToggle extends StatelessWidget {
           child: Container(
             width: 22,
             height: 22,
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+            ),
           ),
         ),
       ),
@@ -757,8 +1075,9 @@ class _AcProfile extends StatelessWidget {
     final rd = context.rd;
     // Success chip has no soft token: keep the exact light green, use a dark
     // success-tinted fill on dark so the bright chip doesn't glare.
-    final chipBg =
-        _isDark(context) ? const Color(0xFF1B2E24) : const Color(0xFFE7F3EC);
+    final chipBg = _isDark(context)
+        ? const Color(0xFF1B2E24)
+        : const Color(0xFFE7F3EC);
     return Container(
       margin: const EdgeInsets.fromLTRB(22, 18, 22, 0),
       padding: const EdgeInsets.all(18),
@@ -780,7 +1099,14 @@ class _AcProfile extends StatelessWidget {
               ),
             ),
             child: Center(
-              child: Text(initials, style: GoogleFonts.dosis(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
+              child: Text(
+                initials,
+                style: GoogleFonts.dosis(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 15),
@@ -788,19 +1114,48 @@ class _AcProfile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.dosis(fontSize: 20, fontWeight: FontWeight.w700, color: rd.ink)),
+                Text(
+                  name,
+                  style: GoogleFonts.dosis(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(email, style: GoogleFonts.vazirmatn(fontSize: 13.5, color: rd.muted)),
+                Text(
+                  email,
+                  style: GoogleFonts.vazirmatn(fontSize: 13.5, color: rd.muted),
+                ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.fromLTRB(7, 3, 9, 3),
-                  decoration: BoxDecoration(color: chipBg, borderRadius: BorderRadius.circular(100)),
+                  decoration: BoxDecoration(
+                    color: chipBg,
+                    borderRadius: BorderRadius.circular(100),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: rd.success)),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: rd.success,
+                        ),
+                      ),
                       const SizedBox(width: 5),
-                      Text(AppLocalizations.of(context)!.rdAccountAllMemoriesSynced, style: GoogleFonts.vazirmatn(fontSize: 11.5, fontWeight: FontWeight.w600, color: rd.success)),
+                      Text(
+                        AppLocalizations.of(
+                          context,
+                        )!.rdAccountAllMemoriesSynced,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: rd.success,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -824,8 +1179,9 @@ class _AcStorage extends StatelessWidget {
   Widget build(BuildContext context) {
     final rd = context.rd;
     // Track has no token: keep the exact light literal, darken for dark mode.
-    final trackBg =
-        _isDark(context) ? const Color(0xFF2A2B33) : const Color(0xFFE7E7E1);
+    final trackBg = _isDark(context)
+        ? const Color(0xFF2A2B33)
+        : const Color(0xFFE7E7E1);
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -838,18 +1194,36 @@ class _AcStorage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.baseline,
               textBaseline: TextBaseline.alphabetic,
               children: [
-                Text(AppLocalizations.of(context)!.rdAccountStorageHeadline(34), style: GoogleFonts.dosis(fontSize: 17, fontWeight: FontWeight.w700, color: rd.ink)),
+                Text(
+                  AppLocalizations.of(context)!.rdAccountStorageHeadline(34),
+                  style: GoogleFonts.dosis(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Text(AppLocalizations.of(context)!.rdAccountStorageSubline(2000), style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted)),
+                Text(
+                  AppLocalizations.of(context)!.rdAccountStorageSubline(2000),
+                  style: GoogleFonts.vazirmatn(fontSize: 12.5, color: rd.muted),
+                ),
                 const Spacer(),
                 if (onTap != null)
-                  RdIcon('<path d="m9 6 6 6-6 6"/>', size: 18, color: rd.faint, strokeWidth: 2),
+                  RdIcon(
+                    '<path d="m9 6 6 6-6 6"/>',
+                    size: 18,
+                    color: rd.faint,
+                    strokeWidth: 2,
+                  ),
               ],
             ),
             const SizedBox(height: 10),
             Container(
               height: 7,
-              decoration: BoxDecoration(color: trackBg, borderRadius: BorderRadius.circular(100)),
+              decoration: BoxDecoration(
+                color: trackBg,
+                borderRadius: BorderRadius.circular(100),
+              ),
               child: FractionallySizedBox(
                 alignment: Alignment.centerLeft,
                 widthFactor: 0.22,
@@ -880,7 +1254,10 @@ class _CaPrivacy extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(22, 20, 22, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(color: panelBg, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: panelBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -894,7 +1271,11 @@ class _CaPrivacy extends StatelessWidget {
           Expanded(
             child: Text(
               AppLocalizations.of(context)!.rdConnectedAppsPrivacy,
-              style: GoogleFonts.vazirmatn(fontSize: 12.5, height: 1.5, color: rd.muted),
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                height: 1.5,
+                color: rd.muted,
+              ),
             ),
           ),
         ],
@@ -913,7 +1294,10 @@ class _AcFoot extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 26),
       child: Center(
-        child: Text(text, style: GoogleFonts.vazirmatn(fontSize: 12, color: context.rd.faint)),
+        child: Text(
+          text,
+          style: GoogleFonts.vazirmatn(fontSize: 12, color: context.rd.faint),
+        ),
       ),
     );
   }

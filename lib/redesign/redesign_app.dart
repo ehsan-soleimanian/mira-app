@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/core/app_theme_controller.dart';
 import 'package:mira_app/app/mira_services.dart';
+import 'package:mira_app/l10n/app_localizations.dart';
 
 import 'rd_root.dart';
 import 'theme/rd_colors.dart';
@@ -32,6 +34,13 @@ class RedesignApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Mira',
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: ThemeData(
           useMaterial3: true,
           scaffoldBackgroundColor: RdColors.bg,

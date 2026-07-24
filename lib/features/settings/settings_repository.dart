@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:mira_app/core/api/api_client.dart';
+import 'package:mira_app/core/locale/device_locale_context.dart';
 import 'package:mira_app/models/api/auth_models.dart';
 import 'package:mira_app/models/api/settings_models.dart';
 import 'package:mira_app/models/api/storage_models.dart';
@@ -16,6 +17,9 @@ class SettingsRepository {
   static const _dailyBriefKey = 'mira_settings_daily_brief';
   static const _memoryInsightsKey = 'mira_settings_memory_insights';
   static const _analyticsKey = 'mira_settings_analytics';
+  static const _preferredLanguageTagKey =
+      'mira_settings_preferred_language_tag';
+  static const _timezoneKey = 'mira_settings_timezone';
 
   Future<AuthUser> fetchProfile() async {
     final response = await _dio.get<Map<String, dynamic>>('/auth/me');
@@ -69,6 +73,20 @@ class SettingsRepository {
     }
   }
 
+  Future<void> syncDeviceContext() async {
+    try {
+      await _dio.patch<Map<String, dynamic>>(
+        '/auth/settings',
+        data: {
+          'timezone': DeviceLocaleContext.timezone,
+          'preferred_language': DeviceLocaleContext.languageTag,
+        },
+      );
+    } on DioException catch (error) {
+      if (!_canUseLocalFallback(error)) rethrow;
+    }
+  }
+
   /// Detailed notification settings for the redesigned Notifications screen
   /// (`GET /auth/notification-settings`). Returns the raw camelCase payload so
   /// the screen can read each flag by key; callers fall back to the designed
@@ -118,6 +136,11 @@ class SettingsRepository {
     await prefs.setBool(_dailyBriefKey, settings.dailyBriefEnabled);
     await prefs.setBool(_memoryInsightsKey, settings.memoryInsightsEnabled);
     await prefs.setBool(_analyticsKey, settings.analyticsEnabled);
+    await prefs.setString(
+      _preferredLanguageTagKey,
+      settings.preferredLanguageTag ?? settings.language.apiValue,
+    );
+    await prefs.setString(_timezoneKey, settings.timezone);
   }
 
   Future<UserSettings> _cachedSettings() async {
@@ -129,6 +152,8 @@ class SettingsRepository {
       dailyBriefEnabled: prefs.getBool(_dailyBriefKey) ?? true,
       memoryInsightsEnabled: prefs.getBool(_memoryInsightsKey) ?? true,
       analyticsEnabled: prefs.getBool(_analyticsKey) ?? false,
+      preferredLanguageTag: prefs.getString(_preferredLanguageTagKey),
+      timezone: prefs.getString(_timezoneKey) ?? DeviceLocaleContext.timezone,
     );
   }
 

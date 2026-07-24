@@ -24,8 +24,9 @@ enum MiraLanguagePreference {
   final String apiValue;
 
   static MiraLanguagePreference fromApi(String? value) {
+    final language = value?.toLowerCase().split(RegExp('[-_]')).first;
     return MiraLanguagePreference.values.firstWhere(
-      (language) => language.apiValue == value,
+      (candidate) => candidate.apiValue == language,
       orElse: () => MiraLanguagePreference.english,
     );
   }
@@ -39,6 +40,8 @@ class UserSettings {
     this.dailyBriefEnabled = true,
     this.memoryInsightsEnabled = true,
     this.analyticsEnabled = false,
+    this.preferredLanguageTag,
+    this.timezone = 'UTC',
   });
 
   factory UserSettings.fromJson(Map<String, dynamic> json) => UserSettings(
@@ -50,6 +53,8 @@ class UserSettings {
     dailyBriefEnabled: json['daily_brief_enabled'] as bool? ?? true,
     memoryInsightsEnabled: json['memory_insights_enabled'] as bool? ?? true,
     analyticsEnabled: json['analytics_enabled'] as bool? ?? false,
+    preferredLanguageTag: json['preferred_language'] as String?,
+    timezone: json['timezone'] as String? ?? 'UTC',
   );
 
   final MiraLanguagePreference language;
@@ -58,9 +63,12 @@ class UserSettings {
   final bool dailyBriefEnabled;
   final bool memoryInsightsEnabled;
   final bool analyticsEnabled;
+  final String? preferredLanguageTag;
+  final String timezone;
 
   Map<String, dynamic> toJson() => {
-    'preferred_language': language.apiValue,
+    'preferred_language': preferredLanguageTag ?? language.apiValue,
+    'timezone': timezone,
     'theme_mode': theme.apiValue,
     'notifications_enabled': notificationsEnabled,
     'daily_brief_enabled': dailyBriefEnabled,
@@ -75,6 +83,8 @@ class UserSettings {
     bool? dailyBriefEnabled,
     bool? memoryInsightsEnabled,
     bool? analyticsEnabled,
+    String? preferredLanguageTag,
+    String? timezone,
   }) {
     return UserSettings(
       language: language ?? this.language,
@@ -84,6 +94,10 @@ class UserSettings {
       memoryInsightsEnabled:
           memoryInsightsEnabled ?? this.memoryInsightsEnabled,
       analyticsEnabled: analyticsEnabled ?? this.analyticsEnabled,
+      preferredLanguageTag: language != null
+          ? language.apiValue
+          : preferredLanguageTag ?? this.preferredLanguageTag,
+      timezone: timezone ?? this.timezone,
     );
   }
 }

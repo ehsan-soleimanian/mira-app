@@ -56,10 +56,14 @@ class GraphRepository {
     return response.data!;
   }
 
-  Future<List<GraphTaskDto>> fetchTasks({String? status}) async {
+  Future<List<GraphTaskDto>> fetchTasks({
+    String? status,
+    int limit = 200,
+    int offset = 0,
+  }) async {
     final response = await _dio.get<List<dynamic>>(
       '/v2/tasks',
-      queryParameters: status != null ? {'status': status} : null,
+      queryParameters: {'status': ?status, 'limit': limit, 'offset': offset},
     );
     return (response.data ?? const [])
         .whereType<Map<String, dynamic>>()
@@ -70,11 +74,30 @@ class GraphRepository {
   Future<MemoryProjectionReceipt> updateTaskStatus(
     String taskId,
     String status,
-  ) {
+  ) => updateTask(taskId, status: status);
+
+  Future<MemoryProjectionReceipt> updateTask(
+    String taskId, {
+    String? status,
+    String? title,
+    DateTime? dueAt,
+    String? dueTimezone,
+    bool clearDueAt = false,
+    String? statusReason,
+  }) {
     return applyGraphPatch(
       idempotencyKey: 'task-update:${_uuid.v4()}',
       operations: [
-        {'op': 'update_task', 'taskId': taskId, 'status': status},
+        {
+          'op': 'update_task',
+          'taskId': taskId,
+          'status': ?status,
+          'title': ?title,
+          'dueAt': ?dueAt?.toUtc().toIso8601String(),
+          'dueTimezone': ?dueTimezone,
+          if (clearDueAt) 'clearDueAt': true,
+          'statusReason': ?statusReason,
+        },
       ],
     );
   }
