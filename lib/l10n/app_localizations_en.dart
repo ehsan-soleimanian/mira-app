@@ -196,6 +196,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureIntentSaveToMemory => 'Save to memory';
 
   @override
+  String get captureTimeClarificationTitle => 'Pick the exact date and time';
+
+  @override
+  String get captureEntitySame => 'Same person or thing';
+
+  @override
+  String get captureEntityDifferent => 'Different person or thing';
+
+  @override
   String get captureWorkflowComposeTitle => 'Ask, remember, or make a plan';
 
   @override

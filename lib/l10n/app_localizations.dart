@@ -452,6 +452,24 @@ abstract class AppLocalizations {
   /// **'Save to memory'**
   String get captureIntentSaveToMemory;
 
+  /// No description provided for @captureTimeClarificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the exact date and time'**
+  String get captureTimeClarificationTitle;
+
+  /// No description provided for @captureEntitySame.
+  ///
+  /// In en, this message translates to:
+  /// **'Same person or thing'**
+  String get captureEntitySame;
+
+  /// No description provided for @captureEntityDifferent.
+  ///
+  /// In en, this message translates to:
+  /// **'Different person or thing'**
+  String get captureEntityDifferent;
+
   /// No description provided for @captureWorkflowComposeTitle.
   ///
   /// In en, this message translates to:

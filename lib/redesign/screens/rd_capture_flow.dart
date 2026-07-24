@@ -90,6 +90,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   bool _realProposal = false;
   // Guards `_runPipeline` so text + voice can't both drive it for one session.
   bool _pipelineStarted = false;
+  // A cancelled clarification or hard pipeline error must never fall through
+  // into the simulated review/write path.
+  bool _pipelineAborted = false;
   // Indices of real connection rows the user has toggled on (all on by default).
   final Set<int> _connOn = <int>{};
 
@@ -316,6 +319,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _proposal = null;
       _realProposal = false;
       _pipelineStarted = false;
+      _pipelineAborted = false;
       // Reset non-voice + editable-review state for a fresh session.
       _kind = 'voice';
       _pendingMedia = null;
@@ -510,6 +514,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     if (!(_useRealtimePath && _captureId != null && _realProposal)) {
       await _runPipeline(_transcript);
     }
+    if (_pipelineAborted) return;
     await minShown;
     if (!mounted || _view != 'proc') return;
     setState(() => _view = 'review');
@@ -545,6 +550,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       Map<String, dynamic>? proposalJson = capture.proposal;
       var clarificationOnly = false;
       var streamOk = true;
+      Map<String, dynamic>? timeClarification;
+      Map<String, dynamic>? intentClarification;
+      Map<String, dynamic>? entityClarification;
 
       try {
         await for (final event
@@ -567,8 +575,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
             // Any clarification path means the pipeline wants a sub-flow we
             // deliberately do not build — treat as a fallback trigger.
             case 'clarification':
+              intentClarification = event.data;
+              clarificationOnly = true;
             case 'time_clarification':
+              timeClarification = event.data;
+              clarificationOnly = true;
             case 'entity_clarification':
+              entityClarification = event.data;
               clarificationOnly = true;
             case 'done':
               final state = event.data['state']?.toString();
@@ -591,10 +604,52 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         streamOk = false;
       }
 
-      if (!streamOk || clarificationOnly || proposalJson == null) return;
+      CaptureResponse? clarified;
+      if (timeClarification != null) {
+        clarified = await _resolveTimeClarification(captureId);
+      } else if (intentClarification != null) {
+        clarified = await _resolveIntentClarification(captureId);
+      } else if (entityClarification != null) {
+        clarified = await _resolveEntityClarification(
+          captureId,
+          entityClarification,
+        );
+      }
+      if (_pipelineAborted) return;
+      if (clarified != null) {
+        if (clarified.state == 'question_answered') {
+          if (mounted) {
+            widget.go(
+              'chat',
+              arg: RdChatArg(initialPrompt: text, autoSend: true),
+            );
+          }
+          _pipelineAborted = true;
+          return;
+        }
+        proposalJson = clarified.proposal;
+        clarificationOnly = clarified.state != 'awaiting_approval';
+        streamOk = true;
+      }
+
+      if (!streamOk || clarificationOnly || proposalJson == null) {
+        if (mounted) {
+          final message = AppLocalizations.of(
+            context,
+          )!.rdCaptureMemorySaveFailed;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(message)));
+        }
+        await _abortClarification(captureId);
+        return;
+      }
 
       final display = resolveProposalDisplay(proposalJson);
-      if (!display.hasContent) return;
+      if (!display.hasContent) {
+        await _abortClarification(captureId);
+        return;
+      }
 
       if (!mounted) return;
       setState(() {
@@ -610,7 +665,126 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       // Best-effort — keep the simulated flow. Never surface a hard error.
       _captureId = null;
       _realProposal = false;
+      _pipelineAborted = true;
+      if (mounted) {
+        final message = AppLocalizations.of(context)!.rdCaptureMemorySaveFailed;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+        widget.go('home');
+      }
     }
+  }
+
+  Future<CaptureResponse?> _resolveTimeClarification(String captureId) async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(days: 1)),
+      firstDate: DateTime(now.year, now.month, now.day),
+      lastDate: DateTime(now.year + 10, 12, 31),
+      helpText: AppLocalizations.of(context)!.captureTimeClarificationTitle,
+    );
+    if (!mounted || date == null) {
+      await _abortClarification(captureId);
+      return null;
+    }
+    final time = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 9, minute: 0),
+      helpText: AppLocalizations.of(context)!.captureTimeClarificationTitle,
+    );
+    if (!mounted || time == null) {
+      await _abortClarification(captureId);
+      return null;
+    }
+    final local = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    return AppScope.servicesOf(context).captureRepository.confirmTime(
+      captureId,
+      accepted: false,
+      resolvedTime: local.toUtc().toIso8601String(),
+    );
+  }
+
+  Future<CaptureResponse?> _resolveIntentClarification(String captureId) async {
+    final l10n = AppLocalizations.of(context)!;
+    final intent = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.captureIntentClarificationPrompt),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, 'question'),
+            child: Text(l10n.captureIntentThisIsQuestion),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, 'save'),
+            child: Text(l10n.captureIntentSaveToMemory),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || intent == null) {
+      await _abortClarification(captureId);
+      return null;
+    }
+    return AppScope.servicesOf(
+      context,
+    ).captureRepository.clarifyIntent(captureId, intent: intent);
+  }
+
+  Future<CaptureResponse?> _resolveEntityClarification(
+    String captureId,
+    Map<String, dynamic> data,
+  ) async {
+    final l10n = AppLocalizations.of(context)!;
+    final same = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(
+          data['prompt']?.toString() ?? l10n.captureIntentClarificationPrompt,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(l10n.captureEntityDifferent),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(l10n.captureEntitySame),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || same == null) {
+      await _abortClarification(captureId);
+      return null;
+    }
+    final equivalence = data['entityEquivalence'];
+    final targetId = equivalence is Map
+        ? equivalence['targetEntityId']?.toString()
+        : null;
+    return AppScope.servicesOf(
+      context,
+    ).captureRepository.confirmEntityEquivalence(
+      captureId,
+      same: same,
+      targetEntityId: targetId,
+    );
+  }
+
+  Future<void> _abortClarification(String captureId) async {
+    _pipelineAborted = true;
+    try {
+      await AppScope.servicesOf(context).captureRepository.dismiss(captureId);
+    } catch (_) {}
+    if (mounted) widget.go('home');
   }
 
   String get _time => '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
@@ -819,6 +993,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _proposal = null;
       _realProposal = false;
       _pipelineStarted = false;
+      _pipelineAborted = false;
       _view = 'proc';
       _steps = 0;
     });
@@ -840,6 +1015,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       );
     }
     await _runPipeline(text);
+    if (_pipelineAborted) return;
     await minShown;
     if (!mounted || _view != 'proc') return;
     setState(() => _view = 'review');

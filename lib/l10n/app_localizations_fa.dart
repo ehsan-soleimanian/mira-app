@@ -196,6 +196,15 @@ class AppLocalizationsFa extends AppLocalizations {
   String get captureIntentSaveToMemory => 'به حافظه ذخیره کن';
 
   @override
+  String get captureTimeClarificationTitle => 'تاریخ و ساعت دقیق را انتخاب کن';
+
+  @override
+  String get captureEntitySame => 'همان فرد یا چیز است';
+
+  @override
+  String get captureEntityDifferent => 'فرد یا چیز دیگری است';
+
+  @override
   String get captureWorkflowComposeTitle =>
       'بپرس، به یاد بسپار، یا برنامه بساز';
 
