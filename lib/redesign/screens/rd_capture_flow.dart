@@ -30,10 +30,12 @@ class RdCaptureFlow extends StatefulWidget {
     super.key,
     required this.go,
     this.initialMode = RdCaptureMode.voice,
+    this.initialText,
   });
 
   final RdGo go;
   final RdCaptureMode initialMode;
+  final String? initialText;
 
   @override
   State<RdCaptureFlow> createState() => _RdCaptureFlowState();
@@ -141,9 +143,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       case RdCaptureMode.file:
         WidgetsBinding.instance.addPostFrameCallback((_) => _pickLibraryFile());
       case RdCaptureMode.type:
-        WidgetsBinding.instance.addPostFrameCallback(
-          (_) => _openTextEntry(fromSheet: true),
-        );
+        final initialText = widget.initialText?.trim() ?? '';
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (initialText.isEmpty) {
+            _openTextEntry(fromSheet: true);
+          } else {
+            _beginTextUnderstanding(initialText);
+          }
+        });
     }
   }
 
@@ -744,6 +751,39 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     Map<String, dynamic> data,
   ) async {
     final l10n = AppLocalizations.of(context)!;
+    final equivalence = data['entityEquivalence'];
+    final isPersonCountClarification =
+        equivalence is Map &&
+        equivalence['kind']?.toString() == 'ONE_OR_MULTIPLE_PEOPLE';
+
+    if (isPersonCountClarification) {
+      final decision = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(
+            data['prompt']?.toString() ??
+                l10n.captureEntityMultiplicityDefaultPrompt,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, 'MULTIPLE_PEOPLE'),
+              child: Text(l10n.captureEntityMultiplePeople),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, 'ONE_PERSON'),
+              child: Text(l10n.captureEntityOnePerson),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || decision == null) {
+        await _abortClarification(captureId);
+        return null;
+      }
+      return AppScope.servicesOf(context).captureRepository
+          .confirmEntityEquivalence(captureId, decision: decision);
+    }
+
     final same = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -766,7 +806,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       await _abortClarification(captureId);
       return null;
     }
-    final equivalence = data['entityEquivalence'];
     final targetId = equivalence is Map
         ? equivalence['targetEntityId']?.toString()
         : null;
@@ -982,7 +1021,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       }
       return;
     }
-    final trimmed = text.trim();
+    _beginTextUnderstanding(text.trim());
+  }
+
+  void _beginTextUnderstanding(String trimmed) {
+    if (!mounted || trimmed.isEmpty) return;
     // The typed text becomes the "understood" content and the reminder/fallback
     // note source. It reads as a real transcript (no John/Friday markup).
     setState(() {

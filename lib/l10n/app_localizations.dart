@@ -470,6 +470,24 @@ abstract class AppLocalizations {
   /// **'Different person or thing'**
   String get captureEntityDifferent;
 
+  /// No description provided for @captureEntityMultiplicityDefaultPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Does this refer to one person or multiple people?'**
+  String get captureEntityMultiplicityDefaultPrompt;
+
+  /// No description provided for @captureEntityOnePerson.
+  ///
+  /// In en, this message translates to:
+  /// **'One person'**
+  String get captureEntityOnePerson;
+
+  /// No description provided for @captureEntityMultiplePeople.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple people'**
+  String get captureEntityMultiplePeople;
+
   /// No description provided for @captureWorkflowComposeTitle.
   ///
   /// In en, this message translates to:
@@ -5481,6 +5499,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This board is empty'**
   String get rdCanvasBoardEmpty;
+
+  /// No description provided for @rdCanvasBoardEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note, then arrange and connect your memories.'**
+  String get rdCanvasBoardEmptyBody;
+
+  /// No description provided for @rdCanvasBoardEmptyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add first note'**
+  String get rdCanvasBoardEmptyAction;
 
   /// No description provided for @rdCanvasConnectTapSecond.
   ///

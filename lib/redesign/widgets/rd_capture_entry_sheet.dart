@@ -13,10 +13,12 @@ class RdCaptureEntrySheet extends StatelessWidget {
     super.key,
     required this.onPick,
     required this.onClose,
+    this.attachmentsOnly = false,
   });
 
   final ValueChanged<RdCaptureMode> onPick;
   final VoidCallback onClose;
+  final bool attachmentsOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -87,13 +89,14 @@ class RdCaptureEntrySheet extends StatelessWidget {
                     crossAxisSpacing: 12,
                     childAspectRatio: 1.55,
                     children: [
-                      _ModeTile(
-                        icon: RdIcons.micSimple,
-                        iconBg: const Color(0xFFE7ECFB),
-                        name: l10n.rdCaptureModeVoice,
-                        hint: l10n.rdCaptureModeVoiceHint,
-                        onTap: () => onPick(RdCaptureMode.voice),
-                      ),
+                      if (!attachmentsOnly)
+                        _ModeTile(
+                          icon: RdIcons.micSimple,
+                          iconBg: const Color(0xFFE7ECFB),
+                          name: l10n.rdCaptureModeVoice,
+                          hint: l10n.rdCaptureModeVoiceHint,
+                          onTap: () => onPick(RdCaptureMode.voice),
+                        ),
                       _ModeTile(
                         icon:
                             '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
@@ -121,21 +124,24 @@ class RdCaptureEntrySheet extends StatelessWidget {
                         hint: l10n.rdCaptureModeLinkHint,
                         onTap: () => onPick(RdCaptureMode.link),
                       ),
-                      _ModeTile(
-                        icon:
-                            '<rect x="4" y="3" width="16" height="14" rx="2"/><path d="M8 21h8"/>',
-                        name: l10n.rdCaptureModeScreenshot,
-                        hint: l10n.rdCaptureModeScreenshotHint,
-                        onTap: () => onPick(RdCaptureMode.screenshot),
-                      ),
+                      if (!attachmentsOnly)
+                        _ModeTile(
+                          icon:
+                              '<rect x="4" y="3" width="16" height="14" rx="2"/><path d="M8 21h8"/>',
+                          name: l10n.rdCaptureModeScreenshot,
+                          hint: l10n.rdCaptureModeScreenshotHint,
+                          onTap: () => onPick(RdCaptureMode.screenshot),
+                        ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  _ModeTile(
-                    wide: true,
-                    name: l10n.rdCaptureModeType,
-                    onTap: () => onPick(RdCaptureMode.type),
-                  ),
+                  if (!attachmentsOnly) ...[
+                    const SizedBox(height: 12),
+                    _ModeTile(
+                      wide: true,
+                      name: l10n.rdCaptureModeType,
+                      onTap: () => onPick(RdCaptureMode.type),
+                    ),
+                  ],
                 ],
               ),
             ),

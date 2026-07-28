@@ -866,7 +866,7 @@ Backend rebuilds transient `raw_text` from the original user input plus the foll
 
 ---
 
-### Confirm entity equivalence (cross-language same person)
+### Confirm entity equivalence or person count
 `POST /captures/{capture_id}/confirm-entity-equivalence`
 
 Use when capture state is `clarification_needed` and `proposal.entityEquivalence.status` is `pending`, or after SSE `entity_clarification`.
@@ -883,8 +883,17 @@ Typical prompt: `Are فاطمه and Fatemeh the same person in your memory?`
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `same` | boolean | required — `true` merges aliases; `false` keeps separate people |
+| `same` | boolean | required for alias-equivalence prompts — `true` merges aliases; `false` keeps separate people |
+| `decision` | string | required for `ONE_OR_MULTIPLE_PEOPLE` prompts — `ONE_PERSON` or `MULTIPLE_PEOPLE` |
 | `targetEntityId` | string | optional — canonical entity to keep when `same` is `true` |
+
+Send exactly one of `same` or `decision`. For example, when «سالار حافظ» means two people:
+
+```json
+{
+  "decision": "MULTIPLE_PEOPLE"
+}
+```
 
 **Response** `200` — capture response with `state: awaiting_approval` and updated `proposal` (equivalence resolved, ready for approval).
 

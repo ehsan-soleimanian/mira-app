@@ -205,6 +205,16 @@ class AppLocalizationsFa extends AppLocalizations {
   String get captureEntityDifferent => 'فرد یا چیز دیگری است';
 
   @override
+  String get captureEntityMultiplicityDefaultPrompt =>
+      'این عبارت به یک نفر اشاره می‌کند یا چند نفر؟';
+
+  @override
+  String get captureEntityOnePerson => 'یک نفر';
+
+  @override
+  String get captureEntityMultiplePeople => 'چند نفر';
+
+  @override
   String get captureWorkflowComposeTitle =>
       'بپرس، به یاد بسپار، یا برنامه بساز';
 
@@ -3084,6 +3094,13 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get rdCanvasBoardEmpty => 'این بورد خالی است';
+
+  @override
+  String get rdCanvasBoardEmptyBody =>
+      'یک یادداشت اضافه کن، سپس خاطره‌هایت را بچین و به هم وصل کن.';
+
+  @override
+  String get rdCanvasBoardEmptyAction => 'افزودن اولین یادداشت';
 
   @override
   String get rdCanvasConnectTapSecond => 'حالا کارت دیگر را برای وصل کردن بزن';

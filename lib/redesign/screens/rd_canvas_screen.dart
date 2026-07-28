@@ -3292,7 +3292,6 @@ class _BoardViewState extends State<_BoardView> {
                               painter: _BoardEdgePainter(
                                 edges: _edges,
                                 centerOf: _centerOf,
-                                edgeColor: rd.peri,
                                 userColor: rd.navy,
                               ),
                             ),
@@ -3344,42 +3343,42 @@ class _BoardViewState extends State<_BoardView> {
             // Neutral empty state when the board has no cards yet.
             if (_cards.isEmpty)
               Positioned.fill(
-                child: IgnorePointer(
-                  child: Center(
-                    child: Text(
-                      AppLocalizations.of(context)!.rdCanvasBoardEmpty,
-                      style: GoogleFonts.vazirmatn(
-                        fontSize: 13,
-                        color: rd.muted,
-                      ),
-                    ),
-                  ),
+                child: _BoardEmptyState(
+                  onAdd: () {
+                    final center = Offset(
+                      viewport.width / 2,
+                      viewport.height / 2,
+                    );
+                    _addCardAt((center - _offset) / _scale);
+                  },
                 ),
               ),
             // right toolbar
-            Positioned(
-              right: 14,
-              top: 118,
-              child: _Toolbar(
-                selected: _tool,
-                onSelect: (i) => setState(() {
-                  _tool = i;
-                  // Leaving connect-mode drops any pending source.
-                  if (i != _connectTool) _connectSource = null;
-                  _selectedCard = null; // switching tools clears selection
-                }),
+            if (_cards.isNotEmpty)
+              Positioned(
+                right: 14,
+                top: 118,
+                child: _Toolbar(
+                  selected: _tool,
+                  onSelect: (i) => setState(() {
+                    _tool = i;
+                    // Leaving connect-mode drops any pending source.
+                    if (i != _connectTool) _connectSource = null;
+                    _selectedCard = null; // switching tools clears selection
+                  }),
+                ),
               ),
-            ),
             // zoom / fit
-            Positioned(
-              left: 14,
-              bottom: 116,
-              child: _ZoomChip(
-                level: _scale,
-                onOut: () => _zoom(-0.15, viewport),
-                onIn: () => _zoom(0.15, viewport),
+            if (_cards.isNotEmpty)
+              Positioned(
+                left: 14,
+                bottom: 116,
+                child: _ZoomChip(
+                  level: _scale,
+                  onOut: () => _zoom(-0.15, viewport),
+                  onIn: () => _zoom(0.15, viewport),
+                ),
               ),
-            ),
             // Mira connection suggestion — design2 `.c-suggest`
             if (_suggestVisible &&
                 _cards.length >= 2 &&
@@ -3754,7 +3753,6 @@ class _BoardEdgePainter extends CustomPainter {
   _BoardEdgePainter({
     this.edges = const [],
     this.centerOf,
-    required this.edgeColor,
     required this.userColor,
   });
 
@@ -3764,59 +3762,10 @@ class _BoardEdgePainter extends CustomPainter {
   /// Resolves a card id to its live centre in board coordinates.
   final Offset Function(String id)? centerOf;
 
-  /// Ambient/decorative edge tint (periwinkle) and the user-edge tint (navy),
-  /// passed from the widget so both track the active [RdTheme].
-  final Color edgeColor;
   final Color userColor;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = edgeColor.withValues(alpha: 0.4)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-
-    void bez(
-      double ax,
-      double ay,
-      double c1x,
-      double c1y,
-      double c2x,
-      double c2y,
-      double bx,
-      double by,
-    ) {
-      final path = Path()
-        ..moveTo(ax, ay)
-        ..cubicTo(c1x, c1y, c2x, c2y, bx, by);
-      canvas.drawPath(path, paint);
-    }
-
-    // Ambient, decorative links that give the board its lived-in feel.
-    bez(250, 300, 300, 340, 300, 380, 268, 430);
-    bez(330, 300, 380, 330, 420, 360, 452, 402);
-    bez(300, 470, 360, 500, 400, 520, 452, 470);
-    bez(250, 560, 300, 590, 360, 600, 300, 640);
-
-    final dashed = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = edgeColor.withValues(alpha: 0.55)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    // dashed bezier, drawn as short segments
-    final path = Path()
-      ..moveTo(492, 452)
-      ..cubicTo(520, 520, 470, 590, 392, 636);
-    for (final metric in path.computeMetrics()) {
-      double d = 0;
-      while (d < metric.length) {
-        final seg = metric.extractPath(d, d + 2);
-        canvas.drawPath(seg, dashed);
-        d += 9;
-      }
-    }
-
     // User-created connections — solid cubic beziers between the two card
     // centres, gently bowed so multiple edges stay readable.
     final resolve = centerOf;
@@ -3860,7 +3809,6 @@ class _BoardEdgePainter extends CustomPainter {
   bool shouldRepaint(_BoardEdgePainter old) =>
       old.edges != edges ||
       old.centerOf != centerOf ||
-      old.edgeColor != edgeColor ||
       old.userColor != userColor;
 }
 
@@ -4283,6 +4231,106 @@ class _BoardCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BoardEmptyState extends StatelessWidget {
+  const _BoardEmptyState({required this.onAdd});
+
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(42, 40, 42, 120),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 300),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: rd.periSoft,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Center(
+                  child: RdIcon(
+                    RdIcons.addCard,
+                    size: 24,
+                    color: rd.navy,
+                    strokeWidth: 1.8,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.rdCanvasBoardEmpty,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.dosis(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: rd.ink,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Text(
+                l10n.rdCanvasBoardEmptyBody,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: rd.muted,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Semantics(
+                button: true,
+                label: l10n.rdCanvasBoardEmptyAction,
+                child: Material(
+                  color: rd.navy,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: onAdd,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 13,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const RdIcon(
+                            RdIcons.plusCircle,
+                            size: 17,
+                            stroke: '#FFFFFF',
+                            strokeWidth: 2,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            l10n.rdCanvasBoardEmptyAction,
+                            style: GoogleFonts.vazirmatn(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

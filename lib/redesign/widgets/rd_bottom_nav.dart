@@ -85,6 +85,7 @@ class RdBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final navInset = context.rdNavBarInset;
+    final showCapture = active != 'home';
     return SizedBox(
       height: 96 + navInset,
       child: Stack(
@@ -108,7 +109,7 @@ class RdBottomNav extends StatelessWidget {
                   active: active == 'library',
                   onTap: () => go('library'),
                 ),
-                const SizedBox(width: 64),
+                if (showCapture) const SizedBox(width: 64),
                 _NavItem(
                   icon: RdIcons.navCanvas,
                   label: l10n.rdNavCanvas,
@@ -124,12 +125,13 @@ class RdBottomNav extends StatelessWidget {
               ],
             ),
           ),
-          Positioned(
-            bottom: 40 + navInset,
-            left: 0,
-            right: 0,
-            child: Center(child: _NavMic(onTap: () => go('capture'))),
-          ),
+          if (showCapture)
+            Positioned(
+              bottom: 40 + navInset,
+              left: 0,
+              right: 0,
+              child: Center(child: _NavMic(onTap: () => go('capture'))),
+            ),
         ],
       ),
     );

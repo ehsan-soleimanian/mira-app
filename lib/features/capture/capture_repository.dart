@@ -422,17 +422,40 @@ class CaptureRepository {
 
   Future<CaptureResponse> confirmEntityEquivalence(
     String captureId, {
-    required bool same,
+    bool? same,
+    String? decision,
     String? targetEntityId,
   }) async {
-    final data = <String, dynamic>{'same': same};
-    if (targetEntityId != null) {
-      data['targetEntityId'] = targetEntityId;
-    }
+    final data = buildEntityEquivalenceConfirmationPayload(
+      same: same,
+      decision: decision,
+      targetEntityId: targetEntityId,
+    );
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/$captureId/confirm-entity-equivalence',
       data: data,
     );
     return CaptureResponse.fromJson(response.data!);
   }
+}
+
+Map<String, dynamic> buildEntityEquivalenceConfirmationPayload({
+  bool? same,
+  String? decision,
+  String? targetEntityId,
+}) {
+  if (same == null && decision == null) {
+    throw ArgumentError('Either same or decision must be provided.');
+  }
+  if (decision != null &&
+      decision != 'ONE_PERSON' &&
+      decision != 'MULTIPLE_PEOPLE') {
+    throw ArgumentError.value(decision, 'decision');
+  }
+
+  final data = <String, dynamic>{};
+  if (same != null) data['same'] = same;
+  if (decision != null) data['decision'] = decision;
+  if (targetEntityId != null) data['targetEntityId'] = targetEntityId;
+  return data;
 }

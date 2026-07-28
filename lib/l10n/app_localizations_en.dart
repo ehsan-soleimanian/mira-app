@@ -205,6 +205,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get captureEntityDifferent => 'Different person or thing';
 
   @override
+  String get captureEntityMultiplicityDefaultPrompt =>
+      'Does this refer to one person or multiple people?';
+
+  @override
+  String get captureEntityOnePerson => 'One person';
+
+  @override
+  String get captureEntityMultiplePeople => 'Multiple people';
+
+  @override
   String get captureWorkflowComposeTitle => 'Ask, remember, or make a plan';
 
   @override
@@ -3097,6 +3107,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdCanvasBoardEmpty => 'This board is empty';
+
+  @override
+  String get rdCanvasBoardEmptyBody =>
+      'Add a note, then arrange and connect your memories.';
+
+  @override
+  String get rdCanvasBoardEmptyAction => 'Add first note';
 
   @override
   String get rdCanvasConnectTapSecond => 'Now tap another card to connect them';

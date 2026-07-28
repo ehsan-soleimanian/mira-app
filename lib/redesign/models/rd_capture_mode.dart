@@ -3,7 +3,8 @@
 enum RdCaptureMode { voice, meeting, photo, file, screenshot, link, type }
 
 class RdCaptureModeArg {
-  const RdCaptureModeArg(this.mode);
+  const RdCaptureModeArg(this.mode, {this.initialText});
 
   final RdCaptureMode mode;
+  final String? initialText;
 }

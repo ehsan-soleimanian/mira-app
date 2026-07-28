@@ -64,14 +64,19 @@ class _RdRootState extends State<RdRoot> {
   ];
 
   bool _captureSheetOpen = false;
+  bool _attachmentSheetOnly = false;
 
   void _go(String screen, {Object? arg}) {
-    if (screen == 'capture') {
-      setState(() => _captureSheetOpen = true);
+    if (screen == 'capture' || screen == 'attachments') {
+      setState(() {
+        _captureSheetOpen = true;
+        _attachmentSheetOnly = screen == 'attachments';
+      });
       return;
     }
     setState(() {
       _captureSheetOpen = false;
+      _attachmentSheetOnly = false;
       if (_tabs.contains(screen) || screen == 'splash') {
         _stack
           ..clear()
@@ -90,6 +95,7 @@ class _RdRootState extends State<RdRoot> {
   void _pickCaptureMode(RdCaptureMode mode) {
     setState(() {
       _captureSheetOpen = false;
+      _attachmentSheetOnly = false;
       _stack.add((id: 'captureflow', arg: RdCaptureModeArg(mode)));
     });
   }
@@ -98,6 +104,7 @@ class _RdRootState extends State<RdRoot> {
     if (_stack.length > 1) {
       setState(() {
         _captureSheetOpen = false;
+        _attachmentSheetOnly = false;
         _stack.removeLast();
       });
     }
@@ -194,7 +201,11 @@ class _RdRootState extends State<RdRoot> {
         final mode = arg is RdCaptureModeArg
             ? arg.mode
             : RdCaptureMode.voice;
-        return RdCaptureFlow(go: _go, initialMode: mode);
+        return RdCaptureFlow(
+          go: _go,
+          initialMode: mode,
+          initialText: arg is RdCaptureModeArg ? arg.initialText : null,
+        );
       default:
         return _ComingSoon(
           id: id,
@@ -217,7 +228,10 @@ class _RdRootState extends State<RdRoot> {
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (_captureSheetOpen) {
-          setState(() => _captureSheetOpen = false);
+          setState(() {
+            _captureSheetOpen = false;
+            _attachmentSheetOnly = false;
+          });
           return;
         }
         _back();
@@ -249,8 +263,12 @@ class _RdRootState extends State<RdRoot> {
           if (_captureSheetOpen)
             Positioned.fill(
               child: RdCaptureEntrySheet(
+                attachmentsOnly: _attachmentSheetOnly,
                 onPick: _pickCaptureMode,
-                onClose: () => setState(() => _captureSheetOpen = false),
+                onClose: () => setState(() {
+                  _captureSheetOpen = false;
+                  _attachmentSheetOnly = false;
+                }),
               ),
             ),
         ],

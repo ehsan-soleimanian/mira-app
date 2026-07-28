@@ -8,7 +8,9 @@ import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/daily_update_models.dart';
 import 'package:mira_app/models/api/reminder_models.dart';
+import 'package:mira_app/models/api/workspace_models.dart';
 
+import '../models/rd_capture_mode.dart';
 import '../theme/rd_theme.dart';
 import '../theme/rd_typography.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -73,10 +75,24 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
   ({String id, String label, DateTime? previousRemindAt})? _snoozed;
   Timer? _snoozeHideTimer;
   bool _loaded = false;
+  final TextEditingController _composerController = TextEditingController();
+  bool _hasComposerText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _composerController.addListener(() {
+      final hasText = _composerController.text.trim().isNotEmpty;
+      if (hasText != _hasComposerText && mounted) {
+        setState(() => _hasComposerText = hasText);
+      }
+    });
+  }
 
   @override
   void dispose() {
     _snoozeHideTimer?.cancel();
+    _composerController.dispose();
     super.dispose();
   }
 
@@ -106,10 +122,28 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     } catch (_) {}
 
     try {
-      final update = await services.dailyBriefRepository.fetchDailyUpdate();
-      final items = update.items.take(6).map((i) => _toRecent(i, l10n)).toList();
-      if (mounted) setState(() => _recents = items);
+      // Library is the canonical source for captured memories. Daily Update is
+      // task-oriented and can legitimately be empty even when the user has
+      // many captures, which previously made Home look blank.
+      await services.memoryStore.load();
+      final items = services.memoryStore
+          .getAll()
+          .take(6)
+          .map((i) => _toLibraryRecent(i, l10n))
+          .toList();
+      if (mounted && items.isNotEmpty) setState(() => _recents = items);
     } catch (_) {}
+
+    // Compatibility fallback for accounts whose captures have not yet been
+    // projected into Library.
+    if (_recents.isEmpty) {
+      try {
+        final update = await services.dailyBriefRepository.fetchDailyUpdate();
+        final items =
+            update.items.take(6).map((i) => _toRecent(i, l10n)).toList();
+        if (mounted) setState(() => _recents = items);
+      } catch (_) {}
+    }
 
     try {
       final repo = RemindersRepository(apiClient: services.apiClient);
@@ -160,10 +194,32 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     final isVoice = (item.captureType ?? '').toLowerCase() == 'voice';
     final title = item.title.trim().isEmpty ? item.summary : item.title;
     return RdRecent(
+      id: item.id,
       title: title,
+      body: item.summary,
       kind: isVoice ? RdRecentKind.voice : RdRecentKind.note,
       time: _relativeTime(item.createdAt, l10n),
       links: _linkCount(item),
+    );
+  }
+
+  static RdRecent _toLibraryRecent(
+    LibraryItem item,
+    AppLocalizations l10n,
+  ) {
+    final type = item.type.toLowerCase();
+    final isVoice =
+        type == 'voice' || type == 'audio' || type == 'meeting';
+    final title =
+        item.title.trim().isEmpty ? item.summary.trim() : item.title.trim();
+    final content = item.contentText?.trim() ?? '';
+    return RdRecent(
+      id: item.id,
+      title: title,
+      body: content.isNotEmpty ? content : item.summary,
+      kind: isVoice ? RdRecentKind.voice : RdRecentKind.note,
+      time: _relativeTime(item.createdAt, l10n),
+      links: item.sourceUrl == null ? 0 : 1,
     );
   }
 
@@ -274,15 +330,15 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
         child: Column(
           children: [
             _header(greeting),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             _hero(l10n),
-            const SizedBox(height: 22),
+            const SizedBox(height: 16),
             _captureField(l10n),
             if (_visibleWaiting.isNotEmpty) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               _waitingSection(l10n),
             ],
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Expanded(child: _recentsSection(l10n)),
             RdBottomNav(active: 'home', go: widget.go),
           ],
@@ -365,16 +421,25 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
   }
 
   Widget _hero(AppLocalizations l10n) {
-    return Column(
-      children: [
-        const RdOrb(size: 74),
-        const SizedBox(height: 18),
-        Text(
-          l10n.rdHomeMemoryReady,
-          textAlign: TextAlign.center,
-          style: RdText.title.copyWith(color: context.rd.ink),
-        ),
-      ],
+    final rd = context.rd;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 26),
+      child: Row(
+        children: [
+          const RdOrb(size: 64),
+          const SizedBox(width: 17),
+          Expanded(
+            child: Text(
+              l10n.rdHomeMemoryReady.replaceFirst('\n', ' '),
+              style: RdText.title.copyWith(
+                color: rd.ink,
+                fontSize: 25,
+                height: 1.14,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -382,44 +447,94 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 26),
-      child: GestureDetector(
-        onTap: () => widget.go('capture'),
-        child: Container(
-          height: 62,
-          padding: const EdgeInsets.only(left: 20, right: 8),
-          decoration: BoxDecoration(
-            color: rd.card,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: rd.line, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(30, 34, 70, 0.30),
-                blurRadius: 22,
-                spreadRadius: -14,
-                offset: const Offset(0, 6),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 64),
+        padding: const EdgeInsets.fromLTRB(8, 7, 7, 7),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(21),
+          border: Border.all(color: rd.line, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: const Color.fromRGBO(30, 34, 70, 0.30),
+              blurRadius: 22,
+              spreadRadius: -14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Semantics(
+              button: true,
+              label: l10n.rdCaptureEntryTitle,
+              child: _ComposerIconButton(
+                icon: RdIcons.plusCircle,
+                onTap: () => widget.go('attachments'),
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              RdIcon(
-                RdIcons.pencil,
-                size: 20,
-                color: rd.faint,
-                strokeWidth: 1.7,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  l10n.rdHomeComposerHint,
-                  style: RdText.placeholder.copyWith(color: rd.faint),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: TextField(
+                controller: _composerController,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.newline,
+                keyboardType: TextInputType.multiline,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 15,
+                  height: 1.45,
+                  color: rd.ink,
                 ),
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: l10n.rdHomeComposerHint,
+                  hintStyle: RdText.placeholder.copyWith(color: rd.faint),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 11,
+                  ),
+                ),
+                onSubmitted: (_) => _submitComposer(),
               ),
-              _MicButton(size: 46, onTap: () => widget.go('capture')),
-            ],
-          ),
+            ),
+            const SizedBox(width: 4),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 160),
+              child: _hasComposerText
+                  ? _SendButton(
+                      key: const ValueKey('send'),
+                      size: 46,
+                      onTap: _submitComposer,
+                    )
+                  : Semantics(
+                      key: const ValueKey('voice'),
+                      button: true,
+                      label: l10n.rdCaptureModeVoice,
+                      child: _MicButton(
+                        size: 46,
+                        onTap: () => widget.go(
+                          'captureflow',
+                          arg: const RdCaptureModeArg(RdCaptureMode.voice),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  void _submitComposer() {
+    final text = _composerController.text.trim();
+    if (text.isEmpty) return;
+    _composerController.clear();
+    widget.go(
+      'captureflow',
+      arg: RdCaptureModeArg(RdCaptureMode.type, initialText: text),
     );
   }
 
@@ -525,7 +640,7 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
                 ],
               ),
               GestureDetector(
-                onTap: () => widget.go('daily'),
+                onTap: () => widget.go('library'),
                 child: Text(
                   l10n.rdSeeAll,
                   style: RdText.seeAll.copyWith(color: rd.peri),
@@ -570,7 +685,9 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
                     onTap: () => widget.go(
                       'memory',
                       arg: RdMemoryArg(
+                        id: _recents[i].id,
                         title: _recents[i].title,
+                        body: _recents[i].body,
                         isVoice: _recents[i].kind == RdRecentKind.voice,
                       ),
                     ),
@@ -851,13 +968,17 @@ enum RdRecentKind { note, voice }
 
 class RdRecent {
   const RdRecent({
+    this.id,
     required this.title,
+    this.body,
     required this.kind,
     required this.time,
     this.links = 0,
   });
 
+  final String? id;
   final String title;
+  final String? body;
   final RdRecentKind kind;
   final String time;
   final int links;
@@ -1039,6 +1160,64 @@ class _CircleButton extends StatelessWidget {
           border: Border.all(color: rd.line, width: 1),
         ),
         child: Center(child: child),
+      ),
+    );
+  }
+}
+
+class _ComposerIconButton extends StatelessWidget {
+  const _ComposerIconButton({required this.icon, required this.onTap});
+
+  final String icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Material(
+      color: Colors.transparent,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
+            child: RdIcon(icon, size: 21, color: rd.muted, strokeWidth: 1.8),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SendButton extends StatelessWidget {
+  const _SendButton({super.key, required this.size, required this.onTap});
+
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: MaterialLocalizations.of(context).okButtonLabel,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: context.rd.navy),
+          child: const Center(
+            child: RdIcon(
+              '<path d="M12 19V5M6 11l6-6 6 6"/>',
+              size: 20,
+              stroke: '#FFFFFF',
+              strokeWidth: 2,
+            ),
+          ),
+        ),
       ),
     );
   }
