@@ -6,6 +6,7 @@ import 'models/rd_capture_mode.dart';
 import 'screens/rd_appearance.dart';
 import 'screens/rd_ask_screen.dart';
 import 'screens/rd_canvas_screen.dart';
+import 'screens/rd_calendar.dart';
 import 'screens/rd_capture_flow.dart';
 import 'screens/rd_chat_screen.dart';
 import 'screens/rd_connected_apps.dart';
@@ -54,6 +55,7 @@ class _RdRootState extends State<RdRoot> {
     'connectedapps',
     'ask',
     'reminders',
+    'calendar',
     'paywall',
     'listen',
     'captureflow',
@@ -193,14 +195,14 @@ class _RdRootState extends State<RdRoot> {
           onBack: _back,
           backLabel: l10n.rdCommonAccount,
         );
+      case 'calendar':
+        return RdCalendarScreen(go: _go, onBack: _back);
       case 'paywall':
         return RdPaywallScreen(go: _go, onBack: _back);
       case 'storage':
         return RdStorageScreen(go: _go, onBack: _back);
       case 'captureflow':
-        final mode = arg is RdCaptureModeArg
-            ? arg.mode
-            : RdCaptureMode.voice;
+        final mode = arg is RdCaptureModeArg ? arg.mode : RdCaptureMode.voice;
         return RdCaptureFlow(
           go: _go,
           initialMode: mode,

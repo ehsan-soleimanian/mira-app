@@ -2,7 +2,7 @@
 
 > **For Flutter client (`mira_app`)** — contract to implement HTTP integration.
 > **Source of truth**: `C:\Users\User\Desktop\mira-backend\src\mira\**\router.py`
-> Last updated: 2026-06-25 (graph v2 mutations + daily brief task API)
+> Last updated: 2026-07-30 (operational calendar, recurrence, event reminders)
 
 **Base URL (production)**: `https://api.miramind.io`
 
@@ -118,6 +118,12 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `GET` | `/reminders/{id}` | `reminders_repository.dart` | Get one reminder |
 | `PATCH` | `/reminders/{id}` | `reminders_repository.dart` | Toggle done / reschedule / edit title |
 | `DELETE` | `/reminders/{id}` | `reminders_repository.dart` | Delete a reminder |
+| `GET` | `/events` | `calendar_repository.dart` | List operational calendar event definitions |
+| `POST` | `/events` | `calendar_repository.dart` | Create a timezone-aware event |
+| `GET` | `/events/agenda` | `calendar_repository.dart` | Expanded agenda, including recurring occurrences |
+| `GET` | `/events/{id}` | `calendar_repository.dart` | Get one user-owned event |
+| `PATCH` | `/events/{id}` | `calendar_repository.dart` | Reschedule, edit, complete or cancel an event |
+| `DELETE` | `/events/{id}` | `calendar_repository.dart` | Delete an event |
 | `GET` | `/collections` | `collections_repository.dart` | List collections (with item counts) |
 | `POST` | `/collections` | `collections_repository.dart` | Create a collection |
 | `GET` | `/collections/{id}` | `collections_repository.dart` | Get a collection + its memory ids |
@@ -1873,7 +1879,8 @@ App-facing reminders the user attaches to captures, tasks, and memories (Daily B
   "remind_at": "2026-08-01T09:00:00Z",
   "timezone": "Europe/Berlin",
   "source_node_id": "capture-or-entity-id",
-  "task_id": "task_abc"
+  "task_id": "task_abc",
+  "calendar_event_id": null
 }
 ```
 
@@ -1884,6 +1891,7 @@ App-facing reminders the user attaches to captures, tasks, and memories (Daily B
 | `timezone` | string | no | IANA timezone; defaults to the user's saved timezone |
 | `source_node_id` | string \| null | no | graph node this reminder relates to |
 | `task_id` | string \| null | no | links completion/reopen to the canonical task |
+| `calendar_event_id` | UUID \| null | no | links the reminder to an operational calendar event |
 
 **Response** `201`
 ```json
@@ -1893,6 +1901,7 @@ App-facing reminders the user attaches to captures, tasks, and memories (Daily B
   "remind_at": "2026-08-01T09:00:00+00:00",
   "source_node_id": "capture-or-entity-id",
   "task_id": "task_abc",
+  "calendar_event_id": null,
   "status": "PENDING",
   "timezone": "Europe/Berlin",
   "done": false,
@@ -1954,6 +1963,79 @@ Acknowledges app-facing delivery. The backend delivery lease uses `CLAIMED` and
 
 ### Delete reminder
 `DELETE /reminders/{id}` — User Bearer. **Response** `204` · **404** when not found.
+
+---
+
+## Calendar Events
+
+Calendar events are canonical operational rows in MariaDB, separate from semantic
+Graphiti facts and from Tasks. Store UTC instants while preserving the event's
+IANA timezone. All routes are user-scoped and require a user Bearer token.
+
+### Create event
+
+`POST /events`
+
+```json
+{
+  "title": "Weekly product planning",
+  "starts_at": "2026-08-03T10:00:00+03:30",
+  "ends_at": "2026-08-03T11:00:00+03:30",
+  "timezone": "Asia/Tehran",
+  "all_day": false,
+  "location": "Blue room",
+  "attendees": ["Sara", "Reza"],
+  "recurrence_rule": "FREQ=WEEKLY;BYDAY=MO",
+  "excluded_dates": ["2026-08-17"],
+  "idempotency_key": "device-stable-create-key"
+}
+```
+
+`recurrence_rule` is an RFC 5545 RRULE without `DTSTART`; `starts_at` is
+authoritative. `ends_at` must be after `starts_at`. The range, timezone, RRULE,
+and excluded ISO dates are validated. Response `201` is an `EventResponse`.
+
+### Agenda
+
+`GET /events/agenda?from=2026-08-01T00:00:00Z&to=2026-09-01T00:00:00Z`
+
+Returns expanded occurrences sorted by start time:
+
+```json
+{
+  "count": 1,
+  "items": [{
+    "occurrence_id": "event-uuid:20260803T100000+0330",
+    "starts_at": "2026-08-03T06:30:00Z",
+    "ends_at": "2026-08-03T07:30:00Z",
+    "event": {
+      "id": "event-uuid",
+      "title": "Weekly product planning",
+      "timezone": "Asia/Tehran",
+      "all_day": false,
+      "status": "SCHEDULED",
+      "recurrence_rule": "FREQ=WEEKLY;BYDAY=MO",
+      "revision": 1
+    }
+  }]
+}
+```
+
+The agenda range is bounded to 366 days and 500 occurrences. Recurrence expands
+in the event timezone, preserving local wall-clock time across DST.
+
+### Event lifecycle
+
+- `GET /events?status=SCHEDULED&limit=100&offset=0`
+- `GET /events/{event_id}`
+- `PATCH /events/{event_id}` with any provided editable field; `status` is
+  `SCHEDULED`, `COMPLETED`, or `CANCELLED`.
+- `DELETE /events/{event_id}` returns `204`.
+
+Capture approval can create events with `source: capture`, `capture_id`, temporal
+provenance, and a replay-safe idempotency key. Archiving the source capture
+cancels its scheduled events. A scheduled occurrence is not duplicated as a Task;
+preparation or follow-up work remains a separate Task.
 
 ---
 

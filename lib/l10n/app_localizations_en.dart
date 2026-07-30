@@ -2320,6 +2320,85 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdAccountRemindersSub => 'Everything Mira is holding for you';
 
   @override
+  String get rdAccountCalendarTitle => 'Calendar';
+
+  @override
+  String get rdAccountCalendarSub =>
+      'Events, meetings and your upcoming agenda';
+
+  @override
+  String get rdCalendarTitle => 'Calendar';
+
+  @override
+  String get rdCalendarSubtitle => 'Your next 30 days, in one calm view';
+
+  @override
+  String get rdCalendarToday => 'Today';
+
+  @override
+  String get rdCalendarTomorrow => 'Tomorrow';
+
+  @override
+  String get rdCalendarAllDay => 'All day';
+
+  @override
+  String get rdCalendarRepeats => 'Repeats';
+
+  @override
+  String get rdCalendarComplete => 'Mark complete';
+
+  @override
+  String get rdCalendarCancel => 'Cancel event';
+
+  @override
+  String get rdCalendarDelete => 'Delete';
+
+  @override
+  String get rdCalendarEmptyTitle => 'Your calendar is clear';
+
+  @override
+  String get rdCalendarEmptyBody => 'Add an event here or tell Mira about one.';
+
+  @override
+  String get rdCalendarLoadFailed => 'Calendar could not be loaded';
+
+  @override
+  String get rdCalendarPullToRetry => 'Pull down to try again.';
+
+  @override
+  String get rdCalendarSaveFailed => 'The event could not be saved.';
+
+  @override
+  String get rdCalendarDeleteFailed => 'The event could not be deleted.';
+
+  @override
+  String get rdCalendarNewEvent => 'New event';
+
+  @override
+  String get rdCalendarTitleHint => 'Event title';
+
+  @override
+  String get rdCalendarLocationHint => 'Location (optional)';
+
+  @override
+  String get rdCalendarRepeat => 'Repeat';
+
+  @override
+  String get rdCalendarNever => 'Never';
+
+  @override
+  String get rdCalendarDaily => 'Daily';
+
+  @override
+  String get rdCalendarWeekly => 'Weekly';
+
+  @override
+  String get rdCalendarMonthly => 'Monthly';
+
+  @override
+  String get rdCalendarSave => 'Save event';
+
+  @override
   String get rdAccountAppearanceTitle => 'Appearance';
 
   @override

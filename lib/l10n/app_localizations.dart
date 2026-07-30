@@ -4144,6 +4144,162 @@ abstract class AppLocalizations {
   /// **'Everything Mira is holding for you'**
   String get rdAccountRemindersSub;
 
+  /// No description provided for @rdAccountCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get rdAccountCalendarTitle;
+
+  /// No description provided for @rdAccountCalendarSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Events, meetings and your upcoming agenda'**
+  String get rdAccountCalendarSub;
+
+  /// No description provided for @rdCalendarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar'**
+  String get rdCalendarTitle;
+
+  /// No description provided for @rdCalendarSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your next 30 days, in one calm view'**
+  String get rdCalendarSubtitle;
+
+  /// No description provided for @rdCalendarToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get rdCalendarToday;
+
+  /// No description provided for @rdCalendarTomorrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Tomorrow'**
+  String get rdCalendarTomorrow;
+
+  /// No description provided for @rdCalendarAllDay.
+  ///
+  /// In en, this message translates to:
+  /// **'All day'**
+  String get rdCalendarAllDay;
+
+  /// No description provided for @rdCalendarRepeats.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeats'**
+  String get rdCalendarRepeats;
+
+  /// No description provided for @rdCalendarComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark complete'**
+  String get rdCalendarComplete;
+
+  /// No description provided for @rdCalendarCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel event'**
+  String get rdCalendarCancel;
+
+  /// No description provided for @rdCalendarDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get rdCalendarDelete;
+
+  /// No description provided for @rdCalendarEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your calendar is clear'**
+  String get rdCalendarEmptyTitle;
+
+  /// No description provided for @rdCalendarEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an event here or tell Mira about one.'**
+  String get rdCalendarEmptyBody;
+
+  /// No description provided for @rdCalendarLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Calendar could not be loaded'**
+  String get rdCalendarLoadFailed;
+
+  /// No description provided for @rdCalendarPullToRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull down to try again.'**
+  String get rdCalendarPullToRetry;
+
+  /// No description provided for @rdCalendarSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The event could not be saved.'**
+  String get rdCalendarSaveFailed;
+
+  /// No description provided for @rdCalendarDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The event could not be deleted.'**
+  String get rdCalendarDeleteFailed;
+
+  /// No description provided for @rdCalendarNewEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'New event'**
+  String get rdCalendarNewEvent;
+
+  /// No description provided for @rdCalendarTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Event title'**
+  String get rdCalendarTitleHint;
+
+  /// No description provided for @rdCalendarLocationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Location (optional)'**
+  String get rdCalendarLocationHint;
+
+  /// No description provided for @rdCalendarRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get rdCalendarRepeat;
+
+  /// No description provided for @rdCalendarNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get rdCalendarNever;
+
+  /// No description provided for @rdCalendarDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get rdCalendarDaily;
+
+  /// No description provided for @rdCalendarWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get rdCalendarWeekly;
+
+  /// No description provided for @rdCalendarMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get rdCalendarMonthly;
+
+  /// No description provided for @rdCalendarSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save event'**
+  String get rdCalendarSave;
+
   /// No description provided for @rdAccountAppearanceTitle.
   ///
   /// In en, this message translates to:

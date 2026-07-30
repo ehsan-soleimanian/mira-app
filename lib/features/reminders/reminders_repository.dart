@@ -43,6 +43,7 @@ class RemindersRepository {
     DateTime? remindAt,
     String? sourceNodeId,
     String? taskId,
+    String? calendarEventId,
   }) async {
     final data = <String, dynamic>{
       'title': title,
@@ -53,6 +54,9 @@ class RemindersRepository {
     }
     if (sourceNodeId != null) data['source_node_id'] = sourceNodeId;
     if (taskId != null) data['task_id'] = taskId;
+    if (calendarEventId != null) {
+      data['calendar_event_id'] = calendarEventId;
+    }
     final response = await _dio.post<Map<String, dynamic>>(
       '/reminders',
       data: data,

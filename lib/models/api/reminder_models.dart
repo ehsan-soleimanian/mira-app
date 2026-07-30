@@ -9,6 +9,7 @@ class Reminder {
     this.remindAt,
     this.sourceNodeId,
     this.taskId,
+    this.calendarEventId,
     this.captureId,
     this.status = 'PENDING',
     this.timezone = 'UTC',
@@ -24,6 +25,7 @@ class Reminder {
     remindAt: _parseOptionalDate(json['remind_at']),
     sourceNodeId: json['source_node_id'] as String?,
     taskId: json['task_id'] as String?,
+    calendarEventId: json['calendar_event_id'] as String?,
     captureId: json['capture_id'] as String?,
     status: json['status'] as String? ?? 'PENDING',
     timezone: json['timezone'] as String? ?? 'UTC',
@@ -40,6 +42,7 @@ class Reminder {
   final DateTime? remindAt;
   final String? sourceNodeId;
   final String? taskId;
+  final String? calendarEventId;
   final String? captureId;
   final String status;
   final String timezone;

@@ -7,6 +7,7 @@ import 'package:mira_app/core/notifications/notification_service.dart';
 import 'package:mira_app/core/update/app_release_repository.dart';
 import 'package:mira_app/features/auth/onboarding_repository.dart';
 import 'package:mira_app/features/capture/capture_repository.dart';
+import 'package:mira_app/features/calendar/calendar_repository.dart';
 import 'package:mira_app/features/daily_brief/daily_brief_repository.dart';
 import 'package:mira_app/features/graph/graph_repository.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
@@ -30,6 +31,7 @@ class MiraServices {
     required this.googleSignInService,
     required this.onboardingRepository,
     required this.captureRepository,
+    required this.calendarRepository,
     required this.dailyBriefRepository,
     required this.graphRepository,
     required this.remindersRepository,
@@ -64,6 +66,7 @@ class MiraServices {
       apiClient: apiClient,
       tokenStorage: tokenStorage,
     );
+    final calendarRepository = CalendarRepository(apiClient: apiClient);
     final dailyBriefRepository = DailyBriefRepository(apiClient: apiClient);
     final graphRepository = GraphRepository(apiClient: apiClient);
     final notificationService = NotificationService();
@@ -88,6 +91,7 @@ class MiraServices {
       googleSignInService: googleSignInService,
       onboardingRepository: onboardingRepository,
       captureRepository: captureRepository,
+      calendarRepository: calendarRepository,
       dailyBriefRepository: dailyBriefRepository,
       graphRepository: graphRepository,
       remindersRepository: remindersRepository,
@@ -111,6 +115,7 @@ class MiraServices {
   final GoogleSignInService googleSignInService;
   final OnboardingRepository onboardingRepository;
   final CaptureRepository captureRepository;
+  final CalendarRepository calendarRepository;
   final DailyBriefRepository dailyBriefRepository;
   final GraphRepository graphRepository;
   final RemindersRepository remindersRepository;

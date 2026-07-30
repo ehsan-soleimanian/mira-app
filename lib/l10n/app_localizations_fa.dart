@@ -2313,6 +2313,85 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdAccountRemindersSub => 'همه چیزهایی که میرا برایت نگه داشته';
 
   @override
+  String get rdAccountCalendarTitle => 'تقویم';
+
+  @override
+  String get rdAccountCalendarSub => 'رویدادها، جلسه‌ها و برنامه پیش رو';
+
+  @override
+  String get rdCalendarTitle => 'تقویم';
+
+  @override
+  String get rdCalendarSubtitle => 'برنامه ۳۰ روز آینده در یک نگاه آرام';
+
+  @override
+  String get rdCalendarToday => 'امروز';
+
+  @override
+  String get rdCalendarTomorrow => 'فردا';
+
+  @override
+  String get rdCalendarAllDay => 'تمام‌روز';
+
+  @override
+  String get rdCalendarRepeats => 'تکرارشونده';
+
+  @override
+  String get rdCalendarComplete => 'انجام شد';
+
+  @override
+  String get rdCalendarCancel => 'لغو رویداد';
+
+  @override
+  String get rdCalendarDelete => 'حذف';
+
+  @override
+  String get rdCalendarEmptyTitle => 'تقویمت خالی است';
+
+  @override
+  String get rdCalendarEmptyBody =>
+      'یک رویداد اضافه کن یا درباره‌اش به میرا بگو.';
+
+  @override
+  String get rdCalendarLoadFailed => 'تقویم بارگذاری نشد';
+
+  @override
+  String get rdCalendarPullToRetry => 'برای تلاش دوباره صفحه را پایین بکش.';
+
+  @override
+  String get rdCalendarSaveFailed => 'رویداد ذخیره نشد.';
+
+  @override
+  String get rdCalendarDeleteFailed => 'رویداد حذف نشد.';
+
+  @override
+  String get rdCalendarNewEvent => 'رویداد جدید';
+
+  @override
+  String get rdCalendarTitleHint => 'عنوان رویداد';
+
+  @override
+  String get rdCalendarLocationHint => 'مکان (اختیاری)';
+
+  @override
+  String get rdCalendarRepeat => 'تکرار';
+
+  @override
+  String get rdCalendarNever => 'بدون تکرار';
+
+  @override
+  String get rdCalendarDaily => 'روزانه';
+
+  @override
+  String get rdCalendarWeekly => 'هفتگی';
+
+  @override
+  String get rdCalendarMonthly => 'ماهانه';
+
+  @override
+  String get rdCalendarSave => 'ذخیره رویداد';
+
+  @override
   String get rdAccountAppearanceTitle => 'ظاهر';
 
   @override

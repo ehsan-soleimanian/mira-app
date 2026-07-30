@@ -215,6 +215,13 @@ class _RdAccountScreenState extends State<RdAccountScreen> {
             ),
             _AcRow(
               icon:
+                  '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
+              title: l10n.rdAccountCalendarTitle,
+              sub: l10n.rdAccountCalendarSub,
+              onTap: () => widget.go('calendar'),
+            ),
+            _AcRow(
+              icon:
                   '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
               title: l10n.rdAccountAppearanceTitle,
               sub: l10n.rdAccountAppearanceSub,

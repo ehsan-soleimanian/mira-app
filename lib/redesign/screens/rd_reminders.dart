@@ -312,6 +312,7 @@ class _RdRemindersScreenState extends State<RdRemindersScreen> {
                   remindAt: remindAt ?? x.remindAt,
                   sourceNodeId: x.sourceNodeId,
                   taskId: x.taskId,
+                  calendarEventId: x.calendarEventId,
                   captureId: x.captureId,
                   status: done == true
                       ? 'DONE'
