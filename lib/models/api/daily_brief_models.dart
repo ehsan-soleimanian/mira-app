@@ -5,6 +5,7 @@ class DailyBriefResponse {
     required this.state,
     required this.greeting,
     required this.summary,
+    required this.highlights,
     required this.sections,
     required this.counts,
   });
@@ -17,6 +18,10 @@ class DailyBriefResponse {
       state: json['state'] as String? ?? 'full',
       greeting: json['greeting'] as String? ?? '',
       summary: json['summary'] as String? ?? '',
+      highlights: (json['highlights'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList(),
       sections: sectionsRaw
           .whereType<Map<String, dynamic>>()
           .map(DailyBriefSection.fromJson)
@@ -29,6 +34,7 @@ class DailyBriefResponse {
   final String state;
   final String greeting;
   final String summary;
+  final List<String> highlights;
   final List<DailyBriefSection> sections;
   final Map<String, int> counts;
 
@@ -72,7 +78,8 @@ class DailyBriefActionResult {
       DailyBriefActionResult(
         itemId: json['itemId'] as String? ?? json['item_id'] as String? ?? '',
         action: json['action'] as String? ?? '',
-        snoozedUntil: json['snoozedUntil'] != null || json['snoozed_until'] != null
+        snoozedUntil:
+            json['snoozedUntil'] != null || json['snoozed_until'] != null
             ? DateTime.tryParse(
                 (json['snoozedUntil'] ?? json['snoozed_until']) as String,
               )?.toLocal()

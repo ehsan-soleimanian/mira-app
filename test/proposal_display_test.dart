@@ -11,6 +11,7 @@ void main() {
 
     expect(display.title, 'Call Alex');
     expect(display.summary, 'Tomorrow at 3pm');
+    expect(display.summaryItems, ['Tomorrow at 3pm']);
     expect(display.nodeType, 'Task');
     expect(display.hasSource, isFalse);
     expect(display.hasContent, isTrue);
@@ -18,6 +19,30 @@ void main() {
       isGraphV2Proposal({'title': 'Call Alex', 'summary': 'Tomorrow at 3pm'}),
       isFalse,
     );
+  });
+
+  test('approval display summary preserves complete backend bullet list', () {
+    final display = resolveProposalDisplay({
+      'title': 'Release plan',
+      'summary': 'The release is ready for customer review.',
+      'node_type': 'Note',
+      'displaySummary': {
+        'schemaVersion': 'approval_display.v1',
+        'headline': 'Release plan.',
+        'items': [
+          {
+            'kind': 'summary',
+            'text': 'The release is ready for customer review.',
+          },
+          {'kind': 'task', 'text': 'Send the release checklist — tomorrow.'},
+        ],
+      },
+    });
+
+    expect(display.summaryItems, [
+      'The release is ready for customer review.',
+      'Send the release checklist — tomorrow.',
+    ]);
   });
 
   test('graph v2 proposal derives display from assertions', () {

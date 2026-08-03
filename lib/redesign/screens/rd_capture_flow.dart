@@ -1872,6 +1872,66 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     return t.isNotEmpty ? t : l10n.rdCaptureYourNote;
   }
 
+  List<String> _approvalSummaryItems(AppLocalizations l10n) {
+    final proposal = _proposal;
+    if (!_realProposal || proposal == null) return const [];
+    final headline = _understoodText(l10n).trim().toLowerCase();
+    final items = <String>[];
+    for (final raw in proposal.summaryItems) {
+      final text = raw.trim();
+      if (text.isEmpty ||
+          text.toLowerCase() == headline ||
+          items.contains(text)) {
+        continue;
+      }
+      items.add(text);
+    }
+    return items.take(8).toList();
+  }
+
+  Widget _approvalSummaryList(AppLocalizations l10n) {
+    final items = _approvalSummaryItems(l10n);
+    if (items.isEmpty) return const SizedBox.shrink();
+    final rd = context.rd;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 5,
+                    height: 5,
+                    margin: const EdgeInsets.only(top: 8),
+                    decoration: BoxDecoration(
+                      color: rd.peri,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 13.5,
+                        height: 1.55,
+                        color: rd.muted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   /// The "Details Mira extracted" chips. Real proposal → genuine detail labels
   /// (deadline + extracted insights, de-duplicated, capped); otherwise the
   /// design's illustrative 👤/📅/# chips. Always ends with the "+ Add" chip.
@@ -2515,6 +2575,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                           color: rd.ink,
                         ),
                       ),
+                      _approvalSummaryList(l10n),
                     ],
                   ),
                 ),

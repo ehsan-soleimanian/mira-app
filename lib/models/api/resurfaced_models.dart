@@ -9,21 +9,24 @@ class ResurfacedItem {
     required this.id,
     required this.title,
     required this.reason,
+    this.summary,
     this.date,
     this.type,
   });
 
   factory ResurfacedItem.fromJson(Map<String, dynamic> json) => ResurfacedItem(
-        id: json['id'] as String,
-        title: json['title'] as String? ?? '',
-        reason: json['reason'] as String? ?? '',
-        date: _parseOptionalDate(json['date']),
-        type: json['type'] as String?,
-      );
+    id: json['id'] as String,
+    title: json['title'] as String? ?? '',
+    reason: json['reason'] as String? ?? '',
+    summary: json['summary'] as String?,
+    date: _parseOptionalDate(json['date']),
+    type: json['type'] as String?,
+  );
 
   final String id;
   final String title;
   final String reason;
+  final String? summary;
   final DateTime? date;
   final String? type;
 }

@@ -102,6 +102,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
                         AppLocalizations.of(
                           context,
                         )!.rdBriefFallbackRecentMemory,
+                    summary: m['summary'] as String?,
                   ),
                 )
                 .toList();
@@ -430,7 +431,10 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       }
     }
 
-    if (hasBriefTasks) {
+    // A rich backend brief can legitimately have only events, resurfaced
+    // memories, or summary highlights. Do not fall back to the legacy feed just
+    // because the task section is empty.
+    if (_brief != null) {
       return _briefLiveChildren(overdue: overdue);
     }
 
@@ -448,7 +452,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
       if (_brief != null && _brief!.summary.isNotEmpty)
         Padding(
           padding: const EdgeInsets.fromLTRB(26, 0, 26, 12),
-          child: _MiraSummary(text: _brief!.summary),
+          child: _MiraSummary(text: _brief!.summary, items: _brief!.highlights),
         ),
       ..._todayTimeline(),
       if (overdue.isNotEmpty) ...[
@@ -475,6 +479,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         for (final t in _briefTasks)
           _TaskCard(
             title: t['title'] as String? ?? l10n.rdBriefFallbackTask,
+            summary: t['summary'] as String?,
             due: _briefTaskDue(t),
             onToggle: (done) => _toggleTask(t['id'] as String? ?? '', done),
           ),
@@ -626,6 +631,7 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
         for (final t in tasks)
           _TaskCard(
             title: t.title,
+            summary: t.summary,
             due: _dueLabel(t),
             onToggle: (done) => _toggleTask(t.id, done),
           ),
@@ -700,6 +706,8 @@ class _RdDailyBriefScreenState extends State<RdDailyBriefScreen> {
   /// always has a second line to read.
   String _resurfacedSub(ResurfacedItem item) {
     final l10n = AppLocalizations.of(context)!;
+    final summary = (item.summary ?? '').trim();
+    if (summary.isNotEmpty && summary != item.title.trim()) return summary;
     final type = (item.type ?? '').trim();
     final when = item.date != null ? _sectionLabel(item.date!) : '';
     if (type.isNotEmpty && when.isNotEmpty) return '$type · $when';
@@ -955,9 +963,15 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _TaskCard extends StatefulWidget {
-  const _TaskCard({required this.title, required this.due, this.onToggle});
+  const _TaskCard({
+    required this.title,
+    required this.due,
+    this.summary,
+    this.onToggle,
+  });
 
   final String title;
+  final String? summary;
   final String due;
   final ValueChanged<bool>? onToggle;
 
@@ -1025,6 +1039,18 @@ class _TaskCardState extends State<_TaskCard> {
                         : TextDecoration.none,
                   ),
                 ),
+                if ((widget.summary ?? '').trim().isNotEmpty &&
+                    widget.summary!.trim() != widget.title.trim()) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    widget.summary!.trim(),
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 12.5,
+                      height: 1.45,
+                      color: rd.muted,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 7),
                 _DuePill(text: widget.due),
               ],
@@ -1211,9 +1237,10 @@ class _ResActionButton extends StatelessWidget {
 }
 
 class _MiraSummary extends StatelessWidget {
-  const _MiraSummary({required this.text});
+  const _MiraSummary({required this.text, this.items = const []});
 
   final String text;
+  final List<String> items;
 
   @override
   Widget build(BuildContext context) {
@@ -1235,13 +1262,41 @@ class _MiraSummary extends StatelessWidget {
           const RdOrb(size: 40),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.vazirmatn(
-                fontSize: 14.5,
-                height: 1.55,
-                color: const Color(0xFF2B2F45),
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  text,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 14.5,
+                    height: 1.55,
+                    color: const Color(0xFF2B2F45),
+                  ),
+                ),
+                if (items.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  for (final item in items)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('•  '),
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: GoogleFonts.vazirmatn(
+                                fontSize: 13,
+                                height: 1.5,
+                                color: const Color(0xFF4A5068),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ],
             ),
           ),
         ],

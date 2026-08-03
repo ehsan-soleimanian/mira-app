@@ -7,6 +7,7 @@ class ProposalDisplay {
     required this.sourceTitle,
     required this.sourceType,
     required this.deadline,
+    required this.summaryItems,
     required this.relatedLabels,
     required this.insightLabels,
   });
@@ -17,10 +18,12 @@ class ProposalDisplay {
   final String sourceTitle;
   final String sourceType;
   final String deadline;
+  final List<String> summaryItems;
   final List<String> relatedLabels;
   final List<String> insightLabels;
 
-  bool get hasContent => title.isNotEmpty || summary.isNotEmpty;
+  bool get hasContent =>
+      title.isNotEmpty || summary.isNotEmpty || summaryItems.isNotEmpty;
   bool get hasSource => sourceTitle.isNotEmpty || sourceType.isNotEmpty;
 
   bool get needsMoreContext {
@@ -54,6 +57,7 @@ ProposalDisplay resolveProposalDisplay(Map<String, dynamic> proposal) {
       proposal['node_type']?.toString() ?? _inferNodeType(proposal);
   final source = _resolveSource(proposal);
   final deadline = _resolveDeadline(proposal);
+  final displaySummaryItems = _collectDisplaySummaryItems(proposal);
   final relatedLabels = _collectRelatedLabels(proposal);
 
   if (_nonEmpty(legacyTitle) || _nonEmpty(legacySummary)) {
@@ -64,6 +68,9 @@ ProposalDisplay resolveProposalDisplay(Map<String, dynamic> proposal) {
       sourceTitle: source.title,
       sourceType: source.type,
       deadline: deadline,
+      summaryItems: displaySummaryItems.isNotEmpty
+          ? displaySummaryItems
+          : _fallbackSummaryItems(legacyTitle, legacySummary),
       relatedLabels: relatedLabels,
       insightLabels: _collectLegacyInsights(proposal),
     );
@@ -77,6 +84,7 @@ ProposalDisplay resolveProposalDisplay(Map<String, dynamic> proposal) {
       sourceTitle: source.title,
       sourceType: source.type,
       deadline: deadline,
+      summaryItems: displaySummaryItems,
       relatedLabels: relatedLabels,
       insightLabels: const [],
     );
@@ -113,9 +121,43 @@ ProposalDisplay resolveProposalDisplay(Map<String, dynamic> proposal) {
     sourceTitle: source.title,
     sourceType: source.type,
     deadline: deadline,
+    summaryItems: displaySummaryItems.isNotEmpty
+        ? displaySummaryItems
+        : _dedupeComplete([...evidenceTexts, ...taskTitles, ...roleLabels]),
     relatedLabels: relatedLabels,
     insightLabels: [...taskTitles, ...roleLabels, ...evidenceTexts.skip(1)],
   );
+}
+
+List<String> _collectDisplaySummaryItems(Map<String, dynamic> proposal) {
+  final display = proposal['displaySummary'];
+  if (display is! Map) return const [];
+  final rawItems = display['items'];
+  if (rawItems is! List) return const [];
+  final items = <String>[];
+  for (final raw in rawItems) {
+    final text = raw is Map ? raw['text']?.toString() : raw?.toString();
+    if (text == null || text.trim().isEmpty) continue;
+    final cleaned = text.trim();
+    if (!items.contains(cleaned)) items.add(cleaned);
+  }
+  return items;
+}
+
+List<String> _fallbackSummaryItems(String? title, String? summary) {
+  final cleanTitle = title?.trim() ?? '';
+  final cleanSummary = summary?.trim() ?? '';
+  if (cleanSummary.isEmpty || cleanSummary == cleanTitle) return const [];
+  return [cleanSummary];
+}
+
+List<String> _dedupeComplete(List<String> values) {
+  final output = <String>[];
+  for (final value in values) {
+    final cleaned = value.trim();
+    if (cleaned.isNotEmpty && !output.contains(cleaned)) output.add(cleaned);
+  }
+  return output;
 }
 
 class _ProposalSource {
