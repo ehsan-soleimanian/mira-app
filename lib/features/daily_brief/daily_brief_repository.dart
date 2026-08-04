@@ -46,7 +46,11 @@ class DailyBriefRepository {
   Future<int> clearOverdue() async {
     final response =
         await _dio.post<Map<String, dynamic>>('/daily-brief/clear-overdue');
-    return (response.data?['count'] as num?)?.toInt() ?? 0;
+    final data = response.data ?? const <String, dynamic>{};
+    // Backend returns `snoozed`; accept legacy `count` during rollout.
+    return (data['snoozed'] as num?)?.toInt() ??
+        (data['count'] as num?)?.toInt() ??
+        0;
   }
 
   /// Memories Mira decided to bring back — the "Mira resurfaced" feed.

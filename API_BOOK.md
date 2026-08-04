@@ -2,7 +2,7 @@
 
 > **For Flutter client (`mira_app`)** — contract to implement HTTP integration.
 > **Source of truth**: `C:\Users\User\Desktop\mira-backend\src\mira\**\router.py`
-> Last updated: 2026-08-04 (canonical 12-input Capture contract, result cards, actions, execution requests, live meetings)
+> Last updated: 2026-08-04 (Capture Architecture v1 + Daily Brief rich contract / Flutter flow)
 
 **Base URL (production)**: `https://api.miramind.io`
 
@@ -95,12 +95,12 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `POST` | `/v2/memory/events/{id}/retry` | diagnostics / sync UI | Retry a pending/failed projection safely |
 | `GET` | `/v2/search` | — | Hybrid entity + capture search |
 | `GET` | `/v2/ontology` | — | Predicate catalog + entity types |
-| `GET` | `/daily-update` | `daily_brief_repository.dart` | Daily brief feed |
-| `GET` | `/v2/resurfaced` | `daily_brief_repository.dart` | Mira-resurfaced memories (Daily Brief) |
+| `GET` | `/daily-brief` | `daily_brief_repository.dart` | Primary rich Brief (`state` / `summary` / `highlights` / sections) |
+| `POST` | `/daily-brief/items/{id}/actions` | `daily_brief_repository.dart` | Done, snooze, dismiss, open, undo-snooze card action |
+| `POST` | `/daily-brief/clear-overdue` | `daily_brief_repository.dart` | Snooze all overdue Brief tasks until tomorrow |
+| `GET` | `/daily-update` | `daily_brief_repository.dart` | Legacy flat feed (fallback only) |
+| `GET` | `/v2/resurfaced` | `daily_brief_repository.dart` | Standalone resurfaced feed (also embedded in Brief) |
 | `GET` | `/storage/usage` | `settings_repository.dart` | Per-category storage usage + quota (Storage screen) |
-| `GET` | `/daily-brief` | redesigned Daily Brief | Rich Brief state: full, empty, overdue, first-time |
-| `POST` | `/daily-brief/items/{id}/actions` | redesigned Daily Brief | Done, snooze, dismiss, open, undo-snooze card action |
-| `POST` | `/daily-brief/clear-overdue` | redesigned Daily Brief | Snooze all overdue Brief tasks until tomorrow |
 | `POST` | `/canvas` | `canvas_repository.dart` | Create a visual workspace board |
 | `GET` | `/canvas` | `canvas_repository.dart` | List user's visual workspace boards |
 | `GET` | `/canvas/{id}` | `canvas_repository.dart` | Fetch a visual board |
@@ -151,7 +151,7 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 1. [Health](#health)
 2. [Auth](#auth)
 3. [Captures](#captures)
-4. [Graph & Daily Update](#graph--daily-update)
+4. [Graph, Tasks & Daily Brief](#graph-v2--daily-brief)
 5. [Workspace Library & Connectors](#workspace-library--connectors)
 6. [Waitlist (Landing)](#waitlist-landing)
 7. [Reminders](#reminders)
@@ -1204,11 +1204,11 @@ Nothing stored. Purges all transient data.
 
 ---
 
-## Graph v2 & Daily Update
+## Graph v2 & Daily Brief
 
 All endpoints require `Authorization: Bearer <access_token>`.
 
-Graph v2 is evidence-first: **Capture → Mention → Entity → Assertion → Predicate Registry → materialized edges**. Vectors (768-dim) power GraphRAG server-side — not returned in API responses.
+Graph v2 is evidence-first: **Capture → Mention → Entity → Assertion → Predicate Registry → materialized edges**. Vectors (768-dim) power GraphRAG server-side — not returned in API responses. Daily Brief is a separate morning **read model** over operational Tasks, today's Events, recent captures, and Brief card actions — it does not write semantic memory.
 
 ### Graph view
 `GET /v2/graph?view=knowledge|evidence|hybrid|tasks`
@@ -1552,23 +1552,225 @@ Categories are always all six (`photos / voice / screenshots / notes / links / o
 ### Resurfaced
 `GET /v2/resurfaced`
 
-Memories Mira brings back for the Daily Brief "resurfaced" section (`DailyBriefRepository.fetchResurfaced()`). User Bearer. Read-only over the graph — OPEN tasks due within ~14 days ("The date is close.") and captures saved within ~7 days ("Saved N days ago."), deduped, capped at 5.
+Standalone resurfaced feed (`DailyBriefRepository.fetchResurfaced()`). The redesigned Brief also embeds a `resurfaced` section from `GET /daily-brief`; this route remains for clients that only need the feed. User Bearer. Read-only over the graph — OPEN tasks due within ~14 days ("The date is close.") and captures saved within ~7 days ("Saved N days ago."), deduped, capped at 5.
 
 **Response** `200`
 ```json
 {
   "count": 1,
   "items": [
-    { "id": "task_abc", "title": "Call Alex", "reason": "The date is close.", "date": "2026-07-15T09:00:00Z", "type": "Task" }
+    { "id": "task_abc", "title": "Call Alex", "summary": "Call Alex — due Friday.", "reason": "The date is close.", "date": "2026-07-15T09:00:00Z", "type": "Task" }
   ]
 }
 ```
-`date` is ISO 8601 or null; `type` is a string or null.
+`date` is ISO 8601 or null; `type` is a string or null. Prefer `summary` when present; fall back to `title`.
 
-### Daily update
+---
+
+### Daily Brief (primary)
+`GET /daily-brief`
+
+Rich morning read-model assembled by `DailyBriefService`. It combines operational OPEN Tasks, today's Events, recent approved captures, and the user's latest Brief card actions. **It does not write semantic memory** and is not a second Task source of truth — Task completion still flows through the durable Task lifecycle (`POST /v2/memory/patches` / compatibility `PATCH /v2/tasks/{id}` / Brief `done` action).
+
+Admin playground / user inspect uses the **same** service and response shape.
+
+No query parameters. Requires Bearer auth.
+
+**Response** `200`
+```json
+{
+  "date": "2026-08-04T04:30:00+00:00",
+  "state": "full",
+  "greeting": "Good morning, Sara",
+  "summary": "Today’s tasks and relevant memories are listed briefly and completely.",
+  "highlights": [
+    "1 overdue task needs attention.",
+    "Today: Product sync at 10:00.",
+    "Next task: Send the release notes — due Friday.",
+    "From memory: Sara reviewed the launch checklist."
+  ],
+  "counts": {
+    "tasks": 2,
+    "overdue": 1,
+    "resurfaced": 1,
+    "handled": 0
+  },
+  "sections": [
+    {
+      "id": "today",
+      "title": "Today",
+      "items": [
+        {
+          "id": "evt_1",
+          "kind": "event",
+          "title": "Product sync.",
+          "subtitle": "Weekly product meeting.",
+          "timeLabel": "10:00",
+          "dueAt": "2026-08-04T06:30:00+00:00"
+        }
+      ]
+    },
+    {
+      "id": "needs_you",
+      "title": "Needs you soon",
+      "items": [
+        {
+          "id": "task_abc",
+          "kind": "task",
+          "title": "Send the release notes",
+          "summary": "Send the release notes — due Friday.",
+          "status": "OPEN",
+          "dueAt": "2026-08-08T15:00:00+00:00",
+          "duePrecision": "datetime",
+          "dueText": "Friday",
+          "captureId": "550e8400-e29b-41d4-a716-446655440000",
+          "overdue": false
+        }
+      ]
+    },
+    {
+      "id": "resurfaced",
+      "title": "Mira resurfaced",
+      "items": [
+        {
+          "id": "cap_xyz",
+          "kind": "memory",
+          "title": "Launch checklist.",
+          "summary": "Sara reviewed the launch checklist before the customer demo.",
+          "capturedAt": "2026-08-02T12:00:00+00:00",
+          "reason": "Recent memory"
+        }
+      ]
+    },
+    {
+      "id": "handled",
+      "title": "Handled quietly",
+      "items": [
+        {
+          "id": "task_old",
+          "kind": "task",
+          "action": "done",
+          "createdAt": "2026-08-04T03:00:00+00:00"
+        }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `date` | datetime | Server clock (UTC) when the Brief was built |
+| `state` | string | `first` · `empty` · `overdue` · `full` |
+| `greeting` | string | Localized greeting with first name when available |
+| `summary` | string | One complete sentence describing Brief state |
+| `highlights` | string[] | Up to **6** independently understandable, deduplicated bullet lines |
+| `counts.tasks` | int | Visible OPEN tasks in `needs_you` |
+| `counts.overdue` | int | Visible overdue OPEN tasks |
+| `counts.resurfaced` | int | Items in `resurfaced` |
+| `counts.handled` | int | Recent `done` / `dismiss` / `open` actions shown in `handled` |
+| `sections[].id` | string | Stable: `today` · `needs_you` · `resurfaced` · `handled` |
+| `sections[].items` | object[] | Shape depends on section (see below) |
+
+**`state` rules**
+
+| State | When |
+|-------|------|
+| `first` | `onboarding_completed` is false |
+| `overdue` | At least one visible OPEN task has `dueAt` in the past |
+| `empty` | No visible daily-update items and no recent captures |
+| `full` | Otherwise |
+
+**Presentation invariants**
+
+- Top-level `summary` and every `highlights[]` line are complete standalone sentences (no blind `text[:N]` slices).
+- Task cards expose their own complete `summary` (title + due text). Flutter must prefer `item.summary` over reconstructing prose from `title`.
+- “Today” and displayed times use the user's IANA `timezone`. Copy selection uses `preferred_language` (Persian when locale starts with `fa`).
+- Visibility respects the latest Brief action per `itemId`: `done` / `dismiss` hide the card; active `snooze` hides until `snoozedUntil`.
+- After Capture approve, Tasks appear only once the operational projection is applied. A `PENDING`/`RETRY` projection may leave Brief empty for a moment — treat that as sync lag, not missing memory.
+
+**Section item shapes**
+
+| Section | `kind` | Key fields |
+|---------|--------|------------|
+| `today` | `event` | `id`, `title`, `subtitle`, `timeLabel`, `dueAt` |
+| `needs_you` | `task` | `id`, `title`, `summary`, `status`, `dueAt`, `duePrecision`, `dueText`, `captureId`, `overdue` |
+| `resurfaced` | `memory` | `id`, `title`, `summary`, `capturedAt`, `reason` |
+| `handled` | task/capture/… | `id`, `kind`, `action`, `createdAt` |
+
+**Flutter mapping** (`DailyBriefResponse` in `lib/models/api/daily_brief_models.dart`):
+
+- Prefer `GET /daily-brief` in `rd_daily_brief_screen.dart`.
+- Render `_brief.summary` + `_brief.highlights` as the Mira summary block.
+- Build Needs-you cards from `section('needs_you')` using `summary` when present.
+- Keep `/daily-update` and `/v2/resurfaced` only as fallbacks / supplemental feeds.
+- Overdue OS reminders still come from `GET /reminders` (separate from Brief task cards).
+
+**Errors**: `401` · `404` (user missing)
+
+---
+
+### Daily Brief card action
+`POST /daily-brief/items/{item_id}/actions`
+
+Records a visibility/read action for one Brief card. For `action=done` and `itemKind=task`, the backend also marks the operational Task `DONE` (graph Task update). Other actions only affect Brief visibility / snooze state — they do **not** invent semantic memory.
+
+**Request**
+```json
+{
+  "action": "snooze",
+  "itemKind": "task",
+  "snoozeUntil": "2026-08-05T08:00:00+00:00",
+  "note": optional
+}
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `action` | string | required · `done` · `snooze` · `dismiss` · `open` · `undo_snooze` |
+| `itemKind` | string | optional, default `task` · `task` · `capture` · `event` · `resurfaced` · `memory` |
+| `snoozeUntil` | datetime \| null | optional; if `action=snooze` and omitted, server defaults to now+1 day |
+| `note` | string \| null | optional, max 500 |
+
+**Response** `200`
+```json
+{
+  "itemId": "task_abc",
+  "action": "snooze",
+  "snoozedUntil": "2026-08-05T08:00:00+00:00"
+}
+```
+
+**Errors**: `401` · `404` (task not found on `done`) · `422` (invalid action / kind)
+
+---
+
+### Clear overdue Brief tasks
+`POST /daily-brief/clear-overdue`
+
+Quietly snoozes every currently overdue OPEN task until tomorrow (writes Brief `snooze` actions; does not cancel Tasks).
+
+No request body.
+
+**Response** `200`
+```json
+{ "snoozed": 3 }
+```
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `snoozed` | int | Number of overdue OPEN tasks snoozed |
+
+Flutter (`DailyBriefRepository.clearOverdue`) reads `snoozed`, with a legacy fallback to `count`.
+
+**Errors**: `401`
+
+---
+
+### Daily update (legacy flat feed)
 `GET /daily-update`
 
-Returns up to **20 open task items** for the Daily Brief screen (`DailyBriefRepository.fetchDailyUpdate()`). Tasks with `due_at` include timing metadata so the client can show and schedule reminders from the actual deadline instead of creation time.
+Legacy flat feed kept for rolling clients and as a Brief fallback (`DailyBriefRepository.fetchDailyUpdate()`). New UI should prefer `GET /daily-brief`. Returns up to **20** open task / recent memory items. Tasks with `due_at` include timing metadata so the client can show and schedule reminders from the actual deadline instead of creation time.
 
 No query parameters.
 
@@ -1611,7 +1813,7 @@ No query parameters.
 | `items[].capture_type` | string \| null | Original capture channel: `text`, `voice`, `image`, `file`, `link` — from approved payload `source.capture_type`; `null` for legacy nodes |
 | `items[].thumbnail_b64` | string \| null | JPEG display thumb (~168px) for `capture_type: image`; full upload bytes are never stored |
 
-**Flutter mapping** (`DailyBriefData.fromDailyUpdateItems`):
+**Flutter mapping** (`DailyBriefData.fromDailyUpdateItems` — legacy path only):
 
 - `node_type` `Task` / `Reminder` → task card; time label and notification scheduling prefer `due_at` over `created_at`
 - `capture_type` `image` → `ImageBriefCard` (`Image.memory` when `thumbnail_b64` present; placeholder otherwise)
@@ -2452,16 +2654,30 @@ Packages: `dio`, `flutter_secure_storage`.
 
 ### Daily Brief flow (Flutter)
 
-Implemented in `lib/features/daily_brief/` + `lib/screens/daily_brief/`:
+Implemented in `lib/features/daily_brief/` + `lib/redesign/screens/rd_daily_brief_screen.dart`:
 
 ```
-DailyBriefScreen init
-  → GET /daily-update
-  → DailyUpdateResponse → DailyBriefData.fromDailyUpdateItems()
-  → section grouping (Today / Yesterday / date) client-side from created_at
+RdDailyBriefScreen init
+  → GET /daily-brief
+  → DailyBriefResponse (state / summary / highlights / sections / counts)
+  → render Mira summary + section('today'|'needs_you'|'resurfaced'|'handled')
+  → card done/snooze/dismiss → POST /daily-brief/items/{id}/actions
+  → clear overdue strip → POST /daily-brief/clear-overdue  ({ "snoozed": N })
+  → overdue OS reminders (optional) → GET /reminders + snooze/done
+
+Fallback when rich Brief is unavailable:
+  → GET /daily-update → DailyBriefData.fromDailyUpdateItems()
+  → optional GET /v2/resurfaced
 ```
 
-Models: `lib/models/api/daily_update_models.dart`.
+Models:
+- `lib/models/api/daily_brief_models.dart` (primary)
+- `lib/models/api/daily_update_models.dart` (legacy fallback)
+- `lib/models/api/resurfaced_models.dart` (standalone / supplemental)
+
+Prefer `item.summary` and `highlights[]` over reconstructing copy from titles.
+Task checkbox completion may also go through `GraphRepository` →
+`POST /v2/memory/patches` / `PATCH /v2/tasks/{id}` when mutating outside Brief actions.
 
 ### Memory graph flow (Flutter)
 
@@ -2484,6 +2700,16 @@ Pass `highlightNodeId` (first `createdEntities` id from approve response) after 
 Also mirror in `lib/models/api/`:
 
 ```dart
+class DailyBriefResponse {
+  final DateTime date;
+  final String state; // first | empty | overdue | full
+  final String greeting;
+  final String summary;
+  final List<String> highlights;
+  final Map<String, int> counts;
+  final List<DailyBriefSection> sections;
+}
+
 class DailyUpdateItem {
   final String id;
   final String nodeType;
