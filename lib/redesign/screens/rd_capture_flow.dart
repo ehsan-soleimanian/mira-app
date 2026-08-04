@@ -9,12 +9,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/app/mira_services.dart';
 import 'package:mira_app/features/capture/media/capture_media_picker.dart';
+import 'package:mira_app/features/capture/utils/capture_review_actions.dart';
 import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
 import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 import 'package:mira_app/models/api/graph_models.dart';
+import 'package:dio/dio.dart';
 
 import '../models/rd_capture_mode.dart';
 import '../theme/rd_theme.dart';
@@ -89,7 +91,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   // confirm both fall back to the current simulated behaviour.
   String? _captureId;
   ProposalDisplay? _proposal;
+  CaptureResultCard? _resultCard;
+  List<CaptureAction> _availableActions = const [];
+  List<CaptureExecutionRequest> _executions = const [];
+  int _proposalRevision = 0;
   bool _realProposal = false;
+  bool _actionBusy = false;
   // Guards `_runPipeline` so text + voice can't both drive it for one session.
   bool _pipelineStarted = false;
   // A cancelled clarification or hard pipeline error must never fall through
@@ -324,7 +331,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       // Reset any real pipeline result from a previous session.
       _captureId = null;
       _proposal = null;
+      _resultCard = null;
+      _availableActions = const [];
+      _executions = const [];
+      _proposalRevision = 0;
       _realProposal = false;
+      _actionBusy = false;
       _pipelineStarted = false;
       _pipelineAborted = false;
       // Reset non-voice + editable-review state for a fresh session.
@@ -426,6 +438,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
             _realProposal = true;
           });
         }
+      case 'result':
+        final card = CaptureResultCard.fromJson(event.data);
+        setState(() {
+          _resultCard = card;
+          if (!_realProposal && card.extractedItems.isNotEmpty) {
+            _realProposal = true;
+          }
+        });
       case 'question_answer':
         if (mounted) {
           widget.go(
@@ -555,6 +575,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
       // Seed from the create response if it already carries a proposal.
       Map<String, dynamic>? proposalJson = capture.proposal;
+      CaptureResultCard? resultCard = capture.resultCard;
+      var availableActions = List<CaptureAction>.from(capture.availableActions);
+      var proposalRevision = capture.proposalRevision;
       var clarificationOnly = false;
       var streamOk = true;
       Map<String, dynamic>? timeClarification;
@@ -569,6 +592,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           switch (event.event) {
             case 'proposal':
               proposalJson = event.data;
+            case 'result':
+              resultCard = CaptureResultCard.fromJson(event.data);
+            case 'status':
+              final processing = event.data['processing'];
+              if (processing is Map && event.data['state'] == 'processing') {
+                // Keep streaming; processing report is informational only.
+              }
             case 'error':
               streamOk = false;
             case 'question_answer':
@@ -635,6 +665,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           return;
         }
         proposalJson = clarified.proposal;
+        resultCard = clarified.resultCard ?? resultCard;
+        if (clarified.availableActions.isNotEmpty) {
+          availableActions = List<CaptureAction>.from(clarified.availableActions);
+        }
+        proposalRevision = clarified.proposalRevision;
         clarificationOnly = clarified.state != 'awaiting_approval';
         streamOk = true;
       }
@@ -662,6 +697,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       setState(() {
         _captureId = captureId;
         _proposal = display;
+        _resultCard = resultCard;
+        _availableActions = availableActions;
+        _proposalRevision = proposalRevision;
         _realProposal = true;
         // Default every extracted connection row to selected.
         _connOn
@@ -877,6 +915,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       final result = await services.captureRepository.approve(
         captureId,
         title: _pendingTitle,
+        proposalRevision: _proposalRevision,
+        idempotencyKey: 'approve-$captureId-$_proposalRevision',
       );
       await services.memoryStore.load(force: true);
       await services.remindersRepository.syncLocalNotifications();
@@ -886,6 +926,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         _savingLink = false;
         _view = 'added';
       });
+      unawaited(_loadExecutions(services, captureId));
       if (result.isProjectionPending) {
         ScaffoldMessenger.of(
           context,
@@ -908,10 +949,33 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   Future<void> _approveCapture(MiraServices services, String captureId) async {
     final l10n = AppLocalizations.of(context)!;
     try {
-      final result = await services.captureRepository.approve(captureId);
+      final primary = _serverPrimaryAction;
+      final CaptureCommitReceipt result;
+      if (primary != null && primary.isApprove) {
+        final outcome = await services.captureRepository.executeAction(
+          captureId: captureId,
+          actionId: primary.id,
+          proposalRevision: _proposalRevision,
+          idempotencyKey: 'approve-$captureId-$_proposalRevision',
+        );
+        result =
+            outcome.receipt ??
+            await services.captureRepository.approve(
+              captureId,
+              proposalRevision: _proposalRevision,
+              idempotencyKey: 'approve-$captureId-$_proposalRevision-fallback',
+            );
+      } else {
+        result = await services.captureRepository.approve(
+          captureId,
+          proposalRevision: _proposalRevision,
+          idempotencyKey: 'approve-$captureId-$_proposalRevision',
+        );
+      }
       await services.memoryStore.load(force: true);
       await services.remindersRepository.syncLocalNotifications();
       if (!mounted) return;
+      unawaited(_loadExecutions(services, captureId));
       if (result.isProjectionPending) {
         ScaffoldMessenger.of(
           context,
@@ -928,10 +992,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
   void _watchCaptureProjection(
     MiraServices services,
-    GraphIngestResponse result,
+    CaptureCommitReceipt result,
   ) {
     final eventId = result.ledgerEventId;
-    if (eventId == null || !result.isProjectionPending) return;
+    if (eventId.isEmpty || !result.isProjectionPending) return;
     unawaited(() async {
       final receipt = await services.graphRepository.waitForProjection(
         MemoryProjectionReceipt(
@@ -956,6 +1020,367 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncFailed)));
       }
     }());
+  }
+
+  Future<void> _loadExecutions(MiraServices services, String captureId) async {
+    try {
+      final rows = await services.captureRepository.listExecutions(captureId);
+      if (!mounted) return;
+      setState(() => _executions = rows);
+    } catch (_) {
+      // Best-effort — the kept screen still works without this panel.
+    }
+  }
+
+  Future<void> _runServerAction(CaptureAction action) async {
+    final captureId = _captureId;
+    if (captureId == null || _actionBusy) return;
+    final l10n = AppLocalizations.of(context)!;
+    final services = AppScope.servicesOf(context);
+
+    if (action.id == 'capture.dismiss') {
+      await _abortClarification(captureId);
+      return;
+    }
+
+    if (action.requiresConfirmation && !action.isApprove) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.rdCaptureActionConfirmTitle),
+          content: Text(l10n.rdCaptureActionConfirmBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.rdCaptureCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.rdCaptureActionContinue),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
+
+    Map<String, dynamic> input = const {};
+    List<ProposalMutationOperation> operations = const [];
+
+    if (action.id == 'capture.ask') {
+      final question = await _promptActionText(
+        title: localizeCaptureActionLabel(action, l10n),
+        hint: l10n.rdCaptureActionAskHint,
+      );
+      if (question == null || question.isEmpty || !mounted) return;
+      input = {'question': question};
+    } else if (action.id == 'proposal.edit') {
+      final title = await _promptActionText(
+        title: localizeCaptureActionLabel(action, l10n),
+        hint: l10n.rdCaptureActionEditHint,
+        initial: _proposal?.title ?? _transcriptTitle,
+      );
+      if (title == null || title.isEmpty || !mounted) return;
+      final itemId = _resultCard?.extractedItems.firstOrNull?.id ?? 'primary_1';
+      operations = [
+        ProposalMutationOperation(
+          op: 'replace_field',
+          itemId: itemId,
+          field: 'title',
+          value: title,
+        ),
+      ];
+    } else if (action.id == 'communication.share') {
+      final recipient = await _promptActionText(
+        title: localizeCaptureActionLabel(action, l10n),
+        hint: l10n.rdCaptureActionShareHint,
+      );
+      if (recipient == null || recipient.isEmpty || !mounted) return;
+      input = {
+        'channel': 'message',
+        'recipient': recipient,
+        'body': _understoodText(l10n),
+      };
+    } else if (action.id == 'automation.create') {
+      final description = await _promptActionText(
+        title: localizeCaptureActionLabel(action, l10n),
+        hint: l10n.rdCaptureActionAutomationHint,
+      );
+      if (description == null || description.isEmpty || !mounted) return;
+      input = {
+        'trigger': 'manual',
+        'condition': description,
+        'action': description,
+      };
+    } else if (action.id == 'content.complete') {
+      final itemId = _resultCard?.extractedItems
+              .where((item) => item.kind == 'task' || item.kind == 'commitment')
+              .map((item) => item.id)
+              .firstOrNull ??
+          _resultCard?.extractedItems.firstOrNull?.id;
+      if (itemId == null) {
+        _showCaptureError(l10n.rdCaptureActionFailed);
+        return;
+      }
+      input = {'itemId': itemId};
+    } else if (action.id == 'memory.privacy') {
+      input = {
+        'learningMode': 'this_only',
+        'retention': 'durable_after_approval',
+      };
+    } else if (action.id == 'graph.connect') {
+      final target = _proposal?.relatedLabels.firstOrNull ?? _proposal?.title;
+      if (target == null || target.isEmpty) {
+        _showCaptureError(l10n.rdCaptureActionFailed);
+        return;
+      }
+      input = {
+        'relationship': 'RELATES_TO',
+        'targetTitle': target,
+      };
+    }
+
+    if (action.isApprove) {
+      if (_kind == 'link') {
+        unawaited(_confirmLinkMemory(services, captureId));
+      } else {
+        unawaited(_approveCapture(services, captureId));
+        if (_remind) unawaited(_createReminder(services));
+        setState(() => _view = 'added');
+      }
+      return;
+    }
+
+    setState(() => _actionBusy = true);
+    try {
+      final outcome = await services.captureRepository.executeAction(
+        captureId: captureId,
+        actionId: action.id,
+        proposalRevision: _proposalRevision,
+        idempotencyKey: '${action.id}-$captureId-$_proposalRevision',
+        input: input,
+        operations: operations,
+      );
+      if (!mounted) return;
+
+      if (outcome.capture != null) {
+        final capture = outcome.capture!;
+        final proposal = capture.proposal;
+        setState(() {
+          _proposalRevision = capture.proposalRevision;
+          _resultCard = capture.resultCard ?? _resultCard;
+          _availableActions = capture.availableActions.isNotEmpty
+              ? capture.availableActions
+              : _availableActions;
+          if (proposal != null) {
+            final display = resolveProposalDisplay(proposal);
+            if (display.hasContent) _proposal = display;
+          }
+        });
+      }
+
+      if (action.id == 'capture.ask' && (outcome.answer ?? '').isNotEmpty) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.rdCaptureActionAskAnswerTitle),
+            content: Text(outcome.answer!),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.rdCaptureDone),
+              ),
+            ],
+          ),
+        );
+      } else if (action.id == 'source.open') {
+        final sources = (outcome.raw['sources'] as List?) ?? const [];
+        await _showSourcesSheet(sources);
+      } else if (outcome.awaitsExternalConfirmation) {
+        _showCaptureError(l10n.rdCaptureActionDraftReady);
+      } else if (action.id == 'memory.privacy') {
+        _showCaptureError(l10n.rdCaptureActionPrivacyApplied);
+      } else if (action.id == 'content.complete') {
+        _showCaptureError(l10n.rdCaptureActionCompletedItem);
+      } else if (action.id == 'proposal.edit') {
+        _showCaptureError(l10n.rdCaptureActionEdited);
+      }
+    } on DioException catch (error) {
+      if (!mounted) return;
+      if (error.response?.statusCode == 409) {
+        try {
+          final fresh = await services.captureRepository.getCapture(captureId);
+          if (!mounted) return;
+          setState(() {
+            _proposalRevision = fresh.proposalRevision;
+            _resultCard = fresh.resultCard ?? _resultCard;
+            _availableActions = fresh.availableActions.isNotEmpty
+                ? fresh.availableActions
+                : _availableActions;
+            final proposal = fresh.proposal;
+            if (proposal != null) {
+              final display = resolveProposalDisplay(proposal);
+              if (display.hasContent) _proposal = display;
+            }
+          });
+          _showCaptureError(l10n.rdCaptureActionStale);
+        } catch (_) {
+          _showCaptureError(l10n.rdCaptureActionFailed);
+        }
+      } else {
+        _showCaptureError(l10n.rdCaptureActionFailed);
+      }
+    } catch (_) {
+      if (mounted) _showCaptureError(l10n.rdCaptureActionFailed);
+    } finally {
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+
+  Future<String?> _promptActionText({
+    required String title,
+    required String hint,
+    String? initial,
+  }) async {
+    final controller = TextEditingController(text: initial ?? '');
+    final l10n = AppLocalizations.of(context)!;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(hintText: hint),
+          minLines: 1,
+          maxLines: 4,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.rdCaptureCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: Text(l10n.rdCaptureActionContinue),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _showSourcesSheet(List<dynamic> sources) async {
+    final l10n = AppLocalizations.of(context)!;
+    final rd = context.rd;
+    if (sources.isEmpty) {
+      _showCaptureError(l10n.rdCaptureActionOpenSourceEmpty);
+      return;
+    }
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: rd.card,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.rdCaptureActionOpenSourceTitle,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: rd.ink,
+                ),
+              ),
+              const SizedBox(height: 12),
+              for (final raw in sources)
+                if (raw is Map)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      [
+                        raw['title']?.toString(),
+                        raw['kind']?.toString(),
+                        raw['sourceId']?.toString(),
+                        raw['externalRef']?.toString(),
+                      ].whereType<String>().where((s) => s.isNotEmpty).join(' · '),
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 13,
+                        height: 1.4,
+                        color: rd.muted,
+                      ),
+                    ),
+                  ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmExecution(CaptureExecutionRequest request) async {
+    final l10n = AppLocalizations.of(context)!;
+    final services = AppScope.servicesOf(context);
+    try {
+      final updated = await services.captureRepository.confirmExecution(
+        request.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _executions = [
+          for (final row in _executions)
+            if (row.id == updated.id) updated else row,
+        ];
+      });
+      _showCaptureError(localizeExecutionHonesty(updated, l10n));
+    } catch (_) {
+      if (mounted) _showCaptureError(l10n.rdCaptureActionFailed);
+    }
+  }
+
+  Future<void> _testExecution(CaptureExecutionRequest request) async {
+    final l10n = AppLocalizations.of(context)!;
+    final services = AppScope.servicesOf(context);
+    try {
+      final result = await services.captureRepository.testExecution(request.id);
+      if (!mounted) return;
+      setState(() {
+        _executions = [
+          for (final row in _executions)
+            if (row.id == request.id)
+              CaptureExecutionRequest(
+                id: row.id,
+                captureId: row.captureId,
+                kind: row.kind,
+                status: result.status,
+                payload: row.payload,
+                result: result.sample,
+                executor: row.executor,
+                error: row.error,
+                confirmedAt: row.confirmedAt,
+                createdAt: row.createdAt,
+                updatedAt: row.updatedAt,
+              )
+            else
+              row,
+        ];
+      });
+      _showCaptureError(
+        result.sideEffectExecuted
+            ? l10n.rdCaptureExecutionCompletedHint
+            : l10n.rdCaptureExecutionTestDone,
+      );
+    } catch (_) {
+      if (mounted) _showCaptureError(l10n.rdCaptureActionFailed);
+    }
   }
 
   /// Create a real note memory in the backend library. Best-effort: a failure
@@ -1034,7 +1459,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _realTranscript = true;
       _captureId = null;
       _proposal = null;
+      _resultCard = null;
+      _availableActions = const [];
+      _executions = const [];
+      _proposalRevision = 0;
       _realProposal = false;
+      _actionBusy = false;
       _pipelineStarted = false;
       _pipelineAborted = false;
       _view = 'proc';
@@ -1072,6 +1502,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _steps = 0;
       _captureId = null;
       _proposal = null;
+      _resultCard = null;
+      _availableActions = const [];
+      _executions = const [];
+      _proposalRevision = 0;
       _realProposal = false;
       _pipelineStarted = true;
       _linkCrawlState = 'idle';
@@ -1099,12 +1533,22 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     final services = AppScope.servicesOf(context);
     final metadata = <String, dynamic>{};
     Map<String, dynamic>? proposalJson;
+    CaptureResultCard? resultCard;
+    var availableActions = <CaptureAction>[];
+    var proposalRevision = 0;
     String? captureId;
 
     void absorb(CaptureResponse capture) {
       captureId = capture.captureId;
       metadata.addAll(capture.sourceMetadata);
       proposalJson ??= capture.proposal;
+      resultCard ??= capture.resultCard;
+      if (capture.availableActions.isNotEmpty) {
+        availableActions = List<CaptureAction>.from(capture.availableActions);
+      }
+      if (capture.proposalRevision > proposalRevision) {
+        proposalRevision = capture.proposalRevision;
+      }
     }
 
     try {
@@ -1121,6 +1565,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                   .streamCapture(created.captureId)
                   .timeout(const Duration(seconds: 15))) {
             if (event.event == 'proposal') proposalJson = event.data;
+            if (event.event == 'result') {
+              resultCard = CaptureResultCard.fromJson(event.data);
+            }
           }
         } on TimeoutException {
           // A fast worker can publish before SSE subscribes; poll below.
@@ -1159,6 +1606,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       setState(() {
         _captureId = captureId;
         _proposal = display;
+        _resultCard = resultCard;
+        _availableActions = availableActions;
+        _proposalRevision = proposalRevision;
         _realProposal = true;
         _linkCrawlState = scraped ? 'ready' : 'metadata_only';
         _linkCrawlMethod = method;
@@ -1996,43 +2446,79 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     return out.take(6).toList();
   }
 
-  /// The "Connect to existing memory" section. Real proposal → one toggleable
-  /// row per extracted related node/relationship (omitted entirely when there
-  /// are none). Otherwise the design's three illustrative connection rows.
+  /// The "Connect to existing memory" section. Real proposal → related rows,
+  /// then server-owned secondary actions from `result_card.nextStep`.
   List<Widget> _connectSection(AppLocalizations l10n) {
+    final rows = <Widget>[];
     if (_realProposal) {
       final related = _proposal?.relatedLabels ?? const <String>[];
-      if (related.isEmpty) return const [];
-      final rows = <Widget>[_fieldLabel(l10n.rdCaptureConnectMemory)];
-      for (var i = 0; i < related.length; i++) {
-        if (i > 0) rows.add(const SizedBox(height: 8));
-        final on = _connOn.contains(i);
-        rows.add(
-          _connRow(
-            '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
-            related[i],
-            l10n.rdCaptureRelatedMemory,
-            on,
-            () => setState(() {
-              if (on) {
-                _connOn.remove(i);
-              } else {
-                _connOn.add(i);
-              }
-            }),
-          ),
-        );
+      if (related.isNotEmpty) {
+        rows.add(_fieldLabel(l10n.rdCaptureConnectMemory));
+        for (var i = 0; i < related.length; i++) {
+          if (i > 0) rows.add(const SizedBox(height: 8));
+          final on = _connOn.contains(i);
+          rows.add(
+            _connRow(
+              '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+              related[i],
+              l10n.rdCaptureRelatedMemory,
+              on,
+              () => setState(() {
+                if (on) {
+                  _connOn.remove(i);
+                } else {
+                  _connOn.add(i);
+                }
+              }),
+            ),
+          );
+        }
+      }
+      final serverActions = _serverSecondaryActions();
+      if (serverActions.isNotEmpty) {
+        if (rows.isNotEmpty) rows.add(const SizedBox(height: 8));
+        rows.addAll(_serverSuggestedActions(l10n, serverActions));
       }
       return rows;
     }
-    // Photo / screenshot / link → "Suggested actions" instead of the voice-note
-    // connection rows.
+    // Photo / screenshot / link → illustrative "Suggested actions" only when
+    // there is no real proposal yet.
     if (_kind == 'photo' || _kind == 'screenshot' || _kind == 'link') {
       return _suggestedActions(l10n);
     }
-    // No real extraction → no fabricated connection rows. The graph will link
-    // this memory on approval; nothing to show or toggle here.
     return const [];
+  }
+
+  List<CaptureAction> _serverSecondaryActions() => resolveReviewSecondaryActions(
+    resultCard: _resultCard,
+    availableActions: _availableActions,
+  );
+
+  CaptureAction? get _serverPrimaryAction => resolveReviewPrimaryAction(
+    resultCard: _resultCard,
+    availableActions: _availableActions,
+  );
+
+  List<Widget> _serverSuggestedActions(
+    AppLocalizations l10n,
+    List<CaptureAction> actions,
+  ) {
+    final out = <Widget>[_fieldLabel(l10n.rdCaptureSuggestedActions)];
+    for (var i = 0; i < actions.length; i++) {
+      if (i > 0) out.add(const SizedBox(height: 8));
+      final action = actions[i];
+      out.add(
+        _actionRow(
+          captureActionIconPath(action.id),
+          localizeCaptureActionLabel(action, l10n),
+          localizeCaptureActionSubtitle(action, l10n),
+          busy: _actionBusy,
+          danger: action.style == 'danger',
+          onTap: () => unawaited(_runServerAction(action)),
+        ),
+      );
+    }
+    return out;
   }
 
   /// The number of connections/actions currently toggled on — drives the
@@ -2698,6 +3184,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                 color: rd.muted,
               ),
             ),
+            if (_executions.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              _executionsPanel(l10n),
+            ],
             const SizedBox(height: 28),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -2733,6 +3223,83 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _executionsPanel(AppLocalizations l10n) {
+    final rd = context.rd;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: rd.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: rd.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.rdCaptureExecutionsTitle,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: rd.ink,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (final request in _executions) ...[
+            Text(
+              '${localizeExecutionKind(request, l10n)} · ${localizeExecutionStatus(request, l10n)}',
+              style: GoogleFonts.vazirmatn(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: rd.ink,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              localizeExecutionHonesty(request, l10n),
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12,
+                height: 1.4,
+                color: rd.muted,
+              ),
+            ),
+            if (request.error != null && request.error!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                request.error!,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 11.5,
+                  height: 1.35,
+                  color: rd.muted,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                if (request.kind == 'automation' &&
+                    (request.isDraft || request.isValidated))
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: TextButton(
+                      onPressed: () => unawaited(_testExecution(request)),
+                      child: Text(l10n.rdCaptureExecutionTest),
+                    ),
+                  ),
+                if (request.isDraft)
+                  TextButton(
+                    onPressed: () => unawaited(_confirmExecution(request)),
+                    child: Text(l10n.rdCaptureExecutionConfirm),
+                  ),
+              ],
+            ),
+            if (request != _executions.last) const SizedBox(height: 12),
+          ],
+        ],
       ),
     );
   }
@@ -2786,6 +3353,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   Widget _reviewBar() {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
+    final primary = _serverPrimaryAction;
+    final primaryLabel = primary != null
+        ? localizeCaptureActionLabel(primary, l10n)
+        : (_linkCount > 0
+              ? l10n.rdCaptureAddLinking(_linkCount)
+              : l10n.rdCaptureAddToMemory);
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
       decoration: BoxDecoration(
@@ -2794,7 +3367,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => widget.go('home'),
+            onTap: () {
+              final captureId = _captureId;
+              if (captureId != null) {
+                unawaited(_abortClarification(captureId));
+              } else {
+                widget.go('home');
+              }
+            },
             child: Container(
               height: 52,
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -2817,17 +3397,26 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           const SizedBox(width: 10),
           Expanded(
             child: GestureDetector(
-              onTap: _savingLink ? null : _addToMemory,
+              onTap: (_savingLink || _actionBusy)
+                  ? null
+                  : () {
+                      final primaryAction = primary;
+                      if (primaryAction != null &&
+                          _realProposal &&
+                          _captureId != null) {
+                        unawaited(_runServerAction(primaryAction));
+                      } else {
+                        _addToMemory();
+                      }
+                    },
               child: Container(
                 height: 52,
                 alignment: Alignment.center,
-                // Fixed navy CTA. Label reflects how many connections/actions
-                // are toggled on (design's "Add · linking N").
                 decoration: BoxDecoration(
                   color: rd.navy,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: _savingLink
+                child: (_savingLink || _actionBusy)
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -2837,9 +3426,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                         ),
                       )
                     : Text(
-                        _linkCount > 0
+                        _linkCount > 0 && primary == null
                             ? l10n.rdCaptureAddLinking(_linkCount)
-                            : l10n.rdCaptureAddToMemory,
+                            : primaryLabel,
                         style: GoogleFonts.vazirmatn(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
@@ -2974,6 +3563,86 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
             child: _Tog(on: on),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _actionRow(
+    String icon,
+    String name,
+    String sub, {
+    required VoidCallback onTap,
+    bool busy = false,
+    bool danger = false,
+  }) {
+    final rd = context.rd;
+    return GestureDetector(
+      onTap: busy ? null : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: rd.line, width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: danger ? rd.card : rd.periSoft,
+                borderRadius: BorderRadius.circular(10),
+                border: danger ? Border.all(color: rd.line) : null,
+              ),
+              child: Center(
+                child: busy
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: rd.peri,
+                        ),
+                      )
+                    : RdIcon(
+                        icon,
+                        size: 18,
+                        color: danger ? rd.muted : rd.peri,
+                        strokeWidth: 1.8,
+                      ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: rd.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    sub,
+                    style: GoogleFonts.vazirmatn(fontSize: 12, color: rd.muted),
+                  ),
+                ],
+              ),
+            ),
+            RdIcon(
+              '<path d="M9 18l6-6-6-6"/>',
+              size: 16,
+              color: rd.faint,
+              strokeWidth: 2,
+            ),
+          ],
+        ),
       ),
     );
   }

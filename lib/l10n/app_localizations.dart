@@ -5332,6 +5332,270 @@ abstract class AppLocalizations {
   /// **'Mira couldn\'t confirm this save. Please try again.'**
   String get rdCaptureMemorySaveFailed;
 
+  /// No description provided for @rdCaptureActionStale.
+  ///
+  /// In en, this message translates to:
+  /// **'This review changed. Mira refreshed it — try again.'**
+  String get rdCaptureActionStale;
+
+  /// No description provided for @rdCaptureActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira couldn\'t run that action. Please try again.'**
+  String get rdCaptureActionFailed;
+
+  /// No description provided for @rdCaptureActionConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue?'**
+  String get rdCaptureActionConfirmTitle;
+
+  /// No description provided for @rdCaptureActionConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This uses a server-owned Capture action.'**
+  String get rdCaptureActionConfirmBody;
+
+  /// No description provided for @rdCaptureActionContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get rdCaptureActionContinue;
+
+  /// No description provided for @rdCaptureActionAsk.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Mira'**
+  String get rdCaptureActionAsk;
+
+  /// No description provided for @rdCaptureActionAskSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer from this capture only — no memory write'**
+  String get rdCaptureActionAskSub;
+
+  /// No description provided for @rdCaptureActionAskHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What do you want to ask?'**
+  String get rdCaptureActionAskHint;
+
+  /// No description provided for @rdCaptureActionAskAnswerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira\'s answer'**
+  String get rdCaptureActionAskAnswerTitle;
+
+  /// No description provided for @rdCaptureActionEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit proposal'**
+  String get rdCaptureActionEdit;
+
+  /// No description provided for @rdCaptureActionEditSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Change a field before committing'**
+  String get rdCaptureActionEditSub;
+
+  /// No description provided for @rdCaptureActionEditHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated title'**
+  String get rdCaptureActionEditHint;
+
+  /// No description provided for @rdCaptureActionComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark complete'**
+  String get rdCaptureActionComplete;
+
+  /// No description provided for @rdCaptureActionCompleteSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Close this item in the draft'**
+  String get rdCaptureActionCompleteSub;
+
+  /// No description provided for @rdCaptureActionConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect in memory'**
+  String get rdCaptureActionConnect;
+
+  /// No description provided for @rdCaptureActionConnectSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Add an explicit reviewed graph link'**
+  String get rdCaptureActionConnectSub;
+
+  /// No description provided for @rdCaptureActionPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory & privacy'**
+  String get rdCaptureActionPrivacy;
+
+  /// No description provided for @rdCaptureActionPrivacySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclude items or change learning for this capture'**
+  String get rdCaptureActionPrivacySub;
+
+  /// No description provided for @rdCaptureActionOpenSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Open source'**
+  String get rdCaptureActionOpenSource;
+
+  /// No description provided for @rdCaptureActionOpenSourceSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Show safe source references'**
+  String get rdCaptureActionOpenSourceSub;
+
+  /// No description provided for @rdCaptureActionOpenSourceEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No source references are available.'**
+  String get rdCaptureActionOpenSourceEmpty;
+
+  /// No description provided for @rdCaptureActionOpenSourceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get rdCaptureActionOpenSourceTitle;
+
+  /// No description provided for @rdCaptureActionAutomation.
+  ///
+  /// In en, this message translates to:
+  /// **'Create automation'**
+  String get rdCaptureActionAutomation;
+
+  /// No description provided for @rdCaptureActionAutomationSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepare a reviewed automation draft'**
+  String get rdCaptureActionAutomationSub;
+
+  /// No description provided for @rdCaptureActionAutomationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the automation'**
+  String get rdCaptureActionAutomationHint;
+
+  /// No description provided for @rdCaptureActionShareHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Who should this go to?'**
+  String get rdCaptureActionShareHint;
+
+  /// No description provided for @rdCaptureActionLocalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates the review draft'**
+  String get rdCaptureActionLocalHint;
+
+  /// No description provided for @rdCaptureActionExternalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Creates a draft — nothing is sent yet'**
+  String get rdCaptureActionExternalHint;
+
+  /// No description provided for @rdCaptureActionDraftReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft prepared. External send still needs confirmation later.'**
+  String get rdCaptureActionDraftReady;
+
+  /// No description provided for @rdCaptureActionPrivacyApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Memory controls updated for this capture.'**
+  String get rdCaptureActionPrivacyApplied;
+
+  /// No description provided for @rdCaptureActionCompletedItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Item marked complete in the draft.'**
+  String get rdCaptureActionCompletedItem;
+
+  /// No description provided for @rdCaptureActionEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'Proposal updated.'**
+  String get rdCaptureActionEdited;
+
+  /// No description provided for @rdCaptureExecutionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'External drafts'**
+  String get rdCaptureExecutionsTitle;
+
+  /// No description provided for @rdCaptureExecutionDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get rdCaptureExecutionDraft;
+
+  /// No description provided for @rdCaptureExecutionValidated.
+  ///
+  /// In en, this message translates to:
+  /// **'Validated'**
+  String get rdCaptureExecutionValidated;
+
+  /// No description provided for @rdCaptureExecutionBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs configuration'**
+  String get rdCaptureExecutionBlocked;
+
+  /// No description provided for @rdCaptureExecutionCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get rdCaptureExecutionCompleted;
+
+  /// No description provided for @rdCaptureExecutionDraftHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved as a draft. Confirming will not pretend it already ran.'**
+  String get rdCaptureExecutionDraftHint;
+
+  /// No description provided for @rdCaptureExecutionValidatedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Checked without side effects. Nothing was sent or executed.'**
+  String get rdCaptureExecutionValidatedHint;
+
+  /// No description provided for @rdCaptureExecutionBlockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Consent saved, but no real executor is configured yet.'**
+  String get rdCaptureExecutionBlockedHint;
+
+  /// No description provided for @rdCaptureExecutionCompletedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The backend reported successful execution.'**
+  String get rdCaptureExecutionCompletedHint;
+
+  /// No description provided for @rdCaptureExecutionConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get rdCaptureExecutionConfirm;
+
+  /// No description provided for @rdCaptureExecutionTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get rdCaptureExecutionTest;
+
+  /// No description provided for @rdCaptureExecutionTestDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Automation validated — no side effect ran.'**
+  String get rdCaptureExecutionTestDone;
+
   /// No description provided for @rdCanvasSplitMixedIdentity.
   ///
   /// In en, this message translates to:

@@ -2,7 +2,7 @@
 
 > **For Flutter client (`mira_app`)** — contract to implement HTTP integration.
 > **Source of truth**: `C:\Users\User\Desktop\mira-backend\src\mira\**\router.py`
-> Last updated: 2026-07-30 (operational calendar, recurrence, event reminders)
+> Last updated: 2026-08-04 (canonical 12-input Capture contract, result cards, actions, execution requests, live meetings)
 
 **Base URL (production)**: `https://api.miramind.io`
 
@@ -57,16 +57,27 @@ Bearer auth unless noted. Flutter repos in `lib/features/` / `lib/core/`.
 | `PATCH` | `/auth/settings` | `settings_repository.dart` | Update preferences |
 | `GET` | `/auth/notification-settings` | settings / notifications | Brief/reminder/quiet-hours + resurface/sound/haptics preferences |
 | `PATCH` | `/auth/notification-settings` | settings / notifications | Update detailed notification preferences |
-| `POST` | `/captures` | `capture_repository.dart` | Text capture |
+| `POST` | `/captures` | `capture_repository.dart` | Canonical JSON capture (12 input kinds) |
 | `POST` | `/captures/transcribe` | `capture_repository.dart` | STT only (onboarding) |
 | `POST` | `/captures/voice` | `capture_repository.dart` | Voice capture (home) |
+| `POST` | `/captures/image` | capture repository | Binary image capture |
+| `POST` | `/captures/camera` | capture repository | Binary camera scan |
+| `POST` | `/captures/file` | capture repository | Binary file capture |
+| `POST` | `/captures/link` | capture repository | Link convenience route |
+| `POST` | `/captures/voice/realtime` | capture repository | Realtime voice/live-meeting session |
+| `GET` | `/captures/voice/realtime/{id}/events` | capture repository | Realtime SSE events |
+| `WS` | `/captures/voice/realtime/{id}/audio` | capture repository | Realtime PCM16 audio and meeting markers |
 | `GET` | `/captures/{id}/stream` | `capture_repository.dart` | SSE pipeline events |
+| `POST` | `/captures/{id}/actions/{actionId}` | capture repository | Server-owned review/commit action |
 | `POST` | `/captures/{id}/confirm-time` | `capture_repository.dart` | Resolve ambiguous time |
 | `POST` | `/captures/{id}/clarify-intent` | `capture_repository.dart` | Resolve ambiguous question-vs-save intent |
 | `POST` | `/captures/{id}/follow-up` | `capture_repository.dart` | Continue or revise a pending approval draft |
 | `POST` | `/captures/{id}/confirm-entity-equivalence` | `capture_repository.dart` | Confirm cross-language same person |
 | `POST` | `/captures/{id}/approve` | `capture_repository.dart` | Commit approved memory to ledger, then project Graph V2 |
 | `POST` | `/captures/{id}/dismiss` | `capture_repository.dart` | Discard capture |
+| `GET` | `/captures/{id}/executions` | capture repository | Durable share/automation drafts |
+| `POST` | `/captures/executions/{id}/test` | capture repository | Automation dry-run |
+| `POST` | `/captures/executions/{id}/confirm` | capture repository | Confirm external execution request |
 | `GET` | `/v2/graph` | `graph_repository.dart` | Knowledge / evidence / hybrid / tasks graph |
 | `PUT` | `/v2/graph/layout` | `graph_repository.dart` | Persist interactive layout |
 | `GET` | `/v2/entities/{id}` | `graph_repository.dart` | Entity detail + assertions |
@@ -586,14 +597,24 @@ Requires auth. Saves profile answers from the onboarding wizard (Figma 659:3546)
 
 All capture endpoints require `Authorization: Bearer <access_token>`.
 
-Phase 2 supports **`type: "text"`**, **`POST /captures/voice`**, **`POST /captures/link`**, **`POST /captures/image`**, and **`POST /captures/file`**. Voice/image/link require admin flags `capture_voice` / `capture_image` / `capture_link`. Raw audio/image bytes are never persisted.
+The canonical Capture protocol has five separate layers: **Input -> Process ->
+Content -> Action -> Cognitive Graph effect**. Flutter must render the contract
+returned by the backend and must not infer content type from the input transport.
+
+`POST /captures` accepts all 12 JSON input kinds: `text`, `voice`, `image`,
+`camera_scan`, `file`, `link`, `message`, `calendar`, `contact`, `live_meeting`,
+`integration_event`, and `bundle`. Binary convenience routes remain available for
+voice, image, camera scans, and files. Voice/image/link require admin flags
+`capture_voice` / `capture_image` / `capture_link`. Raw audio/image bytes are never
+persisted by Capture.
 
 When admin flag **`multimodal_embed`** is on, image captures compute a transient multimodal vector at upload time (used on approve for Neo4j; not returned in API proposals).
 
 ### Create capture
 `POST /captures`
 
-Accepts text, enqueues processing. With worker running, poll `GET /captures/{id}` or use SSE stream.
+Accepts `capture_input.v1`, normalizes it, and enqueues the same state machine for
+every input kind. With a worker running, poll `GET /captures/{id}` or consume SSE.
 
 **Request Body**
 ```json
@@ -608,9 +629,13 @@ Accepts text, enqueues processing. With worker running, poll `GET /captures/{id}
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `type` | string | required, enum: `text` (phase 2) |
-| `text` | string | required, min 1, max 10000 |
-| `channel` | string | optional, default `mobile` — `mobile`, `web`, `telegram`, `whatsapp`, `bale` |
+| `type` | string | one of the 12 canonical input kinds |
+| `text` | string \| null | max 50000; required for text/voice unless the kind supports structured/source material |
+| `url` | string \| null | max 2048; primarily for `link` |
+| `data` | object | structured message/calendar/contact/meeting/integration metadata |
+| `sources` | array | up to 20 evidence references; Library IDs are ownership-checked |
+| `components` | array | up to 20 typed components; `bundle` requires at least two |
+| `channel` | string | optional, default `mobile`; includes `api`, `connector`, and supported app channels |
 | `timezone` | string | optional IANA timezone; falls back to the user's saved timezone |
 | `locale` | string | optional BCP-47 context; never treated as proof of culture/calendar |
 
@@ -628,11 +653,46 @@ Accepts text, enqueues processing. With worker running, poll `GET /captures/{id}
     "deadline": null
   },
   "answer": null,
+  "input_manifest": {
+    "schemaVersion": "capture_input.v1",
+    "kind": "text",
+    "channel": "mobile",
+    "sources": [
+      {"sourceId":"src_primary","kind":"text","retention":"transient"}
+    ]
+  },
+  "processing_report": {
+    "schemaVersion": "capture_processing.v1",
+    "steps": [
+      {"step": "classify", "status": "completed", "processor": "classify"}
+    ]
+  },
+  "result_card": {
+    "schemaVersion": "capture_result.v1",
+    "phase": "review",
+    "interpretation": {},
+    "extractedItems": [],
+    "workLog": [],
+    "plannedEffects": [],
+    "committedEffects": [],
+    "nextStep": {"primaryAction": {}, "secondaryActions": []},
+    "provenance": {"sources": [], "evidence": []},
+    "memoryControls": {}
+  },
+  "proposal_revision": 1,
+  "available_actions": [],
   "created_at": "2026-06-19T12:00:00+00:00"
 }
 ```
 
 States: `processing` → `awaiting_approval` (save) · `question_answered` (question) · `clarification_needed` (ambiguous intent or ambiguous time).
+
+The eight processing step values are `transcribe`, `ocr`, `metadata`, `classify`,
+`summarize`, `extract_entities`, `apply_context`, and `resolve_conflicts`.
+`result_card.extractedItems[].kind` is one of `task`, `event`, `reminder`,
+`meeting`, `meeting_result`, `note`, `document_knowledge`, `summary`, `person`,
+`decision`, or `commitment`. Each item contains confidence, field confidence,
+evidence references, and its server-filtered action IDs.
 
 **Proposal shape** (when `state` is `awaiting_approval` or `clarification_needed`):
 
@@ -673,9 +733,15 @@ States: `processing` → `awaiting_approval` (save) · `question_answered` (ques
 | `time` | object \| null | Ambiguous-time block — triggers `time_clarification` SSE when `ambiguous: true` |
 | `source` | object | Present for image/file/link captures — **no raw bytes** in API |
 
+`memory_approval.v1` also carries typed arrays (`tasks`, `events`, `reminders`,
+task mutations and semantic enrichment arrays), `displaySummary`, graph-link/share/
+automation proposals, and memory controls. Operational arrays are authoritative;
+Flutter should render `displaySummary.headline` and its bounded item list, with
+legacy title/summary as fallback.
+
 On approve, secondary entities from `related_nodes` / `relationships` (e.g. `Person`) become additional Neo4j nodes linked with `INVOLVES`, `PART_OF`, or `RELATES_TO`.
 
-**Errors**: `401` · `422` unsupported type
+**Errors**: `401` · `422` invalid/disabled input or insufficient analyzable material
 
 ---
 
@@ -727,9 +793,59 @@ Multipart upload. Audio is transcribed via **mock STT** (not persisted) then pro
 | `duration_ms` | int | optional, default `0` |
 | `channel` | string | optional, default `mobile` |
 
-**Response** `202` — same shape as text capture (`capture_type` reflects underlying text pipeline).
+**Response** `202` — canonical capture response with `capture_type: "voice"`.
 
-**Errors**: `401` · `422` (disabled flag or unsupported) · `413` file too large
+**Errors**: `401` · `422` (disabled flag or unsupported) · `413` file too large · `503` provider/routing failure
+
+---
+
+### Create realtime voice or live meeting session
+`POST /captures/voice/realtime`
+
+Query parameters:
+
+| Field | Type | Notes |
+|---|---|---|
+| `capture_type` | `voice` \| `live_meeting` | default `voice` |
+| `title` | string \| null | optional meeting title, max 240 after normalization |
+| `participants` | string \| null | optional comma-separated names, maximum 50 |
+
+**Response** `200`
+
+```json
+{
+  "sessionId": "session-uuid",
+  "eventsPath": "/captures/voice/realtime/session-uuid/events",
+  "audioWsPath": "/captures/voice/realtime/session-uuid/audio",
+  "expiresAt": "2026-08-04T12:05:00Z",
+  "captureType": "live_meeting"
+}
+```
+
+Open `eventsPath` as SSE and send PCM16 bytes to `audioWsPath` over WebSocket.
+The WebSocket accepts JSON control messages:
+
+```json
+{"type":"marker","kind":"decision","atMs":12000,"label":"Ship v2"}
+```
+
+Marker kinds are `decision`, `action`, and `important`. Finish with
+`{"type":"end","durationMs":420000}`. The final transcript, participants,
+duration, and markers become a normal `live_meeting` capture. Raw audio is never
+persisted. Speaker names are suggestions to the STT provider; clients must not
+assume perfect diarization.
+
+Realtime SSE events include `ready`, `transcript_delta`, `transcript_final`,
+`capture_created`, proposal/question/clarification events, `done`, and `error`.
+
+---
+
+### Create camera scan
+`POST /captures/camera`
+
+Multipart upload equivalent to image capture but returns
+`capture_type: "camera_scan"`. Fields: required `file`; optional `caption`,
+`channel`, `timezone`, and `locale`. Bytes remain transient.
 
 ---
 
@@ -924,7 +1040,7 @@ Send exactly one of `same` or `decision`. For example, when «سالار حاف�
 Events:
 ```
 event: status
-data: {"state": "processing"}
+data: {"state": "processing", "processing": {"schemaVersion": "capture_processing.v1", "steps": []}}
 
 event: proposal
 data: {"summary": "...", "node_type": "Task", "title": "...", "related_nodes": [], "deadline": null}
@@ -941,12 +1057,65 @@ data: {"prompt": "Are فاطمه and Fatemeh the same person in your memory?", "
 event: time_clarification
 data: {"prompt": "Did you mean Friday at 3 PM?", "suggestion": "Friday 15:00", "time": {...}}
 
+event: result
+data: {"schemaVersion": "capture_result.v1", "phase": "review", "nextStep": {...}}
+
 event: done
 data: {"state": "awaiting_approval"}
 
 event: error
 data: {"detail": "..."}
 ```
+
+The final `result` event is emitted before terminal `done`. Flutter should render
+`result_card.nextStep.primaryAction` plus at most two `secondaryActions`; the full
+catalog remains in `available_actions`.
+
+---
+
+### Execute a server-owned Capture action
+`POST /captures/{capture_id}/actions/{action_id}`
+
+Never construct action IDs in Flutter. Use the `id`, endpoint, payload, phase,
+confirmation requirement, side-effect type, and `expectedGraphEffects` returned in
+`available_actions` or `result_card.nextStep`.
+
+```json
+{
+  "proposalRevision": 3,
+  "idempotencyKey": "device-stable-action-key",
+  "input": {},
+  "operations": [
+    {"op":"replace_field","itemId":"task_1","field":"title","value":"Send final deck"}
+  ]
+}
+```
+
+Stable architecture action IDs are:
+
+- `capture.approve`, `proposal.edit`, `proposal.convert`, `proposal.split`
+- `content.create_or_update`, `content.schedule`, `content.complete`
+- `graph.connect`, `communication.share`, `capture.ask`, `source.open`
+- `automation.create`, `memory.privacy`
+- lifecycle actions returned by the backend such as dismiss/remove/exclude and
+  clarification actions
+
+`expectedGraphEffects` values are `node`, `edge`, `evidence`, `confidence`,
+`pattern`, and `commitment`. They are preview metadata, not proof that a projection
+has already completed.
+
+Review mutations use optimistic concurrency. A stale `proposalRevision` returns
+`409`; refetch the capture and reconcile instead of silently overwriting. Use a
+stable `idempotencyKey` when retrying the same mutation.
+
+`communication.share` and `automation.create` only create reviewed drafts. They do
+not send or execute an external side effect before approval and explicit external
+confirmation.
+
+`memory.privacy` can exclude items/sources and control semantic learning. The only
+accepted retention value is currently `durable_after_approval`; timed retention is
+rejected until enforcement exists. Post-commit archive removes active projections
+but retains the immutable user-scoped ledger tombstone.
 
 ---
 
@@ -960,21 +1129,67 @@ Commits the approved proposal to the MariaDB Memory Ledger and transactional out
 **Response** `200`
 ```json
 {
+  "schemaVersion": "capture_commit_receipt.v1",
   "captureId": "550e8400-e29b-41d4-a716-446655440000",
+  "ledgerEventId": "1456ab0a-6f7d-4c82-aad9-94699cedaba0",
+  "commitStatus": "committed",
+  "projections": [
+    {"name":"operational","status":"APPLIED","error":null},
+    {"name":"graphiti","status":"PENDING","error":null},
+    {"name":"library","status":"APPLIED","error":null}
+  ],
+  "committedEffects": [],
+  "nextActions": [],
   "createdEntities": ["ent_a1b2c3d4"],
   "createdAssertions": ["asrt_e5f6g7h8"],
   "materializedEdges": ["edge_1"],
   "tasks": ["task_9abc"],
-  "preferences": [],
-  "ledgerEventId": "1456ab0a-6f7d-4c82-aad9-94699cedaba0",
-  "projectionStatus": "APPLIED",
-  "projectionError": null
+  "preferences": []
 }
 ```
 
-`projectionStatus` is `APPLIED` on the inline fast path. `PENDING`, `PROCESSING`, or `RETRY` means the memory is durably saved but Neo4j is still syncing; show a non-blocking “saved, syncing” state. `DEAD` requires diagnostics/manual retry. Use `createdEntities[0]` as `highlightNodeId` only when projected IDs are present.
+`commitStatus: committed` and a `ledgerEventId` are the durable success boundary.
+Inspect each entry in `projections`; `PENDING`, `PROCESSING`, or `RETRY` means the
+memory is saved but that projection is still syncing. `DEAD` requires diagnostics
+or manual retry. Use `createdEntities[0]` as `highlightNodeId` only when projected
+IDs are present. Retrying approval after Redis cleanup returns the same durable
+receipt.
 
 **Errors**: `409` wrong state · `404` · `403`
+
+---
+
+### Share and automation execution requests
+
+After approval, proposed share/automation drafts are durable rows rather than
+implicit external side effects.
+
+`GET /captures/{capture_id}/executions` returns:
+
+```json
+[
+  {
+    "id": "request-uuid",
+    "captureId": "capture-uuid",
+    "kind": "share",
+    "status": "DRAFT",
+    "payload": {},
+    "result": {},
+    "executor": null,
+    "error": null,
+    "confirmedAt": null,
+    "createdAt": "2026-08-04T12:00:00Z",
+    "updatedAt": "2026-08-04T12:00:00Z"
+  }
+]
+```
+
+- `POST /captures/executions/{request_id}/test` validates an automation and
+  returns `status: VALIDATED`, `sideEffectExecuted: false`, and a sample. Share
+  requests return `422` on this route.
+- `POST /captures/executions/{request_id}/confirm` records explicit consent. Until
+  a real backend executor is configured, status becomes `BLOCKED_CONFIGURATION`;
+  Flutter must not show “sent” or “executed”.
 
 ---
 
@@ -1234,7 +1449,12 @@ All fields optional; send only what changes.
 ### Archive capture
 `DELETE /v2/captures/{capture_id}`
 
-Soft-delete: sets capture `ARCHIVED`, rejects its assertions, cancels its tasks, demotes materialized edges supported only by this capture. **Shared entities stay** when referenced by other captures.
+Active-memory archive: sets capture `ARCHIVED`, rejects its assertions, cancels
+its tasks, managed reminders and scheduled events, removes the Capture-derived
+Library item, and removes/demotes its Graphiti and operational graph evidence.
+**Shared entities stay** when referenced by other captures. The immutable
+user-scoped ledger event remains as an audit/replay tombstone; this is not
+cryptographic erasure.
 
 **Response** `200`
 ```json
@@ -2205,13 +2425,26 @@ User types in prompt bar (AppBottomShell)
   → POST /captures { type: "text", text, channel: "mobile" }
   → GET /captures/{id}/stream (SSE via dio ResponseType.stream)
   → time_clarification → TimeClarificationSheet → POST /captures/{id}/confirm-time
-  → proposal → ApprovalSheet → POST /captures/{id}/approve
+  → result → render result_card.nextStep + available_actions
+  → review mutation → POST /captures/{id}/actions/{actionId}
+      with proposalRevision + stable idempotencyKey
+  → capture.approve → capture_commit_receipt.v1
   → question_answer → SnackBar + Home answer capsule
 ```
 
 Voice (home): long-press → `POST /captures/voice` → same SSE path. On STT/upload/SSE error → in-place `VoiceCaptureFailurePanel` (retry or text fallback).
 
 Onboarding first capture: `POST /captures/transcribe` → edit transcript → optional `POST /captures`.
+
+Do not hard-code the old Task-only approval sheet as the complete Capture UI.
+Model `capture_input.v1`, `capture_processing.v1`, `capture_result.v1`,
+`capture_interaction.v1`, and `capture_commit_receipt.v1`. Keep legacy
+`proposal.title`/`proposal.summary` rendering only as a rolling-deployment fallback.
+
+For external actions, render `DRAFT`, confirmation, and
+`BLOCKED_CONFIGURATION` honestly. A confirmed execution request is not proof that
+an email/message/automation ran unless its backend status reports successful
+execution.
 
 Base URL: `lib/core/config/api_config.dart` (`10.0.2.2` on Android emulator).
 

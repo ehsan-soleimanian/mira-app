@@ -2986,6 +2986,154 @@ class AppLocalizationsEn extends AppLocalizations {
       'Mira couldn\'t confirm this save. Please try again.';
 
   @override
+  String get rdCaptureActionStale =>
+      'This review changed. Mira refreshed it — try again.';
+
+  @override
+  String get rdCaptureActionFailed =>
+      'Mira couldn\'t run that action. Please try again.';
+
+  @override
+  String get rdCaptureActionConfirmTitle => 'Continue?';
+
+  @override
+  String get rdCaptureActionConfirmBody =>
+      'This uses a server-owned Capture action.';
+
+  @override
+  String get rdCaptureActionContinue => 'Continue';
+
+  @override
+  String get rdCaptureActionAsk => 'Ask Mira';
+
+  @override
+  String get rdCaptureActionAskSub =>
+      'Answer from this capture only — no memory write';
+
+  @override
+  String get rdCaptureActionAskHint => 'What do you want to ask?';
+
+  @override
+  String get rdCaptureActionAskAnswerTitle => 'Mira\'s answer';
+
+  @override
+  String get rdCaptureActionEdit => 'Edit proposal';
+
+  @override
+  String get rdCaptureActionEditSub => 'Change a field before committing';
+
+  @override
+  String get rdCaptureActionEditHint => 'Updated title';
+
+  @override
+  String get rdCaptureActionComplete => 'Mark complete';
+
+  @override
+  String get rdCaptureActionCompleteSub => 'Close this item in the draft';
+
+  @override
+  String get rdCaptureActionConnect => 'Connect in memory';
+
+  @override
+  String get rdCaptureActionConnectSub => 'Add an explicit reviewed graph link';
+
+  @override
+  String get rdCaptureActionPrivacy => 'Memory & privacy';
+
+  @override
+  String get rdCaptureActionPrivacySub =>
+      'Exclude items or change learning for this capture';
+
+  @override
+  String get rdCaptureActionOpenSource => 'Open source';
+
+  @override
+  String get rdCaptureActionOpenSourceSub => 'Show safe source references';
+
+  @override
+  String get rdCaptureActionOpenSourceEmpty =>
+      'No source references are available.';
+
+  @override
+  String get rdCaptureActionOpenSourceTitle => 'Sources';
+
+  @override
+  String get rdCaptureActionAutomation => 'Create automation';
+
+  @override
+  String get rdCaptureActionAutomationSub =>
+      'Prepare a reviewed automation draft';
+
+  @override
+  String get rdCaptureActionAutomationHint => 'Describe the automation';
+
+  @override
+  String get rdCaptureActionShareHint => 'Who should this go to?';
+
+  @override
+  String get rdCaptureActionLocalHint => 'Updates the review draft';
+
+  @override
+  String get rdCaptureActionExternalHint =>
+      'Creates a draft — nothing is sent yet';
+
+  @override
+  String get rdCaptureActionDraftReady =>
+      'Draft prepared. External send still needs confirmation later.';
+
+  @override
+  String get rdCaptureActionPrivacyApplied =>
+      'Memory controls updated for this capture.';
+
+  @override
+  String get rdCaptureActionCompletedItem =>
+      'Item marked complete in the draft.';
+
+  @override
+  String get rdCaptureActionEdited => 'Proposal updated.';
+
+  @override
+  String get rdCaptureExecutionsTitle => 'External drafts';
+
+  @override
+  String get rdCaptureExecutionDraft => 'Draft';
+
+  @override
+  String get rdCaptureExecutionValidated => 'Validated';
+
+  @override
+  String get rdCaptureExecutionBlocked => 'Needs configuration';
+
+  @override
+  String get rdCaptureExecutionCompleted => 'Completed';
+
+  @override
+  String get rdCaptureExecutionDraftHint =>
+      'Saved as a draft. Confirming will not pretend it already ran.';
+
+  @override
+  String get rdCaptureExecutionValidatedHint =>
+      'Checked without side effects. Nothing was sent or executed.';
+
+  @override
+  String get rdCaptureExecutionBlockedHint =>
+      'Consent saved, but no real executor is configured yet.';
+
+  @override
+  String get rdCaptureExecutionCompletedHint =>
+      'The backend reported successful execution.';
+
+  @override
+  String get rdCaptureExecutionConfirm => 'Confirm';
+
+  @override
+  String get rdCaptureExecutionTest => 'Test';
+
+  @override
+  String get rdCaptureExecutionTestDone =>
+      'Automation validated — no side effect ran.';
+
+  @override
   String get rdCanvasSplitMixedIdentity => 'Split mixed identity';
 
   @override

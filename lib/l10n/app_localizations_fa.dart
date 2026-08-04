@@ -2974,6 +2974,152 @@ class AppLocalizationsFa extends AppLocalizations {
       'ذخیره این حافظه تأیید نشد؛ لطفاً دوباره تلاش کن.';
 
   @override
+  String get rdCaptureActionStale =>
+      'این بازبینی عوض شده. میرا تازه‌اش کرد — دوباره تلاش کن.';
+
+  @override
+  String get rdCaptureActionFailed =>
+      'این اقدام اجرا نشد؛ لطفاً دوباره تلاش کن.';
+
+  @override
+  String get rdCaptureActionConfirmTitle => 'ادامه بدهم؟';
+
+  @override
+  String get rdCaptureActionConfirmBody =>
+      'این یک اقدام سرور-محور Capture است.';
+
+  @override
+  String get rdCaptureActionContinue => 'ادامه';
+
+  @override
+  String get rdCaptureActionAsk => 'از میرا بپرس';
+
+  @override
+  String get rdCaptureActionAskSub =>
+      'فقط از همین capture جواب می‌دهد — بدون نوشتن در حافظه';
+
+  @override
+  String get rdCaptureActionAskHint => 'چی می‌خوای بپرسی؟';
+
+  @override
+  String get rdCaptureActionAskAnswerTitle => 'جواب میرا';
+
+  @override
+  String get rdCaptureActionEdit => 'ویرایش پیشنهاد';
+
+  @override
+  String get rdCaptureActionEditSub => 'قبل از تأیید یک فیلد را عوض کن';
+
+  @override
+  String get rdCaptureActionEditHint => 'عنوان به‌روز';
+
+  @override
+  String get rdCaptureActionComplete => 'تکمیل کن';
+
+  @override
+  String get rdCaptureActionCompleteSub => 'این مورد را در پیش‌نویس ببند';
+
+  @override
+  String get rdCaptureActionConnect => 'وصل به حافظه';
+
+  @override
+  String get rdCaptureActionConnectSub => 'یک لینک گراف بازبینی‌شده اضافه کن';
+
+  @override
+  String get rdCaptureActionPrivacy => 'حافظه و حریم';
+
+  @override
+  String get rdCaptureActionPrivacySub =>
+      'حذف مورد یا تغییر یادگیری همین capture';
+
+  @override
+  String get rdCaptureActionOpenSource => 'باز کردن منبع';
+
+  @override
+  String get rdCaptureActionOpenSourceSub => 'ارجاع‌های امن منبع را نشان بده';
+
+  @override
+  String get rdCaptureActionOpenSourceEmpty => 'ارجاع منبعی موجود نیست.';
+
+  @override
+  String get rdCaptureActionOpenSourceTitle => 'منابع';
+
+  @override
+  String get rdCaptureActionAutomation => 'ساخت اتوماسیون';
+
+  @override
+  String get rdCaptureActionAutomationSub =>
+      'یک پیش‌نویس اتوماسیون بازبینی‌شده بساز';
+
+  @override
+  String get rdCaptureActionAutomationHint => 'اتوماسیون را توصیف کن';
+
+  @override
+  String get rdCaptureActionShareHint => 'برای چه کسی فرستاده شود؟';
+
+  @override
+  String get rdCaptureActionLocalHint => 'پیش‌نویس بازبینی را به‌روز می‌کند';
+
+  @override
+  String get rdCaptureActionExternalHint =>
+      'فقط پیش‌نویس می‌سازد — هنوز چیزی ارسال نمی‌شود';
+
+  @override
+  String get rdCaptureActionDraftReady =>
+      'پیش‌نویس آماده شد. ارسال خارجی هنوز تأیید جدا می‌خواهد.';
+
+  @override
+  String get rdCaptureActionPrivacyApplied =>
+      'کنترل‌های حافظه برای این capture به‌روز شد.';
+
+  @override
+  String get rdCaptureActionCompletedItem => 'مورد در پیش‌نویس تکمیل شد.';
+
+  @override
+  String get rdCaptureActionEdited => 'پیشنهاد به‌روز شد.';
+
+  @override
+  String get rdCaptureExecutionsTitle => 'پیش‌نویس‌های خارجی';
+
+  @override
+  String get rdCaptureExecutionDraft => 'پیش‌نویس';
+
+  @override
+  String get rdCaptureExecutionValidated => 'اعتبارسنجی شد';
+
+  @override
+  String get rdCaptureExecutionBlocked => 'نیاز به پیکربندی';
+
+  @override
+  String get rdCaptureExecutionCompleted => 'انجام شد';
+
+  @override
+  String get rdCaptureExecutionDraftHint =>
+      'به‌صورت پیش‌نویس ذخیره شده. تأیید به‌معنای اجرا نیست.';
+
+  @override
+  String get rdCaptureExecutionValidatedHint =>
+      'بدون اثر جانبی بررسی شد. چیزی ارسال یا اجرا نشد.';
+
+  @override
+  String get rdCaptureExecutionBlockedHint =>
+      'رضایت ثبت شد، اما هنوز اجراکننده واقعی پیکربندی نشده.';
+
+  @override
+  String get rdCaptureExecutionCompletedHint =>
+      'بک‌اند اجرای موفق را گزارش کرده است.';
+
+  @override
+  String get rdCaptureExecutionConfirm => 'تأیید';
+
+  @override
+  String get rdCaptureExecutionTest => 'تست';
+
+  @override
+  String get rdCaptureExecutionTestDone =>
+      'اتوماسیون اعتبارسنجی شد — هیچ اثر جانبی اجرا نشد.';
+
+  @override
   String get rdCanvasSplitMixedIdentity => 'جدا کردن هویت‌های ترکیب‌شده';
 
   @override

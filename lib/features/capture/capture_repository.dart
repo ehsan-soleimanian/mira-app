@@ -8,10 +8,9 @@ import 'package:mira_app/core/config/api_config.dart';
 import 'package:mira_app/core/locale/device_locale_context.dart';
 import 'package:mira_app/features/capture/capture_mock_data.dart';
 import 'package:mira_app/models/api/capture_models.dart';
-import 'package:mira_app/models/api/graph_models.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-/// Capture create, SSE stream, approve/dismiss/confirm-time.
+/// Capture create, SSE stream, action protocol, and execution requests.
 class CaptureRepository {
   CaptureRepository({required ApiClient apiClient, TokenStorage? tokenStorage})
     : _dio = apiClient.dio,
@@ -21,19 +20,20 @@ class CaptureRepository {
   final Dio _dio;
   final TokenStorage? _tokenStorage;
 
-  Future<CaptureResponse> createTextCapture(String text) async {
+  /// Canonical `POST /captures` for any of the 12 input kinds.
+  Future<CaptureResponse> createCapture(CaptureInput input) async {
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures',
-      data: {
-        'type': 'text',
-        'text': text,
-        'channel': 'mobile',
-        'timezone': DeviceLocaleContext.timezone,
-        'locale': DeviceLocaleContext.languageTag,
-      },
+      data: input.toJson(
+        timezone: DeviceLocaleContext.timezone,
+        locale: DeviceLocaleContext.languageTag,
+      ),
     );
     return CaptureResponse.fromJson(response.data!);
   }
+
+  Future<CaptureResponse> createTextCapture(String text) =>
+      createCapture(CaptureInput(type: 'text', text: text));
 
   /// Submit a URL (+ optional note) for Resource-style processing.
   Future<CaptureResponse> createLinkCapture({
@@ -185,9 +185,19 @@ class CaptureRepository {
     return CaptureResponse.fromJson(response.data!);
   }
 
-  Future<RealtimeVoiceSession> startRealtimeVoiceSession() async {
+  Future<RealtimeVoiceSession> startRealtimeVoiceSession({
+    String captureType = 'voice',
+    String? title,
+    List<String> participants = const [],
+  }) async {
+    final query = <String, dynamic>{
+      'capture_type': captureType,
+      if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+      if (participants.isNotEmpty) 'participants': participants.join(','),
+    };
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/voice/realtime',
+      queryParameters: query,
     );
     return RealtimeVoiceSession.fromJson(response.data!);
   }
@@ -206,6 +216,7 @@ class CaptureRepository {
     required RealtimeVoiceSession session,
     required Stream<List<int>> audioStream,
     required Future<int> durationMs,
+    Stream<Map<String, dynamic>>? controlMessages,
   }) async {
     final token = await _tokenStorage?.readAccessToken();
     if (token == null || token.isEmpty) {
@@ -214,8 +225,14 @@ class CaptureRepository {
     final channel = WebSocketChannel.connect(
       _webSocketUri(session.audioWsPath, token),
     );
+    StreamSubscription<Map<String, dynamic>>? controlSub;
     try {
       await channel.ready;
+      if (controlMessages != null) {
+        controlSub = controlMessages.listen((message) {
+          channel.sink.add(jsonEncode(message));
+        });
+      }
       await for (final chunk in audioStream) {
         if (chunk.isNotEmpty) {
           channel.sink.add(chunk);
@@ -225,6 +242,7 @@ class CaptureRepository {
         jsonEncode({'type': 'end', 'durationMs': await durationMs}),
       );
     } finally {
+      await controlSub?.cancel();
       await channel.sink.close();
     }
   }
@@ -260,6 +278,26 @@ class CaptureRepository {
     });
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/image',
+      data: formData,
+    );
+    return CaptureResponse.fromJson(response.data!);
+  }
+
+  Future<CaptureResponse> createCameraCapture({
+    required List<int> bytes,
+    required String filename,
+    String? caption,
+  }) async {
+    final formData = FormData.fromMap({
+      if (caption != null && caption.trim().isNotEmpty)
+        'caption': caption.trim(),
+      'channel': 'mobile',
+      'timezone': DeviceLocaleContext.timezone,
+      'locale': DeviceLocaleContext.languageTag,
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
+    });
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/camera',
       data: formData,
     );
     return CaptureResponse.fromJson(response.data!);
@@ -348,18 +386,48 @@ class CaptureRepository {
     );
   }
 
-  Future<GraphIngestResponse> approve(
+  /// Execute a server-owned review/commit action. Never invent action IDs.
+  Future<CaptureActionOutcome> executeAction({
+    required String captureId,
+    required String actionId,
+    int proposalRevision = 0,
+    String? idempotencyKey,
+    Map<String, dynamic> input = const {},
+    List<ProposalMutationOperation> operations = const [],
+  }) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/$captureId/actions/$actionId',
+      data: CaptureActionRequest(
+        proposalRevision: proposalRevision,
+        idempotencyKey: idempotencyKey,
+        input: input,
+        operations: operations,
+      ).toJson(),
+    );
+    return CaptureActionOutcome.fromJson(response.data ?? const {});
+  }
+
+  /// Compatibility approve route — returns `capture_commit_receipt.v1`.
+  Future<CaptureCommitReceipt> approve(
     String captureId, {
     String? title,
     String? summary,
     String? nodeType,
+    int? proposalRevision,
+    String? idempotencyKey,
   }) async {
     if (captureId == CaptureMockData.mockVoiceCaptureResponse().captureId) {
-      return const GraphIngestResponse(
-        captureId: 'mock-capture',
-        createdEntities: ['mock-entity-1'],
-        tasks: ['mock-task-1'],
+      return CaptureMockData.mockCommitReceipt();
+    }
+    if (proposalRevision != null) {
+      final outcome = await executeAction(
+        captureId: captureId,
+        actionId: 'capture.approve',
+        proposalRevision: proposalRevision,
+        idempotencyKey: idempotencyKey,
       );
+      final receipt = outcome.receipt;
+      if (receipt != null) return receipt;
     }
     final edits = <String, dynamic>{
       if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
@@ -372,7 +440,7 @@ class CaptureRepository {
       '/captures/$captureId/approve',
       data: edits.isEmpty ? null : edits,
     );
-    return GraphIngestResponse.fromJson(response.data!);
+    return CaptureCommitReceipt.fromJson(response.data!);
   }
 
   Future<void> dismiss(String captureId) async {
@@ -436,6 +504,32 @@ class CaptureRepository {
       data: data,
     );
     return CaptureResponse.fromJson(response.data!);
+  }
+
+  Future<List<CaptureExecutionRequest>> listExecutions(String captureId) async {
+    final response = await _dio.get<List<dynamic>>(
+      '/captures/$captureId/executions',
+    );
+    return (response.data ?? const [])
+        .whereType<Map>()
+        .map((item) => CaptureExecutionRequest.fromJson(
+              item.map((key, value) => MapEntry(key.toString(), value)),
+            ))
+        .toList();
+  }
+
+  Future<CaptureExecutionTestResult> testExecution(String requestId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/executions/$requestId/test',
+    );
+    return CaptureExecutionTestResult.fromJson(response.data!);
+  }
+
+  Future<CaptureExecutionRequest> confirmExecution(String requestId) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/captures/executions/$requestId/confirm',
+    );
+    return CaptureExecutionRequest.fromJson(response.data!);
   }
 }
 
