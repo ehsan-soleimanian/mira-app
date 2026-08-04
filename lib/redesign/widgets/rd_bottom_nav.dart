@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:mira_app/l10n/app_localizations.dart';
 
+import '../models/rd_capture_mode.dart';
 import '../theme/rd_theme.dart';
 import '../theme/rd_typography.dart';
 import 'rd_icon.dart';
+import 'rd_orb.dart';
 
 /// A navigation callback carrying a screen id (matches the design's `go(screen)`
 /// model) plus an optional argument for screens that need one (e.g. the tapped
-/// memory for `go('memory', arg: RdMemoryArg(...))`). Screen ids: home, daily,
-/// library, canvas, account, memory, capture…
+/// memory for `go('memory', arg: RdMemoryArg(...))`).
 typedef RdGo = void Function(String screen, {Object? arg});
 
 /// Argument for `go('memory', arg: ...)` — the memory the user tapped, so the
@@ -32,13 +34,8 @@ class RdMemoryArg {
 class RdChatArg {
   const RdChatArg({this.initialPrompt, this.autoSend = false, this.memory});
 
-  /// Prefills the compose bar (e.g. after Listen transcribes).
   final String? initialPrompt;
-
-  /// When true, sends [initialPrompt] to the assistant on open.
   final bool autoSend;
-
-  /// Optional memory anchor (same shape as memory detail navigation).
   final RdMemoryArg? memory;
 }
 
@@ -62,10 +59,12 @@ class RdOnboardingArg {
   );
 }
 
-/// The shared bottom navigation used by every tab-rooted screen (Home, Daily
-/// Brief, Library, Canvas). Home / Library on the left, Canvas / Brief on the
-/// right, with the floating capture mic centred over the gap. [active] is the
-/// current tab's id.
+/// Mira's deliberately small navigation dock.
+///
+/// Home and Library are the only persistent destinations. The central Orb is
+/// an action surface: tap opens the quick composer, while a long press starts
+/// voice capture immediately. This keeps microphone semantics honest and
+/// leaves secondary destinations inside the screens that own them.
 class RdBottomNav extends StatelessWidget {
   const RdBottomNav({super.key, required this.active, required this.go});
 
@@ -74,24 +73,103 @@ class RdBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
     final navInset = context.rdNavBarInset;
+
     return SizedBox(
-      height: 88 + navInset,
-      child: Align(
+      height: 94 + navInset,
+      child: Stack(
         alignment: Alignment.topCenter,
-        child: Semantics(
-          button: true,
-          label: AppLocalizations.of(context)!.rdCaptureEntryTitle,
-          child: _NavMic(onTap: () => go('capture')),
-        ),
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 12,
+            right: 12,
+            top: 20,
+            bottom: 4,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: rd.card.withValues(alpha: 0.96),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: rd.line),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 28,
+                    spreadRadius: -12,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(bottom: navInset),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _NavItem(
+                        key: const ValueKey('rd-nav-home'),
+                        icon: RdIcons.navHome,
+                        label: l10n.rdNavHome,
+                        active: active == 'home',
+                        onTap: () => go('home'),
+                      ),
+                    ),
+                    const SizedBox(width: 82),
+                    Expanded(
+                      child: _NavItem(
+                        key: const ValueKey('rd-nav-library'),
+                        icon: RdIcons.navLibrary,
+                        label: l10n.rdNavLibrary,
+                        active: active == 'library',
+                        onTap: () => go('library'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Semantics(
+            button: true,
+            label: l10n.rdNavMira,
+            hint: l10n.rdCaptureOrbHint,
+            child: GestureDetector(
+              key: const ValueKey('rd-nav-orb'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => go('capture'),
+              onLongPress: () {
+                HapticFeedback.mediumImpact();
+                go(
+                  'captureflow',
+                  arg: const RdCaptureModeArg(RdCaptureMode.voice),
+                );
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const RdOrb(size: 58, ring: false),
+                  const SizedBox(height: 2),
+                  Text(
+                    l10n.rdNavMira,
+                    style: RdText.navLabel.copyWith(
+                      color: rd.peri,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-// ignore: unused_element
 class _NavItem extends StatelessWidget {
   const _NavItem({
+    super.key,
     required this.icon,
     required this.label,
     required this.active,
@@ -106,59 +184,36 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
-    final color = active ? rd.navy : rd.faint;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RdIcon(icon, size: 22, color: color, strokeWidth: 1.8),
-            const SizedBox(height: 5),
-            Text(label, style: RdText.navLabel.copyWith(color: color)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NavMic extends StatelessWidget {
-  const _NavMic({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const RadialGradient(
-            center: Alignment(-0.24, -0.4),
-            radius: 0.9,
-            colors: [Color(0xFF8B98D6), Color(0xFF5B69AD)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color.fromRGBO(70, 85, 150, 0.6),
-              blurRadius: 28,
-              spreadRadius: -8,
-              offset: const Offset(0, 14),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: RdIcon(
-            RdIcons.mic,
-            size: 24,
-            stroke: '#FFFFFF',
-            strokeWidth: 1.9,
+    final color = active ? rd.peri : rd.faint;
+    return Semantics(
+      selected: active,
+      button: true,
+      label: label,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 34,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 7),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 34,
+                height: 27,
+                decoration: BoxDecoration(
+                  color: active
+                      ? rd.peri.withValues(alpha: 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: RdIcon(icon, size: 20, color: color, strokeWidth: 1.8),
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(label, style: RdText.navLabel.copyWith(color: color)),
+            ],
           ),
         ),
       ),

@@ -102,6 +102,17 @@ class _RdRootState extends State<RdRoot> {
     });
   }
 
+  void _submitCaptureText(String text) {
+    setState(() {
+      _captureSheetOpen = false;
+      _attachmentSheetOnly = false;
+      _stack.add((
+        id: 'captureflow',
+        arg: RdCaptureModeArg(RdCaptureMode.type, initialText: text),
+      ));
+    });
+  }
+
   void _back() {
     if (_stack.length > 1) {
       setState(() {
@@ -268,13 +279,7 @@ class _RdRootState extends State<RdRoot> {
               child: RdCaptureEntrySheet(
                 attachmentsOnly: _attachmentSheetOnly,
                 onPick: _pickCaptureMode,
-                onNavigate: (screen) {
-                  setState(() {
-                    _captureSheetOpen = false;
-                    _attachmentSheetOnly = false;
-                  });
-                  _go(screen);
-                },
+                onSubmitText: _submitCaptureText,
                 onClose: () => setState(() {
                   _captureSheetOpen = false;
                   _attachmentSheetOnly = false;

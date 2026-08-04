@@ -1372,6 +1372,12 @@ abstract class AppLocalizations {
   /// **'Library'**
   String get rdNavLibrary;
 
+  /// No description provided for @rdNavMira.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira'**
+  String get rdNavMira;
+
   /// No description provided for @rdNavCanvas.
   ///
   /// In en, this message translates to:
@@ -1563,6 +1569,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mira understands and organizes it. You only confirm what should be kept.'**
   String get rdCaptureEntrySubtitle;
+
+  /// No description provided for @rdCaptureOrbHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to write · hold the Orb to speak'**
+  String get rdCaptureOrbHint;
+
+  /// No description provided for @rdCaptureSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to Mira'**
+  String get rdCaptureSend;
 
   /// No description provided for @rdCaptureModeVoice.
   ///

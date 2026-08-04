@@ -716,6 +716,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdNavLibrary => 'کتابخانه';
 
   @override
+  String get rdNavMira => 'میرا';
+
+  @override
   String get rdNavCanvas => 'بوم';
 
   @override
@@ -815,6 +818,12 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get rdCaptureEntrySubtitle =>
       'میرا خودش می‌فهمد و مرتبش می‌کند؛ تو فقط تأیید می‌کنی چه چیزی بماند.';
+
+  @override
+  String get rdCaptureOrbHint => 'برای نوشتن لمس کن · برای گفتن Orb را نگه دار';
+
+  @override
+  String get rdCaptureSend => 'ارسال به میرا';
 
   @override
   String get rdCaptureModeVoice => 'صدا';

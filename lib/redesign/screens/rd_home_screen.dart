@@ -10,15 +10,14 @@ import 'package:mira_app/models/api/daily_update_models.dart';
 import 'package:mira_app/models/api/reminder_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
-import '../models/rd_capture_mode.dart';
 import '../theme/rd_theme.dart';
 import '../theme/rd_typography.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_icon.dart';
 import '../widgets/rd_orb.dart';
 
-/// Home — calm hero orb, capture field, person-context reminders ("waiting for
-/// the right moment"), and recently captured memories. Faithful to design2
+/// Home — calm hero orb, person-context reminders ("waiting for the right
+/// moment"), and recently captured memories. Faithful to design2
 /// `.rd-home`. Wired to `/auth/me`, `/daily-update`, and `/reminders`.
 class RdHomeScreen extends StatefulWidget {
   const RdHomeScreen({super.key, required this.go, this.live = true});
@@ -75,24 +74,10 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
   ({String id, String label, DateTime? previousRemindAt})? _snoozed;
   Timer? _snoozeHideTimer;
   bool _loaded = false;
-  final TextEditingController _composerController = TextEditingController();
-  bool _hasComposerText = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _composerController.addListener(() {
-      final hasText = _composerController.text.trim().isNotEmpty;
-      if (hasText != _hasComposerText && mounted) {
-        setState(() => _hasComposerText = hasText);
-      }
-    });
-  }
 
   @override
   void dispose() {
     _snoozeHideTimer?.cancel();
-    _composerController.dispose();
     super.dispose();
   }
 
@@ -337,8 +322,6 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
             _header(greeting),
             const SizedBox(height: 14),
             _hero(l10n),
-            const SizedBox(height: 16),
-            _captureField(l10n),
             if (_visibleWaiting.isNotEmpty) ...[
               const SizedBox(height: 18),
               _waitingSection(l10n),
@@ -403,101 +386,6 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _captureField(AppLocalizations l10n) {
-    final rd = context.rd;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 64),
-        padding: const EdgeInsets.fromLTRB(8, 7, 7, 7),
-        decoration: BoxDecoration(
-          color: rd.card,
-          borderRadius: BorderRadius.circular(21),
-          border: Border.all(color: rd.line, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: const Color.fromRGBO(30, 34, 70, 0.30),
-              blurRadius: 22,
-              spreadRadius: -14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Semantics(
-              button: true,
-              label: l10n.rdCaptureEntryTitle,
-              child: _ComposerIconButton(
-                icon: RdIcons.plusCircle,
-                onTap: () => widget.go('attachments'),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: TextField(
-                controller: _composerController,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.newline,
-                keyboardType: TextInputType.multiline,
-                style: GoogleFonts.vazirmatn(
-                  fontSize: 15,
-                  height: 1.45,
-                  color: rd.ink,
-                ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  hintText: l10n.rdHomeComposerHint,
-                  hintStyle: RdText.placeholder.copyWith(color: rd.faint),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 11,
-                  ),
-                ),
-                onSubmitted: (_) => _submitComposer(),
-              ),
-            ),
-            const SizedBox(width: 4),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 160),
-              child: _hasComposerText
-                  ? _SendButton(
-                      key: const ValueKey('send'),
-                      size: 46,
-                      onTap: _submitComposer,
-                    )
-                  : Semantics(
-                      key: const ValueKey('voice'),
-                      button: true,
-                      label: l10n.rdCaptureModeVoice,
-                      child: _MicButton(
-                        size: 46,
-                        onTap: () => widget.go(
-                          'captureflow',
-                          arg: const RdCaptureModeArg(RdCaptureMode.voice),
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _submitComposer() {
-    final text = _composerController.text.trim();
-    if (text.isEmpty) return;
-    _composerController.clear();
-    widget.go(
-      'captureflow',
-      arg: RdCaptureModeArg(RdCaptureMode.type, initialText: text),
     );
   }
 
@@ -1112,109 +1000,6 @@ class _CircleButton extends StatelessWidget {
           border: Border.all(color: rd.line, width: 1),
         ),
         child: Center(child: child),
-      ),
-    );
-  }
-}
-
-class _ComposerIconButton extends StatelessWidget {
-  const _ComposerIconButton({required this.icon, required this.onTap});
-
-  final String icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final rd = context.rd;
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Center(
-            child: RdIcon(icon, size: 21, color: rd.muted, strokeWidth: 1.8),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SendButton extends StatelessWidget {
-  const _SendButton({super.key, required this.size, required this.onTap});
-
-  final double size;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: MaterialLocalizations.of(context).okButtonLabel,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: context.rd.navy,
-          ),
-          child: const Center(
-            child: RdIcon(
-              '<path d="M12 19V5M6 11l6-6 6 6"/>',
-              size: 20,
-              stroke: '#FFFFFF',
-              strokeWidth: 2,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MicButton extends StatelessWidget {
-  const _MicButton({required this.size, this.onTap});
-
-  final double size;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const RadialGradient(
-            center: Alignment(-0.24, -0.4),
-            radius: 0.9,
-            colors: [Color(0xFF3A5AD0), Color(0xFF14328C)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color.fromRGBO(20, 50, 140, 0.55),
-              blurRadius: 18,
-              spreadRadius: -6,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: const Center(
-          child: RdIcon(
-            RdIcons.mic,
-            size: 20,
-            stroke: '#FFFFFF',
-            strokeWidth: 1.8,
-          ),
-        ),
       ),
     );
   }

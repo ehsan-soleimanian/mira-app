@@ -265,6 +265,7 @@
   "libraryMeetingPasteAction": "Paste meeting notes",
   "rdNavHome": "Home",
   "rdNavLibrary": "Library",
+  "rdNavMira": "Mira",
   "rdNavCanvas": "Canvas",
   "rdNavBrief": "Brief",
   "rdGreetingMorning": "Good morning",
@@ -308,6 +309,8 @@
 
   "rdCaptureEntryTitle": "Drop it into Mira",
   "rdCaptureEntrySubtitle": "Mira understands and organizes it. You only confirm what should be kept.",
+  "rdCaptureOrbHint": "Tap to write · hold the Orb to speak",
+  "rdCaptureSend": "Send to Mira",
   "rdCaptureModeVoice": "Voice",
   "rdCaptureModeVoiceHint": "Just speak",
   "rdCaptureModeMeeting": "Meeting",

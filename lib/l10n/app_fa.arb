@@ -216,6 +216,7 @@
   "libraryMeetingPasteAction": "وارد کردن یادداشت جلسه",
   "rdNavHome": "خانه",
   "rdNavLibrary": "کتابخانه",
+  "rdNavMira": "میرا",
   "rdNavCanvas": "بوم",
   "rdNavBrief": "خلاصه",
   "rdGreetingMorning": "صبح بخیر",
@@ -259,6 +260,8 @@
 
   "rdCaptureEntryTitle": "بسپارش به میرا",
   "rdCaptureEntrySubtitle": "میرا خودش می‌فهمد و مرتبش می‌کند؛ تو فقط تأیید می‌کنی چه چیزی بماند.",
+  "rdCaptureOrbHint": "برای نوشتن لمس کن · برای گفتن Orb را نگه دار",
+  "rdCaptureSend": "ارسال به میرا",
   "rdCaptureModeVoice": "صدا",
   "rdCaptureModeVoiceHint": "فقط حرف بزن",
   "rdCaptureModeMeeting": "جلسه",

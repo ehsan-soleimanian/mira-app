@@ -715,6 +715,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdNavLibrary => 'Library';
 
   @override
+  String get rdNavMira => 'Mira';
+
+  @override
   String get rdNavCanvas => 'Canvas';
 
   @override
@@ -814,6 +817,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get rdCaptureEntrySubtitle =>
       'Mira understands and organizes it. You only confirm what should be kept.';
+
+  @override
+  String get rdCaptureOrbHint => 'Tap to write · hold the Orb to speak';
+
+  @override
+  String get rdCaptureSend => 'Send to Mira';
 
   @override
   String get rdCaptureModeVoice => 'Voice';
