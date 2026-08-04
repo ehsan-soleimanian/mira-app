@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -33,11 +32,13 @@ class RdCaptureFlow extends StatefulWidget {
     required this.go,
     this.initialMode = RdCaptureMode.voice,
     this.initialText,
+    this.initialInput,
   });
 
   final RdGo go;
   final RdCaptureMode initialMode;
   final String? initialText;
+  final CaptureInput? initialInput;
 
   @override
   State<RdCaptureFlow> createState() => _RdCaptureFlowState();
@@ -62,12 +63,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     with WidgetsBindingObserver {
   String _view = 'listen';
   int _sec = 0;
+  // Kept until the realtime processing report drives granular progress again.
+  // ignore: unused_field
   int _steps = 0;
 
   bool _conn1 = true;
   bool _conn2 = true;
   bool _conn3 = false;
-  bool _remind = true;
+  bool _remind = false;
 
   // Live transcript state. Defaults to the simulated sentence and is overridden
   // only when a real device recording is transcribed successfully.
@@ -134,6 +137,16 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final canonicalInput = widget.initialInput;
+    if (canonicalInput != null) {
+      _fromEntrySheet = true;
+      _kind = canonicalInput.type;
+      _view = 'proc';
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_beginCanonicalInput(canonicalInput));
+      });
+      return;
+    }
     _fromEntrySheet = widget.initialMode != RdCaptureMode.voice;
     switch (widget.initialMode) {
       case RdCaptureMode.voice:
@@ -275,7 +288,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     try {
       final result = await FilePicker.platform.pickFiles(
         allowMultiple: false,
-        withData: kIsWeb,
+        withData: true,
       );
       if (!mounted) return;
       if (result == null || result.files.isEmpty) {
@@ -283,26 +296,20 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         return;
       }
       final file = result.files.single;
-      if (file.path == null && (file.bytes == null || file.bytes!.isEmpty)) {
+      if (file.bytes == null || file.bytes!.isEmpty) {
         throw StateError('empty file selection');
       }
       final services = AppScope.servicesOf(context);
-      final item = file.path != null
-          ? await services.libraryRepository.uploadFilePath(
-              path: file.path!,
-              filename: file.name,
-            )
-          : await services.libraryRepository.uploadBytes(
-              bytes: file.bytes ?? const <int>[],
-              filename: file.name,
-            );
-      services.memoryStore.upsertLocal(item);
-      if (!mounted) return;
       setState(() {
         _kind = 'file';
         _remind = false;
-        _view = 'added';
       });
+      await _driveCreatedCapture(
+        () => services.captureRepository.createFileCapture(
+          bytes: file.bytes!,
+          filename: file.name,
+        ),
+      );
     } catch (_) {
       if (!mounted) return;
       _showCaptureError(
@@ -783,7 +790,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         proposalJson = clarified.proposal;
         resultCard = clarified.resultCard ?? resultCard;
         if (clarified.availableActions.isNotEmpty) {
-          availableActions = List<CaptureAction>.from(clarified.availableActions);
+          availableActions = List<CaptureAction>.from(
+            clarified.availableActions,
+          );
         }
         proposalRevision = clarified.proposalRevision;
         clarificationOnly = clarified.state != 'awaiting_approval';
@@ -986,38 +995,28 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   /// is on), and show the "kept in memory" screen. The persist is fire-and-forget
   /// and best-effort so the confirmation is instant and still shows even offline.
   ///
-  /// When a REAL proposal was extracted, this approves the live capture into the
-  /// knowledge graph (the genuine ingest path). Otherwise it falls back to the
-  /// one-shot note write, exactly like before.
-  void _addToMemory() {
+  /// Commit only a genuine server proposal. A transport failure never becomes a
+  /// fallback Library write or a false success screen.
+  Future<void> _addToMemory() async {
     final services = AppScope.servicesOf(context);
-    switch (_kind) {
-      case 'photo':
-      case 'screenshot':
-        final media = _pendingMedia;
-        if (media != null) unawaited(_persistMedia(services, media));
-      case 'link':
-        final captureId = _captureId;
-        if (_realProposal && captureId != null) {
-          unawaited(_confirmLinkMemory(services, captureId));
-        }
-        return;
-      default:
-        final captureId = _captureId;
-        if (_realProposal && captureId != null) {
-          unawaited(_approveCapture(services, captureId));
-        } else {
-          unawaited(
-            _persistNote(
-              services,
-              title: _transcriptTitle,
-              content: _transcript,
-            ),
-          );
-        }
+    final captureId = _captureId;
+    if (!_realProposal || captureId == null) {
+      _showCaptureError(
+        AppLocalizations.of(context)!.rdCaptureMemorySaveFailed,
+      );
+      return;
     }
-    if (_remind) unawaited(_createReminder(services));
-    setState(() => _view = 'added');
+    if (_kind == 'link') {
+      await _confirmLinkMemory(services, captureId);
+      return;
+    }
+    setState(() => _actionBusy = true);
+    final saved = await _approveCapture(services, captureId);
+    if (!mounted) return;
+    setState(() {
+      _actionBusy = false;
+      if (saved) _view = 'added';
+    });
   }
 
   Future<void> _confirmLinkMemory(
@@ -1036,7 +1035,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       );
       await services.memoryStore.load(force: true);
       await services.remindersRepository.syncLocalNotifications();
-      if (_remind) await _createReminder(services);
       if (!mounted) return;
       setState(() {
         _savingLink = false;
@@ -1062,7 +1060,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   /// A temporary graph failure is represented by a durable projection receipt;
   /// do not create a second Library note because the server may already have
   /// committed the ledger event even when the response is interrupted.
-  Future<void> _approveCapture(MiraServices services, String captureId) async {
+  Future<bool> _approveCapture(MiraServices services, String captureId) async {
     final l10n = AppLocalizations.of(context)!;
     try {
       final primary = _serverPrimaryAction;
@@ -1090,7 +1088,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       }
       await services.memoryStore.load(force: true);
       await services.remindersRepository.syncLocalNotifications();
-      if (!mounted) return;
+      if (!mounted) return true;
       unawaited(_loadExecutions(services, captureId));
       if (result.isProjectionPending) {
         ScaffoldMessenger.of(
@@ -1098,11 +1096,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncPending)));
         _watchCaptureProjection(services, result);
       }
+      return true;
     } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureMemorySaveFailed)));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureMemorySaveFailed)));
+      }
+      return false;
     }
   }
 
@@ -1229,7 +1230,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         'action': description,
       };
     } else if (action.id == 'content.complete') {
-      final itemId = _resultCard?.extractedItems
+      final itemId =
+          _resultCard?.extractedItems
               .where((item) => item.kind == 'task' || item.kind == 'commitment')
               .map((item) => item.id)
               .firstOrNull ??
@@ -1250,19 +1252,21 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         _showCaptureError(l10n.rdCaptureActionFailed);
         return;
       }
-      input = {
-        'relationship': 'RELATES_TO',
-        'targetTitle': target,
-      };
+      input = {'relationship': 'RELATES_TO', 'targetTitle': target};
     }
 
     if (action.isApprove) {
       if (_kind == 'link') {
-        unawaited(_confirmLinkMemory(services, captureId));
+        await _confirmLinkMemory(services, captureId);
       } else {
-        unawaited(_approveCapture(services, captureId));
-        if (_remind) unawaited(_createReminder(services));
-        setState(() => _view = 'added');
+        setState(() => _actionBusy = true);
+        final saved = await _approveCapture(services, captureId);
+        if (mounted) {
+          setState(() {
+            _actionBusy = false;
+            if (saved) _view = 'added';
+          });
+        }
       }
       return;
     }
@@ -1423,11 +1427,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
                       [
-                        raw['title']?.toString(),
-                        raw['kind']?.toString(),
-                        raw['sourceId']?.toString(),
-                        raw['externalRef']?.toString(),
-                      ].whereType<String>().where((s) => s.isNotEmpty).join(' · '),
+                            raw['title']?.toString(),
+                            raw['kind']?.toString(),
+                            raw['sourceId']?.toString(),
+                            raw['externalRef']?.toString(),
+                          ]
+                          .whereType<String>()
+                          .where((s) => s.isNotEmpty)
+                          .join(' · '),
                       style: GoogleFonts.vazirmatn(
                         fontSize: 13,
                         height: 1.4,
@@ -1501,6 +1508,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
   /// Create a real note memory in the backend library. Best-effort: a failure
   /// (offline, auth) is swallowed so the capture UX still completes.
+  // ignore: unused_element
   Future<void> _persistNote(
     MiraServices services, {
     required String title,
@@ -1517,6 +1525,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     }
   }
 
+  // ignore: unused_element
   Future<void> _createReminder(MiraServices services) async {
     try {
       // The reminder title is the real captured content — the extracted title,
@@ -1757,6 +1766,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
   /// Drives the preview-only understanding animation for photo/screenshot.
   /// Links use `_driveLinkUnderstanding`, which waits for a real crawl/proposal.
+  // ignore: unused_element
   void _startUnderstanding() {
     _clearTimers();
     setState(() {
@@ -1823,9 +1833,75 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _kind = screenshot ? 'screenshot' : 'photo';
       _pendingMedia = media;
     });
-    _startUnderstanding();
+    final services = AppScope.servicesOf(context);
+    await _driveCreatedCapture(
+      () => services.captureRepository.createImageCapture(
+        bytes: media!.bytes,
+        filename: media.filename,
+      ),
+    );
   }
 
+  /// Drives every already-materialized input through the canonical Capture
+  /// state machine. No Library write or success state is allowed before the
+  /// backend returns an approvable proposal.
+  Future<void> _driveCreatedCapture(
+    Future<CaptureResponse> Function() create,
+  ) async {
+    _clearTimers();
+    setState(() {
+      _view = 'proc';
+      _captureId = null;
+      _proposal = null;
+      _resultCard = null;
+      _availableActions = const [];
+      _proposalRevision = 0;
+      _realProposal = false;
+      _pipelineAborted = false;
+    });
+    try {
+      final created = await create();
+      if (!mounted) return;
+      _captureId = created.captureId;
+      final ready =
+          _applyCaptureProposal(created) ||
+          await _recoverCaptureProposal(created.captureId);
+      if (!mounted || _pipelineAborted) return;
+      if (!ready) {
+        _showCaptureError(
+          AppLocalizations.of(context)!.rdCaptureMemorySaveFailed,
+        );
+        await _abortClarification(created.captureId);
+        return;
+      }
+      setState(() => _view = 'review');
+    } catch (_) {
+      if (!mounted) return;
+      _showCaptureError(
+        AppLocalizations.of(context)!.rdCaptureMemorySaveFailed,
+      );
+      widget.go('home');
+    }
+  }
+
+  Future<void> _beginCanonicalInput(CaptureInput input) async {
+    final preview = input.text?.trim().isNotEmpty == true
+        ? input.text!.trim()
+        : input.url?.trim() ?? '';
+    if (preview.isNotEmpty && mounted) {
+      setState(() {
+        _transcript = preview;
+        _transcriptTitle = _titleFrom(preview);
+        _realTranscript = true;
+      });
+    }
+    final services = AppScope.servicesOf(context);
+    await _driveCreatedCapture(
+      () => services.captureRepository.createCapture(input),
+    );
+  }
+
+  // ignore: unused_element
   Future<void> _persistMedia(
     MiraServices services,
     PickedCaptureMedia media,
@@ -1907,7 +1983,13 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           _pendingMedia = media;
           capturePreviewBytes = media!.bytes;
         });
-        _startUnderstanding();
+        final services = AppScope.servicesOf(context);
+        await _driveCreatedCapture(
+          () => services.captureRepository.createCameraCapture(
+            bytes: media!.bytes,
+            filename: media.filename,
+          ),
+        );
       },
     );
   }
@@ -2346,69 +2428,37 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   Widget _proc() {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
-    final labels = [
-      l10n.rdCaptureStepTranscribe,
-      l10n.rdCaptureStepRecognise,
-      l10n.rdCaptureStepConnections,
-    ];
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const RdOrb(size: 120),
-          const SizedBox(height: 26),
-          Text(
-            l10n.rdCaptureUnderstanding,
-            style: GoogleFonts.vazirmatn(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-              color: rd.peri,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const RdOrb(size: 120),
+            const SizedBox(height: 28),
+            Text(
+              l10n.rdCaptureUnderstanding,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: rd.ink,
+              ),
             ),
-          ),
-          const SizedBox(height: 22),
-          for (var k = 0; k < labels.length; k++)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: k < _steps ? 1 : 0.4,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 22,
-                      height: 22,
-                      // Completed step → fixed navy fill; pending → adaptive hairline.
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: k < _steps ? rd.navy : rd.line,
-                      ),
-                      child: k < _steps
-                          ? const Center(
-                              child: RdIcon(
-                                '<path d="m5 12 5 5 9-11"/>',
-                                size: 12,
-                                stroke: '#FFFFFF',
-                                strokeWidth: 3,
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 11),
-                    Text(
-                      labels[k],
-                      style: GoogleFonts.vazirmatn(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: rd.ink,
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 18),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: SizedBox(
+                width: 132,
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  color: rd.peri,
+                  backgroundColor: rd.line,
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2417,6 +2467,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   /// proposal's understood title (falling back to its summary), then the
   /// transcript, so genuine extraction is reflected verbatim.
   String _understoodText(AppLocalizations l10n) {
+    final proposal = _proposal;
+    if (_realProposal && proposal != null) {
+      if (proposal.title.trim().isNotEmpty) return proposal.title.trim();
+      if (proposal.summary.trim().isNotEmpty) return proposal.summary.trim();
+    }
     if (_kind == 'link') {
       final t = _pendingTitle?.trim() ?? '';
       if (t.isNotEmpty) return t;
@@ -2427,11 +2482,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     }
     if (_kind == 'screenshot') {
       return l10n.rdCaptureKeptScreenshot;
-    }
-    final proposal = _proposal;
-    if (_realProposal && proposal != null) {
-      if (proposal.title.trim().isNotEmpty) return proposal.title.trim();
-      if (proposal.summary.trim().isNotEmpty) return proposal.summary.trim();
     }
     final t = _transcript.trim();
     return t.isNotEmpty ? t : l10n.rdCaptureYourNote;
@@ -2526,6 +2576,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     setState(() => _chips = [..._currentChips(l10n), v]);
   }
 
+  // ignore: unused_element
   Widget _detailChips(AppLocalizations l10n) {
     final labels = _currentChips(l10n);
     return Wrap(
@@ -2564,50 +2615,17 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   /// The "Connect to existing memory" section. Real proposal → related rows,
   /// then server-owned secondary actions from `result_card.nextStep`.
   List<Widget> _connectSection(AppLocalizations l10n) {
-    final rows = <Widget>[];
-    if (_realProposal) {
-      final related = _proposal?.relatedLabels ?? const <String>[];
-      if (related.isNotEmpty) {
-        rows.add(_fieldLabel(l10n.rdCaptureConnectMemory));
-        for (var i = 0; i < related.length; i++) {
-          if (i > 0) rows.add(const SizedBox(height: 8));
-          final on = _connOn.contains(i);
-          rows.add(
-            _connRow(
-              '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
-              related[i],
-              l10n.rdCaptureRelatedMemory,
-              on,
-              () => setState(() {
-                if (on) {
-                  _connOn.remove(i);
-                } else {
-                  _connOn.add(i);
-                }
-              }),
-            ),
-          );
-        }
-      }
-      final serverActions = _serverSecondaryActions();
-      if (serverActions.isNotEmpty) {
-        if (rows.isNotEmpty) rows.add(const SizedBox(height: 8));
-        rows.addAll(_serverSuggestedActions(l10n, serverActions));
-      }
-      return rows;
-    }
-    // Photo / screenshot / link → illustrative "Suggested actions" only when
-    // there is no real proposal yet.
-    if (_kind == 'photo' || _kind == 'screenshot' || _kind == 'link') {
-      return _suggestedActions(l10n);
-    }
-    return const [];
+    if (!_realProposal) return const [];
+    final serverActions = _serverSecondaryActions();
+    if (serverActions.isEmpty) return const [];
+    return _serverSuggestedActions(l10n, serverActions);
   }
 
-  List<CaptureAction> _serverSecondaryActions() => resolveReviewSecondaryActions(
-    resultCard: _resultCard,
-    availableActions: _availableActions,
-  );
+  List<CaptureAction> _serverSecondaryActions() =>
+      resolveReviewSecondaryActions(
+        resultCard: _resultCard,
+        availableActions: _availableActions,
+      );
 
   CaptureAction? get _serverPrimaryAction => resolveReviewPrimaryAction(
     resultCard: _resultCard,
@@ -2645,6 +2663,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   /// Kind-aware reminder line for the bottom reminder card. For voice/text it
   /// reflects the real extracted deadline when one was found; otherwise a
   /// neutral prompt — never a fabricated day.
+  // ignore: unused_element
   String _reminderText(AppLocalizations l10n) {
     switch (_kind) {
       case 'link':
@@ -2661,6 +2680,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     }
   }
 
+  // ignore: unused_element
   List<Widget> _suggestedActions(AppLocalizations l10n) {
     const calendar =
         '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>';
@@ -2748,6 +2768,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
   /// Opens the "Change type" picker (design typeScrim) — tapping a type sets the
   /// review's type chip. All nine memory types.
+  // ignore: unused_element
   Future<void> _openTypePicker() async {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
@@ -3134,37 +3155,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Real proposal → the auto-detected node type; else the
-                          // design's default "Task".
-                          _typeChip(_currentTypeIcon, _currentTypeLabel),
-                          GestureDetector(
-                            onTap: _openTypePicker,
-                            behavior: HitTestBehavior.opaque,
-                            child: Row(
-                              children: [
-                                RdIcon(
-                                  '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
-                                  size: 13,
-                                  color: rd.muted,
-                                  strokeWidth: 2,
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  l10n.rdCaptureChangeType,
-                                  style: GoogleFonts.vazirmatn(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w500,
-                                    color: rd.muted,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                      _typeChip(_currentTypeIcon, _currentTypeLabel),
                       const SizedBox(height: 12),
                       // The understood text, verbatim from the real transcript /
                       // extracted proposal (or the link/photo summary).
@@ -3180,48 +3171,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                     ],
                   ),
                 ),
-                _fieldLabel(l10n.rdCaptureDetailsExtracted),
-                _detailChips(l10n),
                 ..._connectSection(l10n),
-                const SizedBox(height: 14),
-                GestureDetector(
-                  onTap: () => setState(() => _remind = !_remind),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 13,
-                    ),
-                    decoration: BoxDecoration(
-                      color: rd.periSoft,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        // On-periSoft icon + text → rd.peri (navy vanishes on dark periSoft).
-                        RdIcon(
-                          '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M12 2h0M9 2h6"/>',
-                          size: 20,
-                          color: rd.peri,
-                          strokeWidth: 1.8,
-                        ),
-                        const SizedBox(width: 11),
-                        Expanded(
-                          child: Text(
-                            _reminderText(l10n),
-                            style: GoogleFonts.vazirmatn(
-                              fontSize: 13,
-                              height: 1.4,
-                              fontWeight: FontWeight.w600,
-                              color: rd.peri,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        _Tog(on: _remind),
-                      ],
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 18),
               ],
             ),
           ),
@@ -3521,7 +3472,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                           _captureId != null) {
                         unawaited(_runServerAction(primaryAction));
                       } else {
-                        _addToMemory();
+                        unawaited(_addToMemory());
                       }
                     },
               child: Container(

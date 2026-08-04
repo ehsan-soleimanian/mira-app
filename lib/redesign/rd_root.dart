@@ -207,6 +207,7 @@ class _RdRootState extends State<RdRoot> {
           go: _go,
           initialMode: mode,
           initialText: arg is RdCaptureModeArg ? arg.initialText : null,
+          initialInput: arg is RdCanonicalCaptureArg ? arg.input : null,
         );
       default:
         return _ComingSoon(
@@ -267,6 +268,13 @@ class _RdRootState extends State<RdRoot> {
               child: RdCaptureEntrySheet(
                 attachmentsOnly: _attachmentSheetOnly,
                 onPick: _pickCaptureMode,
+                onNavigate: (screen) {
+                  setState(() {
+                    _captureSheetOpen = false;
+                    _attachmentSheetOnly = false;
+                  });
+                  _go(screen);
+                },
                 onClose: () => setState(() {
                   _captureSheetOpen = false;
                   _attachmentSheetOnly = false;

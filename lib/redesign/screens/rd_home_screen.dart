@@ -139,8 +139,10 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     if (_recents.isEmpty) {
       try {
         final update = await services.dailyBriefRepository.fetchDailyUpdate();
-        final items =
-            update.items.take(6).map((i) => _toRecent(i, l10n)).toList();
+        final items = update.items
+            .take(6)
+            .map((i) => _toRecent(i, l10n))
+            .toList();
         if (mounted) setState(() => _recents = items);
       } catch (_) {}
     }
@@ -203,15 +205,12 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     );
   }
 
-  static RdRecent _toLibraryRecent(
-    LibraryItem item,
-    AppLocalizations l10n,
-  ) {
+  static RdRecent _toLibraryRecent(LibraryItem item, AppLocalizations l10n) {
     final type = item.type.toLowerCase();
-    final isVoice =
-        type == 'voice' || type == 'audio' || type == 'meeting';
-    final title =
-        item.title.trim().isEmpty ? item.summary.trim() : item.title.trim();
+    final isVoice = type == 'voice' || type == 'audio' || type == 'meeting';
+    final title = item.title.trim().isEmpty
+        ? item.summary.trim()
+        : item.title.trim();
     final content = item.contentText?.trim() ?? '';
     return RdRecent(
       id: item.id,
@@ -226,7 +225,9 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
   static String _relativeTime(DateTime dt, AppLocalizations l10n) {
     final diff = DateTime.now().difference(dt);
     if (diff.inMinutes < 1) return l10n.rdLibraryTimeJustNow;
-    if (diff.inMinutes < 60) return l10n.rdLibraryTimeMinutesAgo(diff.inMinutes);
+    if (diff.inMinutes < 60) {
+      return l10n.rdLibraryTimeMinutesAgo(diff.inMinutes);
+    }
     if (diff.inHours < 24) return l10n.rdLibraryTimeHoursAgo(diff.inHours);
     if (diff.inDays == 1) return l10n.rdLibraryTimeYesterday;
     if (diff.inDays < 7) return l10n.rdLibraryTimeDaysAgo(diff.inDays);
@@ -245,7 +246,9 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
       return l10n.rdHomeLaterToday;
     }
     if (diff.inDays == 1) return l10n.rdBriefTomorrow;
-    if (diff.inDays > 1 && diff.inDays < 7) return l10n.rdHomeInDays(diff.inDays);
+    if (diff.inDays > 1 && diff.inDays < 7) {
+      return l10n.rdHomeInDays(diff.inDays);
+    }
     return '${at.month}/${at.day}';
   }
 
@@ -296,8 +299,9 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     });
     try {
       final services = AppScope.servicesOf(context);
-      await RemindersRepository(apiClient: services.apiClient)
-          .update(r.id, remindAt: next);
+      await RemindersRepository(
+        apiClient: services.apiClient,
+      ).update(r.id, remindAt: next);
     } catch (_) {}
   }
 
@@ -309,8 +313,9 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     if (_useSampleWaiting) return;
     try {
       final services = AppScope.servicesOf(context);
-      RemindersRepository(apiClient: services.apiClient)
-          .update(s.id, remindAt: s.previousRemindAt);
+      RemindersRepository(
+        apiClient: services.apiClient,
+      ).update(s.id, remindAt: s.previousRemindAt);
     } catch (_) {}
   }
 
@@ -349,7 +354,6 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
 
   Widget _header(String greeting) {
     final rd = context.rd;
-    final hasWaiting = _waiting.any((r) => !r.done);
     return Padding(
       padding: const EdgeInsets.fromLTRB(26, 10, 26, 0),
       child: Row(
@@ -364,47 +368,6 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
             ],
           ),
           const Spacer(),
-          _CircleButton(
-            size: 42,
-            onTap: () => widget.go('ask'),
-            child: RdIcon(
-              RdIcons.search,
-              size: 18,
-              color: rd.gearIcon,
-              strokeWidth: 1.8,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              _CircleButton(
-                size: 42,
-                onTap: () => widget.go('reminders'),
-                child: RdIcon(
-                  RdIcons.bell,
-                  size: 18,
-                  color: rd.gearIcon,
-                  strokeWidth: 1.8,
-                ),
-              ),
-              if (hasWaiting)
-                Positioned(
-                  top: 10,
-                  right: 11,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: rd.peri,
-                      border: Border.all(color: rd.card, width: 1.5),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 10),
           _CircleButton(
             size: 42,
             onTap: () => widget.go('account'),
@@ -652,50 +615,45 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
           if (_recents.isEmpty)
             Expanded(child: _recentsEmpty(l10n))
           else
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 5.5,
-                  top: 22,
-                  bottom: 22,
-                  child: Container(
-                    width: 1.5,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          rd.periSoft,
-                          rd.peri,
-                          rd.peri,
-                          rd.periSoft,
-                        ],
-                        stops: const [0.0, 0.3, 0.7, 1.0],
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 5.5,
+                    top: 22,
+                    bottom: 22,
+                    child: Container(
+                      width: 1.5,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [rd.periSoft, rd.peri, rd.peri, rd.periSoft],
+                          stops: const [0.0, 0.3, 0.7, 1.0],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: _recents.length,
-                  itemBuilder: (context, i) => _RecentTile(
-                    item: _recents[i],
-                    isLast: i == _recents.length - 1,
-                    onTap: () => widget.go(
-                      'memory',
-                      arg: RdMemoryArg(
-                        id: _recents[i].id,
-                        title: _recents[i].title,
-                        body: _recents[i].body,
-                        isVoice: _recents[i].kind == RdRecentKind.voice,
+                  ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: _recents.length,
+                    itemBuilder: (context, i) => _RecentTile(
+                      item: _recents[i],
+                      isLast: i == _recents.length - 1,
+                      onTap: () => widget.go(
+                        'memory',
+                        arg: RdMemoryArg(
+                          id: _recents[i].id,
+                          title: _recents[i].title,
+                          body: _recents[i].body,
+                          isVoice: _recents[i].kind == RdRecentKind.voice,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -710,7 +668,10 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
           l10n.rdHomeRecentsEmpty,
           textAlign: TextAlign.center,
           style: GoogleFonts.vazirmatn(
-              fontSize: 13.5, height: 1.5, color: rd.faint),
+            fontSize: 13.5,
+            height: 1.5,
+            color: rd.faint,
+          ),
         ),
       ),
     );
@@ -985,11 +946,7 @@ class RdRecent {
 }
 
 class _RecentTile extends StatelessWidget {
-  const _RecentTile({
-    required this.item,
-    required this.isLast,
-    this.onTap,
-  });
+  const _RecentTile({required this.item, required this.isLast, this.onTap});
 
   final RdRecent item;
   final bool isLast;
@@ -1121,18 +1078,13 @@ class _TimelineNode extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: rd.peri,
-        boxShadow: [
-          BoxShadow(color: rd.periSoft, spreadRadius: 3),
-        ],
+        boxShadow: [BoxShadow(color: rd.periSoft, spreadRadius: 3)],
       ),
       child: Center(
         child: Container(
           width: 7,
           height: 7,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: rd.card,
-          ),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: rd.card),
         ),
       ),
     );
@@ -1208,7 +1160,10 @@ class _SendButton extends StatelessWidget {
         child: Container(
           width: size,
           height: size,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: context.rd.navy),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: context.rd.navy,
+          ),
           child: const Center(
             child: RdIcon(
               '<path d="M12 19V5M6 11l6-6 6 6"/>',
@@ -1253,7 +1208,12 @@ class _MicButton extends StatelessWidget {
           ],
         ),
         child: const Center(
-          child: RdIcon(RdIcons.mic, size: 20, stroke: '#FFFFFF', strokeWidth: 1.8),
+          child: RdIcon(
+            RdIcons.mic,
+            size: 20,
+            stroke: '#FFFFFF',
+            strokeWidth: 1.8,
+          ),
         ),
       ),
     );

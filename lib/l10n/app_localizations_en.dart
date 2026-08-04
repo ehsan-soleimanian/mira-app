@@ -733,7 +733,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdHomeMemoryReady => 'Your memory is\nquiet and ready';
 
   @override
-  String get rdHomeComposerHint => 'Type or say anything…';
+  String get rdHomeComposerHint => 'Drop anything here…';
 
   @override
   String get rdWaitingSectionTitle => 'WAITING FOR THE RIGHT MOMENT';
@@ -809,11 +809,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdOnboardingLater => 'I\'ll do it later';
 
   @override
-  String get rdCaptureEntryTitle => 'Capture a memory';
+  String get rdCaptureEntryTitle => 'Drop it into Mira';
 
   @override
   String get rdCaptureEntrySubtitle =>
-      'Mira will understand it — you confirm before it\'s kept';
+      'Mira understands and organizes it. You only confirm what should be kept.';
 
   @override
   String get rdCaptureModeVoice => 'Voice';
@@ -846,10 +846,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureModeLinkHint => 'Paste a URL';
 
   @override
-  String get rdCaptureModeType => 'Type it instead';
+  String get rdCaptureModeType => 'Write';
 
   @override
-  String get rdCaptureModeFile => 'File or video';
+  String get rdCaptureModeFile => 'File';
 
   @override
   String get rdCaptureModeFileHint => 'Upload for background processing';

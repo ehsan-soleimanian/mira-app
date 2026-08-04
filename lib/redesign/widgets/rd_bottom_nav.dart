@@ -30,11 +30,7 @@ class RdMemoryArg {
 
 /// Argument for `go('chat', arg: ...)` — optional voice transcript from Listen.
 class RdChatArg {
-  const RdChatArg({
-    this.initialPrompt,
-    this.autoSend = false,
-    this.memory,
-  });
+  const RdChatArg({this.initialPrompt, this.autoSend = false, this.memory});
 
   /// Prefills the compose bar (e.g. after Listen transcribes).
   final String? initialPrompt;
@@ -49,11 +45,7 @@ class RdChatArg {
 /// Carries onboarding context (email, display name, optional first capture)
 /// across the first-run flow screens.
 class RdOnboardingArg {
-  const RdOnboardingArg({
-    this.email,
-    this.displayName,
-    this.firstCaptureText,
-  });
+  const RdOnboardingArg({this.email, this.displayName, this.firstCaptureText});
 
   final String? email;
   final String? displayName;
@@ -63,12 +55,11 @@ class RdOnboardingArg {
     String? email,
     String? displayName,
     String? firstCaptureText,
-  }) =>
-      RdOnboardingArg(
-        email: email ?? this.email,
-        displayName: displayName ?? this.displayName,
-        firstCaptureText: firstCaptureText ?? this.firstCaptureText,
-      );
+  }) => RdOnboardingArg(
+    email: email ?? this.email,
+    displayName: displayName ?? this.displayName,
+    firstCaptureText: firstCaptureText ?? this.firstCaptureText,
+  );
 }
 
 /// The shared bottom navigation used by every tab-rooted screen (Home, Daily
@@ -83,61 +74,22 @@ class RdBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
     final navInset = context.rdNavBarInset;
-    final showCapture = active != 'home';
     return SizedBox(
-      height: 96 + navInset,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(30, 0, 30, 22 + navInset),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _NavItem(
-                  icon: RdIcons.navHome,
-                  label: l10n.rdNavHome,
-                  active: active == 'home',
-                  onTap: () => go('home'),
-                ),
-                _NavItem(
-                  icon: RdIcons.navLibrary,
-                  label: l10n.rdNavLibrary,
-                  active: active == 'library',
-                  onTap: () => go('library'),
-                ),
-                if (showCapture) const SizedBox(width: 64),
-                _NavItem(
-                  icon: RdIcons.navCanvas,
-                  label: l10n.rdNavCanvas,
-                  active: active == 'canvas',
-                  onTap: () => go('canvas'),
-                ),
-                _NavItem(
-                  icon: RdIcons.navBrief,
-                  label: l10n.rdNavBrief,
-                  active: active == 'daily',
-                  onTap: () => go('daily'),
-                ),
-              ],
-            ),
-          ),
-          if (showCapture)
-            Positioned(
-              bottom: 40 + navInset,
-              left: 0,
-              right: 0,
-              child: Center(child: _NavMic(onTap: () => go('capture'))),
-            ),
-        ],
+      height: 88 + navInset,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Semantics(
+          button: true,
+          label: AppLocalizations.of(context)!.rdCaptureEntryTitle,
+          child: _NavMic(onTap: () => go('capture')),
+        ),
       ),
     );
   }
 }
 
+// ignore: unused_element
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.icon,
@@ -163,12 +115,7 @@ class _NavItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            RdIcon(
-              icon,
-              size: 22,
-              color: color,
-              strokeWidth: 1.8,
-            ),
+            RdIcon(icon, size: 22, color: color, strokeWidth: 1.8),
             const SizedBox(height: 5),
             Text(label, style: RdText.navLabel.copyWith(color: color)),
           ],
@@ -207,7 +154,12 @@ class _NavMic extends StatelessWidget {
           ],
         ),
         child: const Center(
-          child: RdIcon(RdIcons.mic, size: 24, stroke: '#FFFFFF', strokeWidth: 1.9),
+          child: RdIcon(
+            RdIcons.mic,
+            size: 24,
+            stroke: '#FFFFFF',
+            strokeWidth: 1.9,
+          ),
         ),
       ),
     );

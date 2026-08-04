@@ -1411,7 +1411,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdHomeComposerHint.
   ///
   /// In en, this message translates to:
-  /// **'Type or say anything…'**
+  /// **'Drop anything here…'**
   String get rdHomeComposerHint;
 
   /// No description provided for @rdWaitingSectionTitle.
@@ -1555,13 +1555,13 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureEntryTitle.
   ///
   /// In en, this message translates to:
-  /// **'Capture a memory'**
+  /// **'Drop it into Mira'**
   String get rdCaptureEntryTitle;
 
   /// No description provided for @rdCaptureEntrySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Mira will understand it — you confirm before it\'s kept'**
+  /// **'Mira understands and organizes it. You only confirm what should be kept.'**
   String get rdCaptureEntrySubtitle;
 
   /// No description provided for @rdCaptureModeVoice.
@@ -1627,13 +1627,13 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureModeType.
   ///
   /// In en, this message translates to:
-  /// **'Type it instead'**
+  /// **'Write'**
   String get rdCaptureModeType;
 
   /// No description provided for @rdCaptureModeFile.
   ///
   /// In en, this message translates to:
-  /// **'File or video'**
+  /// **'File'**
   String get rdCaptureModeFile;
 
   /// No description provided for @rdCaptureModeFileHint.

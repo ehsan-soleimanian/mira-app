@@ -734,7 +734,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdHomeMemoryReady => 'حافظه‌ات\nآرام و آماده است';
 
   @override
-  String get rdHomeComposerHint => 'هر چیزی بنویس یا بگو…';
+  String get rdHomeComposerHint => 'هر چیزی داری، اینجا رها کن…';
 
   @override
   String get rdWaitingSectionTitle => 'منتظر لحظه مناسب';
@@ -810,11 +810,11 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdOnboardingLater => 'بعداً انجام می‌دهم';
 
   @override
-  String get rdCaptureEntryTitle => 'ثبت یک خاطره';
+  String get rdCaptureEntryTitle => 'بسپارش به میرا';
 
   @override
   String get rdCaptureEntrySubtitle =>
-      'میرا می‌فهمد — قبل از ذخیره تأیید می‌کنی';
+      'میرا خودش می‌فهمد و مرتبش می‌کند؛ تو فقط تأیید می‌کنی چه چیزی بماند.';
 
   @override
   String get rdCaptureModeVoice => 'صدا';
@@ -847,10 +847,10 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureModeLinkHint => 'آدرس را بچسبان';
 
   @override
-  String get rdCaptureModeType => 'با متن بنویس';
+  String get rdCaptureModeType => 'نوشتن';
 
   @override
-  String get rdCaptureModeFile => 'فایل یا ویدئو';
+  String get rdCaptureModeFile => 'فایل';
 
   @override
   String get rdCaptureModeFileHint => 'آپلود و پردازش در پس‌زمینه';
