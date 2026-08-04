@@ -66,6 +66,36 @@ class CaptureRepository {
     return CaptureResponse.fromJson(response.data!);
   }
 
+  /// Poll `GET /captures/{id}` until the worker reaches a terminal review state.
+  ///
+  /// Redis pub/sub SSE is fire-and-forget: if the client subscribes after the
+  /// worker publishes `proposal`/`done`, those events are gone. Polling recovers
+  /// the same `awaiting_approval` / clarification / question payload that the
+  /// stream would have delivered. Returns the last response seen (possibly still
+  /// `processing`) when [maxAttempts] is exhausted.
+  Future<CaptureResponse> pollCaptureUntilReady(
+    String captureId, {
+    int maxAttempts = 8,
+    Duration interval = const Duration(milliseconds: 700),
+  }) async {
+    CaptureResponse? last;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      last = await getCapture(captureId);
+      final state = last.state;
+      if (last.proposal != null ||
+          state == 'awaiting_approval' ||
+          state == 'question_answered' ||
+          state == 'clarification_needed' ||
+          state == 'dismissed') {
+        return last;
+      }
+      if (attempt + 1 < maxAttempts) {
+        await Future<void>.delayed(interval);
+      }
+    }
+    return last!;
+  }
+
   /// Upload voice audio for STT only — returns transcript; no capture job.
   Future<VoiceTranscriptResult> transcribeVoice({
     required int durationMs,

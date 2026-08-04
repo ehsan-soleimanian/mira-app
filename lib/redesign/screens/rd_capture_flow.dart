@@ -538,13 +538,115 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     // Transcribe first (best-effort — may leave the simulated transcript), then
     // feed the final transcript text into the shared real pipeline.
     await _finishRecording();
-    if (!(_useRealtimePath && _captureId != null && _realProposal)) {
+    if (_useRealtimePath && _realTranscript) {
+      // `transcript_final` can arrive before `capture_created`; give the session
+      // a brief window before falling back to a second POST /captures.
+      if (_captureId == null) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+      }
+      final realtimeId = _captureId;
+      if (realtimeId != null) {
+        // Never call `_runPipeline` here — it would no-op on `_pipelineStarted`
+        // and must not POST a second capture for the same utterance.
+        if (!_realProposal) {
+          await _recoverCaptureProposal(realtimeId);
+        }
+      } else {
+        await _runPipeline(_transcript);
+      }
+    } else {
       await _runPipeline(_transcript);
     }
     if (_pipelineAborted) return;
     await minShown;
     if (!mounted || _view != 'proc') return;
     setState(() => _view = 'review');
+  }
+
+  /// Recover a terminal capture state via `GET` polling when SSE events were missed.
+  /// Shared by realtime voice (capture already created) and post-stream fallbacks.
+  Future<bool> _recoverCaptureProposal(String captureId) async {
+    final services = AppScope.servicesOf(context);
+    try {
+      final polled = await services.captureRepository.pollCaptureUntilReady(
+        captureId,
+      );
+      if (polled.state == 'question_answered') {
+        if (mounted) {
+          widget.go(
+            'chat',
+            arg: RdChatArg(
+              initialPrompt: _transcript.isNotEmpty ? _transcript : null,
+              autoSend: _transcript.trim().isNotEmpty,
+            ),
+          );
+        }
+        _pipelineAborted = true;
+        return false;
+      }
+      if (polled.state == 'clarification_needed') {
+        CaptureResponse? clarified;
+        final proposal = polled.proposal ?? const <String, dynamic>{};
+        final timeBlock = proposal['time'];
+        final equivalence = proposal['entityEquivalence'];
+        if (timeBlock is Map && timeBlock['ambiguous'] == true) {
+          clarified = await _resolveTimeClarification(captureId);
+        } else if (equivalence is Map && equivalence.isNotEmpty) {
+          clarified = await _resolveEntityClarification(captureId, {
+            'entityEquivalence': equivalence,
+            'prompt': polled.answer,
+          });
+        } else {
+          clarified = await _resolveIntentClarification(captureId);
+        }
+        if (_pipelineAborted) return false;
+        if (clarified == null) return false;
+        if (clarified.state == 'question_answered') {
+          if (mounted) {
+            widget.go(
+              'chat',
+              arg: RdChatArg(
+                initialPrompt: _transcript.isNotEmpty ? _transcript : null,
+                autoSend: _transcript.trim().isNotEmpty,
+              ),
+            );
+          }
+          _pipelineAborted = true;
+          return false;
+        }
+        return _applyCaptureProposal(clarified);
+      }
+      if (polled.state == 'awaiting_approval') {
+        return _applyCaptureProposal(polled);
+      }
+    } catch (_) {
+      // Best-effort recovery only.
+    }
+    return false;
+  }
+
+  /// Bind a live capture + proposal into review state. Returns false when the
+  /// payload has nothing usable to show.
+  bool _applyCaptureProposal(CaptureResponse capture) {
+    final proposalJson = capture.proposal;
+    if (proposalJson == null) return false;
+    final display = resolveProposalDisplay(proposalJson);
+    if (!display.hasContent) return false;
+    if (!mounted) return false;
+    setState(() {
+      _captureId = capture.captureId;
+      _proposal = display;
+      _resultCard = capture.resultCard;
+      if (capture.availableActions.isNotEmpty) {
+        _availableActions = List<CaptureAction>.from(capture.availableActions);
+      }
+      _proposalRevision = capture.proposalRevision;
+      _realProposal = true;
+      _connOn
+        ..clear()
+        ..addAll(List<int>.generate(display.relatedLabels.length, (i) => i));
+    });
+    return true;
   }
 
   /// Run the REAL capture ingest pipeline for [text] and, on full success,
@@ -555,10 +657,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   /// `_realProposal` false — falling the whole flow back to the simulated chips
   /// and the one-shot `createNote` — for ANY of:
   ///   • empty/blank input text,
-  ///   • `createTextCapture` or `streamCapture` throwing (offline, auth, 4xx/5xx),
-  ///   • the stream taking longer than the 12s timeout,
-  ///   • the stream emitting an error or a clarification-only result
-  ///     (time / intent / entity-equivalence — we don't build those sub-flows),
+  ///   • `createTextCapture` throwing (offline, auth, 4xx/5xx),
+  ///   • SSE and GET-poll both failing to surface a usable proposal,
+  ///   • a clarification the user cancels,
   ///   • the stream ending in a non-approval state, and
   ///   • a proposal that carries no usable display content.
   Future<void> _runPipeline(String text) async {
@@ -638,6 +739,21 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           }
         }
       } on TimeoutException {
+        // Fast worker can publish before SSE subscribes; poll recovers below.
+      } catch (_) {
+        // SSE connect/parse failures — poll Redis state via GET below.
+        streamOk = false;
+      }
+
+      // When SSE missed `proposal`/`done`, recover the terminal Redis state.
+      if (proposalJson == null &&
+          timeClarification == null &&
+          intentClarification == null &&
+          entityClarification == null) {
+        final recovered = await _recoverCaptureProposal(captureId);
+        if (_pipelineAborted) return;
+        if (recovered) return;
+        // Still nothing — keep going so clarification/abort paths run below.
         streamOk = false;
       }
 
@@ -1571,17 +1687,16 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           }
         } on TimeoutException {
           // A fast worker can publish before SSE subscribes; poll below.
+        } catch (_) {
+          // SSE connect/parse failures — poll Redis state via GET below.
         }
       }
 
-      for (var attempt = 0; proposalJson == null && attempt < 5; attempt++) {
-        final current = await services.captureRepository.getCapture(
+      if (proposalJson == null) {
+        final polled = await services.captureRepository.pollCaptureUntilReady(
           created.captureId,
         );
-        absorb(current);
-        if (proposalJson == null) {
-          await Future<void>.delayed(const Duration(milliseconds: 700));
-        }
+        absorb(polled);
       }
 
       final proposal = proposalJson;
