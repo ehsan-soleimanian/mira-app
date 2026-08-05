@@ -100,6 +100,11 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   late String _title;
   late String _body;
+  bool _isLinkMemory = false;
+  String? _sourceUrl;
+  String? _heroImageUrl;
+  String _linkSummary = '';
+  List<String> _linkHighlights = const [];
   late final TextEditingController _titleCtl = TextEditingController();
   late final TextEditingController _bodyCtl = TextEditingController();
   final FocusNode _bodyFocus = FocusNode();
@@ -203,8 +208,19 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       final summary = sanitizeScrapedContentForDisplay(item.summary.trim());
       final cachedTitle = item.title.trim();
       final nextBody = content.isNotEmpty ? content : summary;
+      final sourceUrl = item.sourceUrl;
+      final isLink = item.type.toLowerCase() == 'link' || sourceUrl != null;
+      final preview = buildScrapedLinkPreview(
+        content: content,
+        summary: summary,
+      );
       if (cachedTitle.isEmpty && nextBody.isEmpty) return;
       setState(() {
+        _isLinkMemory = isLink;
+        _sourceUrl = sourceUrl;
+        _heroImageUrl = item.thumbnailUrl ?? preview.heroImageUrl;
+        _linkSummary = preview.summary;
+        _linkHighlights = preview.highlights;
         if ((_title.isEmpty || _title == 'Memory') && cachedTitle.isNotEmpty) {
           _title = cachedTitle;
         }
@@ -825,7 +841,18 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         _player(),
       ],
       const SizedBox(height: 14),
-      _editing ? _bodyInput() : _capture(),
+      _editing
+          ? _bodyInput()
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              child: _isLinkMemory
+                  ? _linkMemoryCard(key: const ValueKey('link-memory'))
+                  : KeyedSubtree(
+                      key: const ValueKey('plain-memory'),
+                      child: _capture(),
+                    ),
+            ),
       const SizedBox(height: 22),
       if (_realInsight != null) ...[_insight(), const SizedBox(height: 26)],
       if (_links.isNotEmpty) ...[_connections(), const SizedBox(height: 26)],
@@ -834,14 +861,16 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
         _peopleTags(),
         const SizedBox(height: 26),
       ],
-      _source(),
+      if (!_isLinkMemory) _source(),
     ];
   }
 
   Widget _typeRow() {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
-    final label = widget.isVoice
+    final label = _isLinkMemory
+        ? l10n.rdCaptureTypeLink
+        : widget.isVoice
         ? l10n.rdMemoryVoiceNoteBadge('0:34')
         : l10n.rdCaptureTypeNote;
     final time = _edited
@@ -1175,6 +1204,230 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       _body,
       style: GoogleFonts.vazirmatn(fontSize: 15.5, height: 1.62, color: rd.ink),
     );
+  }
+
+  Widget _linkMemoryCard({required Key key}) {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final sourceUri = Uri.tryParse(_sourceUrl ?? '');
+    final host = sourceUri?.host.replaceFirst(RegExp(r'^www\.'), '') ?? '';
+
+    return Container(
+      key: key,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: rd.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: rd.line),
+        boxShadow: [
+          BoxShadow(
+            color: _navy.withValues(alpha: .06),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            height: 190,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                _heroImageUrl == null
+                    ? _linkHeroFallback()
+                    : Image.network(
+                        _heroImageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _linkHeroFallback(),
+                      ),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0x9909142D)],
+                    ),
+                  ),
+                ),
+                if (host.isNotEmpty)
+                  Positioned(
+                    left: 14,
+                    bottom: 14,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xE6121F3D),
+                        borderRadius: BorderRadius.circular(100),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.language_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            host,
+                            style: GoogleFonts.vazirmatn(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_linkSummary.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        size: 17,
+                        color: rd.peri,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        l10n.rdMemoryMiraNoticed,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: rd.peri,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 9),
+                  Text(
+                    _linkSummary,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 15,
+                      height: 1.55,
+                      fontWeight: FontWeight.w500,
+                      color: rd.ink,
+                    ),
+                  ),
+                ],
+                if (_linkHighlights.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  ..._linkHighlights.asMap().entries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(12, 11, 13, 11),
+                        decoration: BoxDecoration(
+                          color: rd.periSoft.withValues(alpha: .55),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 22,
+                              height: 22,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: rd.card,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Text(
+                                '${entry.key + 1}',
+                                style: GoogleFonts.vazirmatn(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: rd.peri,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                entry.value,
+                                style: GoogleFonts.vazirmatn(
+                                  fontSize: 13,
+                                  height: 1.48,
+                                  color: rd.ink,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (_sourceUrl != null) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _openSourceUrl,
+                    icon: const Icon(Icons.open_in_new_rounded, size: 17),
+                    label: Text(l10n.rdCaptureActionOpenSource),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: rd.ink,
+                      side: BorderSide(color: rd.line),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      textStyle: GoogleFonts.vazirmatn(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _linkHeroFallback() {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF244FB9), Color(0xFF7789D7)],
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.link_rounded, size: 46, color: Colors.white),
+      ),
+    );
+  }
+
+  Future<void> _openSourceUrl() async {
+    final uri = Uri.tryParse(_sourceUrl ?? '');
+    if (uri == null) return;
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        _toast(AppLocalizations.of(context)!.rdMemoryNoAppAvailable);
+      }
+    } catch (_) {
+      if (mounted) {
+        _toast(AppLocalizations.of(context)!.rdMemoryNoAppAvailable);
+      }
+    }
   }
 
   /// Scrub the voice player to a fraction of its length (tap / drag the wave).

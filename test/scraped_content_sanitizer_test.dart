@@ -23,4 +23,28 @@ void main() {
     const note = 'Call Sara tomorrow about the design review.';
     expect(sanitizeScrapedContentForDisplay(note), note);
   });
+
+  test('builds a visual preview from scraped markdown', () {
+    const content = '''
+![Activity Summary](https://cdn.example.com/activity.webp)
+# Community-Powered Motivation
+If you're active, this network helps you connect with athletes around the world.
+### Start by sweating
+Track your activities with a phone or GPS device and share your efforts with friends.
+### Get better by analysis
+Review useful performance metrics after every workout and compare past attempts.
+''';
+
+    final preview = buildScrapedLinkPreview(
+      content: content,
+      summary: 'A social network for active people.',
+    );
+
+    expect(preview.heroImageUrl, 'https://cdn.example.com/activity.webp');
+    expect(preview.summary, 'A social network for active people.');
+    expect(preview.highlights, hasLength(3));
+    expect(preview.highlights.first, contains('Community-Powered Motivation'));
+    expect(preview.highlights.join(' '), isNot(contains('https://')));
+    expect(preview.highlights.join(' '), isNot(contains('![')));
+  });
 }
