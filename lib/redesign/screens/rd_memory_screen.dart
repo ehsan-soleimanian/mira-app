@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/features/capture/utils/scraped_content_sanitizer.dart';
 import 'package:mira_app/features/graph/entity_type_labels.dart';
 import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
@@ -162,7 +163,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   void initState() {
     super.initState();
     _title = widget.title ?? '';
-    _body = widget.body ?? '';
+    _body = sanitizeScrapedContentForDisplay(widget.body ?? '');
     if (widget.id != null) {
       final probe = _loadDetail();
       _graphCaptureProbe = probe;
@@ -196,8 +197,10 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       if (!mounted) return;
       final item = store.get(id);
       if (item == null) return;
-      final content = item.contentText?.trim() ?? '';
-      final summary = item.summary.trim();
+      final content = sanitizeScrapedContentForDisplay(
+        item.contentText?.trim() ?? '',
+      );
+      final summary = sanitizeScrapedContentForDisplay(item.summary.trim());
       final cachedTitle = item.title.trim();
       final nextBody = content.isNotEmpty ? content : summary;
       if (cachedTitle.isEmpty && nextBody.isEmpty) return;
