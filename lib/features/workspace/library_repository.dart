@@ -30,6 +30,13 @@ class LibraryRepository {
         .toList();
   }
 
+  Future<LibraryItem> getItem(String itemId) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      '/library/items/$itemId',
+    );
+    return LibraryItem.fromJson(response.data!);
+  }
+
   /// Delete a library item (memory). Backend: `DELETE /library/items/{id}`.
   Future<void> delete(String itemId) async {
     await _dio.delete<void>('/library/items/$itemId');

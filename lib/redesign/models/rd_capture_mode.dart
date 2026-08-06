@@ -16,10 +16,15 @@ extension RdCaptureModeContract on RdCaptureMode {
 }
 
 class RdCaptureModeArg {
-  const RdCaptureModeArg(this.mode, {this.initialText});
+  const RdCaptureModeArg(
+    this.mode, {
+    this.initialText,
+    this.returnScreen = 'home',
+  });
 
   final RdCaptureMode mode;
   final String? initialText;
+  final String returnScreen;
 }
 
 /// Entry used by share sheets, connectors, deep links, and bundles. Contextual

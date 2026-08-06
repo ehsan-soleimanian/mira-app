@@ -874,6 +874,63 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your file is safe in Library and will be processed in the background.';
 
   @override
+  String get rdCaptureScanHeader => 'Document import';
+
+  @override
+  String get rdCaptureScanBadge => 'Mira Scan';
+
+  @override
+  String get rdCaptureScanTitle => 'Turn a file into readable memory';
+
+  @override
+  String get rdCaptureScanSubtitle =>
+      'Mira reads the text and structure, then saves the original and a searchable version together.';
+
+  @override
+  String get rdCaptureScanDocument => 'Selected document';
+
+  @override
+  String get rdCaptureScanUploading => 'Uploading securely…';
+
+  @override
+  String get rdCaptureScanExtracting => 'Reading text and structure…';
+
+  @override
+  String get rdCaptureScanReady => 'Ready to read and search';
+
+  @override
+  String get rdCaptureScanSaved =>
+      'Saved — text extraction continues in Library';
+
+  @override
+  String get rdCaptureScanFailed => 'Mira couldn\'t read this file';
+
+  @override
+  String get rdCaptureScanStepUpload => 'Secure upload';
+
+  @override
+  String get rdCaptureScanStepRead => 'Text and layout extraction';
+
+  @override
+  String get rdCaptureScanStepSearch => 'Make it readable and searchable';
+
+  @override
+  String get rdCaptureScanPreview => 'Extracted preview';
+
+  @override
+  String get rdCaptureScanPrivacy =>
+      'The original stays private in your Library. Mira uses the extracted text only to make this memory readable and searchable.';
+
+  @override
+  String get rdCaptureScanChooseAnother => 'Choose another';
+
+  @override
+  String get rdCaptureScanOpen => 'Open document';
+
+  @override
+  String get rdCaptureScanBackToLibrary => 'View in Library';
+
+  @override
   String get rdVoiceSearchListening => 'LISTENING';
 
   @override
@@ -1158,7 +1215,94 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureLinkRetry => 'Try reading again';
 
   @override
-  String get rdCaptureLinkReadAction => 'Read this link';
+  String get rdCaptureLinkReadAction => 'Import this link';
+
+  @override
+  String get rdLinkImportHeader => 'Link import';
+
+  @override
+  String get rdLinkImportWebBadge => 'Web';
+
+  @override
+  String get rdLinkImportMediaBadge => 'Media';
+
+  @override
+  String get rdLinkImportWebTitle => 'Turn this page into searchable memory';
+
+  @override
+  String get rdLinkImportMediaTitle => 'Bring this media into Mira';
+
+  @override
+  String get rdLinkImportWebSubtitle =>
+      'Mira extracts the readable page, keeps its source, and makes the content searchable.';
+
+  @override
+  String get rdLinkImportMediaSubtitle =>
+      'Mira checks public captions first, then downloads temporary audio for transcription when the provider allows it.';
+
+  @override
+  String get rdLinkImportSaving => 'Saving the source in Library…';
+
+  @override
+  String get rdLinkImportQueued => 'Saved — waiting for the media worker…';
+
+  @override
+  String get rdLinkImportMetadata =>
+      'Reading title, thumbnail, captions, and media details…';
+
+  @override
+  String get rdLinkImportDownloading =>
+      'Preparing public media for transcription…';
+
+  @override
+  String get rdLinkImportTranscribing => 'Transcribing the media…';
+
+  @override
+  String get rdLinkImportReady => 'Ready to read, search, and ask Mira';
+
+  @override
+  String get rdLinkImportMetadataReady =>
+      'Source and available metadata were saved';
+
+  @override
+  String get rdLinkImportBlocked =>
+      'The provider requires login or blocks public access';
+
+  @override
+  String get rdLinkImportNeedsUpload =>
+      'A public transcript or downloadable media was not available';
+
+  @override
+  String get rdLinkImportFailed =>
+      'Extraction stopped, but the source can still be kept or retried';
+
+  @override
+  String get rdLinkImportStepSaved => 'Save the source in Library';
+
+  @override
+  String get rdLinkImportStepWeb => 'Extract the readable web page';
+
+  @override
+  String get rdLinkImportStepMedia => 'Read captions or transcribe media';
+
+  @override
+  String get rdLinkImportStepSearch => 'Make the content searchable';
+
+  @override
+  String get rdLinkImportRecovery =>
+      'Mira never bypasses private or login walls. Upload the media file to transcribe it, or keep the link in Library and retry later.';
+
+  @override
+  String get rdLinkImportKeepLink => 'Keep link';
+
+  @override
+  String get rdLinkImportUploadMedia => 'Upload media';
+
+  @override
+  String get rdLinkImportOpen => 'Open in Library';
+
+  @override
+  String get rdLinkImportBackground => 'Continue in Library';
 
   @override
   String get rdCaptureLinkSaveFailed =>
@@ -1279,6 +1423,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureScreenshotPickTitle => 'Pick a screenshot';
 
   @override
+  String get rdCaptureScreenshotBrowse => 'Browse gallery or files';
+
+  @override
+  String get rdCaptureScreenshotBrowseHint =>
+      'Choose an image from your phone gallery or this computer.';
+
+  @override
   String get rdCaptureScreenshotPickSub =>
       'Mira reads text and details from your image';
 
@@ -1290,7 +1441,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdCaptureLinkSaveSub =>
-      'Paste a URL — Mira reads the page for you';
+      'Paste a web or media URL — Mira chooses the right processing path';
 
   @override
   String get rdCaptureLinkReading => 'Reading page…';
@@ -1958,6 +2109,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get rdLibraryAddToCollectionFailed =>
       'Couldn\'t add to collection. Check your connection.';
+
+  @override
+  String get rdLibraryAddAnything => 'Add';
+
+  @override
+  String get rdLibraryFileImported =>
+      'File added to Library. Mira is extracting its text.';
+
+  @override
+  String get rdLibraryFileImportFailed => 'Couldn\'t add this file to Library.';
 
   @override
   String rdLibraryAddedToBoard(int count, String board) {
@@ -3112,6 +3273,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdCaptureConvertDocument => 'Document knowledge';
+
+  @override
+  String get rdMemoryMarkdownBadge => 'Markdown';
+
+  @override
+  String get rdMemoryMarkdownUnavailableTitle =>
+      'Readable content is not available';
+
+  @override
+  String get rdMemoryMarkdownUnavailableBody =>
+      'This Markdown file was saved before Mira retained readable document text. Upload it again to open it as a document.';
 
   @override
   String get rdCaptureEditSummaryHint => 'Summary';

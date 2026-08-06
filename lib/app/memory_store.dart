@@ -57,6 +57,13 @@ class MemoryStore extends ChangeNotifier {
   /// The cached memory for [id], or null when it isn't loaded.
   LibraryItem? get(String id) => _byId[id];
 
+  /// Fetches one item from the server and replaces any stale cached snapshot.
+  Future<LibraryItem> refreshItem(String id) async {
+    final item = await _libraryRepository.getItem(id);
+    upsertLocal(item);
+    return item;
+  }
+
   /// Optimistically patches a cached memory's [title] and/or [summary] in place
   /// so listening screens reflect an edit immediately. No-op when [id] isn't
   /// cached. Local-only — persistence stays with the caller.

@@ -1678,6 +1678,114 @@ abstract class AppLocalizations {
   /// **'Your file is safe in Library and will be processed in the background.'**
   String get rdCaptureFileQueued;
 
+  /// No description provided for @rdCaptureScanHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Document import'**
+  String get rdCaptureScanHeader;
+
+  /// No description provided for @rdCaptureScanBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira Scan'**
+  String get rdCaptureScanBadge;
+
+  /// No description provided for @rdCaptureScanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn a file into readable memory'**
+  String get rdCaptureScanTitle;
+
+  /// No description provided for @rdCaptureScanSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira reads the text and structure, then saves the original and a searchable version together.'**
+  String get rdCaptureScanSubtitle;
+
+  /// No description provided for @rdCaptureScanDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected document'**
+  String get rdCaptureScanDocument;
+
+  /// No description provided for @rdCaptureScanUploading.
+  ///
+  /// In en, this message translates to:
+  /// **'Uploading securely…'**
+  String get rdCaptureScanUploading;
+
+  /// No description provided for @rdCaptureScanExtracting.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading text and structure…'**
+  String get rdCaptureScanExtracting;
+
+  /// No description provided for @rdCaptureScanReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to read and search'**
+  String get rdCaptureScanReady;
+
+  /// No description provided for @rdCaptureScanSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved — text extraction continues in Library'**
+  String get rdCaptureScanSaved;
+
+  /// No description provided for @rdCaptureScanFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira couldn\'t read this file'**
+  String get rdCaptureScanFailed;
+
+  /// No description provided for @rdCaptureScanStepUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Secure upload'**
+  String get rdCaptureScanStepUpload;
+
+  /// No description provided for @rdCaptureScanStepRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Text and layout extraction'**
+  String get rdCaptureScanStepRead;
+
+  /// No description provided for @rdCaptureScanStepSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Make it readable and searchable'**
+  String get rdCaptureScanStepSearch;
+
+  /// No description provided for @rdCaptureScanPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Extracted preview'**
+  String get rdCaptureScanPreview;
+
+  /// No description provided for @rdCaptureScanPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'The original stays private in your Library. Mira uses the extracted text only to make this memory readable and searchable.'**
+  String get rdCaptureScanPrivacy;
+
+  /// No description provided for @rdCaptureScanChooseAnother.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose another'**
+  String get rdCaptureScanChooseAnother;
+
+  /// No description provided for @rdCaptureScanOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open document'**
+  String get rdCaptureScanOpen;
+
+  /// No description provided for @rdCaptureScanBackToLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'View in Library'**
+  String get rdCaptureScanBackToLibrary;
+
   /// No description provided for @rdVoiceSearchListening.
   ///
   /// In en, this message translates to:
@@ -2203,8 +2311,164 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureLinkReadAction.
   ///
   /// In en, this message translates to:
-  /// **'Read this link'**
+  /// **'Import this link'**
   String get rdCaptureLinkReadAction;
+
+  /// No description provided for @rdLinkImportHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Link import'**
+  String get rdLinkImportHeader;
+
+  /// No description provided for @rdLinkImportWebBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Web'**
+  String get rdLinkImportWebBadge;
+
+  /// No description provided for @rdLinkImportMediaBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Media'**
+  String get rdLinkImportMediaBadge;
+
+  /// No description provided for @rdLinkImportWebTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn this page into searchable memory'**
+  String get rdLinkImportWebTitle;
+
+  /// No description provided for @rdLinkImportMediaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring this media into Mira'**
+  String get rdLinkImportMediaTitle;
+
+  /// No description provided for @rdLinkImportWebSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira extracts the readable page, keeps its source, and makes the content searchable.'**
+  String get rdLinkImportWebSubtitle;
+
+  /// No description provided for @rdLinkImportMediaSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira checks public captions first, then downloads temporary audio for transcription when the provider allows it.'**
+  String get rdLinkImportMediaSubtitle;
+
+  /// No description provided for @rdLinkImportSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving the source in Library…'**
+  String get rdLinkImportSaving;
+
+  /// No description provided for @rdLinkImportQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved — waiting for the media worker…'**
+  String get rdLinkImportQueued;
+
+  /// No description provided for @rdLinkImportMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading title, thumbnail, captions, and media details…'**
+  String get rdLinkImportMetadata;
+
+  /// No description provided for @rdLinkImportDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing public media for transcription…'**
+  String get rdLinkImportDownloading;
+
+  /// No description provided for @rdLinkImportTranscribing.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcribing the media…'**
+  String get rdLinkImportTranscribing;
+
+  /// No description provided for @rdLinkImportReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to read, search, and ask Mira'**
+  String get rdLinkImportReady;
+
+  /// No description provided for @rdLinkImportMetadataReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Source and available metadata were saved'**
+  String get rdLinkImportMetadataReady;
+
+  /// No description provided for @rdLinkImportBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider requires login or blocks public access'**
+  String get rdLinkImportBlocked;
+
+  /// No description provided for @rdLinkImportNeedsUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'A public transcript or downloadable media was not available'**
+  String get rdLinkImportNeedsUpload;
+
+  /// No description provided for @rdLinkImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Extraction stopped, but the source can still be kept or retried'**
+  String get rdLinkImportFailed;
+
+  /// No description provided for @rdLinkImportStepSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the source in Library'**
+  String get rdLinkImportStepSaved;
+
+  /// No description provided for @rdLinkImportStepWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Extract the readable web page'**
+  String get rdLinkImportStepWeb;
+
+  /// No description provided for @rdLinkImportStepMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Read captions or transcribe media'**
+  String get rdLinkImportStepMedia;
+
+  /// No description provided for @rdLinkImportStepSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Make the content searchable'**
+  String get rdLinkImportStepSearch;
+
+  /// No description provided for @rdLinkImportRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira never bypasses private or login walls. Upload the media file to transcribe it, or keep the link in Library and retry later.'**
+  String get rdLinkImportRecovery;
+
+  /// No description provided for @rdLinkImportKeepLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep link'**
+  String get rdLinkImportKeepLink;
+
+  /// No description provided for @rdLinkImportUploadMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload media'**
+  String get rdLinkImportUploadMedia;
+
+  /// No description provided for @rdLinkImportOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Library'**
+  String get rdLinkImportOpen;
+
+  /// No description provided for @rdLinkImportBackground.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue in Library'**
+  String get rdLinkImportBackground;
 
   /// No description provided for @rdCaptureLinkSaveFailed.
   ///
@@ -2410,6 +2674,18 @@ abstract class AppLocalizations {
   /// **'Pick a screenshot'**
   String get rdCaptureScreenshotPickTitle;
 
+  /// No description provided for @rdCaptureScreenshotBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse gallery or files'**
+  String get rdCaptureScreenshotBrowse;
+
+  /// No description provided for @rdCaptureScreenshotBrowseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an image from your phone gallery or this computer.'**
+  String get rdCaptureScreenshotBrowseHint;
+
   /// No description provided for @rdCaptureScreenshotPickSub.
   ///
   /// In en, this message translates to:
@@ -2431,7 +2707,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureLinkSaveSub.
   ///
   /// In en, this message translates to:
-  /// **'Paste a URL — Mira reads the page for you'**
+  /// **'Paste a web or media URL — Mira chooses the right processing path'**
   String get rdCaptureLinkSaveSub;
 
   /// No description provided for @rdCaptureLinkReading.
@@ -3579,6 +3855,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t add to collection. Check your connection.'**
   String get rdLibraryAddToCollectionFailed;
+
+  /// No description provided for @rdLibraryAddAnything.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get rdLibraryAddAnything;
+
+  /// No description provided for @rdLibraryFileImported.
+  ///
+  /// In en, this message translates to:
+  /// **'File added to Library. Mira is extracting its text.'**
+  String get rdLibraryFileImported;
+
+  /// No description provided for @rdLibraryFileImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t add this file to Library.'**
+  String get rdLibraryFileImportFailed;
 
   /// No description provided for @rdLibraryAddedToBoard.
   ///
@@ -5571,6 +5865,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Document knowledge'**
   String get rdCaptureConvertDocument;
+
+  /// No description provided for @rdMemoryMarkdownBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown'**
+  String get rdMemoryMarkdownBadge;
+
+  /// No description provided for @rdMemoryMarkdownUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Readable content is not available'**
+  String get rdMemoryMarkdownUnavailableTitle;
+
+  /// No description provided for @rdMemoryMarkdownUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This Markdown file was saved before Mira retained readable document text. Upload it again to open it as a document.'**
+  String get rdMemoryMarkdownUnavailableBody;
 
   /// No description provided for @rdCaptureEditSummaryHint.
   ///

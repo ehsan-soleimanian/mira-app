@@ -2003,7 +2003,10 @@ Actions: `upload_file`, `paste_link`, `upload_or_paste_text`, `share_or_upload_e
 ### Import link
 `POST /library/imports/link`
 
-Creates a Library item from a URL. YouTube, TikTok, and Instagram/Reels links use honest `metadata_ready` status unless transcript extraction is available.
+Creates a Library item from a URL. Generic web pages are extracted inline and
+return `ready` when readable text is available, or `metadata_ready` when only
+the source can be retained. YouTube, TikTok, and Instagram/Reels links are
+classified as media, returned as `queued`, and processed by the media worker.
 
 ```json
 {
@@ -2015,6 +2018,12 @@ Creates a Library item from a URL. YouTube, TikTok, and Instagram/Reels links us
 ```
 
 **Response**: `LibraryItem` with `source: "import:{sourceId}"`.
+
+Media status progresses through `queued` → `extracting_metadata` →
+`downloading` → `transcribing` → `ready`. A private/login-walled provider
+finishes as `blocked_auth`; unavailable public captions/media finish as
+`needs_upload`. In both cases the source item remains in Library and the client
+should offer file upload or transcript paste instead of discarding it.
 
 ### Import link and extract (sync)
 `POST /library/imports/link/extract`
@@ -2054,7 +2063,7 @@ Same request body as `POST /library/imports/link`:
 
 - Web links (`import:links`): `importPath` is `firecrawl` (or HTTP reader fallback); extraction runs inline.
 - YouTube / Instagram / TikTok: `importPath` is `media_worker`; media pipeline runs inline (no Redis queue). May take longer (STT/download); client/nginx timeouts apply.
-- Final `extractionStatus` may still be `metadata_ready` or `needs_upload` when captions/transcript are unavailable.
+- Final `extractionStatus` may still be `metadata_ready`, `blocked_auth`, or `needs_upload` when captions/transcript are unavailable.
 
 ### Import text
 `POST /library/imports/text`

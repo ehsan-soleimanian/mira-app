@@ -8,6 +8,7 @@ import 'package:mira_app/redesign/models/rd_capture_mode.dart';
 import 'package:mira_app/redesign/theme/rd_theme.dart';
 import 'package:mira_app/redesign/widgets/rd_bottom_nav.dart';
 import 'package:mira_app/redesign/widgets/rd_capture_entry_sheet.dart';
+import 'package:mira_app/redesign/widgets/rd_capture_mode_views.dart';
 
 void main() {
   test('catalog covers every canonical capture input exactly once', () {
@@ -180,5 +181,77 @@ void main() {
     expect(find.text('Link'), findsOneWidget);
     expect(find.text('Meeting'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('screenshot picker can browse the gallery or computer files', (
+    tester,
+  ) async {
+    var browseCalls = 0;
+    await tester.binding.setSurfaceSize(const Size(580, 825));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        theme: ThemeData(extensions: const [RdTheme.dark]),
+        home: Scaffold(
+          body: RdScreenshotPickerView(
+            onSelected: () async => browseCalls += 1,
+            onClose: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Browse gallery or files'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('screenshot_browse_device')));
+    await tester.pump();
+    expect(browseCalls, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('link entry clearly accepts both web pages and media', (
+    tester,
+  ) async {
+    String? submitted;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        theme: ThemeData(extensions: const [RdTheme.dark]),
+        home: Scaffold(
+          body: RdLinkCaptureView(
+            onSubmit: (url, _) => submitted = url,
+            onClose: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.text(
+        'Paste a web or media URL — Mira chooses the right processing path',
+      ),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byType(TextField),
+      'https://www.instagram.com/reel/example/',
+    );
+    await tester.pump();
+    await tester.tap(find.text('Import this link'));
+    expect(submitted, 'https://www.instagram.com/reel/example/');
   });
 }

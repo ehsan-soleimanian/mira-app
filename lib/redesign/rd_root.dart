@@ -221,6 +221,7 @@ class _RdRootState extends State<RdRoot> {
           go: _go,
           initialMode: mode,
           initialText: arg is RdCaptureModeArg ? arg.initialText : null,
+          returnScreen: arg is RdCaptureModeArg ? arg.returnScreen : 'home',
           initialInput: arg is RdCanonicalCaptureArg ? arg.input : null,
         );
       default:

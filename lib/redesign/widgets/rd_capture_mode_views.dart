@@ -28,8 +28,10 @@ class RdPhotoCaptureView extends StatefulWidget {
 class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
     with SingleTickerProviderStateMixin {
   bool _scanning = false;
-  late final AnimationController _scan =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+  late final AnimationController _scan = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  );
 
   Future<void> _shutter() async {
     if (_scanning) return;
@@ -59,7 +61,11 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
               gradient: RadialGradient(
                 center: Alignment(0, -0.2),
                 radius: 1.2,
-                colors: [Color(0xFF2A2C34), Color(0xFF16171C), Color(0xFF0B0C0F)],
+                colors: [
+                  Color(0xFF2A2C34),
+                  Color(0xFF16171C),
+                  Color(0xFF0B0C0F),
+                ],
               ),
             ),
           ),
@@ -78,7 +84,11 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF1B2B6B), Color(0xFF22357E), Color(0xFF0F1C4D)],
+                    colors: [
+                      Color(0xFF1B2B6B),
+                      Color(0xFF22357E),
+                      Color(0xFF0F1C4D),
+                    ],
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -163,13 +173,19 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
                 return Positioned(
                   left: MediaQuery.sizeOf(context).width * 0.08,
                   right: MediaQuery.sizeOf(context).width * 0.08,
-                  top: MediaQuery.sizeOf(context).height * (0.16 + 0.62 * _scan.value % 1),
+                  top:
+                      MediaQuery.sizeOf(context).height *
+                      (0.16 + 0.62 * _scan.value % 1),
                   child: Container(
                     height: 3,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(3),
                       gradient: const LinearGradient(
-                        colors: [Colors.transparent, Color(0xFF8B98D6), Colors.transparent],
+                        colors: [
+                          Colors.transparent,
+                          Color(0xFF8B98D6),
+                          Colors.transparent,
+                        ],
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -189,7 +205,10 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
               bottom: 120,
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF141828).withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(100),
@@ -200,7 +219,10 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
                       const SizedBox(
                         width: 15,
                         height: 15,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       ),
                       const SizedBox(width: 9),
                       Text(
@@ -247,7 +269,9 @@ class _RdPhotoCaptureViewState extends State<RdPhotoCaptureView>
                               gradient: const LinearGradient(
                                 colors: [Color(0xFF3A3D4A), Color(0xFF20222B)],
                               ),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.25),
+                              ),
                             ),
                           ),
                         ),
@@ -387,6 +411,11 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
     await widget.onSelected();
   }
 
+  Future<void> _browseDevice() async {
+    if (_scanning) return;
+    await widget.onSelected();
+  }
+
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
@@ -401,10 +430,16 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
               const SizedBox(
                 width: 15,
                 height: 15,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(height: 12),
-              Text(l10n.rdCaptureScreenshotReading, style: const TextStyle(color: Colors.white)),
+              Text(
+                l10n.rdCaptureScreenshotReading,
+                style: const TextStyle(color: Colors.white),
+              ),
             ],
           ),
         ),
@@ -419,7 +454,11 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
             children: [
               GestureDetector(
                 onTap: widget.onClose,
-                child: const RdIcon(RdIcons.chevronLeft, size: 22, stroke: '#6B6C73'),
+                child: const RdIcon(
+                  RdIcons.chevronLeft,
+                  size: 22,
+                  stroke: '#6B6C73',
+                ),
               ),
             ],
           ),
@@ -441,6 +480,30 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
               Text(
                 l10n.rdCaptureScreenshotPickSub,
                 style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
+              ),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                key: const ValueKey('screenshot_browse_device'),
+                onPressed: _browseDevice,
+                icon: const RdIcon(RdIcons.photo, size: 18),
+                label: Text(l10n.rdCaptureScreenshotBrowse),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: rd.ink,
+                  minimumSize: const Size.fromHeight(48),
+                  side: BorderSide(color: rd.line),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: GoogleFonts.vazirmatn(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                l10n.rdCaptureScreenshotBrowseHint,
+                style: GoogleFonts.vazirmatn(fontSize: 11, color: rd.muted),
               ),
             ],
           ),
@@ -491,7 +554,10 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
                           alignment: Alignment.topLeft,
                           child: Container(
                             margin: const EdgeInsets.all(6),
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.55),
                               borderRadius: BorderRadius.circular(5),
@@ -519,7 +585,9 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
             style: FilledButton.styleFrom(
               backgroundColor: rd.navy,
               minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
             child: Text(
               l10n.rdCaptureScreenshotUse,
@@ -577,7 +645,11 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
             alignment: Alignment.centerLeft,
             child: GestureDetector(
               onTap: widget.onClose,
-              child: const RdIcon(RdIcons.chevronLeft, size: 22, stroke: '#6B6C73'),
+              child: const RdIcon(
+                RdIcons.chevronLeft,
+                size: 22,
+                stroke: '#6B6C73',
+              ),
             ),
           ),
         ),
@@ -628,7 +700,10 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
                     decoration: InputDecoration(
                       hintText: l10n.rdCaptureUrlHint,
                       border: InputBorder.none,
-                      hintStyle: GoogleFonts.vazirmatn(color: rd.faint, fontSize: 14.5),
+                      hintStyle: GoogleFonts.vazirmatn(
+                        color: rd.faint,
+                        fontSize: 14.5,
+                      ),
                     ),
                     style: GoogleFonts.vazirmatn(fontSize: 14.5, color: rd.ink),
                     keyboardType: TextInputType.url,
@@ -644,7 +719,11 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: const Center(
-                      child: RdIcon('<path d="M5 12h14M13 6l6 6-6 6"/>', size: 18, stroke: '#FFFFFF'),
+                      child: RdIcon(
+                        '<path d="M5 12h14M13 6l6 6-6 6"/>',
+                        size: 18,
+                        stroke: '#FFFFFF',
+                      ),
                     ),
                   ),
                 ),
@@ -659,12 +738,20 @@ class _RdLinkCaptureViewState extends State<RdLinkCaptureView> {
             onPressed: canGo ? _go : null,
             style: FilledButton.styleFrom(
               backgroundColor: rd.navy,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: rd.line,
+              disabledForegroundColor: rd.muted,
               minimumSize: const Size.fromHeight(54),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
             child: Text(
               l10n.rdCaptureLinkReadAction,
-              style: GoogleFonts.vazirmatn(fontSize: 15, fontWeight: FontWeight.w600),
+              style: GoogleFonts.vazirmatn(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

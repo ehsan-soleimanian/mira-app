@@ -875,6 +875,63 @@ class AppLocalizationsFa extends AppLocalizations {
       'فایل در کتابخانه ذخیره شد و در پس‌زمینه پردازش می‌شود.';
 
   @override
+  String get rdCaptureScanHeader => 'ورود سند';
+
+  @override
+  String get rdCaptureScanBadge => 'اسکن میرا';
+
+  @override
+  String get rdCaptureScanTitle => 'فایل را به یک حافظهٔ خوانا تبدیل کن';
+
+  @override
+  String get rdCaptureScanSubtitle =>
+      'میرا متن و ساختار فایل را می‌خواند و نسخهٔ اصلی را همراه با نسخهٔ قابل جست‌وجو ذخیره می‌کند.';
+
+  @override
+  String get rdCaptureScanDocument => 'سند انتخاب‌شده';
+
+  @override
+  String get rdCaptureScanUploading => 'در حال آپلود امن…';
+
+  @override
+  String get rdCaptureScanExtracting => 'در حال خواندن متن و ساختار…';
+
+  @override
+  String get rdCaptureScanReady => 'برای خواندن و جست‌وجو آماده است';
+
+  @override
+  String get rdCaptureScanSaved =>
+      'ذخیره شد — استخراج متن در کتابخانه ادامه دارد';
+
+  @override
+  String get rdCaptureScanFailed => 'میرا نتوانست این فایل را بخواند';
+
+  @override
+  String get rdCaptureScanStepUpload => 'آپلود امن فایل';
+
+  @override
+  String get rdCaptureScanStepRead => 'استخراج متن و ساختار';
+
+  @override
+  String get rdCaptureScanStepSearch => 'آماده‌سازی برای خواندن و جست‌وجو';
+
+  @override
+  String get rdCaptureScanPreview => 'پیش‌نمایش متن استخراج‌شده';
+
+  @override
+  String get rdCaptureScanPrivacy =>
+      'نسخهٔ اصلی در کتابخانهٔ شما خصوصی می‌ماند. میرا فقط برای خوانا و قابل جست‌وجو شدن این حافظه از متن استخراج‌شده استفاده می‌کند.';
+
+  @override
+  String get rdCaptureScanChooseAnother => 'انتخاب فایل دیگر';
+
+  @override
+  String get rdCaptureScanOpen => 'باز کردن سند';
+
+  @override
+  String get rdCaptureScanBackToLibrary => 'نمایش در کتابخانه';
+
+  @override
   String get rdVoiceSearchListening => 'در حال گوش دادن';
 
   @override
@@ -1157,7 +1214,95 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureLinkRetry => 'دوباره بخوان';
 
   @override
-  String get rdCaptureLinkReadAction => 'خواندن لینک';
+  String get rdCaptureLinkReadAction => 'وارد کردن لینک';
+
+  @override
+  String get rdLinkImportHeader => 'ورود لینک';
+
+  @override
+  String get rdLinkImportWebBadge => 'وب';
+
+  @override
+  String get rdLinkImportMediaBadge => 'رسانه';
+
+  @override
+  String get rdLinkImportWebTitle =>
+      'این صفحه را به حافظهٔ قابل جست‌وجو تبدیل کن';
+
+  @override
+  String get rdLinkImportMediaTitle => 'این رسانه را وارد میرا کن';
+
+  @override
+  String get rdLinkImportWebSubtitle =>
+      'میرا متن خواندنی صفحه و منبع آن را نگه می‌دارد و محتوا را قابل جست‌وجو می‌کند.';
+
+  @override
+  String get rdLinkImportMediaSubtitle =>
+      'میرا ابتدا زیرنویس عمومی را بررسی می‌کند و اگر سرویس اجازه بدهد، صدای موقت را برای رونویسی دریافت می‌کند.';
+
+  @override
+  String get rdLinkImportSaving => 'در حال ذخیرهٔ منبع در کتابخانه…';
+
+  @override
+  String get rdLinkImportQueued => 'ذخیره شد — در انتظار پردازش رسانه…';
+
+  @override
+  String get rdLinkImportMetadata =>
+      'در حال خواندن عنوان، تصویر، زیرنویس و مشخصات رسانه…';
+
+  @override
+  String get rdLinkImportDownloading =>
+      'در حال آماده‌سازی رسانهٔ عمومی برای رونویسی…';
+
+  @override
+  String get rdLinkImportTranscribing => 'در حال رونویسی رسانه…';
+
+  @override
+  String get rdLinkImportReady =>
+      'برای خواندن، جست‌وجو و پرسش از میرا آماده است';
+
+  @override
+  String get rdLinkImportMetadataReady => 'منبع و اطلاعات در دسترس آن ذخیره شد';
+
+  @override
+  String get rdLinkImportBlocked =>
+      'سرویس به ورود نیاز دارد یا دسترسی عمومی را مسدود کرده است';
+
+  @override
+  String get rdLinkImportNeedsUpload =>
+      'زیرنویس عمومی یا رسانهٔ قابل دریافت در دسترس نبود';
+
+  @override
+  String get rdLinkImportFailed =>
+      'استخراج متوقف شد، اما منبع را می‌توان نگه داشت یا دوباره پردازش کرد';
+
+  @override
+  String get rdLinkImportStepSaved => 'ذخیرهٔ منبع در کتابخانه';
+
+  @override
+  String get rdLinkImportStepWeb => 'استخراج متن خواندنی صفحهٔ وب';
+
+  @override
+  String get rdLinkImportStepMedia => 'خواندن زیرنویس یا رونویسی رسانه';
+
+  @override
+  String get rdLinkImportStepSearch => 'قابل جست‌وجو کردن محتوا';
+
+  @override
+  String get rdLinkImportRecovery =>
+      'میرا دیوار ورود یا محتوای خصوصی را دور نمی‌زند. فایل رسانه را برای رونویسی آپلود کنید یا لینک را نگه دارید و بعداً دوباره تلاش کنید.';
+
+  @override
+  String get rdLinkImportKeepLink => 'نگه‌داشتن لینک';
+
+  @override
+  String get rdLinkImportUploadMedia => 'آپلود رسانه';
+
+  @override
+  String get rdLinkImportOpen => 'باز کردن در کتابخانه';
+
+  @override
+  String get rdLinkImportBackground => 'ادامه در کتابخانه';
 
   @override
   String get rdCaptureLinkSaveFailed =>
@@ -1272,6 +1417,13 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureScreenshotPickTitle => 'یک اسکرین‌شات انتخاب کن';
 
   @override
+  String get rdCaptureScreenshotBrowse => 'انتخاب از گالری یا فایل‌ها';
+
+  @override
+  String get rdCaptureScreenshotBrowseHint =>
+      'یک تصویر از گالری گوشی یا این کامپیوتر انتخاب کنید.';
+
+  @override
   String get rdCaptureScreenshotPickSub =>
       'میرا متن و جزئیات را از تصویر می‌خواند';
 
@@ -1282,7 +1434,8 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureLinkSaveTitle => 'ذخیرهٔ لینک';
 
   @override
-  String get rdCaptureLinkSaveSub => 'آدرس را بچسبان — میرا صفحه را می‌خواند';
+  String get rdCaptureLinkSaveSub =>
+      'لینک وب یا رسانه را بچسبان — میرا مسیر پردازش درست را انتخاب می‌کند';
 
   @override
   String get rdCaptureLinkReading => 'در حال خواندن صفحه…';
@@ -1948,6 +2101,17 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get rdLibraryAddToCollectionFailed =>
       'افزودن به مجموعه ممکن نشد. اتصال را بررسی کن.';
+
+  @override
+  String get rdLibraryAddAnything => 'افزودن';
+
+  @override
+  String get rdLibraryFileImported =>
+      'فایل به کتابخانه اضافه شد. میرا در حال استخراج متن آن است.';
+
+  @override
+  String get rdLibraryFileImportFailed =>
+      'افزودن این فایل به کتابخانه ممکن نشد.';
 
   @override
   String rdLibraryAddedToBoard(int count, String board) {
@@ -3100,6 +3264,16 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get rdCaptureConvertDocument => 'دانش سند';
+
+  @override
+  String get rdMemoryMarkdownBadge => 'مارک‌داون';
+
+  @override
+  String get rdMemoryMarkdownUnavailableTitle => 'محتوای خواندنی در دسترس نیست';
+
+  @override
+  String get rdMemoryMarkdownUnavailableBody =>
+      'این فایل مارک‌داون پیش از ذخیره‌سازی متن خواندنی سند ثبت شده است. برای باز کردن آن به‌شکل سند، دوباره بارگذاری‌اش کنید.';
 
   @override
   String get rdCaptureEditSummaryHint => 'خلاصه';

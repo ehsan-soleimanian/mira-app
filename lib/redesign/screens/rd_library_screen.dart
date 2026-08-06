@@ -7,6 +7,7 @@ import 'package:mira_app/app/memory_store.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
+import '../models/rd_capture_mode.dart';
 import '../models/rd_library_item_presentation.dart';
 import '../theme/rd_colors.dart';
 import '../theme/rd_theme.dart';
@@ -87,7 +88,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     try {
       // Load through the shared store (source of truth) rather than hitting the
       // repository directly, so this screen and the others share one cache.
-      await services.memoryStore.load();
+      await services.memoryStore.load(force: true);
       if (mounted && services.memoryStore.loaded) {
         setState(
           () => _items = services.memoryStore.getAll().map(_toLibMem).toList(),
@@ -985,6 +986,44 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                   ],
                 ),
               ),
+              GestureDetector(
+                onTap: () => widget.go(
+                  'captureflow',
+                  arg: const RdCaptureModeArg(
+                    RdCaptureMode.file,
+                    returnScreen: 'library',
+                  ),
+                ),
+                child: Container(
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 13),
+                  decoration: BoxDecoration(
+                    color: rd.peri,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const RdIcon(
+                        RdIcons.plusCircle,
+                        size: 17,
+                        color: Colors.white,
+                        strokeWidth: 1.8,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        l10n.rdLibraryAddAnything,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
               GestureDetector(
                 onTap: () => widget.go('ask'),
                 child: Container(

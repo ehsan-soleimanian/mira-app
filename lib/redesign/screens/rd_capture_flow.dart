@@ -16,6 +16,7 @@ import 'package:mira_app/features/capture/voice/voice_recorder_port.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/capture_models.dart';
 import 'package:mira_app/models/api/graph_models.dart';
+import 'package:mira_app/models/api/workspace_models.dart';
 import 'package:dio/dio.dart';
 
 import '../models/rd_capture_mode.dart';
@@ -34,12 +35,14 @@ class RdCaptureFlow extends StatefulWidget {
     this.initialMode = RdCaptureMode.voice,
     this.initialText,
     this.initialInput,
+    this.returnScreen = 'home',
   });
 
   final RdGo go;
   final RdCaptureMode initialMode;
   final String? initialText;
   final CaptureInput? initialInput;
+  final String returnScreen;
 
   @override
   State<RdCaptureFlow> createState() => _RdCaptureFlowState();
@@ -128,8 +131,17 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   String? _pendingUrl; // held for link confirm
   String? _pendingTitle;
   String _linkCrawlState = 'idle'; // idle | ready | metadata_only | failed
+  LibraryItem? _linkItem;
+  String _linkImportStage = 'idle';
+  String _linkReadableText = '';
   VoiceRecordingResult? _meetingRecording;
   bool _meetingSaving = false;
+
+  String? _fileName;
+  int? _fileSizeBytes;
+  LibraryItem? _fileItem;
+  String _fileStage = 'selecting';
+  String _fileReadableText = '';
 
   Timer? _secTimer;
   final List<Timer> _timers = [];
@@ -298,7 +310,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       );
       if (!mounted) return;
       if (result == null || result.files.isEmpty) {
-        widget.go('home');
+        widget.go(widget.returnScreen);
         return;
       }
       final file = result.files.single;
@@ -309,20 +321,103 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       setState(() {
         _kind = 'file';
         _remind = false;
+        _fileName = file.name;
+        _fileSizeBytes = file.size;
+        _fileItem = null;
+        _fileReadableText = '';
+        _fileStage = 'uploading';
+        _view = 'file_scan';
       });
-      await _driveCreatedCapture(
-        () => services.captureRepository.createFileCapture(
-          bytes: file.bytes!,
-          filename: file.name,
-        ),
+      final item = await services.libraryRepository.uploadBytes(
+        bytes: file.bytes!,
+        filename: file.name,
       );
+      services.memoryStore.upsertLocal(item);
+      if (!mounted) return;
+      setState(() {
+        _fileItem = item;
+        _fileStage = 'extracting';
+      });
+      await _resolveUploadedFile(item, services);
     } catch (_) {
       if (!mounted) return;
-      _showCaptureError(
-        AppLocalizations.of(context)!.rdCaptureFileUploadFailed,
-      );
-      widget.go('home');
+      setState(() {
+        _kind = 'file';
+        _fileStage = 'failed';
+        _view = 'file_scan';
+      });
     }
+  }
+
+  Future<void> _resolveUploadedFile(
+    LibraryItem initial,
+    MiraServices services,
+  ) async {
+    var item = initial;
+    for (var attempt = 0; attempt < 10; attempt++) {
+      final content = item.contentText?.trim() ?? '';
+      if (content.isNotEmpty) {
+        _finishFileReading(item, content, services);
+        return;
+      }
+      if (item.extractionStatus == 'ready') {
+        try {
+          final chunks = await services.libraryRepository.chunks(item.id);
+          final text = chunks
+              .map((chunk) => chunk.text.trim())
+              .where((text) => text.isNotEmpty)
+              .join('\n\n');
+          if (text.isNotEmpty) {
+            _finishFileReading(item, text, services);
+            return;
+          }
+        } catch (_) {}
+        _finishFileReading(item, item.summary.trim(), services);
+        return;
+      }
+      if (const {
+        'failed',
+        'needs_upload',
+        'blocked_auth',
+      }.contains(item.extractionStatus)) {
+        if (!mounted) return;
+        setState(() {
+          _fileItem = item;
+          _fileStage = 'failed';
+        });
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      try {
+        item = await services.libraryRepository.getItem(item.id);
+        services.memoryStore.upsertLocal(item);
+        if (mounted) setState(() => _fileItem = item);
+      } catch (_) {
+        // A transient poll failure must not freeze a durable queued import.
+        // Keep trying while the user stays on this screen.
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _fileItem = item;
+      _fileStage = 'saved';
+    });
+  }
+
+  void _finishFileReading(
+    LibraryItem item,
+    String readableText,
+    MiraServices services,
+  ) {
+    services.memoryStore.upsertLocal(
+      readableText.isEmpty ? item : item.copyWith(contentText: readableText),
+    );
+    if (!mounted) return;
+    setState(() {
+      _fileItem = item;
+      _fileReadableText = readableText;
+      _fileStage = 'ready';
+    });
   }
 
   void _showCaptureError(String message) {
@@ -1869,34 +1964,106 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   Future<void> _driveLinkUnderstanding() async {
     _clearTimers();
     setState(() {
-      _view = 'proc';
-      _steps = 0;
-      _captureId = null;
-      _proposal = null;
-      _resultCard = null;
-      _availableActions = const [];
-      _executions = const [];
-      _proposalRevision = 0;
-      _realProposal = false;
-      _pipelineStarted = true;
+      _view = 'link_import';
+      _linkItem = null;
+      _linkReadableText = '';
+      _linkImportStage = 'importing';
       _linkCrawlState = 'idle';
     });
-    for (var k = 0; k < 3; k++) {
-      _timers.add(
-        Timer(Duration(milliseconds: 500 + k * 650), () {
-          if (mounted && _view == 'proc') setState(() => _steps = k + 1);
-        }),
-      );
-    }
-    final minShown = Future<void>.delayed(
-      const Duration(milliseconds: 500 + 3 * 650 + 500),
-    );
-    final succeeded = await _runLinkPipeline();
-    await minShown;
-    if (!mounted || _view != 'proc') return;
-    setState(() => _view = succeeded ? 'review' : 'link_error');
+    await _runLinkLibraryPipeline();
   }
 
+  Future<void> _runLinkLibraryPipeline() async {
+    final url = _pendingUrl?.trim() ?? '';
+    if (url.isEmpty) return;
+    final services = AppScope.servicesOf(context);
+    try {
+      final item = await services.libraryRepository.importLink(
+        url: url,
+        title: _pendingTitle,
+      );
+      services.memoryStore.upsertLocal(item);
+      if (!mounted) return;
+      setState(() {
+        _linkItem = item;
+        _linkImportStage = item.extractionStatus;
+      });
+      await _resolveImportedLink(item, services);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _linkImportStage = 'failed');
+    }
+  }
+
+  Future<void> _resolveImportedLink(
+    LibraryItem initial,
+    MiraServices services,
+  ) async {
+    var item = initial;
+    for (var attempt = 0; attempt < 180; attempt++) {
+      if (!mounted) return;
+      if (const {
+        'ready',
+        'metadata_ready',
+        'needs_upload',
+        'blocked_auth',
+        'failed',
+      }.contains(item.extractionStatus)) {
+        await _finishLinkImport(item, services);
+        return;
+      }
+      await Future<void>.delayed(const Duration(seconds: 1));
+      try {
+        item = await services.libraryRepository.getItem(item.id);
+        services.memoryStore.upsertLocal(item);
+        if (!mounted) return;
+        setState(() {
+          _linkItem = item;
+          _linkImportStage = item.extractionStatus;
+        });
+      } catch (_) {
+        break;
+      }
+    }
+    if (!mounted) return;
+    setState(() => _linkImportStage = item.extractionStatus);
+  }
+
+  Future<void> _finishLinkImport(
+    LibraryItem item,
+    MiraServices services,
+  ) async {
+    var readable = item.contentText?.trim() ?? '';
+    if (readable == _pendingUrl?.trim()) readable = '';
+    if (item.extractionStatus == 'ready' ||
+        item.extractionStatus == 'metadata_ready') {
+      try {
+        final chunks = await services.libraryRepository.chunks(item.id);
+        final chunkText = chunks
+            .map((chunk) => chunk.text.trim())
+            .where((text) => text.isNotEmpty && text != _pendingUrl)
+            .join('\n\n');
+        if (chunkText.isNotEmpty) readable = chunkText;
+      } catch (_) {}
+    }
+    final hydrated = readable.isEmpty
+        ? item
+        : item.copyWith(contentText: readable);
+    services.memoryStore.upsertLocal(hydrated);
+    if (!mounted) return;
+    setState(() {
+      _linkItem = hydrated;
+      _linkReadableText = readable;
+      _linkImportStage = item.extractionStatus;
+      _linkCrawlState = item.extractionStatus == 'ready'
+          ? 'ready'
+          : 'metadata_only';
+    });
+  }
+
+  // Kept temporarily for capture-proposal compatibility while Library owns
+  // the user-facing link import flow.
+  // ignore: unused_element
   Future<bool> _runLinkPipeline() async {
     final url = _pendingUrl?.trim() ?? '';
     if (url.isEmpty) return false;
@@ -2005,11 +2172,26 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   }
 
   Future<void> _retryLink() async {
-    final captureId = _captureId;
-    if (captureId != null) {
+    final item = _linkItem;
+    if (item != null) {
       try {
-        await AppScope.servicesOf(context).captureRepository.dismiss(captureId);
-      } catch (_) {}
+        final services = AppScope.servicesOf(context);
+        final queued = await services.libraryRepository.retryExtraction(
+          item.id,
+        );
+        services.memoryStore.upsertLocal(queued);
+        if (!mounted) return;
+        setState(() {
+          _linkItem = queued;
+          _linkImportStage = queued.extractionStatus;
+        });
+        await _resolveImportedLink(queued, services);
+        return;
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _linkImportStage = 'failed');
+        return;
+      }
     }
     if (!mounted) return;
     unawaited(_driveLinkUnderstanding());
@@ -2071,11 +2253,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     PickedCaptureMedia? media;
     try {
       media = await createCaptureMediaPicker().pickGalleryImage();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Image selection failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
       media = null;
     }
     if (!mounted) return;
     if (media == null) {
+      debugPrint('Image selection returned no media.');
       _startListen();
       return;
     }
@@ -2088,6 +2273,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       () => services.captureRepository.createImageCapture(
         bytes: media!.bytes,
         filename: media.filename,
+        mimeType: media.mimeType,
       ),
     );
   }
@@ -2125,8 +2311,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         return;
       }
       setState(() => _view = 'review');
-    } catch (_) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
+      debugPrint('Capture processing failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
       _showCaptureError(
         AppLocalizations.of(context)!.rdCaptureMemorySaveFailed,
       );
@@ -2203,6 +2391,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         return _linkCapture();
       case 'link_error':
         return _linkError();
+      case 'link_import':
+        return _linkImport();
+      case 'file_scan':
+        return _fileScan();
       case 'proc':
         return _proc();
       case 'review':
@@ -2238,6 +2430,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           () => services.captureRepository.createCameraCapture(
             bytes: media!.bytes,
             filename: media.filename,
+            mimeType: media.mimeType,
           ),
         );
       },
@@ -2265,6 +2458,426 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         });
         unawaited(_driveLinkUnderstanding());
       },
+    );
+  }
+
+  Widget _linkImport() {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final active = const {
+      'importing',
+      'queued',
+      'extracting_metadata',
+      'downloading',
+      'transcribing',
+    }.contains(_linkImportStage);
+    final ready = _linkImportStage == 'ready';
+    final metadataReady = _linkImportStage == 'metadata_ready';
+    final recoverable = const {
+      'needs_upload',
+      'blocked_auth',
+    }.contains(_linkImportStage);
+    final failed = _linkImportStage == 'failed';
+    final isMedia = _linkIsMedia;
+    final statusText = switch (_linkImportStage) {
+      'importing' => l10n.rdLinkImportSaving,
+      'queued' => l10n.rdLinkImportQueued,
+      'extracting_metadata' => l10n.rdLinkImportMetadata,
+      'downloading' => l10n.rdLinkImportDownloading,
+      'transcribing' => l10n.rdLinkImportTranscribing,
+      'ready' => l10n.rdLinkImportReady,
+      'metadata_ready' => l10n.rdLinkImportMetadataReady,
+      'blocked_auth' => l10n.rdLinkImportBlocked,
+      'needs_upload' => l10n.rdLinkImportNeedsUpload,
+      _ => l10n.rdLinkImportFailed,
+    };
+    final host =
+        Uri.tryParse(_pendingUrl ?? '')?.host.replaceFirst('www.', '') ?? '';
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 8),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => widget.go('home'),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: rd.card,
+                    border: Border.all(color: rd.line),
+                  ),
+                  child: Center(
+                    child: RdIcon(RdIcons.chevronLeft, size: 18, color: rd.ink),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.rdLinkImportHeader,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: rd.periSoft,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  isMedia
+                      ? l10n.rdLinkImportMediaBadge
+                      : l10n.rdLinkImportWebBadge,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: rd.navy,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(22, 14, 22, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isMedia
+                      ? l10n.rdLinkImportMediaTitle
+                      : l10n.rdLinkImportWebTitle,
+                  style: GoogleFonts.dosis(
+                    fontSize: 30,
+                    height: 1.08,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  isMedia
+                      ? l10n.rdLinkImportMediaSubtitle
+                      : l10n.rdLinkImportWebSubtitle,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 13.5,
+                    height: 1.55,
+                    color: rd.muted,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: rd.card,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: rd.line),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: rd.periSoft,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Center(
+                              child: RdIcon(
+                                isMedia ? RdIcons.photo : RdIcons.linkChain,
+                                size: 24,
+                                color: rd.navy,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 13),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _linkItem?.title.trim().isNotEmpty == true
+                                      ? _linkItem!.title
+                                      : host,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.vazirmatn(
+                                    fontSize: 14,
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w700,
+                                    color: rd.ink,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  host,
+                                  style: GoogleFonts.vazirmatn(
+                                    fontSize: 11.5,
+                                    color: rd.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (active)
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: rd.peri,
+                              ),
+                            )
+                          else
+                            RdIcon(
+                              ready || metadataReady
+                                  ? RdIcons.checkCircle
+                                  : recoverable
+                                  ? RdIcons.shield
+                                  : RdIcons.close,
+                              size: 21,
+                              color: ready || metadataReady
+                                  ? rd.peri
+                                  : const Color(0xFFE09A3E),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(99),
+                        child: LinearProgressIndicator(
+                          value: active ? null : 1,
+                          minHeight: 5,
+                          color: failed || recoverable
+                              ? const Color(0xFFE09A3E)
+                              : rd.peri,
+                          backgroundColor: rd.line,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          statusText,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 12.5,
+                            height: 1.45,
+                            fontWeight: FontWeight.w600,
+                            color: rd.ink,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                _fileScanStep(
+                  icon: RdIcons.folder,
+                  label: l10n.rdLinkImportStepSaved,
+                  complete: _linkItem != null,
+                  active: _linkImportStage == 'importing',
+                ),
+                const SizedBox(height: 9),
+                _fileScanStep(
+                  icon: isMedia ? RdIcons.photo : RdIcons.textT,
+                  label: isMedia
+                      ? l10n.rdLinkImportStepMedia
+                      : l10n.rdLinkImportStepWeb,
+                  complete: ready || metadataReady || recoverable,
+                  active: const {
+                    'queued',
+                    'extracting_metadata',
+                    'downloading',
+                    'transcribing',
+                  }.contains(_linkImportStage),
+                ),
+                const SizedBox(height: 9),
+                _fileScanStep(
+                  icon: RdIcons.search,
+                  label: l10n.rdLinkImportStepSearch,
+                  complete: ready,
+                  active: false,
+                ),
+                if ((recoverable || failed) && _linkItem != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0x16E09A3E),
+                      borderRadius: BorderRadius.circular(17),
+                      border: Border.all(color: const Color(0x55E09A3E)),
+                    ),
+                    child: Text(
+                      l10n.rdLinkImportRecovery,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 12.5,
+                        height: 1.55,
+                        color: rd.ink,
+                      ),
+                    ),
+                  ),
+                ],
+                if (_linkReadableText.trim().isNotEmpty && ready) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: rd.periSoft.withValues(alpha: .65),
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                    child: Text(
+                      _linkPreviewText,
+                      maxLines: 6,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 13,
+                        height: 1.55,
+                        color: rd.ink,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
+          decoration: BoxDecoration(
+            color: rd.bg,
+            border: Border(top: BorderSide(color: rd.line)),
+          ),
+          child: Row(
+            children: [
+              if (_linkItem != null && (recoverable || failed)) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => widget.go('library'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      side: BorderSide(color: rd.line),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: Text(l10n.rdLinkImportKeepLink),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                flex: recoverable || failed ? 1 : 2,
+                child: FilledButton(
+                  onPressed: active
+                      ? () => widget.go('library')
+                      : recoverable
+                      ? _pickLibraryFile
+                      : failed
+                      ? _retryLink
+                      : _openImportedLink,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor: rd.navy,
+                    disabledBackgroundColor: rd.line,
+                    disabledForegroundColor: rd.muted,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  child: Text(
+                    active
+                        ? l10n.rdLinkImportBackground
+                        : recoverable
+                        ? l10n.rdLinkImportUploadMedia
+                        : failed
+                        ? l10n.rdCaptureLinkRetry
+                        : l10n.rdLinkImportOpen,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool get _linkIsMedia {
+    if (_linkItem?.type == 'video' || _linkItem?.type == 'audio') return true;
+    final host = Uri.tryParse(_pendingUrl ?? '')?.host.toLowerCase() ?? '';
+    return host.contains('youtube.com') ||
+        host.contains('youtu.be') ||
+        host.contains('instagram.com') ||
+        host.contains('tiktok.com');
+  }
+
+  String get _linkPreviewText {
+    final text = _linkReadableText.trim().replaceAll(RegExp(r'\s+'), ' ');
+    return text.length > 520 ? '${text.substring(0, 517)}…' : text;
+  }
+
+  Future<void> _openImportedLink() async {
+    var item = _linkItem;
+    final services = AppScope.servicesOf(context);
+    if (item != null) {
+      try {
+        item = await services.memoryStore.refreshItem(item.id);
+        await _finishLinkImport(item, services);
+        item = _linkItem ?? item;
+      } catch (_) {
+        // The saved item remains available even if this refresh is offline.
+      }
+    }
+    if (item == null) {
+      await services.memoryStore.load(force: true);
+      if (!mounted) return;
+      widget.go('library');
+      return;
+    }
+    if (const {
+      'queued',
+      'extracting_metadata',
+      'downloading',
+      'transcribing',
+    }.contains(item.extractionStatus)) {
+      await services.memoryStore.load(force: true);
+      if (!mounted) return;
+      widget.go('library');
+      return;
+    }
+    if (!mounted) return;
+    widget.go(
+      'memory',
+      arg: RdMemoryArg(
+        id: item.id,
+        title: item.title,
+        body: _linkReadableText.trim().isNotEmpty
+            ? _linkReadableText
+            : item.summary,
+      ),
     );
   }
 
@@ -2708,6 +3321,481 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _fileScan() {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    final ready = _fileStage == 'ready';
+    final saved = _fileStage == 'saved';
+    final failed = _fileStage == 'failed';
+    final busy = _fileStage == 'uploading' || _fileStage == 'extracting';
+    final progress = switch (_fileStage) {
+      'uploading' => .32,
+      'extracting' => .72,
+      'ready' || 'saved' => 1.0,
+      _ => .08,
+    };
+    final status = switch (_fileStage) {
+      'uploading' => l10n.rdCaptureScanUploading,
+      'extracting' => l10n.rdCaptureScanExtracting,
+      'ready' => l10n.rdCaptureScanReady,
+      'saved' => l10n.rdCaptureScanSaved,
+      _ => l10n.rdCaptureScanFailed,
+    };
+    final statusIcon = failed
+        ? RdIcons.close
+        : ready || saved
+        ? RdIcons.checkCircle
+        : RdIcons.resurface;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: busy ? null : () => widget.go(widget.returnScreen),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: rd.card,
+                    border: Border.all(color: rd.line),
+                  ),
+                  child: Center(
+                    child: RdIcon(
+                      RdIcons.chevronLeft,
+                      size: 18,
+                      color: busy ? rd.faint : rd.ink,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  l10n.rdCaptureScanHeader,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: rd.periSoft,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  l10n.rdCaptureScanBadge,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: rd.navy,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.rdCaptureScanTitle,
+                  style: GoogleFonts.dosis(
+                    fontSize: 30,
+                    height: 1.08,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.rdCaptureScanSubtitle,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 13.5,
+                    height: 1.55,
+                    color: rd.muted,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: rd.card,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: rd.line),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: .06),
+                        blurRadius: 28,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 58,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: rd.periSoft,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: rd.peri.withValues(alpha: .35),
+                              ),
+                            ),
+                            child: Center(
+                              child: RdIcon(
+                                RdIcons.book,
+                                size: 28,
+                                color: rd.navy,
+                                strokeWidth: 1.6,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _fileName ?? l10n.rdCaptureScanDocument,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.vazirmatn(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.35,
+                                    color: rd.ink,
+                                  ),
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  _formatFileSize(_fileSizeBytes),
+                                  style: GoogleFonts.vazirmatn(
+                                    fontSize: 12,
+                                    color: rd.muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: failed
+                                  ? const Color(0x1FE24B4A)
+                                  : rd.periSoft,
+                            ),
+                            child: Center(
+                              child: busy
+                                  ? SizedBox(
+                                      width: 17,
+                                      height: 17,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: rd.peri,
+                                      ),
+                                    )
+                                  : RdIcon(
+                                      statusIcon,
+                                      size: 18,
+                                      color: failed
+                                          ? const Color(0xFFE24B4A)
+                                          : rd.peri,
+                                      strokeWidth: 2,
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(99),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween(end: progress),
+                          duration: const Duration(milliseconds: 500),
+                          builder: (context, value, _) =>
+                              LinearProgressIndicator(
+                                value: value,
+                                minHeight: 5,
+                                color: failed
+                                    ? const Color(0xFFE24B4A)
+                                    : rd.peri,
+                                backgroundColor: rd.line,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          RdIcon(
+                            statusIcon,
+                            size: 16,
+                            color: failed ? const Color(0xFFE24B4A) : rd.peri,
+                            strokeWidth: 2,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              status,
+                              style: GoogleFonts.vazirmatn(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: failed
+                                    ? const Color(0xFFE24B4A)
+                                    : rd.ink,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _fileScanStep(
+                  icon: RdIcons.folder,
+                  label: l10n.rdCaptureScanStepUpload,
+                  complete: _fileStage != 'uploading' && !failed,
+                  active: _fileStage == 'uploading',
+                ),
+                const SizedBox(height: 9),
+                _fileScanStep(
+                  icon: RdIcons.textT,
+                  label: l10n.rdCaptureScanStepRead,
+                  complete: ready || saved,
+                  active: _fileStage == 'extracting',
+                ),
+                const SizedBox(height: 9),
+                _fileScanStep(
+                  icon: RdIcons.search,
+                  label: l10n.rdCaptureScanStepSearch,
+                  complete: ready,
+                  active: false,
+                ),
+                if (ready && _fileReadableText.trim().isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(17),
+                    decoration: BoxDecoration(
+                      color: rd.periSoft.withValues(alpha: .65),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: rd.peri.withValues(alpha: .25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.rdCaptureScanPreview,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: rd.navy,
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        Text(
+                          _filePreviewText,
+                          maxLines: 6,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 13,
+                            height: 1.55,
+                            color: rd.ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RdIcon(
+                      RdIcons.shieldCheck,
+                      size: 17,
+                      color: rd.muted,
+                      strokeWidth: 1.7,
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        l10n.rdCaptureScanPrivacy,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 11.5,
+                          height: 1.5,
+                          color: rd.muted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(22, 12, 22, 16),
+          decoration: BoxDecoration(
+            color: rd.bg,
+            border: Border(top: BorderSide(color: rd.line)),
+          ),
+          child: Row(
+            children: [
+              if (failed) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _pickLibraryFile,
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      side: BorderSide(color: rd.line),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: Text(l10n.rdCaptureScanChooseAnother),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                flex: failed ? 1 : 2,
+                child: FilledButton(
+                  onPressed: busy
+                      ? null
+                      : ready
+                      ? _openUploadedFile
+                      : () => widget.go('library'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor: rd.navy,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  child: Text(
+                    busy
+                        ? status
+                        : ready
+                        ? l10n.rdCaptureScanOpen
+                        : l10n.rdCaptureScanBackToLibrary,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _fileScanStep({
+    required String icon,
+    required String label,
+    required bool complete,
+    required bool active,
+  }) {
+    final rd = context.rd;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: active ? rd.periSoft : rd.card,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: active ? rd.peri.withValues(alpha: .45) : rd.line,
+        ),
+      ),
+      child: Row(
+        children: [
+          RdIcon(icon, size: 17, color: active ? rd.navy : rd.muted),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? rd.ink : rd.muted,
+              ),
+            ),
+          ),
+          if (complete)
+            RdIcon(
+              RdIcons.checkCircle,
+              size: 17,
+              color: rd.peri,
+              strokeWidth: 2,
+            )
+          else if (active)
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: rd.peri),
+            )
+          else
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: rd.line),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String get _filePreviewText {
+    final text = _fileReadableText.trim().replaceAll(RegExp(r'\s+'), ' ');
+    return text.length > 520 ? '${text.substring(0, 517)}…' : text;
+  }
+
+  String _formatFileSize(int? bytes) {
+    if (bytes == null || bytes <= 0) return '—';
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  void _openUploadedFile() {
+    final item = _fileItem;
+    if (item == null) return;
+    widget.go(
+      'memory',
+      arg: RdMemoryArg(
+        id: item.id,
+        title: item.title.trim().isEmpty ? (_fileName ?? '') : item.title,
+        body: _fileReadableText.trim().isNotEmpty
+            ? _fileReadableText
+            : item.contentText ?? item.summary,
       ),
     );
   }

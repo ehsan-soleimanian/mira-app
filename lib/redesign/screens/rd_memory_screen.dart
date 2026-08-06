@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -12,6 +13,7 @@ import 'package:mira_app/features/reminders/reminders_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 
+import '../models/rd_markdown_document.dart';
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
 import '../widgets/rd_collection_picker.dart';
@@ -105,6 +107,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   String? _heroImageUrl;
   String _linkSummary = '';
   List<String> _linkHighlights = const [];
+  bool _isMarkdownMemory = false;
   late final TextEditingController _titleCtl = TextEditingController();
   late final TextEditingController _bodyCtl = TextEditingController();
   final FocusNode _bodyFocus = FocusNode();
@@ -163,6 +166,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
 
   bool _l10nReady = false;
   bool _storeHydrated = false;
+  bool _serverHydrated = false;
 
   @override
   void initState() {
@@ -182,6 +186,10 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     if (!_storeHydrated) {
       _storeHydrated = true;
       _hydrateFromStore();
+    }
+    if (!_serverHydrated && widget.id != null) {
+      _serverHydrated = true;
+      unawaited(_refreshLibraryItem());
     }
     if (!_l10nReady) {
       final l10n = AppLocalizations.of(context)!;
@@ -210,6 +218,7 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       final nextBody = content.isNotEmpty ? content : summary;
       final sourceUrl = item.sourceUrl;
       final isLink = item.type.toLowerCase() == 'link' || sourceUrl != null;
+      final isMarkdown = rdIsMarkdownLibraryItem(item);
       final preview = buildScrapedLinkPreview(
         content: content,
         summary: summary,
@@ -217,12 +226,14 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
       if (cachedTitle.isEmpty && nextBody.isEmpty) return;
       setState(() {
         _isLinkMemory = isLink;
+        _isMarkdownMemory = isMarkdown;
         _sourceUrl = sourceUrl;
         _heroImageUrl = item.thumbnailUrl ?? preview.heroImageUrl;
         _linkSummary = preview.summary;
         _linkHighlights = preview.highlights;
-        if ((_title.isEmpty || _title == 'Memory') && cachedTitle.isNotEmpty) {
-          _title = cachedTitle;
+        if ((_title.isEmpty || _title == 'Memory' || isMarkdown) &&
+            cachedTitle.isNotEmpty) {
+          _title = isMarkdown ? rdMarkdownFilename(cachedTitle) : cachedTitle;
         }
         if (_body.trim().isEmpty && nextBody.isNotEmpty) _body = nextBody;
       });
@@ -231,6 +242,52 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     applyCachedItem();
     if (!store.loaded) {
       unawaited(store.load().then((_) => applyCachedItem()));
+    }
+  }
+
+  /// Replaces navigation/cache snapshots with the canonical Library state.
+  /// Media workers finish asynchronously, so a card that was opened while
+  /// queued may already have a transcript by the time this screen appears.
+  Future<void> _refreshLibraryItem() async {
+    final id = widget.id;
+    if (id == null) return;
+    final services = AppScope.servicesOf(context);
+    try {
+      var item = await services.memoryStore.refreshItem(id);
+      if (item.extractionStatus == 'ready') {
+        final chunks = await services.libraryRepository.chunks(id);
+        final transcript = chunks
+            .map((chunk) => chunk.text.trim())
+            .where((text) => text.isNotEmpty)
+            .join('\n\n');
+        if (transcript.isNotEmpty) {
+          item = item.copyWith(contentText: transcript);
+          services.memoryStore.upsertLocal(item);
+        }
+      }
+      if (!mounted) return;
+      final content = sanitizeScrapedContentForDisplay(
+        item.contentText?.trim() ?? '',
+      );
+      final summary = sanitizeScrapedContentForDisplay(item.summary.trim());
+      final nextBody = content.isNotEmpty && content != item.sourceUrl
+          ? content
+          : summary;
+      final preview = buildScrapedLinkPreview(
+        content: content,
+        summary: summary,
+      );
+      setState(() {
+        if (item.title.trim().isNotEmpty) _title = item.title.trim();
+        if (nextBody.isNotEmpty) _body = nextBody;
+        _sourceUrl = item.sourceUrl;
+        _isLinkMemory = item.type.toLowerCase() == 'link' || _sourceUrl != null;
+        _heroImageUrl = item.thumbnailUrl ?? preview.heroImageUrl;
+        _linkSummary = preview.summary;
+        _linkHighlights = preview.highlights;
+      });
+    } catch (_) {
+      // Offline detail keeps the navigation/cache snapshot.
     }
   }
 
@@ -846,7 +903,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
           : AnimatedSwitcher(
               duration: const Duration(milliseconds: 280),
               switchInCurve: Curves.easeOutCubic,
-              child: _isLinkMemory
+              child: _isMarkdownMemory
+                  ? _markdownReader(key: const ValueKey('markdown-reader'))
+                  : _isLinkMemory
                   ? _linkMemoryCard(key: const ValueKey('link-memory'))
                   : KeyedSubtree(
                       key: const ValueKey('plain-memory'),
@@ -868,7 +927,9 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
   Widget _typeRow() {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
-    final label = _isLinkMemory
+    final label = _isMarkdownMemory
+        ? l10n.rdMemoryMarkdownBadge
+        : _isLinkMemory
         ? l10n.rdCaptureTypeLink
         : widget.isVoice
         ? l10n.rdMemoryVoiceNoteBadge('0:34')
@@ -892,7 +953,11 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
               // Icon stays navy on the periSoft badge (matches Library); the
               // label text uses `peri` so it reads on both light/dark periSoft.
               RdIcon(
-                widget.isVoice ? _voiceIcon : _noteIcon,
+                _isMarkdownMemory
+                    ? RdIcons.book
+                    : widget.isVoice
+                    ? _voiceIcon
+                    : _noteIcon,
                 size: 15,
                 stroke: '#14328C',
                 strokeWidth: 1.9,
@@ -1203,6 +1268,130 @@ class _RdMemoryScreenState extends State<RdMemoryScreen> {
     return Text(
       _body,
       style: GoogleFonts.vazirmatn(fontSize: 15.5, height: 1.62, color: rd.ink),
+    );
+  }
+
+  Widget _markdownReader({required Key key}) {
+    final rd = context.rd;
+    final l10n = AppLocalizations.of(context)!;
+    if (!rdHasReadableMarkdown(_body)) {
+      return Container(
+        key: key,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: rd.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.rdMemoryMarkdownUnavailableTitle,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: rd.ink,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              l10n.rdMemoryMarkdownUnavailableBody,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 13.5,
+                height: 1.6,
+                color: rd.muted,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      key: key,
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
+      decoration: BoxDecoration(
+        color: rd.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: rd.line),
+      ),
+      child: Directionality(
+        textDirection: rdMarkdownDirection(_body),
+        child: MarkdownBody(
+          data: _body,
+          selectable: true,
+          softLineBreak: true,
+          onTapLink: (_, href, _) {
+            final uri = href == null ? null : Uri.tryParse(href);
+            if (uri != null) unawaited(launchUrl(uri));
+          },
+          styleSheet: MarkdownStyleSheet(
+            p: GoogleFonts.vazirmatn(fontSize: 15, height: 1.72, color: rd.ink),
+            h1: GoogleFonts.vazirmatn(
+              fontSize: 25,
+              height: 1.35,
+              fontWeight: FontWeight.w800,
+              color: rd.ink,
+            ),
+            h2: GoogleFonts.vazirmatn(
+              fontSize: 21,
+              height: 1.4,
+              fontWeight: FontWeight.w700,
+              color: rd.ink,
+            ),
+            h3: GoogleFonts.vazirmatn(
+              fontSize: 18,
+              height: 1.45,
+              fontWeight: FontWeight.w700,
+              color: rd.ink,
+            ),
+            h4: GoogleFonts.vazirmatn(
+              fontSize: 16,
+              height: 1.45,
+              fontWeight: FontWeight.w700,
+              color: rd.ink,
+            ),
+            a: GoogleFonts.vazirmatn(
+              color: rd.navy,
+              decoration: TextDecoration.underline,
+              decorationColor: rd.navy,
+            ),
+            listBullet: GoogleFonts.vazirmatn(
+              fontSize: 15,
+              height: 1.7,
+              color: rd.ink,
+            ),
+            code: GoogleFonts.robotoMono(
+              fontSize: 12.5,
+              height: 1.55,
+              color: rd.ink,
+              backgroundColor: rd.bg,
+            ),
+            codeblockPadding: const EdgeInsets.all(14),
+            codeblockDecoration: BoxDecoration(
+              color: rd.bg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: rd.line),
+            ),
+            blockquotePadding: const EdgeInsets.fromLTRB(14, 9, 12, 9),
+            blockquoteDecoration: BoxDecoration(
+              color: rd.periSoft.withValues(alpha: .55),
+              border: BorderDirectional(
+                start: BorderSide(color: rd.peri, width: 3),
+              ),
+            ),
+            horizontalRuleDecoration: BoxDecoration(
+              border: Border(top: BorderSide(color: rd.line)),
+            ),
+            tableBorder: TableBorder.all(color: rd.line),
+            tableCellsPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 8,
+            ),
+          ),
+        ),
+      ),
     );
   }
 

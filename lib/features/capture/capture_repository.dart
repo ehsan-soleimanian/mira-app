@@ -75,8 +75,11 @@ class CaptureRepository {
   /// `processing`) when [maxAttempts] is exhausted.
   Future<CaptureResponse> pollCaptureUntilReady(
     String captureId, {
-    int maxAttempts = 8,
-    Duration interval = const Duration(milliseconds: 700),
+    // Vision + graph extraction can take longer than text capture.  Keep the
+    // transient capture alive long enough for the worker to produce a review
+    // proposal instead of dismissing it while it is still processing.
+    int maxAttempts = 35,
+    Duration interval = const Duration(milliseconds: 800),
   }) async {
     CaptureResponse? last;
     for (var attempt = 0; attempt < maxAttempts; attempt++) {
@@ -296,6 +299,7 @@ class CaptureRepository {
   Future<CaptureResponse> createImageCapture({
     required List<int> bytes,
     required String filename,
+    String? mimeType,
     String? caption,
   }) async {
     final formData = FormData.fromMap({
@@ -304,7 +308,11 @@ class CaptureRepository {
       'channel': 'mobile',
       'timezone': DeviceLocaleContext.timezone,
       'locale': DeviceLocaleContext.languageTag,
-      'file': MultipartFile.fromBytes(bytes, filename: filename),
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: _mediaType(mimeType),
+      ),
     });
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/image',
@@ -316,6 +324,7 @@ class CaptureRepository {
   Future<CaptureResponse> createCameraCapture({
     required List<int> bytes,
     required String filename,
+    String? mimeType,
     String? caption,
   }) async {
     final formData = FormData.fromMap({
@@ -324,13 +333,27 @@ class CaptureRepository {
       'channel': 'mobile',
       'timezone': DeviceLocaleContext.timezone,
       'locale': DeviceLocaleContext.languageTag,
-      'file': MultipartFile.fromBytes(bytes, filename: filename),
+      'file': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: _mediaType(mimeType),
+      ),
     });
     final response = await _dio.post<Map<String, dynamic>>(
       '/captures/camera',
       data: formData,
     );
     return CaptureResponse.fromJson(response.data!);
+  }
+
+  DioMediaType? _mediaType(String? value) {
+    final normalized = value?.trim();
+    if (normalized == null || normalized.isEmpty) return null;
+    try {
+      return DioMediaType.parse(normalized);
+    } on FormatException {
+      return null;
+    }
   }
 
   Future<CaptureResponse> createFileCapture({
