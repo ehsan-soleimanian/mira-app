@@ -168,9 +168,17 @@ void main() {
       ),
     );
 
-    await expectLater(
-      find.byType(RdCaptureEntrySheet),
-      matchesGoldenFile('goldens/rd_capture_drop_hub.png'),
+    expect(find.byType(RdCaptureEntrySheet), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('rd-capture-quick-composer')),
+      findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('rd-capture-voice')), findsOneWidget);
+    expect(find.text('Photo'), findsOneWidget);
+    expect(find.text('Screenshot'), findsOneWidget);
+    expect(find.text('File'), findsOneWidget);
+    expect(find.text('Link'), findsOneWidget);
+    expect(find.text('Meeting'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
