@@ -16,16 +16,29 @@ env:
   MOBILE_APK_URL: https://miramind.io/downloads/mira-latest.apk
   MOBILE_MANIFEST_URL: https://miramind.io/downloads/version.json
 
+# Keep this workflow free of external `uses:` actions. During a GitHub Actions
+# incident the runner may be healthy while the action-download service is not;
+# direct commands let test and release continue without actions/checkout,
+# setup-flutter, setup-java, or a release action.
 jobs:
-  test:
+  test-and-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout commit
+        env:
+          REPOSITORY_TOKEN: ${{ github.token }}
+        run: |
+          git init .
+          git remote add origin "https://x-access-token:${REPOSITORY_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch --depth=1 origin "${GITHUB_SHA}"
+          git checkout --detach FETCH_HEAD
 
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
+      - name: Install Flutter stable
+        run: |
+          git clone --depth=1 --branch=stable https://github.com/flutter/flutter.git "${RUNNER_TEMP}/flutter"
+          echo "${RUNNER_TEMP}/flutter/bin" >> "${GITHUB_PATH}"
+          "${RUNNER_TEMP}/flutter/bin/flutter" config --no-analytics
+          "${RUNNER_TEMP}/flutter/bin/flutter" precache --android
 
       - name: Install dependencies
         run: flutter pub get
@@ -36,34 +49,19 @@ jobs:
       - name: Test
         run: flutter test
 
-  release:
-    needs: test
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
       - name: Compute release version
         id: version
         run: |
           BASE=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d+ -f1)
           BUILD=${{ github.run_number }}
-          echo "name=${BASE}" >> "$GITHUB_OUTPUT"
-          echo "build=${BUILD}" >> "$GITHUB_OUTPUT"
-          echo "full=${BASE}+${BUILD}" >> "$GITHUB_OUTPUT"
+          echo "name=${BASE}" >> "${GITHUB_OUTPUT}"
+          echo "build=${BUILD}" >> "${GITHUB_OUTPUT}"
+          echo "full=${BASE}+${BUILD}" >> "${GITHUB_OUTPUT}"
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Install dependencies
-        run: flutter pub get
+      - name: Verify Java and Android toolchain
+        run: |
+          java -version
+          flutter doctor -v
 
       - name: Configure Android signing
         env:
@@ -73,7 +71,7 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           if [ -n "${ANDROID_KEYSTORE_BASE64}" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.keystore
+            echo "${ANDROID_KEYSTORE_BASE64}" | base64 -d > android/app/release.keystore
             cat > android/key.properties <<EOF
           storePassword=${ANDROID_KEYSTORE_PASSWORD}
           keyPassword=${ANDROID_KEY_PASSWORD}
@@ -105,7 +103,7 @@ jobs:
             "versionName": "${{ steps.version.outputs.name }}",
             "buildNumber": ${{ steps.version.outputs.build }},
             "minBuildNumber": 1,
-            "downloadUrl": "${{ env.MOBILE_APK_URL }}",
+            "downloadUrl": "${MOBILE_APK_URL}",
             "optional": true
           }
           EOF
@@ -119,7 +117,7 @@ jobs:
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          printf '%s\n' "${DEPLOY_SSH_KEY}" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           export DEPLOY_SSH_KEY_FILE=~/.ssh/deploy_key
           bash scripts/deploy-mobile-apk.sh \
@@ -128,20 +126,15 @@ jobs:
 
       - name: Verify public manifest
         run: |
-          curl -sf "${{ env.MOBILE_MANIFEST_URL }}" | tee /tmp/version.json
+          curl -sf "${MOBILE_MANIFEST_URL}" | tee /tmp/version.json
           grep -q '"downloadUrl".*miramind.io/downloads/mira-latest.apk' /tmp/version.json
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.full }}
-          name: Mira ${{ steps.version.outputs.full }}
-          body: |
-            Automated Android release for commit ${{ github.sha }}.
-
-            Production download: ${{ env.MOBILE_APK_URL }}
-          files: |
-            build/app/outputs/flutter-apk/app-release.apk
-            version.json
-          draft: false
-          prerelease: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.version.outputs.full }}" \
+            build/app/outputs/flutter-apk/app-release.apk \
+            version.json \
+            --title "Mira ${{ steps.version.outputs.full }}" \
+            --notes "Automated Android release for commit ${GITHUB_SHA}.\n\nProduction download: ${MOBILE_APK_URL}"
