@@ -7,6 +7,7 @@ import 'package:mira_app/app/memory_store.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
+import '../models/rd_library_item_presentation.dart';
 import '../theme/rd_colors.dart';
 import '../theme/rd_theme.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -105,7 +106,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 
   _LibMem _toLibMem(LibraryItem item) {
     final l10n = AppLocalizations.of(context)!;
-    final type = _memTypeFor(item.type);
+    final type = rdLibraryItemKindFor(item);
     final title = item.title.trim();
     return _LibMem(
       id: item.id,
@@ -122,40 +123,32 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     );
   }
 
-  static _MemType _memTypeFor(String type) {
-    switch (type.toLowerCase()) {
-      case 'voice':
-      case 'audio':
-      case 'meeting':
-        return _MemType.voice;
-      case 'link':
-      case 'url':
-      case 'article':
-        return _MemType.link;
-      case 'image':
-      case 'photo':
-      case 'pdf':
-      case 'file':
-        return _MemType.photo;
-      case 'event':
-        return _MemType.event;
-      default:
-        return _MemType.note;
-    }
-  }
-
-  String _typeLabelFor(AppLocalizations l10n, _MemType t) {
+  String _typeLabelFor(AppLocalizations l10n, RdLibraryItemKind t) {
     switch (t) {
-      case _MemType.voice:
-        return l10n.rdLibraryTypeVoice;
-      case _MemType.link:
-        return l10n.rdLibraryTypeLink;
-      case _MemType.photo:
-        return l10n.rdLibraryTypePhoto;
-      case _MemType.event:
+      case RdLibraryItemKind.task:
+        return l10n.rdCaptureTypeTask;
+      case RdLibraryItemKind.event:
         return l10n.rdLibraryTypeEvent;
-      case _MemType.note:
+      case RdLibraryItemKind.reminder:
+        return l10n.rdCaptureConvertReminder;
+      case RdLibraryItemKind.meeting:
+        return l10n.rdCaptureConvertMeeting;
+      case RdLibraryItemKind.meetingResult:
+        return l10n.rdCaptureConvertMeetingResult;
+      case RdLibraryItemKind.screenshot:
+        return l10n.rdCaptureModeScreenshot;
+      case RdLibraryItemKind.note:
         return l10n.rdLibraryTypeNote;
+      case RdLibraryItemKind.document:
+        return l10n.rdCaptureConvertDocument;
+      case RdLibraryItemKind.summary:
+        return l10n.rdCaptureConvertSummary;
+      case RdLibraryItemKind.voice:
+        return l10n.rdLibraryTypeVoice;
+      case RdLibraryItemKind.link:
+        return l10n.rdLibraryTypeLink;
+      case RdLibraryItemKind.person:
+        return l10n.rdCaptureTypePerson;
     }
   }
 
@@ -220,7 +213,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
         id: m.id,
         title: m.title,
         body: m.body.isNotEmpty ? m.body : m.sub,
-        isVoice: m.type == _MemType.voice,
+        isVoice: m.type == RdLibraryItemKind.voice,
       ),
     );
   }
@@ -405,15 +398,22 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   /// Maps a library memory type to a board card `kind`. The board styles only
   /// voice / link distinctly; everything else reads best as a basic note card
   /// (so the real title + summary show, not the photo card's fixed artwork).
-  static String _boardKindFor(_MemType t) {
+  static String _boardKindFor(RdLibraryItemKind t) {
     switch (t) {
-      case _MemType.voice:
+      case RdLibraryItemKind.voice:
         return 'voice';
-      case _MemType.link:
+      case RdLibraryItemKind.link:
         return 'link';
-      case _MemType.note:
-      case _MemType.photo:
-      case _MemType.event:
+      case RdLibraryItemKind.task:
+      case RdLibraryItemKind.event:
+      case RdLibraryItemKind.reminder:
+      case RdLibraryItemKind.meeting:
+      case RdLibraryItemKind.meetingResult:
+      case RdLibraryItemKind.screenshot:
+      case RdLibraryItemKind.note:
+      case RdLibraryItemKind.document:
+      case RdLibraryItemKind.summary:
+      case RdLibraryItemKind.person:
         return 'note';
     }
   }
@@ -1108,11 +1108,22 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     final l10n = AppLocalizations.of(context)!;
     final chips = [
       ('all', l10n.rdLibraryFilterAll, null),
+      ('task', l10n.rdCaptureTypeTask, RdIcons.checkCircle),
+      ('event', l10n.rdLibraryTypeEvent, RdIcons.calendar),
+      ('reminder', l10n.rdCaptureConvertReminder, RdIcons.bell),
+      ('meeting', l10n.rdCaptureConvertMeeting, RdIcons.people),
+      (
+        'meeting_result',
+        l10n.rdCaptureConvertMeetingResult,
+        RdIcons.checkCircle,
+      ),
+      ('screenshot', l10n.rdCaptureModeScreenshot, RdIcons.photo),
       ('note', l10n.rdLibraryFilterNotes, RdIcons.pencil),
+      ('document', l10n.rdCaptureConvertDocument, RdIcons.book),
+      ('summary', l10n.rdCaptureConvertSummary, RdIcons.textT),
       ('voice', l10n.rdLibraryFilterVoice, RdIcons.micSimple),
-      ('photo', l10n.rdLibraryFilterPhotos, RdIcons.photo),
       ('link', l10n.rdLibraryFilterLinks, RdIcons.linkChain),
-      ('event', l10n.rdLibraryFilterEvents, RdIcons.calendar),
+      ('person', l10n.rdCaptureTypePerson, RdIcons.user),
     ];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -1499,17 +1510,6 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
 // ── data ──────────────────────────────────────────────────────────────
 enum _DayBucket { today, thisWeek, earlier }
 
-enum _MemType {
-  note('note'),
-  voice('voice'),
-  photo('photo'),
-  link('link'),
-  event('event');
-
-  const _MemType(this.id);
-  final String id;
-}
-
 class _LibMem {
   const _LibMem({
     required this.id,
@@ -1525,7 +1525,7 @@ class _LibMem {
 
   final String id;
   final _DayBucket dayBucket;
-  final _MemType type;
+  final RdLibraryItemKind type;
   final String title;
   final String sub;
   final String body;
@@ -1536,38 +1536,87 @@ class _LibMem {
 
 // Type → icon body + colour treatment for the memory tile's leading square.
 ({String icon, Color bg, String stroke, List<Color>? gradient}) _typeStyle(
-  _MemType t,
+  RdLibraryItemKind t,
 ) {
   switch (t) {
-    case _MemType.note:
+    case RdLibraryItemKind.task:
       return (
-        icon: RdIcons.pencil,
-        bg: const Color(0xFFEDEFF8),
-        stroke: '#14328C',
-        gradient: null,
-      );
-    case _MemType.voice:
-      return (
-        icon: RdIcons.mic,
-        bg: const Color(0xFFE7EFEA),
+        icon: RdIcons.checkCircle,
+        bg: const Color(0xFFE8F2EC),
         stroke: '#2E7D4F',
         gradient: null,
       );
-    case _MemType.link:
-      return (
-        icon: RdIcons.linkChain,
-        bg: const Color(0xFFFBEFE7),
-        stroke: '#B65A2E',
-        gradient: null,
-      );
-    case _MemType.event:
+    case RdLibraryItemKind.event:
       return (
         icon: RdIcons.calendar,
         bg: const Color(0xFFEAE7F6),
         stroke: '#5B4B9E',
         gradient: null,
       );
-    case _MemType.photo:
+    case RdLibraryItemKind.reminder:
+      return (
+        icon: RdIcons.bell,
+        bg: const Color(0xFFFFF1D9),
+        stroke: '#9A6518',
+        gradient: null,
+      );
+    case RdLibraryItemKind.meeting:
+      return (
+        icon: RdIcons.people,
+        bg: const Color(0xFFE7EFF5),
+        stroke: '#326784',
+        gradient: null,
+      );
+    case RdLibraryItemKind.meetingResult:
+      return (
+        icon: RdIcons.checkCircle,
+        bg: const Color(0xFFE7EFF5),
+        stroke: '#326784',
+        gradient: null,
+      );
+    case RdLibraryItemKind.note:
+      return (
+        icon: RdIcons.pencil,
+        bg: const Color(0xFFEDEFF8),
+        stroke: '#14328C',
+        gradient: null,
+      );
+    case RdLibraryItemKind.document:
+      return (
+        icon: RdIcons.book,
+        bg: const Color(0xFFF0ECE5),
+        stroke: '#745B36',
+        gradient: null,
+      );
+    case RdLibraryItemKind.summary:
+      return (
+        icon: RdIcons.textT,
+        bg: const Color(0xFFEDEFF8),
+        stroke: '#14328C',
+        gradient: null,
+      );
+    case RdLibraryItemKind.voice:
+      return (
+        icon: RdIcons.mic,
+        bg: const Color(0xFFE7EFEA),
+        stroke: '#2E7D4F',
+        gradient: null,
+      );
+    case RdLibraryItemKind.link:
+      return (
+        icon: RdIcons.linkChain,
+        bg: const Color(0xFFFBEFE7),
+        stroke: '#B65A2E',
+        gradient: null,
+      );
+    case RdLibraryItemKind.person:
+      return (
+        icon: RdIcons.user,
+        bg: const Color(0xFFF4E8EF),
+        stroke: '#8A4268',
+        gradient: null,
+      );
+    case RdLibraryItemKind.screenshot:
       return (
         icon: RdIcons.photo,
         bg: const Color(0xFF14328C),
@@ -1766,19 +1815,33 @@ class _MemTile extends StatelessWidget {
     );
   }
 
-  String _typeLabel(BuildContext context, _MemType t) {
+  String _typeLabel(BuildContext context, RdLibraryItemKind t) {
     final l10n = AppLocalizations.of(context)!;
     switch (t) {
-      case _MemType.voice:
-        return l10n.rdLibraryTypeVoice;
-      case _MemType.link:
-        return l10n.rdLibraryTypeLink;
-      case _MemType.photo:
-        return l10n.rdLibraryTypePhoto;
-      case _MemType.event:
+      case RdLibraryItemKind.task:
+        return l10n.rdCaptureTypeTask;
+      case RdLibraryItemKind.event:
         return l10n.rdLibraryTypeEvent;
-      case _MemType.note:
+      case RdLibraryItemKind.reminder:
+        return l10n.rdCaptureConvertReminder;
+      case RdLibraryItemKind.meeting:
+        return l10n.rdCaptureConvertMeeting;
+      case RdLibraryItemKind.meetingResult:
+        return l10n.rdCaptureConvertMeetingResult;
+      case RdLibraryItemKind.screenshot:
+        return l10n.rdCaptureModeScreenshot;
+      case RdLibraryItemKind.note:
         return l10n.rdLibraryTypeNote;
+      case RdLibraryItemKind.document:
+        return l10n.rdCaptureConvertDocument;
+      case RdLibraryItemKind.summary:
+        return l10n.rdCaptureConvertSummary;
+      case RdLibraryItemKind.voice:
+        return l10n.rdLibraryTypeVoice;
+      case RdLibraryItemKind.link:
+        return l10n.rdLibraryTypeLink;
+      case RdLibraryItemKind.person:
+        return l10n.rdCaptureTypePerson;
     }
   }
 

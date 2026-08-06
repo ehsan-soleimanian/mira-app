@@ -737,6 +737,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdHomeMemoryReady => 'حافظه‌ات\nآرام و آماده است';
 
   @override
+  String get rdHomeExploreMemory => 'حافظه‌ات را ببین';
+
+  @override
   String get rdHomeComposerHint => 'هر چیزی داری، اینجا رها کن…';
 
   @override
@@ -1077,7 +1080,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureRelatedMemory => 'خاطرهٔ مرتبط';
 
   @override
-  String get rdCaptureSuggestedActions => 'اقدام‌های پیشنهادی';
+  String get rdCaptureSuggestedActions => 'اگر خواستی';
 
   @override
   String get rdCaptureRemindWeekend => 'بعداً بخوان — آخر هفته یادآوری کن';
@@ -1137,9 +1140,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureReadPage => 'میرا صفحه را خواند';
 
   @override
-  String rdCaptureLinkCrawlReady(String provider) {
-    return 'محتوای صفحه با $provider خوانده شد.';
-  }
+  String get rdCaptureLinkCrawlReady => 'صفحه با موفقیت خوانده شد';
 
   @override
   String get rdCaptureLinkMetadataOnly =>
@@ -1169,10 +1170,13 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureReview => 'بازبینی';
 
   @override
+  String get rdCaptureBack => 'بازگشت';
+
+  @override
   String get rdCaptureCancel => 'لغو';
 
   @override
-  String get rdCaptureDiscard => 'دور انداختن';
+  String get rdCaptureDiscard => 'ذخیره نکن';
 
   @override
   String get rdCaptureDone => 'تمام';
@@ -1190,7 +1194,7 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
-  String get rdCaptureAddToMemory => 'افزودن به حافظه';
+  String get rdCaptureAddToMemory => 'در میرا نگه دار';
 
   @override
   String rdCaptureAddLinking(int count) {
@@ -2964,6 +2968,30 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCanvasUnlinkFail => 'حذف ارتباط ممکن نشد';
 
   @override
+  String get rdCanvasHideNode => 'حذف از نقشه';
+
+  @override
+  String get rdCanvasOpenDetails => 'باز کردن اکشن‌ها';
+
+  @override
+  String get rdCanvasHideNodeBody =>
+      'فقط این نود روی این دستگاه پنهان می‌شود. حافظه و ارتباط‌هایش امن می‌مانند.';
+
+  @override
+  String get rdCanvasHideNodeDone => 'نود از نقشه حذف شد';
+
+  @override
+  String get rdCanvasDeleteMemoryBody =>
+      'حافظه منبع حذف و ارتباط‌هایی که فقط به آن متکی‌اند جمع می‌شوند. موجودیت‌های مشترک، اگر حافظه دیگری پشتیبانشان باشد، باقی می‌مانند.';
+
+  @override
+  String get rdCanvasDeleteEntityBody =>
+      'حافظه‌های منبعی که این موجودیت را به میرا یاد داده‌اند حذف می‌شوند؛ سپس موجودیت و ارتباط‌های بدون پشتوانه از گراف ناپدید می‌شوند.';
+
+  @override
+  String get rdCanvasDeleteFail => 'حذف این حافظه ممکن نشد';
+
+  @override
   String get rdCanvasSyncPending =>
       'با اطمینان ثبت شد — گراف حافظه در حال همگام‌سازی است';
 
@@ -3014,13 +3042,70 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureActionAskAnswerTitle => 'جواب میرا';
 
   @override
-  String get rdCaptureActionEdit => 'ویرایش پیشنهاد';
+  String get rdCaptureActionEdit => 'ویرایش جزئیات';
 
   @override
-  String get rdCaptureActionEditSub => 'قبل از تأیید یک فیلد را عوض کن';
+  String get rdCaptureActionEditSub =>
+      'پیش از ذخیره، عنوان یا خلاصه را تغییر بده';
 
   @override
-  String get rdCaptureActionEditHint => 'عنوان به‌روز';
+  String get rdCaptureActionEditHint => 'عنوان';
+
+  @override
+  String get rdCaptureActionConvert => 'تغییر نوع';
+
+  @override
+  String get rdCaptureActionConvertSub =>
+      'مشخص کن میرا این مورد را با چه نوعی ذخیره کند';
+
+  @override
+  String get rdCaptureConvertTitle => 'تغییر نوع مورد';
+
+  @override
+  String get rdCaptureConvertBody =>
+      'فقط پیش‌نویس بازبینی را پیش از ذخیره تغییر می‌دهد و ورودی اصلی دست‌نخورده می‌ماند.';
+
+  @override
+  String get rdCaptureActionConverted => 'نوع مورد به‌روز شد.';
+
+  @override
+  String get rdCaptureConvertNote => 'یادداشت';
+
+  @override
+  String get rdCaptureConvertTask => 'کار';
+
+  @override
+  String get rdCaptureConvertReminder => 'یادآوری';
+
+  @override
+  String get rdCaptureConvertEvent => 'رویداد';
+
+  @override
+  String get rdCaptureConvertDecision => 'تصمیم';
+
+  @override
+  String get rdCaptureConvertCommitment => 'تعهد';
+
+  @override
+  String get rdCaptureConvertPerson => 'شخص';
+
+  @override
+  String get rdCaptureConvertSummary => 'خلاصه';
+
+  @override
+  String get rdCaptureConvertMeeting => 'جلسه';
+
+  @override
+  String get rdCaptureConvertMeetingResult => 'نتیجه جلسه';
+
+  @override
+  String get rdCaptureConvertDocument => 'دانش سند';
+
+  @override
+  String get rdCaptureEditSummaryHint => 'خلاصه';
+
+  @override
+  String get rdCaptureSaveChanges => 'ذخیره تغییرات';
 
   @override
   String get rdCaptureActionComplete => 'تکمیل کن';
@@ -3085,7 +3170,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdCaptureActionCompletedItem => 'مورد در پیش‌نویس تکمیل شد.';
 
   @override
-  String get rdCaptureActionEdited => 'پیشنهاد به‌روز شد.';
+  String get rdCaptureActionEdited => 'جزئیات به‌روز شد.';
 
   @override
   String get rdCaptureExecutionsTitle => 'پیش‌نویس‌های خارجی';

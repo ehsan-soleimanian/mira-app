@@ -43,10 +43,10 @@ void main() {
     );
 
     expect(resolveReviewPrimaryAction(resultCard: card)?.id, 'capture.approve');
-    expect(
-      resolveReviewSecondaryActions(resultCard: card).map((a) => a.id),
-      ['communication.share', 'capture.ask'],
-    );
+    expect(resolveReviewSecondaryActions(resultCard: card).map((a) => a.id), [
+      'communication.share',
+      'capture.ask',
+    ]);
   });
 
   test('falls back to availableActions when nextStep is empty', () {
@@ -57,16 +57,8 @@ void main() {
         endpoint: '/a',
         style: 'primary',
       ),
-      CaptureAction(
-        id: 'proposal.edit',
-        label: 'Edit',
-        endpoint: '/b',
-      ),
-      CaptureAction(
-        id: 'source.open',
-        label: 'Open',
-        endpoint: '/c',
-      ),
+      CaptureAction(id: 'proposal.edit', label: 'Edit', endpoint: '/b'),
+      CaptureAction(id: 'source.open', label: 'Open', endpoint: '/c'),
     ];
 
     expect(
@@ -90,6 +82,19 @@ void main() {
     expect(
       localizeCaptureActionSubtitle(share, l10n),
       l10n.rdCaptureActionExternalHint,
+    );
+    const schedule = CaptureAction(
+      id: 'content.schedule',
+      label: 'Schedule',
+      endpoint: '/schedule',
+    );
+    expect(
+      localizeCaptureActionLabel(schedule, l10n),
+      l10n.rdCaptureActionCalendar,
+    );
+    expect(
+      localizeCaptureActionSubtitle(schedule, l10n),
+      l10n.rdCaptureActionCalendarSub,
     );
   });
 

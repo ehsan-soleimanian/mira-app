@@ -39,6 +39,18 @@ class RdChatArg {
   final RdMemoryArg? memory;
 }
 
+/// Opens Canvas directly in one of its three user-facing memory views.
+class RdCanvasArg {
+  const RdCanvasArg(this.initialMode)
+    : assert(
+        initialMode == 'board' ||
+            initialMode == 'clusters' ||
+            initialMode == 'map',
+      );
+
+  final String initialMode;
+}
+
 /// Carries onboarding context (email, display name, optional first capture)
 /// across the first-run flow screens.
 class RdOnboardingArg {
@@ -78,6 +90,7 @@ class RdBottomNav extends StatelessWidget {
     final navInset = context.rdNavBarInset;
 
     return SizedBox(
+      width: double.infinity,
       height: 94 + navInset,
       child: Stack(
         alignment: Alignment.topCenter,

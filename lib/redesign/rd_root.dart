@@ -82,7 +82,7 @@ class _RdRootState extends State<RdRoot> {
       if (_tabs.contains(screen) || screen == 'splash') {
         _stack
           ..clear()
-          ..add((id: screen, arg: null));
+          ..add((id: screen, arg: arg));
         return;
       }
       final idx = _stack.indexWhere((e) => e.id == screen);
@@ -133,7 +133,10 @@ class _RdRootState extends State<RdRoot> {
       case 'library':
         return RdLibraryScreen(go: _go);
       case 'canvas':
-        return RdCanvasScreen(go: _go);
+        return RdCanvasScreen(
+          go: _go,
+          initialMode: arg is RdCanvasArg ? arg.initialMode : 'board',
+        );
       case 'splash':
         return RdSplashScreen(go: _go);
       case 'login':

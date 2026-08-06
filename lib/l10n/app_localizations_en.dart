@@ -736,6 +736,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdHomeMemoryReady => 'Your memory is\nquiet and ready';
 
   @override
+  String get rdHomeExploreMemory => 'EXPLORE YOUR MEMORY';
+
+  @override
   String get rdHomeComposerHint => 'Drop anything here…';
 
   @override
@@ -1079,7 +1082,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureRelatedMemory => 'Related memory';
 
   @override
-  String get rdCaptureSuggestedActions => 'Suggested actions';
+  String get rdCaptureSuggestedActions => 'You can also';
 
   @override
   String get rdCaptureRemindWeekend => 'Read it later — remind me this weekend';
@@ -1138,9 +1141,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureReadPage => 'Mira read the page';
 
   @override
-  String rdCaptureLinkCrawlReady(String provider) {
-    return 'Page content read with $provider.';
-  }
+  String get rdCaptureLinkCrawlReady => 'Page read successfully';
 
   @override
   String get rdCaptureLinkMetadataOnly =>
@@ -1170,10 +1171,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureReview => 'Review';
 
   @override
+  String get rdCaptureBack => 'Back';
+
+  @override
   String get rdCaptureCancel => 'Cancel';
 
   @override
-  String get rdCaptureDiscard => 'Discard';
+  String get rdCaptureDiscard => 'Don\'t save';
 
   @override
   String get rdCaptureDone => 'Done';
@@ -1191,7 +1195,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get rdCaptureAddToMemory => 'Add to memory';
+  String get rdCaptureAddToMemory => 'Keep in Mira';
 
   @override
   String rdCaptureAddLinking(int count) {
@@ -2977,6 +2981,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCanvasUnlinkFail => 'Couldn\'t remove that connection';
 
   @override
+  String get rdCanvasHideNode => 'Remove from map';
+
+  @override
+  String get rdCanvasOpenDetails => 'Open actions';
+
+  @override
+  String get rdCanvasHideNodeBody =>
+      'This only hides the node on this device. Your memory and its connections stay safe.';
+
+  @override
+  String get rdCanvasHideNodeDone => 'Node removed from map';
+
+  @override
+  String get rdCanvasDeleteMemoryBody =>
+      'This removes the source memory and retracts connections supported only by it. Shared entities stay when other memories support them.';
+
+  @override
+  String get rdCanvasDeleteEntityBody =>
+      'This deletes the source memories that taught Mira this entity. The entity and unsupported connections will then disappear from the graph.';
+
+  @override
+  String get rdCanvasDeleteFail => 'Couldn\'t delete this memory';
+
+  @override
   String get rdCanvasSyncPending => 'Saved safely — syncing the memory graph';
 
   @override
@@ -3026,13 +3054,70 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdCaptureActionAskAnswerTitle => 'Mira\'s answer';
 
   @override
-  String get rdCaptureActionEdit => 'Edit proposal';
+  String get rdCaptureActionEdit => 'Edit details';
 
   @override
-  String get rdCaptureActionEditSub => 'Change a field before committing';
+  String get rdCaptureActionEditSub =>
+      'Change the title or summary before saving';
 
   @override
-  String get rdCaptureActionEditHint => 'Updated title';
+  String get rdCaptureActionEditHint => 'Title';
+
+  @override
+  String get rdCaptureActionConvert => 'Change type';
+
+  @override
+  String get rdCaptureActionConvertSub =>
+      'Choose how Mira should save this item';
+
+  @override
+  String get rdCaptureConvertTitle => 'Change item type';
+
+  @override
+  String get rdCaptureConvertBody =>
+      'This updates the review draft before it is saved. It does not change the original input.';
+
+  @override
+  String get rdCaptureActionConverted => 'Item type updated.';
+
+  @override
+  String get rdCaptureConvertNote => 'Note';
+
+  @override
+  String get rdCaptureConvertTask => 'Task';
+
+  @override
+  String get rdCaptureConvertReminder => 'Reminder';
+
+  @override
+  String get rdCaptureConvertEvent => 'Event';
+
+  @override
+  String get rdCaptureConvertDecision => 'Decision';
+
+  @override
+  String get rdCaptureConvertCommitment => 'Commitment';
+
+  @override
+  String get rdCaptureConvertPerson => 'Person';
+
+  @override
+  String get rdCaptureConvertSummary => 'Summary';
+
+  @override
+  String get rdCaptureConvertMeeting => 'Meeting';
+
+  @override
+  String get rdCaptureConvertMeetingResult => 'Meeting result';
+
+  @override
+  String get rdCaptureConvertDocument => 'Document knowledge';
+
+  @override
+  String get rdCaptureEditSummaryHint => 'Summary';
+
+  @override
+  String get rdCaptureSaveChanges => 'Save changes';
 
   @override
   String get rdCaptureActionComplete => 'Mark complete';
@@ -3099,7 +3184,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Item marked complete in the draft.';
 
   @override
-  String get rdCaptureActionEdited => 'Proposal updated.';
+  String get rdCaptureActionEdited => 'Details updated.';
 
   @override
   String get rdCaptureExecutionsTitle => 'External drafts';

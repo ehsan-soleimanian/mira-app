@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mira_app/app/app_scope.dart';
 import 'package:mira_app/app/mira_services.dart';
 import 'package:mira_app/features/capture/media/capture_media_picker.dart';
+import 'package:mira_app/features/capture/utils/capture_errors.dart';
 import 'package:mira_app/features/capture/utils/capture_review_actions.dart';
 import 'package:mira_app/features/capture/utils/proposal_display.dart';
 import 'package:mira_app/features/capture/voice/device_voice_recorder.dart';
@@ -115,6 +116,10 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   // Change-type override — null falls back to the auto-detected / default type.
   String? _typeName;
   String? _typeIcon;
+  bool _editingProposal = false;
+  CaptureAction? _editingProposalAction;
+  final TextEditingController _editTitleController = TextEditingController();
+  final TextEditingController _editSummaryController = TextEditingController();
 
   // What was captured — drives the review's preview header, eyebrow and default
   // type, and which persist path "Add to memory" takes.
@@ -123,8 +128,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   String? _pendingUrl; // held for link confirm
   String? _pendingTitle;
   String _linkCrawlState = 'idle'; // idle | ready | metadata_only | failed
-  String? _linkCrawlMethod;
-  bool _savingLink = false;
   VoiceRecordingResult? _meetingRecording;
   bool _meetingSaving = false;
 
@@ -163,6 +166,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       case RdCaptureMode.file:
         WidgetsBinding.instance.addPostFrameCallback((_) => _pickLibraryFile());
       case RdCaptureMode.type:
+        _kind = 'text';
         final initialText = widget.initialText?.trim() ?? '';
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (initialText.isEmpty) {
@@ -189,6 +193,8 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       unawaited(recorder.cancel().catchError((_) {}));
       if (recorder is DeviceVoiceRecorder) recorder.dispose();
     }
+    _editTitleController.dispose();
+    _editSummaryController.dispose();
     super.dispose();
   }
 
@@ -352,11 +358,11 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _pendingUrl = null;
       _pendingTitle = null;
       _linkCrawlState = 'idle';
-      _linkCrawlMethod = null;
-      _savingLink = false;
       _chips = null;
       _typeName = null;
       _typeIcon = null;
+      _editingProposal = false;
+      _editingProposalAction = null;
     });
     unawaited(_beginRecording());
     _secTimer = Timer.periodic(
@@ -752,6 +758,23 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         streamOk = false;
       }
 
+      // Proposal SSE events do not always include the authoritative revision.
+      // Reconcile once before Review so save/convert cannot submit revision 0
+      // for a newer server-owned draft.
+      try {
+        final fresh = await services.captureRepository.getCapture(captureId);
+        if (fresh.proposal != null) proposalJson = fresh.proposal;
+        resultCard = fresh.resultCard ?? resultCard;
+        if (fresh.availableActions.isNotEmpty) {
+          availableActions = List<CaptureAction>.from(fresh.availableActions);
+        }
+        if (fresh.proposalRevision > proposalRevision) {
+          proposalRevision = fresh.proposalRevision;
+        }
+      } catch (_) {
+        // Compatibility approve remains available when revision stays zero.
+      }
+
       // When SSE missed `proposal`/`done`, recover the terminal Redis state.
       if (proposalJson == null &&
           timeClarification == null &&
@@ -991,12 +1014,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
   String get _time => '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
 
-  /// Confirm the review: persist the memory, create the reminder (if its toggle
-  /// is on), and show the "kept in memory" screen. The persist is fire-and-forget
-  /// and best-effort so the confirmation is instant and still shows even offline.
-  ///
-  /// Commit only a genuine server proposal. A transport failure never becomes a
-  /// fallback Library write or a false success screen.
+  /// Confirm the review. The commit receipt is the success boundary; cache and
+  /// notification refreshes are best-effort and must never turn a durable save
+  /// into a false error in the UI.
   Future<void> _addToMemory() async {
     final services = AppScope.servicesOf(context);
     final captureId = _captureId;
@@ -1004,10 +1024,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _showCaptureError(
         AppLocalizations.of(context)!.rdCaptureMemorySaveFailed,
       );
-      return;
-    }
-    if (_kind == 'link') {
-      await _confirmLinkMemory(services, captureId);
       return;
     }
     setState(() => _actionBusy = true);
@@ -1019,91 +1035,56 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     });
   }
 
-  Future<void> _confirmLinkMemory(
-    MiraServices services,
-    String captureId,
-  ) async {
-    if (_savingLink) return;
-    final l10n = AppLocalizations.of(context)!;
-    setState(() => _savingLink = true);
-    try {
-      final result = await services.captureRepository.approve(
-        captureId,
-        title: _pendingTitle,
-        proposalRevision: _proposalRevision,
-        idempotencyKey: 'approve-$captureId-$_proposalRevision',
-      );
-      await services.memoryStore.load(force: true);
-      await services.remindersRepository.syncLocalNotifications();
-      if (!mounted) return;
-      setState(() {
-        _savingLink = false;
-        _view = 'added';
-      });
-      unawaited(_loadExecutions(services, captureId));
-      if (result.isProjectionPending) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncPending)));
-        _watchCaptureProjection(services, result);
-      }
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _savingLink = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureLinkSaveFailed)));
-    }
-  }
-
   /// Approve the live capture, promoting the extracted proposal into the graph.
   /// A temporary graph failure is represented by a durable projection receipt;
   /// do not create a second Library note because the server may already have
   /// committed the ledger event even when the response is interrupted.
   Future<bool> _approveCapture(MiraServices services, String captureId) async {
     final l10n = AppLocalizations.of(context)!;
+    late final CaptureCommitReceipt result;
     try {
-      final primary = _serverPrimaryAction;
-      final CaptureCommitReceipt result;
-      if (primary != null && primary.isApprove) {
-        final outcome = await services.captureRepository.executeAction(
-          captureId: captureId,
-          actionId: primary.id,
-          proposalRevision: _proposalRevision,
-          idempotencyKey: 'approve-$captureId-$_proposalRevision',
-        );
-        result =
-            outcome.receipt ??
-            await services.captureRepository.approve(
-              captureId,
-              proposalRevision: _proposalRevision,
-              idempotencyKey: 'approve-$captureId-$_proposalRevision-fallback',
-            );
-      } else {
-        result = await services.captureRepository.approve(
-          captureId,
-          proposalRevision: _proposalRevision,
-          idempotencyKey: 'approve-$captureId-$_proposalRevision',
-        );
-      }
-      await services.memoryStore.load(force: true);
-      await services.remindersRepository.syncLocalNotifications();
-      if (!mounted) return true;
-      unawaited(_loadExecutions(services, captureId));
-      if (result.isProjectionPending) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncPending)));
-        _watchCaptureProjection(services, result);
-      }
-      return true;
-    } catch (_) {
+      // Keep one approval path. The repository uses the revisioned server
+      // action when the authoritative revision is known and deliberately falls
+      // back to the compatibility endpoint for SSE-only revision zero drafts.
+      result = await services.captureRepository.approve(
+        captureId,
+        proposalRevision: _proposalRevision,
+        idempotencyKey: 'approve-$captureId-$_proposalRevision',
+      );
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureMemorySaveFailed)));
+        ).showSnackBar(SnackBar(content: Text(formatCaptureError(error))));
       }
       return false;
+    }
+
+    // Everything after the receipt is presentation/cache maintenance. A web
+    // notification limitation or a transient Library refresh must not claim
+    // that the already-committed memory failed.
+    unawaited(_refreshAfterCommit(services));
+    if (!mounted) return true;
+    unawaited(_loadExecutions(services, captureId));
+    if (result.isProjectionPending) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.rdCaptureSyncPending)));
+      _watchCaptureProjection(services, result);
+    }
+    return true;
+  }
+
+  Future<void> _refreshAfterCommit(MiraServices services) async {
+    try {
+      await services.memoryStore.load(force: true);
+    } catch (_) {
+      // The durable commit already succeeded; Library can refresh next visit.
+    }
+    try {
+      await services.remindersRepository.syncLocalNotifications();
+    } catch (_) {
+      // Notifications are optional, especially on web.
     }
   }
 
@@ -1122,8 +1103,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         ),
       );
       if (receipt.isApplied) {
-        await services.memoryStore.load(force: true);
-        await services.remindersRepository.syncLocalNotifications();
+        await _refreshAfterCommit(services);
       }
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
@@ -1160,7 +1140,14 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       return;
     }
 
-    if (action.requiresConfirmation && !action.isApprove) {
+    if (action.id == 'proposal.edit') {
+      _beginInlineProposalEdit(action);
+      return;
+    }
+
+    if (action.requiresConfirmation &&
+        !action.isApprove &&
+        action.id != 'proposal.convert') {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
@@ -1191,22 +1178,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       );
       if (question == null || question.isEmpty || !mounted) return;
       input = {'question': question};
-    } else if (action.id == 'proposal.edit') {
-      final title = await _promptActionText(
-        title: localizeCaptureActionLabel(action, l10n),
-        hint: l10n.rdCaptureActionEditHint,
-        initial: _proposal?.title ?? _transcriptTitle,
-      );
-      if (title == null || title.isEmpty || !mounted) return;
-      final itemId = _resultCard?.extractedItems.firstOrNull?.id ?? 'primary_1';
-      operations = [
-        ProposalMutationOperation(
-          op: 'replace_field',
-          itemId: itemId,
-          field: 'title',
-          value: title,
-        ),
-      ];
     } else if (action.id == 'communication.share') {
       final recipient = await _promptActionText(
         title: localizeCaptureActionLabel(action, l10n),
@@ -1229,6 +1200,39 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         'condition': description,
         'action': description,
       };
+    } else if (action.id == 'content.schedule') {
+      final scheduleText = await _promptActionText(
+        title: localizeCaptureActionLabel(action, l10n),
+        hint: l10n.rdRemindersPickDateTime,
+      );
+      if (scheduleText == null || scheduleText.isEmpty || !mounted) return;
+      final item = _resultCard?.extractedItems
+          .where(
+            (item) =>
+                item.kind == 'task' ||
+                item.kind == 'event' ||
+                item.kind == 'reminder' ||
+                item.kind == 'meeting' ||
+                item.kind == 'commitment',
+          )
+          .firstOrNull;
+      if (item == null) {
+        _showCaptureError(l10n.rdCaptureActionFailed);
+        return;
+      }
+      final field = switch (item.kind) {
+        'event' || 'meeting' => 'timeText',
+        'reminder' => 'remindText',
+        _ => 'dueText',
+      };
+      operations = [
+        ProposalMutationOperation(
+          op: 'replace_field',
+          itemId: item.id,
+          field: field,
+          value: scheduleText,
+        ),
+      ];
     } else if (action.id == 'content.complete') {
       final itemId =
           _resultCard?.extractedItems
@@ -1253,21 +1257,21 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         return;
       }
       input = {'relationship': 'RELATES_TO', 'targetTitle': target};
+    } else if (action.id == 'proposal.convert') {
+      final targetKind = await _pickConversionKind();
+      if (targetKind == null || !mounted) return;
+      final itemId = _resultCard?.extractedItems.firstOrNull?.id ?? 'primary_1';
+      operations = [
+        ProposalMutationOperation(
+          op: 'convert_item',
+          itemId: itemId,
+          toKind: targetKind,
+        ),
+      ];
     }
 
     if (action.isApprove) {
-      if (_kind == 'link') {
-        await _confirmLinkMemory(services, captureId);
-      } else {
-        setState(() => _actionBusy = true);
-        final saved = await _approveCapture(services, captureId);
-        if (mounted) {
-          setState(() {
-            _actionBusy = false;
-            if (saved) _view = 'added';
-          });
-        }
-      }
+      await _addToMemory();
       return;
     }
 
@@ -1322,8 +1326,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         _showCaptureError(l10n.rdCaptureActionPrivacyApplied);
       } else if (action.id == 'content.complete') {
         _showCaptureError(l10n.rdCaptureActionCompletedItem);
+      } else if (action.id == 'content.schedule') {
+        _showCaptureError(l10n.rdRemindersSet);
       } else if (action.id == 'proposal.edit') {
         _showCaptureError(l10n.rdCaptureActionEdited);
+      } else if (action.id == 'proposal.convert') {
+        _showCaptureError(l10n.rdCaptureActionConverted);
       }
     } on DioException catch (error) {
       if (!mounted) return;
@@ -1352,6 +1360,243 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       }
     } catch (_) {
       if (mounted) _showCaptureError(l10n.rdCaptureActionFailed);
+    } finally {
+      if (mounted) setState(() => _actionBusy = false);
+    }
+  }
+
+  Future<String?> _pickConversionKind() {
+    final l10n = AppLocalizations.of(context)!;
+    final currentKind = _resultCard?.extractedItems.firstOrNull?.kind;
+    final targets = <String>[
+      'note',
+      'task',
+      'reminder',
+      'event',
+      'decision',
+      'commitment',
+      'person',
+      'summary',
+      'meeting',
+      'meeting_result',
+      'document_knowledge',
+    ].where((kind) => kind != currentKind).toList();
+
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final rd = ctx.rd;
+        return FractionallySizedBox(
+          heightFactor: 0.72,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            decoration: BoxDecoration(
+              color: rd.bg,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
+              border: Border.all(color: rd.line),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: rd.line,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  l10n.rdCaptureConvertTitle,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  l10n.rdCaptureConvertBody,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 13.5,
+                    height: 1.45,
+                    color: rd.muted,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Expanded(
+                  child: GridView.builder(
+                    itemCount: targets.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 3.2,
+                        ),
+                    itemBuilder: (ctx, index) {
+                      final kind = targets[index];
+                      return InkWell(
+                        onTap: () => Navigator.pop(ctx, kind),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Ink(
+                          decoration: BoxDecoration(
+                            color: rd.card,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: rd.line),
+                          ),
+                          child: Center(
+                            child: Text(
+                              _conversionKindLabel(kind, l10n),
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.vazirmatn(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: rd.ink,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _conversionKindLabel(String kind, AppLocalizations l10n) {
+    switch (kind) {
+      case 'task':
+        return l10n.rdCaptureConvertTask;
+      case 'reminder':
+        return l10n.rdCaptureConvertReminder;
+      case 'event':
+        return l10n.rdCaptureConvertEvent;
+      case 'decision':
+        return l10n.rdCaptureConvertDecision;
+      case 'commitment':
+        return l10n.rdCaptureConvertCommitment;
+      case 'person':
+        return l10n.rdCaptureConvertPerson;
+      case 'summary':
+        return l10n.rdCaptureConvertSummary;
+      case 'meeting':
+        return l10n.rdCaptureConvertMeeting;
+      case 'meeting_result':
+        return l10n.rdCaptureConvertMeetingResult;
+      case 'document_knowledge':
+        return l10n.rdCaptureConvertDocument;
+      case 'note':
+      default:
+        return l10n.rdCaptureConvertNote;
+    }
+  }
+
+  void _beginInlineProposalEdit(CaptureAction action) {
+    _editTitleController.text = _proposal?.title ?? _transcriptTitle;
+    _editSummaryController.text = _proposal?.summary ?? '';
+    setState(() {
+      _editingProposal = true;
+      _editingProposalAction = action;
+    });
+  }
+
+  void _cancelInlineProposalEdit() {
+    setState(() {
+      _editingProposal = false;
+      _editingProposalAction = null;
+    });
+  }
+
+  Future<void> _submitInlineProposalEdit() async {
+    final action = _editingProposalAction;
+    final captureId = _captureId;
+    final title = _editTitleController.text.trim();
+    final summary = _editSummaryController.text.trim();
+    if (action == null || captureId == null || title.isEmpty || _actionBusy) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context)!;
+    final services = AppScope.servicesOf(context);
+    final itemId = _resultCard?.extractedItems.firstOrNull?.id ?? 'primary_1';
+    final operations = <ProposalMutationOperation>[
+      ProposalMutationOperation(
+        op: 'replace_field',
+        itemId: itemId,
+        field: 'title',
+        value: title,
+      ),
+      ProposalMutationOperation(
+        op: 'replace_field',
+        itemId: itemId,
+        field: 'summary',
+        value: summary,
+      ),
+    ];
+
+    setState(() => _actionBusy = true);
+    try {
+      final outcome = await services.captureRepository.executeAction(
+        captureId: captureId,
+        actionId: action.id,
+        proposalRevision: _proposalRevision,
+        idempotencyKey: '${action.id}-$captureId-$_proposalRevision',
+        operations: operations,
+      );
+      if (!mounted) return;
+      final capture = outcome.capture;
+      setState(() {
+        if (capture != null) {
+          _proposalRevision = capture.proposalRevision;
+          _resultCard = capture.resultCard ?? _resultCard;
+          _availableActions = capture.availableActions.isNotEmpty
+              ? capture.availableActions
+              : _availableActions;
+          final proposal = capture.proposal;
+          if (proposal != null) {
+            final display = resolveProposalDisplay(proposal);
+            if (display.hasContent) _proposal = display;
+          }
+        }
+        _editingProposal = false;
+        _editingProposalAction = null;
+      });
+      _showCaptureError(l10n.rdCaptureActionEdited);
+    } on DioException catch (error) {
+      if (!mounted) return;
+      if (error.response?.statusCode == 409) {
+        try {
+          final fresh = await services.captureRepository.getCapture(captureId);
+          if (!mounted) return;
+          setState(() {
+            _proposalRevision = fresh.proposalRevision;
+            _resultCard = fresh.resultCard ?? _resultCard;
+            _availableActions = fresh.availableActions.isNotEmpty
+                ? fresh.availableActions
+                : _availableActions;
+          });
+          _showCaptureError(l10n.rdCaptureActionStale);
+        } catch (_) {
+          _showCaptureError(l10n.rdCaptureActionFailed);
+        }
+      } else {
+        _showCaptureError(formatCaptureError(error));
+      }
+    } catch (error) {
+      if (mounted) _showCaptureError(formatCaptureError(error));
     } finally {
       if (mounted) setState(() => _actionBusy = false);
     }
@@ -1579,6 +1824,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     // The typed text becomes the "understood" content and the reminder/fallback
     // note source. It reads as a real transcript (no John/Friday markup).
     setState(() {
+      _kind = 'text';
       _transcript = trimmed;
       _transcriptTitle = _titleFrom(trimmed);
       _realTranscript = true;
@@ -1634,7 +1880,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _realProposal = false;
       _pipelineStarted = true;
       _linkCrawlState = 'idle';
-      _linkCrawlMethod = null;
     });
     for (var k = 0; k < 3; k++) {
       _timers.add(
@@ -1701,11 +1946,19 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         }
       }
 
-      if (proposalJson == null) {
+      // SSE proposal events contain the proposal body but not the authoritative
+      // proposal revision or complete action list. Always reconcile once with
+      // GET before review; otherwise approve can submit revision 0 and receive
+      // a stale-proposal 409 even though the UI looks ready.
+      try {
         final polled = await services.captureRepository.pollCaptureUntilReady(
           created.captureId,
+          maxAttempts: proposalJson == null ? 8 : 2,
         );
         absorb(polled);
+        proposalJson = polled.proposal ?? proposalJson;
+      } catch (_) {
+        if (proposalJson == null) rethrow;
       }
 
       final proposal = proposalJson;
@@ -1721,7 +1974,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       final scraped =
           metadata['is_scraped_url'] == true ||
           metadata['isScrapedUrl'] == true;
-      final method = metadata['link_extraction_method']?.toString();
       final scrapedTitle = metadata['scraped_title']?.toString().trim() ?? '';
       if ((_pendingTitle?.trim().isEmpty ?? true) && scrapedTitle.isNotEmpty) {
         _pendingTitle = scrapedTitle;
@@ -1735,7 +1987,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         _proposalRevision = proposalRevision;
         _realProposal = true;
         _linkCrawlState = scraped ? 'ready' : 'metadata_only';
-        _linkCrawlMethod = method;
         _connOn
           ..clear()
           ..addAll(List<int>.generate(display.relatedLabels.length, (i) => i));
@@ -1809,7 +2060,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _pendingUrl = url;
       _pendingTitle = result?.title;
       _linkCrawlState = 'idle';
-      _linkCrawlMethod = null;
     });
     unawaited(_driveLinkUnderstanding());
   }
@@ -2012,7 +2262,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           _pendingUrl = url;
           _pendingTitle = title;
           _linkCrawlState = 'idle';
-          _linkCrawlMethod = null;
         });
         unawaited(_driveLinkUnderstanding());
       },
@@ -2024,7 +2273,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
-        _reviewTop(l10n.rdCaptureCancel, () => widget.go('home')),
+        _reviewTop(l10n.rdCaptureBack, () => widget.go('home')),
         Expanded(
           child: Center(
             child: Padding(
@@ -2501,7 +2750,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       }
       items.add(text);
     }
-    return items.take(8).toList();
+    return items.take(3).toList();
   }
 
   Widget _approvalSummaryList(AppLocalizations l10n) {
@@ -2616,10 +2865,111 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   /// then server-owned secondary actions from `result_card.nextStep`.
   List<Widget> _connectSection(AppLocalizations l10n) {
     if (!_realProposal) return const [];
-    final serverActions = _serverSecondaryActions();
+    final serverActions = _serverSecondaryActions()
+        .where((action) => !_editingProposal || action.id != 'proposal.edit')
+        .toList();
     if (serverActions.isEmpty) return const [];
     return _serverSuggestedActions(l10n, serverActions);
   }
+
+  Widget _inlineProposalEditor(AppLocalizations l10n) {
+    final rd = context.rd;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: rd.periSoft,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: rd.peri.withValues(alpha: 0.55)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.rdCaptureActionEdit,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: rd.ink,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            key: const ValueKey('rd-review-edit-title'),
+            controller: _editTitleController,
+            autofocus: true,
+            textInputAction: TextInputAction.next,
+            style: GoogleFonts.vazirmatn(fontSize: 14, color: rd.ink),
+            decoration: _reviewEditDecoration(l10n.rdCaptureActionEditHint, rd),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            key: const ValueKey('rd-review-edit-summary'),
+            controller: _editSummaryController,
+            minLines: 3,
+            maxLines: 6,
+            style: GoogleFonts.vazirmatn(
+              fontSize: 13.5,
+              height: 1.45,
+              color: rd.ink,
+            ),
+            decoration: _reviewEditDecoration(
+              l10n.rdCaptureEditSummaryHint,
+              rd,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: _actionBusy ? null : _cancelInlineProposalEdit,
+                child: Text(l10n.rdCaptureCancel),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                key: const ValueKey('rd-review-save-edit'),
+                onPressed: _actionBusy
+                    ? null
+                    : () => unawaited(_submitInlineProposalEdit()),
+                child: _actionBusy
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(l10n.rdCaptureSaveChanges),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _reviewEditDecoration(String hint, RdTheme rd) =>
+      InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.vazirmatn(fontSize: 13.5, color: rd.faint),
+        filled: true,
+        fillColor: rd.card,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 13,
+          vertical: 12,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: BorderSide(color: rd.line),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(13),
+          borderSide: BorderSide(color: rd.peri, width: 1.4),
+        ),
+      );
 
   List<CaptureAction> _serverSecondaryActions() =>
       resolveReviewSecondaryActions(
@@ -2726,44 +3076,88 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
   String get _currentTypeLabel =>
       _typeName ?? _autoTypeLabel(AppLocalizations.of(context)!);
 
+  String? get _primaryDetectedKind {
+    final items = _resultCard?.extractedItems ?? const <CaptureDetectedItem>[];
+    for (final item in items) {
+      if (item.role == 'primary' && item.status != 'excluded') return item.kind;
+    }
+    for (final item in items) {
+      if (item.status != 'excluded') return item.kind;
+    }
+    return null;
+  }
+
   String _autoTypeLabel(AppLocalizations l10n) {
     switch (_kind) {
       case 'link':
         return l10n.rdCaptureTypeLink;
+      case 'voice':
+        return l10n.rdLibraryTypeVoice;
       case 'photo':
       case 'screenshot':
-        return l10n.rdCaptureTypeNote;
-      default:
-        return _realProposal && (_proposal?.nodeType.isNotEmpty ?? false)
-            ? _proposal!.nodeType
-            : l10n.rdCaptureTypeTask;
+      case 'image':
+        return l10n.rdCaptureModeScreenshot;
+      case 'file':
+      case 'camera_scan':
+        return l10n.rdCaptureConvertDocument;
+      case 'meeting':
+      case 'live_meeting':
+        return l10n.rdCaptureConvertMeetingResult;
+      case 'calendar':
+        return l10n.rdCaptureTypeEvent;
+      case 'contact':
+        return l10n.rdCaptureTypePerson;
     }
+    return switch (_primaryDetectedKind) {
+      'task' => l10n.rdCaptureTypeTask,
+      'event' => l10n.rdCaptureTypeEvent,
+      'reminder' => l10n.rdCaptureConvertReminder,
+      'meeting' => l10n.rdCaptureConvertMeeting,
+      'meeting_result' => l10n.rdCaptureConvertMeetingResult,
+      'document_knowledge' => l10n.rdCaptureConvertDocument,
+      'summary' => l10n.rdCaptureConvertSummary,
+      'person' => l10n.rdCaptureTypePerson,
+      'note' || 'decision' || 'commitment' => l10n.rdCaptureTypeNote,
+      _ =>
+        _realProposal && (_proposal?.nodeType.isNotEmpty ?? false)
+            ? _proposal!.nodeType
+            : l10n.rdCaptureTypeNote,
+    };
   }
 
-  String get _currentTypeIcon => _typeIcon ?? _iconForType(_currentTypeLabel);
+  String get _currentTypeIcon => _typeIcon ?? _autoTypeIcon;
 
-  String _iconForType(String label) {
-    final l10n = AppLocalizations.of(context)!;
-    final l = label.trim().toLowerCase();
-    for (final t in _captureTypes(l10n)) {
-      if (t.$1.toLowerCase() == l) return t.$2;
+  String get _autoTypeIcon {
+    switch (_kind) {
+      case 'link':
+        return RdIcons.linkChain;
+      case 'voice':
+        return RdIcons.micSimple;
+      case 'photo':
+      case 'screenshot':
+      case 'image':
+        return RdIcons.photo;
+      case 'file':
+      case 'camera_scan':
+        return RdIcons.book;
+      case 'meeting':
+      case 'live_meeting':
+        return RdIcons.people;
+      case 'calendar':
+        return RdIcons.calendar;
+      case 'contact':
+        return RdIcons.user;
     }
-    const english = [
-      'note',
-      'task',
-      'event',
-      'person',
-      'place',
-      'link',
-      'article',
-      'idea',
-      'travel',
-    ];
-    for (var i = 0; i < english.length; i++) {
-      if (english[i] == l) return _captureTypeIconPaths[i];
-    }
-    // Default (task/pencil) for unknown auto-detected proposal types.
-    return '<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>';
+    return switch (_primaryDetectedKind) {
+      'task' => RdIcons.checkCircle,
+      'event' => RdIcons.calendar,
+      'reminder' => RdIcons.bell,
+      'meeting' || 'meeting_result' => RdIcons.people,
+      'document_knowledge' => RdIcons.book,
+      'summary' => RdIcons.textT,
+      'person' => RdIcons.user,
+      _ => RdIcons.pencil,
+    };
   }
 
   /// Opens the "Change type" picker (design typeScrim) — tapping a type sets the
@@ -3040,88 +3434,76 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       );
     }
     if (_kind == 'link') {
+      final ready = _linkCrawlState == 'ready';
       return Container(
-        height: 120,
         width: double.infinity,
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF243056), Color(0xFF121A33)],
-          ),
+          color: rd.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: rd.line),
         ),
-        child: Stack(
+        child: Row(
           children: [
-            Positioned(
-              left: 10,
-              top: 10,
-              child: _previewBadge(
-                l10n.rdCaptureLinkBadge(_linkHost(_pendingUrl)),
-                '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: rd.periSoft,
+                borderRadius: BorderRadius.circular(13),
               ),
-            ),
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 14,
-              child: Text(
-                _understoodText(l10n),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.dosis(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  height: 1.1,
+              child: Center(
+                child: RdIcon(
+                  RdIcons.linkChain,
+                  size: 19,
+                  color: rd.peri,
+                  strokeWidth: 1.9,
                 ),
               ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _linkHost(_pendingUrl),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: rd.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    ready
+                        ? l10n.rdCaptureLinkCrawlReady
+                        : l10n.rdCaptureLinkMetadataOnly,
+                    maxLines: ready ? 1 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 11.5,
+                      height: 1.4,
+                      color: rd.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            RdIcon(
+              ready ? RdIcons.check : RdIcons.linkChain,
+              size: 18,
+              color: ready ? rd.peri : rd.faint,
+              strokeWidth: 1.9,
             ),
           ],
         ),
       );
     }
     return null;
-  }
-
-  Widget _linkCrawlStatus(AppLocalizations l10n) {
-    final rd = context.rd;
-    final ready = _linkCrawlState == 'ready';
-    final label = ready
-        ? l10n.rdCaptureLinkCrawlReady(
-            (_linkCrawlMethod ?? 'reader').replaceAll('_', ' '),
-          )
-        : l10n.rdCaptureLinkMetadataOnly;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: ready ? rd.periSoft : rd.card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ready ? rd.peri : rd.line),
-      ),
-      child: Row(
-        children: [
-          RdIcon(
-            ready ? RdIcons.check : RdIcons.linkChain,
-            size: 18,
-            color: ready ? rd.peri : rd.muted,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: GoogleFonts.vazirmatn(
-                fontSize: 12.5,
-                height: 1.45,
-                fontWeight: FontWeight.w500,
-                color: ready ? rd.peri : rd.muted,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   // ── review ──────────────────────────────────────────────────────────
@@ -3141,10 +3523,6 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                 _eyebrow(_reviewEyebrow(l10n)),
                 const SizedBox(height: 12),
                 if (preview != null) ...[preview, const SizedBox(height: 14)],
-                if (_kind == 'link') ...[
-                  _linkCrawlStatus(l10n),
-                  const SizedBox(height: 14),
-                ],
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -3171,8 +3549,9 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                     ],
                   ),
                 ),
+                if (_editingProposal) _inlineProposalEditor(l10n),
                 ..._connectSection(l10n),
-                const SizedBox(height: 18),
+                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -3428,7 +3807,16 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     return Container(
       padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
       decoration: BoxDecoration(
+        color: rd.bg,
         border: Border(top: BorderSide(color: rd.line, width: 1)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            spreadRadius: -12,
+            offset: const Offset(0, -7),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -3463,7 +3851,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           const SizedBox(width: 10),
           Expanded(
             child: GestureDetector(
-              onTap: (_savingLink || _actionBusy)
+              onTap: _actionBusy
                   ? null
                   : () {
                       final primaryAction = primary;
@@ -3482,7 +3870,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                   color: rd.navy,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: (_savingLink || _actionBusy)
+                child: _actionBusy
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -4050,7 +4438,7 @@ class _ComposeSheetState extends State<_ComposeSheet> {
         ),
         const SizedBox(height: 14),
         _SheetSubmit(
-          label: l10n.rdCaptureAddToMemory,
+          label: l10n.rdCaptureActionContinue,
           enabled: _canSubmit,
           onTap: () => Navigator.of(context).pop(_controller.text),
         ),
@@ -4120,7 +4508,7 @@ class _LinkSheetState extends State<_LinkSheet> {
         ),
         const SizedBox(height: 14),
         _SheetSubmit(
-          label: l10n.rdCaptureAddToMemory,
+          label: l10n.rdCaptureLinkReadAction,
           enabled: _canSubmit,
           onTap: () => Navigator.of(context).pop(
             _LinkInput(

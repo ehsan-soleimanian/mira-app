@@ -33,10 +33,7 @@ List<CaptureAction> resolveReviewSecondaryActions({
       .toList();
 }
 
-String localizeCaptureActionLabel(
-  CaptureAction action,
-  AppLocalizations l10n,
-) {
+String localizeCaptureActionLabel(CaptureAction action, AppLocalizations l10n) {
   switch (action.id) {
     case 'capture.approve':
     case 'content.create_or_update':
@@ -53,12 +50,16 @@ String localizeCaptureActionLabel(
       return l10n.rdCaptureActionOpenSource;
     case 'content.complete':
       return l10n.rdCaptureActionComplete;
+    case 'content.schedule':
+      return l10n.rdCaptureActionCalendar;
     case 'graph.connect':
       return l10n.rdCaptureActionConnect;
     case 'memory.privacy':
       return l10n.rdCaptureActionPrivacy;
     case 'proposal.edit':
       return l10n.rdCaptureActionEdit;
+    case 'proposal.convert':
+      return l10n.rdCaptureActionConvert;
     default:
       final label = action.label.trim();
       return label.isEmpty ? action.id : label;
@@ -79,12 +80,16 @@ String localizeCaptureActionSubtitle(
       return l10n.rdCaptureActionOpenSourceSub;
     case 'content.complete':
       return l10n.rdCaptureActionCompleteSub;
+    case 'content.schedule':
+      return l10n.rdCaptureActionCalendarSub;
     case 'graph.connect':
       return l10n.rdCaptureActionConnectSub;
     case 'memory.privacy':
       return l10n.rdCaptureActionPrivacySub;
     case 'proposal.edit':
       return l10n.rdCaptureActionEditSub;
+    case 'proposal.convert':
+      return l10n.rdCaptureActionConvertSub;
     case 'automation.create':
       return l10n.rdCaptureActionAutomationSub;
     case 'communication.share':
@@ -106,6 +111,8 @@ String captureActionIconPath(String actionId) {
       return '<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>';
     case 'content.complete':
       return '<path d="m5 12 5 5 9-11"/>';
+    case 'content.schedule':
+      return '<rect x="3" y="4" width="18" height="17" rx="2.5"/><path d="M16 2v4M8 2v4M3 10h18"/>';
     case 'graph.connect':
       return '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>';
     case 'memory.privacy':

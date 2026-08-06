@@ -870,6 +870,14 @@ tries Firecrawl first, falls back to direct readable HTML, and then sends the
 extracted page text through Graph V2. Nothing is stored in Graph or Library
 until `POST /captures/{capture_id}/approve` succeeds.
 
+The full approved page remains available to the Library projection for search
+and assistant retrieval. The Graphiti projection receives a bounded external-
+source profile instead: title, canonical URL, central source description, and
+optional user note. It may create the source Document plus only a small central
+semantic skeleton (maximum three non-user entities); navigation, competitors,
+customers, testimonials, pricing, feature lists, and incidental page names are
+retrieval detail and must not become personal-memory graph nodes.
+
 **Request Body**
 ```json
 {
@@ -1827,6 +1835,28 @@ No query parameters.
 
 All routes below require Bearer auth except `GET /.well-known/mira-mcp.json`.
 Bearer auth may be either an app JWT access token or a scoped developer API key for workspace/MCP/clipper tooling.
+
+### Capture-projected Library items
+
+An approved Capture creates one idempotent Library item. Its stable `type` is
+one of `task`, `event`, `reminder`, `meeting`, `meeting_result`, `screenshot`,
+`note`, `document`, `summary`, `voice`, `link`, or `person`. Capture provenance
+is versioned inside `metadata.capture_contract` so clients do not have to infer
+semantics from the transport source:
+
+```json
+{
+  "schemaVersion": "library_capture.v1",
+  "inputKind": "live_meeting",
+  "contentKinds": ["decision", "meeting_result", "task"],
+  "displayKind": "meeting_result"
+}
+```
+
+`inputKind` is one of the canonical 12 `capture_input.v1` kinds;
+`contentKinds` preserves all non-excluded extracted kinds; `displayKind` is the
+single Library card/filter presentation. Older items without this block remain
+readable through the Flutter alias mapping.
 
 ### Canvas boards
 

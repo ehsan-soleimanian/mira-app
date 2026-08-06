@@ -449,7 +449,10 @@ class CaptureRepository {
     if (captureId == CaptureMockData.mockVoiceCaptureResponse().captureId) {
       return CaptureMockData.mockCommitReceipt();
     }
-    if (proposalRevision != null) {
+    // Revision zero means the proposal arrived through SSE before the client
+    // fetched the authoritative terminal capture. The compatibility endpoint
+    // is revision-agnostic and avoids a guaranteed stale-proposal 409.
+    if (proposalRevision != null && proposalRevision > 0) {
       final outcome = await executeAction(
         captureId: captureId,
         actionId: 'capture.approve',
@@ -542,9 +545,11 @@ class CaptureRepository {
     );
     return (response.data ?? const [])
         .whereType<Map>()
-        .map((item) => CaptureExecutionRequest.fromJson(
-              item.map((key, value) => MapEntry(key.toString(), value)),
-            ))
+        .map(
+          (item) => CaptureExecutionRequest.fromJson(
+            item.map((key, value) => MapEntry(key.toString(), value)),
+          ),
+        )
         .toList();
   }
 

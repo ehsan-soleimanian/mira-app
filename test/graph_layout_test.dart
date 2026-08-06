@@ -48,4 +48,18 @@ void main() {
     expect(layout.nodes.first.isHighlighted, isTrue);
     expect(layout.edges, isNotEmpty);
   });
+
+  test('GraphEdge reads Graphiti capture ids from properties', () {
+    final edge = GraphEdge.fromJson({
+      'id': 'edge-1',
+      'sourceId': 'entity-a',
+      'targetId': 'entity-b',
+      'type': 'RELATED_TO',
+      'properties': {
+        'captureIds': ['capture-1', 'capture-2'],
+      },
+    });
+
+    expect(edge.captureIds, ['capture-1', 'capture-2']);
+  });
 }

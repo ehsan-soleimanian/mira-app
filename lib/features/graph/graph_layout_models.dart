@@ -23,15 +23,15 @@ class GraphLayout {
   final double scale;
 
   Map<String, GraphLayoutPosition> get byNodeId => {
-        for (final item in positions) item.nodeId: item,
-      };
+    for (final item in positions) item.nodeId: item,
+  };
 
   Map<String, dynamic> toJson() => {
-        'positions': positions.map((item) => item.toJson()).toList(),
-        'pan_x': panX,
-        'pan_y': panY,
-        'scale': scale,
-      };
+    'positions': positions.map((item) => item.toJson()).toList(),
+    'pan_x': panX,
+    'pan_y': panY,
+    'scale': scale,
+  };
 }
 
 class GraphLayoutPosition {
@@ -52,11 +52,7 @@ class GraphLayoutPosition {
   final double x;
   final double y;
 
-  Map<String, dynamic> toJson() => {
-        'node_id': nodeId,
-        'x': x,
-        'y': y,
-      };
+  Map<String, dynamic> toJson() => {'node_id': nodeId, 'x': x, 'y': y};
 }
 
 class GraphLayoutResponse {

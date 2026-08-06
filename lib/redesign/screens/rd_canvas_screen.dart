@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mira_app/app/app_scope.dart';
+import 'package:mira_app/features/graph/graph_layout_models.dart';
 import 'package:mira_app/features/workspace/canvas_repository.dart';
 import 'package:mira_app/l10n/app_localizations.dart';
 import 'package:mira_app/models/api/graph_models.dart';
@@ -23,9 +24,14 @@ import '../widgets/rd_orb.dart';
 /// neighbours, and opens a detail panel. Faithful to `.rd-canvas` /
 /// `CanvasScreen` in the design.
 class RdCanvasScreen extends StatefulWidget {
-  const RdCanvasScreen({super.key, required this.go});
+  const RdCanvasScreen({
+    super.key,
+    required this.go,
+    this.initialMode = 'board',
+  });
 
   final RdGo go;
+  final String initialMode;
 
   @override
   State<RdCanvasScreen> createState() => _RdCanvasScreenState();
@@ -34,9 +40,10 @@ class RdCanvasScreen extends StatefulWidget {
 /// SharedPreferences key holding the id of the last-active board, so the
 /// board a user was on is restored on the next launch.
 const _kActiveBoardKey = 'mira-board-active';
+const _kHiddenGraphNodesKey = 'mira-graph-hidden-nodes';
 
 class _RdCanvasScreenState extends State<RdCanvasScreen> {
-  String _mode = 'board';
+  late String _mode;
 
   /// Live memory graph for Map mode; null → use the designed sample. Loaded
   /// from `graphRepository.fetchGraph` (`/v2/graph`) and laid out client-side.
@@ -47,6 +54,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   String _mapContext = '';
   String _clusterContext = '';
   bool _loaded = false;
+  Set<String> _hiddenGraphNodeIds = const {};
 
   // ── Board (persisted, multi-board) ──────────────────────────────────────
   /// All the user's boards from `canvasRepository.list()`. Empty until loaded.
@@ -77,6 +85,14 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
 
   bool _boardsLoading = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _mode = const {'board', 'clusters', 'map'}.contains(widget.initialMode)
+        ? widget.initialMode
+        : 'board';
+  }
+
   CanvasDto? get _activeBoard {
     for (final b in _boards) {
       if (b.id == _activeBoardId) return b;
@@ -99,18 +115,41 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
     try {
       final services = AppScope.servicesOf(context);
       final graph = await services.graphRepository.fetchGraph();
-      final (nodes, edges, edgeAssertions, edgeRelations) =
-          _mapGraphToNodes(graph, l10n);
-      final clusters = _buildClustersFromNodes(nodes, edges, l10n);
-      if (!mounted || nodes.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      _hiddenGraphNodeIds =
+          (prefs.getStringList(_kHiddenGraphNodesKey) ?? const <String>[])
+              .toSet();
+      final (nodes, edges, edgeAssertions, edgeRelations) = _mapGraphToNodes(
+        graph,
+        l10n,
+      );
+      final visibleNodes = nodes
+          .where((node) => !_hiddenGraphNodeIds.contains(node.id))
+          .toList();
+      final visibleIds = visibleNodes.map((node) => node.id).toSet();
+      final visibleEdges = edges
+          .where(
+            (edge) =>
+                visibleIds.contains(edge[0]) && visibleIds.contains(edge[1]),
+          )
+          .toList();
+      final clusters = _buildClustersFromNodes(
+        visibleNodes,
+        visibleEdges,
+        l10n,
+      );
+      if (!mounted) return;
       setState(() {
-        _mapNodes = nodes;
-        _mapEdges = edges;
+        _mapNodes = visibleNodes;
+        _mapEdges = visibleEdges;
         _clusters = clusters;
-        _mapContext = l10n.rdCanvasMapContext(nodes.length, edges.length);
+        _mapContext = l10n.rdCanvasMapContext(
+          visibleNodes.length,
+          visibleEdges.length,
+        );
         _clusterContext = l10n.rdCanvasClusterContext(
           _clusters.length,
-          nodes.length,
+          visibleNodes.length,
         );
         _mapEdgeAssertions = edgeAssertions;
         _mapEdgeRelations = edgeRelations;
@@ -118,6 +157,93 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       });
     } catch (_) {
       // Backend unreachable — leave the map empty (neutral empty state).
+    }
+  }
+
+  Future<void> _saveMapLayout(GraphLayout layout) async {
+    try {
+      await AppScope.servicesOf(context).graphRepository.saveLayout(layout);
+    } catch (_) {
+      // Dragging remains responsive offline; a later change can persist it.
+    }
+  }
+
+  Future<void> _hideGraphNode(_GNode node) async {
+    final prefs = await SharedPreferences.getInstance();
+    _hiddenGraphNodeIds = {..._hiddenGraphNodeIds, node.id};
+    await prefs.setStringList(
+      _kHiddenGraphNodesKey,
+      _hiddenGraphNodeIds.toList(growable: false),
+    );
+    if (mounted) await _loadGraph();
+  }
+
+  Future<void> _deleteGraphMemory(_GNode node) async {
+    final captureId = node.captureId;
+    final l10n = AppLocalizations.of(context)!;
+    final repository = AppScope.servicesOf(context).graphRepository;
+    try {
+      if (captureId != null && captureId.isNotEmpty) {
+        final receipt = await repository.archiveCapture(captureId);
+        if (!mounted) return;
+        _mapToast(
+          receipt.isPending
+              ? l10n.rdCanvasSyncPending
+              : l10n.rdCanvasCardRemoved,
+        );
+        await _hideGraphNode(node);
+      } else {
+        final sourceCaptureIds = node.sourceCaptureIds.toSet();
+        // Graph edges already carry their source capture ids. Only fetch the
+        // entity detail as a fallback; making that request unconditionally
+        // caused deletion to fail when the detail projection lagged behind.
+        if (sourceCaptureIds.isEmpty) {
+          final detail = await repository.fetchEntityDetail(node.id);
+          for (final assertion
+              in (detail['assertions'] as List<dynamic>? ?? const [])
+                  .whereType<Map<String, dynamic>>()) {
+            final supportedBy =
+                assertion['supportedBy'] ?? assertion['supported_by'];
+            if (supportedBy is List) {
+              sourceCaptureIds.addAll(
+                supportedBy
+                    .map((id) => id.toString())
+                    .where((id) => id.isNotEmpty),
+              );
+            }
+          }
+          for (final mention
+              in (detail['mentions'] as List<dynamic>? ?? const [])
+                  .whereType<Map<String, dynamic>>()) {
+            final id = (mention['captureId'] ?? mention['capture_id'])
+                ?.toString();
+            if (id != null && id.isNotEmpty) sourceCaptureIds.add(id);
+          }
+        }
+        if (sourceCaptureIds.isEmpty) {
+          _mapToast(l10n.rdCanvasSplitNoFacts);
+          return;
+        }
+        // Queue all durable archive events together. Waiting for each graph
+        // projection serially made a well-connected entity take minutes and
+        // left its inspector mounted with stale state.
+        final receipts = await Future.wait(
+          sourceCaptureIds.map(repository.archiveCapture),
+        );
+        if (!mounted) return;
+        _mapToast(
+          receipts.any((receipt) => receipt.isPending)
+              ? l10n.rdCanvasSyncPending
+              : l10n.rdCanvasCardRemoved,
+        );
+        // The durable events were accepted. Remove the stale entity from this
+        // user's map immediately while Graphiti converges in the background.
+        await _hideGraphNode(node);
+      }
+    } catch (error, stackTrace) {
+      debugPrint('Delete graph memory failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
+      _mapToast(l10n.rdCanvasDeleteFail);
     }
   }
 
@@ -515,6 +641,7 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
+    final reduceMotion = AppScope.themeOf(context).reduceMotion;
     final live = _mapNodes != null;
     final context_ = switch (_mode) {
       'board' => _boardContext,
@@ -527,34 +654,54 @@ class _RdCanvasScreenState extends State<RdCanvasScreen> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: switch (_mode) {
-              'board' => _BoardView(
-                key: ValueKey('board-$_boardEpoch-${_activeBoardId ?? ''}'),
-                board: _activeBoard,
-                repository: _boards.isEmpty ? null : _canvasRepo,
-                onContext: _onBoardContext,
-              ),
-              'clusters' => _ClusterOverview(
-                key: ValueKey('clusters-${_clusters.length}'),
-                clusters: _clusters,
-                onOpen: _openCluster,
-              ),
-              _ => _MapView(
-                key: ValueKey(
-                  live
-                      ? 'map-live-$_mapEpoch-${_mapFocusNodeId ?? ''}'
-                      : 'map-sample-${_mapFocusNodeId ?? ''}',
+            child: AnimatedSwitcher(
+              duration: reduceMotion
+                  ? Duration.zero
+                  : const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.025, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
                 ),
-                nodes: _mapNodes ?? const <_GNode>[],
-                edges: live ? _mapEdges : const <List<String>>[],
-                initialSelectedId: _mapFocusNodeId,
-                onMerge: live ? _mergeEntities : null,
-                onSplit: live ? _splitEntity : null,
-                edgeAssertions: live ? _mapEdgeAssertions : const {},
-                edgeRelations: live ? _mapEdgeRelations : const {},
-                onUnlink: live ? _unlinkEdge : null,
               ),
-            },
+              child: switch (_mode) {
+                'board' => _BoardView(
+                  key: ValueKey('board-$_boardEpoch-${_activeBoardId ?? ''}'),
+                  board: _activeBoard,
+                  repository: _boards.isEmpty ? null : _canvasRepo,
+                  onContext: _onBoardContext,
+                ),
+                'clusters' => _ClusterOverview(
+                  key: ValueKey('clusters-${_clusters.length}'),
+                  clusters: _clusters,
+                  onOpen: _openCluster,
+                ),
+                _ => _MapView(
+                  key: ValueKey(
+                    live
+                        ? 'map-live-$_mapEpoch-${_mapFocusNodeId ?? ''}'
+                        : 'map-sample-${_mapFocusNodeId ?? ''}',
+                  ),
+                  nodes: _mapNodes ?? const <_GNode>[],
+                  edges: live ? _mapEdges : const <List<String>>[],
+                  initialSelectedId: _mapFocusNodeId,
+                  onMerge: live ? _mergeEntities : null,
+                  onSplit: live ? _splitEntity : null,
+                  edgeAssertions: live ? _mapEdgeAssertions : const {},
+                  edgeRelations: live ? _mapEdgeRelations : const {},
+                  onUnlink: live ? _unlinkEdge : null,
+                  onLayoutChanged: live ? _saveMapLayout : null,
+                  onHideNode: live ? _hideGraphNode : null,
+                  onDeleteMemory: live ? _deleteGraphMemory : null,
+                ),
+              },
+            ),
           ),
           // mode toggle + context (top)
           Positioned(
@@ -1060,6 +1207,8 @@ class _GNode {
     required this.typ,
     required this.sub,
     this.entityType,
+    this.captureId,
+    this.sourceCaptureIds = const [],
     this.initial,
     this.disambiguator,
     this.identityAmbiguous = false,
@@ -1075,10 +1224,30 @@ class _GNode {
   final String typ;
   final String sub;
   final String? entityType;
+  final String? captureId;
+  final List<String> sourceCaptureIds;
   final String? initial;
   final String? disambiguator;
   final bool identityAmbiguous;
   final String? identityReviewKind;
+
+  _GNode movedTo(Offset position) => _GNode(
+    id: id,
+    x: position.dx,
+    y: position.dy,
+    disc: disc,
+    type: type,
+    label: label,
+    typ: typ,
+    sub: sub,
+    entityType: entityType,
+    captureId: captureId,
+    sourceCaptureIds: sourceCaptureIds,
+    initial: initial,
+    disambiguator: disambiguator,
+    identityAmbiguous: identityAmbiguous,
+    identityReviewKind: identityReviewKind,
+  );
 }
 
 String _gTypeIcon(_GType t) {
@@ -1110,11 +1279,13 @@ String _gTypeIcon(_GType t) {
 /// laying nodes out in a deterministic sunflower spiral (higher-degree hubs
 /// nearer the centre) since the backend layout is optional. Bounded to keep
 /// the graph legible on a phone.
-(List<_GNode>, List<List<String>>, Map<String, List<String>>, Map<String, String>)
-_mapGraphToNodes(
-  GraphResponse g,
-  AppLocalizations l10n,
-) {
+(
+  List<_GNode>,
+  List<List<String>>,
+  Map<String, List<String>>,
+  Map<String, String>,
+)
+_mapGraphToNodes(GraphResponse g, AppLocalizations l10n) {
   final nodes = g.nodes.take(40).toList();
   final ids = {for (final n in nodes) n.id};
   final edges = <List<String>>[];
@@ -1122,6 +1293,7 @@ _mapGraphToNodes(
   // directions), so the Map can "unlink" a connection by rejecting them.
   final edgeAssertions = <String, List<String>>{};
   final edgeRelations = <String, String>{};
+  final nodeCaptureIds = <String, Set<String>>{};
   for (final e in g.edges) {
     if (e.sourceId != e.targetId &&
         ids.contains(e.sourceId) &&
@@ -1136,6 +1308,14 @@ _mapGraphToNodes(
         edgeAssertions['${e.sourceId}|${e.targetId}'] = e.assertionIds;
         edgeAssertions['${e.targetId}|${e.sourceId}'] = e.assertionIds;
       }
+      if (e.captureIds.isNotEmpty) {
+        nodeCaptureIds
+            .putIfAbsent(e.sourceId, () => <String>{})
+            .addAll(e.captureIds);
+        nodeCaptureIds
+            .putIfAbsent(e.targetId, () => <String>{})
+            .addAll(e.captureIds);
+      }
     }
   }
   final degree = {for (final n in nodes) n.id: 0};
@@ -1148,10 +1328,11 @@ _mapGraphToNodes(
   const cx = 240.0;
   const cy = 400.0;
   const goldenAngle = 2.399963229728653;
+  final saved = GraphLayout.fromResponse(g.layout).byNodeId;
   final out = <_GNode>[];
   for (var i = 0; i < sorted.length; i++) {
     final n = sorted[i];
-    final r = 36.0 * math.sqrt(i.toDouble());
+    final r = 48.0 * math.sqrt(i.toDouble());
     final angle = i * goldenAngle;
     final deg = degree[n.id] ?? 0;
     final type = _gTypeForNode(n);
@@ -1160,8 +1341,8 @@ _mapGraphToNodes(
     out.add(
       _GNode(
         id: n.id,
-        x: cx + r * math.cos(angle),
-        y: cy + r * math.sin(angle),
+        x: (saved[n.id]?.x ?? ((cx + r * math.cos(angle)) / 480)) * 480,
+        y: (saved[n.id]?.y ?? ((cy + r * math.sin(angle)) / 820)) * 820,
         disc: deg >= 5 ? 68 : (deg >= 2 ? 52 : 44),
         type: type,
         label: label,
@@ -1172,6 +1353,8 @@ _mapGraphToNodes(
                   ? l10n.rdCanvasLinkedCount(deg)
                   : n.summary),
         entityType: n.entityType,
+        captureId: n.captureId,
+        sourceCaptureIds: nodeCaptureIds[n.id]?.toList() ?? const [],
         initial: type == _GType.person && label.isNotEmpty
             ? label.substring(0, 1).toUpperCase()
             : null,
@@ -1518,6 +1701,9 @@ class _MapView extends StatefulWidget {
     this.edgeAssertions = const {},
     this.edgeRelations = const {},
     this.onUnlink,
+    this.onLayoutChanged,
+    this.onHideNode,
+    this.onDeleteMemory,
   });
 
   final List<_GNode> nodes;
@@ -1538,6 +1724,9 @@ class _MapView extends StatefulWidget {
 
   /// Unlinks a connection by rejecting its backing assertions. Null offline.
   final void Function(List<String> assertionIds)? onUnlink;
+  final ValueChanged<GraphLayout>? onLayoutChanged;
+  final Future<void> Function(_GNode)? onHideNode;
+  final Future<void> Function(_GNode)? onDeleteMemory;
 
   @override
   State<_MapView> createState() => _MapViewState();
@@ -1553,6 +1742,7 @@ class _MapViewState extends State<_MapView>
   late final Map<String, List<String>> _adj = _buildAdjacency();
 
   String? _selected;
+  bool _detailsOpen = false;
   // When set, the map isolates this node + its neighbours (Focus mode); a pill
   // shows to exit. A pure view state — everything else is hidden.
   String? _focus;
@@ -1563,19 +1753,32 @@ class _MapViewState extends State<_MapView>
   double _scaleStart = 1.0;
   Offset _panStart = Offset.zero;
   Offset _focalStart = Offset.zero;
+  String? _draggingNodeId;
+
+  void _persistLayout() {
+    widget.onLayoutChanged?.call(
+      GraphLayout(
+        positions: [
+          for (final node in _byId.values)
+            GraphLayoutPosition(
+              nodeId: node.id,
+              x: (node.x / 480).clamp(0.0, 1.0),
+              y: (node.y / 820).clamp(0.0, 1.0),
+            ),
+        ],
+        panX: _pan.dx,
+        panY: _pan.dy,
+        scale: _scale,
+      ),
+    );
+  }
 
   void _zoomBy(double delta) {
     setState(() => _scale = (_scale + delta).clamp(0.6, 2.4));
+    _persistLayout();
   }
 
-  late final AnimationController _panCtl =
-      AnimationController(
-        vsync: this,
-        duration: const Duration(milliseconds: 450),
-      )..addListener(() {
-        final a = _panAnim;
-        if (a != null) setState(() => _pan = a.value);
-      });
+  late final AnimationController _panCtl;
   Animation<Offset>? _panAnim;
 
   Map<String, List<String>> _buildAdjacency() {
@@ -1590,6 +1793,14 @@ class _MapViewState extends State<_MapView>
   @override
   void initState() {
     super.initState();
+    _panCtl =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 450),
+        )..addListener(() {
+          final a = _panAnim;
+          if (a != null && mounted) setState(() => _pan = a.value);
+        });
     final id = widget.initialSelectedId;
     if (id != null && _byId.containsKey(id)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1613,14 +1824,22 @@ class _MapViewState extends State<_MapView>
     _panCtl.forward(from: 0);
   }
 
-  void _select(String id, double width) {
-    final n = _byId[id]!;
-    setState(() => _selected = id);
-    _animatePanTo(Offset(width / 2 - n.x, 220 - n.y));
+  void _select(String id, double width, {bool openDetails = false}) {
+    setState(() {
+      _selected = id;
+      _detailsOpen = openDetails;
+    });
+    if (openDetails) {
+      final n = _byId[id]!;
+      _animatePanTo(Offset(width / 2 - n.x, 220 - n.y));
+    }
   }
 
   void _close() {
-    setState(() => _selected = null);
+    setState(() {
+      _selected = null;
+      _detailsOpen = false;
+    });
     _animatePanTo(_initialPan);
   }
 
@@ -1657,15 +1876,20 @@ class _MapViewState extends State<_MapView>
             if (_selected != null) _close();
           },
           onScaleStart: (d) {
+            if (_draggingNodeId != null) return;
             _panCtl.stop();
             _scaleStart = _scale;
             _panStart = _pan;
             _focalStart = d.focalPoint;
           },
-          onScaleUpdate: (d) => setState(() {
-            _scale = (_scaleStart * d.scale).clamp(0.6, 2.4);
-            _pan = _panStart + (d.focalPoint - _focalStart);
-          }),
+          onScaleUpdate: (d) {
+            if (_draggingNodeId != null) return;
+            setState(() {
+              _scale = (_scaleStart * d.scale).clamp(0.6, 2.4);
+              _pan = _panStart + (d.focalPoint - _focalStart);
+            });
+          },
+          onScaleEnd: (_) => _persistLayout(),
           child: ClipRect(
             child: Stack(
               children: [
@@ -1691,7 +1915,7 @@ class _MapViewState extends State<_MapView>
                               ),
                             ),
                           ),
-                          for (final n in widget.nodes)
+                          for (final n in _byId.values)
                             if (visible(n.id))
                               Positioned(
                                 left: n.x,
@@ -1705,6 +1929,32 @@ class _MapViewState extends State<_MapView>
                                         _selected != null &&
                                         !near.contains(n.id),
                                     onTap: () => _select(n.id, width),
+                                    onLongPress: () =>
+                                        _select(n.id, width, openDetails: true),
+                                    dragging: _draggingNodeId == n.id,
+                                    onDragStart: () => setState(() {
+                                      _draggingNodeId = n.id;
+                                      _selected = n.id;
+                                      _detailsOpen = false;
+                                    }),
+                                    onDragUpdate: (delta) => setState(() {
+                                      final current = _byId[n.id]!;
+                                      final next = Offset(
+                                        (current.x + delta.dx / _scale).clamp(
+                                          28.0,
+                                          452.0,
+                                        ),
+                                        (current.y + delta.dy / _scale).clamp(
+                                          28.0,
+                                          792.0,
+                                        ),
+                                      );
+                                      _byId[n.id] = current.movedTo(next);
+                                    }),
+                                    onDragEnd: () {
+                                      setState(() => _draggingNodeId = null);
+                                      _persistLayout();
+                                    },
                                   ),
                                 ),
                               ),
@@ -1753,6 +2003,22 @@ class _MapViewState extends State<_MapView>
                       onIn: () => _zoomBy(0.2),
                     ),
                   ),
+                if (_selected != null && !_detailsOpen)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 158,
+                    child: Center(
+                      child: FilledButton.tonalIcon(
+                        onPressed: () =>
+                            _select(_selected!, width, openDetails: true),
+                        icon: const Icon(Icons.tune_rounded, size: 17),
+                        label: Text(
+                          AppLocalizations.of(context)!.rdCanvasOpenDetails,
+                        ),
+                      ),
+                    ),
+                  ),
                 // detail panel (fixed)
                 Positioned(
                   left: 14,
@@ -1762,7 +2028,9 @@ class _MapViewState extends State<_MapView>
                   // omitting it made the app nav visibly overlap the card.
                   bottom: 108 + context.rdNavBarInset,
                   child: _DetailPanel(
-                    node: _selected == null ? null : _byId[_selected],
+                    node: !_detailsOpen || _selected == null
+                        ? null
+                        : _byId[_selected],
                     connected: _selected == null
                         ? const []
                         : _adj[_selected]!.map((id) => _byId[id]!).toList(),
@@ -1787,6 +2055,13 @@ class _MapViewState extends State<_MapView>
                                 n,
                           ],
                     onUnlink: widget.onUnlink,
+                    onHide: _selected == null || widget.onHideNode == null
+                        ? null
+                        : () => widget.onHideNode!(_byId[_selected!]!),
+                    onDeleteMemory:
+                        _selected == null || widget.onDeleteMemory == null
+                        ? null
+                        : () => widget.onDeleteMemory!(_byId[_selected!]!),
                     connectionAssertions: _selected == null
                         ? const {}
                         : {
@@ -1875,12 +2150,22 @@ class _GNodeWidget extends StatelessWidget {
     required this.selected,
     required this.dimmed,
     required this.onTap,
+    required this.onLongPress,
+    required this.dragging,
+    required this.onDragStart,
+    required this.onDragUpdate,
+    required this.onDragEnd,
   });
 
   final _GNode node;
   final bool selected;
   final bool dimmed;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final bool dragging;
+  final VoidCallback onDragStart;
+  final ValueChanged<Offset> onDragUpdate;
+  final VoidCallback onDragEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -1890,13 +2175,18 @@ class _GNodeWidget extends StatelessWidget {
       opacity: dimmed ? 0.28 : 1,
       child: GestureDetector(
         onTap: onTap,
+        onLongPress: onLongPress,
+        onPanStart: (_) => onDragStart(),
+        onPanUpdate: (details) => onDragUpdate(details.delta),
+        onPanEnd: (_) => onDragEnd(),
+        onPanCancel: onDragEnd,
         behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedScale(
               duration: const Duration(milliseconds: 220),
-              scale: selected ? 1.06 : 1,
+              scale: dragging ? 1.14 : (selected ? 1.06 : 1),
               child: _disc(rd),
             ),
             const SizedBox(height: 6),
@@ -2151,6 +2441,8 @@ class _DetailPanel extends StatelessWidget {
     this.onUnlink,
     this.connectionAssertions = const {},
     this.connectionRelations = const {},
+    this.onHide,
+    this.onDeleteMemory,
   });
 
   final _GNode? node;
@@ -2180,6 +2472,35 @@ class _DetailPanel extends StatelessWidget {
 
   /// Relation type for each connected neighbour id (e.g. WORKS_ON).
   final Map<String, String> connectionRelations;
+  final Future<void> Function()? onHide;
+  final Future<void> Function()? onDeleteMemory;
+
+  Future<void> _confirmAction(
+    BuildContext context, {
+    required String title,
+    required String body,
+    required Future<void> Function() action,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.canvasDeleteNode),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await action();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2585,6 +2906,64 @@ class _DetailPanel extends StatelessWidget {
                     ],
                   ),
                 ),
+              ),
+            ),
+          if (onHide != null || onDeleteMemory != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Column(
+                children: [
+                  if (onHide != null)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _confirmAction(
+                          context,
+                          title: AppLocalizations.of(context)!.rdCanvasHideNode,
+                          body: AppLocalizations.of(
+                            context,
+                          )!.rdCanvasHideNodeBody,
+                          action: onHide!,
+                        ),
+                        icon: const Icon(
+                          Icons.visibility_off_rounded,
+                          size: 17,
+                        ),
+                        label: Text(
+                          AppLocalizations.of(context)!.rdCanvasHideNode,
+                        ),
+                      ),
+                    ),
+                  if (onHide != null && onDeleteMemory != null)
+                    const SizedBox(height: 8),
+                  if (onDeleteMemory != null)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _confirmAction(
+                          context,
+                          title: AppLocalizations.of(
+                            context,
+                          )!.graphDeleteConfirmTitle,
+                          body: n.captureId?.isNotEmpty == true
+                              ? AppLocalizations.of(
+                                  context,
+                                )!.rdCanvasDeleteMemoryBody
+                              : AppLocalizations.of(
+                                  context,
+                                )!.rdCanvasDeleteEntityBody,
+                          action: onDeleteMemory!,
+                        ),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 17,
+                        ),
+                        label: Text(
+                          AppLocalizations.of(context)!.graphDeleteMemory,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           Padding(

@@ -1414,6 +1414,12 @@ abstract class AppLocalizations {
   /// **'Your memory is\nquiet and ready'**
   String get rdHomeMemoryReady;
 
+  /// No description provided for @rdHomeExploreMemory.
+  ///
+  /// In en, this message translates to:
+  /// **'EXPLORE YOUR MEMORY'**
+  String get rdHomeExploreMemory;
+
   /// No description provided for @rdHomeComposerHint.
   ///
   /// In en, this message translates to:
@@ -2053,7 +2059,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureSuggestedActions.
   ///
   /// In en, this message translates to:
-  /// **'Suggested actions'**
+  /// **'You can also'**
   String get rdCaptureSuggestedActions;
 
   /// No description provided for @rdCaptureRemindWeekend.
@@ -2167,8 +2173,8 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureLinkCrawlReady.
   ///
   /// In en, this message translates to:
-  /// **'Page content read with {provider}.'**
-  String rdCaptureLinkCrawlReady(String provider);
+  /// **'Page read successfully'**
+  String get rdCaptureLinkCrawlReady;
 
   /// No description provided for @rdCaptureLinkMetadataOnly.
   ///
@@ -2218,6 +2224,12 @@ abstract class AppLocalizations {
   /// **'Review'**
   String get rdCaptureReview;
 
+  /// No description provided for @rdCaptureBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get rdCaptureBack;
+
   /// No description provided for @rdCaptureCancel.
   ///
   /// In en, this message translates to:
@@ -2227,7 +2239,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureDiscard.
   ///
   /// In en, this message translates to:
-  /// **'Discard'**
+  /// **'Don\'t save'**
   String get rdCaptureDiscard;
 
   /// No description provided for @rdCaptureDone.
@@ -2257,7 +2269,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureAddToMemory.
   ///
   /// In en, this message translates to:
-  /// **'Add to memory'**
+  /// **'Keep in Mira'**
   String get rdCaptureAddToMemory;
 
   /// No description provided for @rdCaptureAddLinking.
@@ -5320,6 +5332,48 @@ abstract class AppLocalizations {
   /// **'Couldn\'t remove that connection'**
   String get rdCanvasUnlinkFail;
 
+  /// No description provided for @rdCanvasHideNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from map'**
+  String get rdCanvasHideNode;
+
+  /// No description provided for @rdCanvasOpenDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Open actions'**
+  String get rdCanvasOpenDetails;
+
+  /// No description provided for @rdCanvasHideNodeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This only hides the node on this device. Your memory and its connections stay safe.'**
+  String get rdCanvasHideNodeBody;
+
+  /// No description provided for @rdCanvasHideNodeDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Node removed from map'**
+  String get rdCanvasHideNodeDone;
+
+  /// No description provided for @rdCanvasDeleteMemoryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the source memory and retracts connections supported only by it. Shared entities stay when other memories support them.'**
+  String get rdCanvasDeleteMemoryBody;
+
+  /// No description provided for @rdCanvasDeleteEntityBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes the source memories that taught Mira this entity. The entity and unsupported connections will then disappear from the graph.'**
+  String get rdCanvasDeleteEntityBody;
+
+  /// No description provided for @rdCanvasDeleteFail.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete this memory'**
+  String get rdCanvasDeleteFail;
+
   /// No description provided for @rdCanvasSyncPending.
   ///
   /// In en, this message translates to:
@@ -5407,20 +5461,128 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureActionEdit.
   ///
   /// In en, this message translates to:
-  /// **'Edit proposal'**
+  /// **'Edit details'**
   String get rdCaptureActionEdit;
 
   /// No description provided for @rdCaptureActionEditSub.
   ///
   /// In en, this message translates to:
-  /// **'Change a field before committing'**
+  /// **'Change the title or summary before saving'**
   String get rdCaptureActionEditSub;
 
   /// No description provided for @rdCaptureActionEditHint.
   ///
   /// In en, this message translates to:
-  /// **'Updated title'**
+  /// **'Title'**
   String get rdCaptureActionEditHint;
+
+  /// No description provided for @rdCaptureActionConvert.
+  ///
+  /// In en, this message translates to:
+  /// **'Change type'**
+  String get rdCaptureActionConvert;
+
+  /// No description provided for @rdCaptureActionConvertSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how Mira should save this item'**
+  String get rdCaptureActionConvertSub;
+
+  /// No description provided for @rdCaptureConvertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change item type'**
+  String get rdCaptureConvertTitle;
+
+  /// No description provided for @rdCaptureConvertBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This updates the review draft before it is saved. It does not change the original input.'**
+  String get rdCaptureConvertBody;
+
+  /// No description provided for @rdCaptureActionConverted.
+  ///
+  /// In en, this message translates to:
+  /// **'Item type updated.'**
+  String get rdCaptureActionConverted;
+
+  /// No description provided for @rdCaptureConvertNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get rdCaptureConvertNote;
+
+  /// No description provided for @rdCaptureConvertTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get rdCaptureConvertTask;
+
+  /// No description provided for @rdCaptureConvertReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get rdCaptureConvertReminder;
+
+  /// No description provided for @rdCaptureConvertEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get rdCaptureConvertEvent;
+
+  /// No description provided for @rdCaptureConvertDecision.
+  ///
+  /// In en, this message translates to:
+  /// **'Decision'**
+  String get rdCaptureConvertDecision;
+
+  /// No description provided for @rdCaptureConvertCommitment.
+  ///
+  /// In en, this message translates to:
+  /// **'Commitment'**
+  String get rdCaptureConvertCommitment;
+
+  /// No description provided for @rdCaptureConvertPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Person'**
+  String get rdCaptureConvertPerson;
+
+  /// No description provided for @rdCaptureConvertSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get rdCaptureConvertSummary;
+
+  /// No description provided for @rdCaptureConvertMeeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting'**
+  String get rdCaptureConvertMeeting;
+
+  /// No description provided for @rdCaptureConvertMeetingResult.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting result'**
+  String get rdCaptureConvertMeetingResult;
+
+  /// No description provided for @rdCaptureConvertDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'Document knowledge'**
+  String get rdCaptureConvertDocument;
+
+  /// No description provided for @rdCaptureEditSummaryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get rdCaptureEditSummaryHint;
+
+  /// No description provided for @rdCaptureSaveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get rdCaptureSaveChanges;
 
   /// No description provided for @rdCaptureActionComplete.
   ///
@@ -5539,7 +5701,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureActionEdited.
   ///
   /// In en, this message translates to:
-  /// **'Proposal updated.'**
+  /// **'Details updated.'**
   String get rdCaptureActionEdited;
 
   /// No description provided for @rdCaptureExecutionsTitle.

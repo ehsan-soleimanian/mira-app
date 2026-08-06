@@ -158,6 +158,7 @@ class GraphEdge {
     this.confidence,
     this.evidenceCount,
     this.assertionIds = const [],
+    this.captureIds = const [],
   });
 
   factory GraphEdge.fromJson(Map<String, dynamic> json) => GraphEdge(
@@ -175,6 +176,15 @@ class GraphEdge {
                 const [])
             .map((e) => e.toString())
             .toList(),
+    captureIds:
+        (((json['properties'] as Map<String, dynamic>?)?['captureIds'] ??
+                        (json['properties']
+                            as Map<String, dynamic>?)?['capture_ids'])
+                    as List<dynamic>? ??
+                const [])
+            .map((e) => e.toString())
+            .where((id) => id.isNotEmpty)
+            .toList(),
   );
 
   final String id;
@@ -187,6 +197,9 @@ class GraphEdge {
 
   /// Assertions backing this materialised edge — rejected to "unlink" it.
   final List<String> assertionIds;
+
+  /// Capture memories supporting this Graphiti edge.
+  final List<String> captureIds;
 }
 
 class GraphIngestResponse {

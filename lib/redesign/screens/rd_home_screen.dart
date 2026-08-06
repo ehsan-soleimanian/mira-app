@@ -322,6 +322,8 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
             _header(greeting),
             const SizedBox(height: 14),
             _hero(l10n),
+            const SizedBox(height: 14),
+            _memoryViews(l10n),
             if (_visibleWaiting.isNotEmpty) ...[
               const SizedBox(height: 18),
               _waitingSection(l10n),
@@ -385,6 +387,75 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _memoryViews(AppLocalizations l10n) {
+    final rd = context.rd;
+    final reduceMotion = AppScope.themeOf(context).reduceMotion;
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 26),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.rdHomeExploreMemory,
+            style: RdText.sectionLabel.copyWith(color: rd.faint),
+          ),
+          const SizedBox(height: 9),
+          Row(
+            children: [
+              Expanded(
+                child: _HomeMemoryShortcut(
+                  key: const ValueKey('rd-home-board'),
+                  icon: RdIcons.grid4,
+                  label: l10n.rdCanvasBoard,
+                  reduceMotion: reduceMotion,
+                  onTap: () =>
+                      widget.go('canvas', arg: const RdCanvasArg('board')),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: _HomeMemoryShortcut(
+                  key: const ValueKey('rd-home-clusters'),
+                  icon: RdIcons.hash,
+                  label: l10n.rdCanvasClusters,
+                  reduceMotion: reduceMotion,
+                  onTap: () =>
+                      widget.go('canvas', arg: const RdCanvasArg('clusters')),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: _HomeMemoryShortcut(
+                  key: const ValueKey('rd-home-map'),
+                  icon: RdIcons.navCanvas,
+                  label: l10n.rdCanvasMap,
+                  reduceMotion: reduceMotion,
+                  onTap: () =>
+                      widget.go('canvas', arg: const RdCanvasArg('map')),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (reduceMotion) return content;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      child: content,
+      builder: (context, value, child) => Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(0, 10 * (1 - value)),
+          child: child,
+        ),
       ),
     );
   }
@@ -973,6 +1044,107 @@ class _TimelineNode extends StatelessWidget {
           width: 7,
           height: 7,
           decoration: BoxDecoration(shape: BoxShape.circle, color: rd.card),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeMemoryShortcut extends StatefulWidget {
+  const _HomeMemoryShortcut({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.reduceMotion,
+    required this.onTap,
+  });
+
+  final String icon;
+  final String label;
+  final bool reduceMotion;
+  final VoidCallback onTap;
+
+  @override
+  State<_HomeMemoryShortcut> createState() => _HomeMemoryShortcutState();
+}
+
+class _HomeMemoryShortcutState extends State<_HomeMemoryShortcut> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (widget.reduceMotion || _pressed == value) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Semantics(
+      button: true,
+      label: widget.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _setPressed(true),
+        onTapCancel: () => _setPressed(false),
+        onTapUp: (_) => _setPressed(false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _pressed ? 0.965 : 1,
+          duration: widget.reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: Container(
+            height: 64,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: rd.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: rd.line),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.055),
+                  blurRadius: 16,
+                  spreadRadius: -10,
+                  offset: const Offset(0, 7),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: rd.periSoft,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Center(
+                    child: RdIcon(
+                      widget.icon,
+                      size: 17,
+                      color: rd.peri,
+                      strokeWidth: 1.8,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: rd.ink,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
