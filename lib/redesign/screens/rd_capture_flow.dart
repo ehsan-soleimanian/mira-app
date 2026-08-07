@@ -959,7 +959,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(message)));
-        widget.go('home');
+        _returnToOrigin();
       }
     }
   }
@@ -1104,10 +1104,12 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     try {
       await AppScope.servicesOf(context).captureRepository.dismiss(captureId);
     } catch (_) {}
-    if (mounted) widget.go('home');
+    if (mounted) _returnToOrigin();
   }
 
   String get _time => '${_sec ~/ 60}:${(_sec % 60).toString().padLeft(2, '0')}';
+
+  void _returnToOrigin() => widget.go(widget.returnScreen);
 
   /// Confirm the review. The commit receipt is the success boundary; cache and
   /// notification refreshes are best-effort and must never turn a durable save
@@ -1905,7 +1907,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     if (!mounted) return;
     if (text == null || text.trim().isEmpty) {
       if (fromSheet || _fromEntrySheet) {
-        widget.go('home');
+        _returnToOrigin();
       } else {
         _startListen();
       }
@@ -2261,7 +2263,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     if (!mounted) return;
     if (media == null) {
       debugPrint('Image selection returned no media.');
-      _startListen();
+      setState(() => _view = screenshot ? 'shot_pick' : 'photo_cam');
       return;
     }
     setState(() {
@@ -2318,7 +2320,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
       _showCaptureError(
         AppLocalizations.of(context)!.rdCaptureMemorySaveFailed,
       );
-      widget.go('home');
+      _returnToOrigin();
     }
   }
 
@@ -2406,7 +2408,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
   Widget _photoCam() {
     return RdPhotoCaptureView(
-      onClose: () => widget.go('home'),
+      onClose: _returnToOrigin,
       onGallery: () => _pickPhoto(),
       onCapture: () async {
         PickedCaptureMedia? media;
@@ -2439,7 +2441,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
   Widget _shotPick() {
     return RdScreenshotPickerView(
-      onClose: () => widget.go('home'),
+      onClose: _returnToOrigin,
       onSelected: () async {
         await _pickPhoto(screenshot: true);
       },
@@ -2448,7 +2450,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
 
   Widget _linkCapture() {
     return RdLinkCaptureView(
-      onClose: () => widget.go('home'),
+      onClose: _returnToOrigin,
       onSubmit: (url, title) {
         setState(() {
           _kind = 'link';
@@ -2501,7 +2503,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           child: Row(
             children: [
               GestureDetector(
-                onTap: () => widget.go('home'),
+                onTap: _returnToOrigin,
                 child: Container(
                   width: 42,
                   height: 42,
@@ -2886,7 +2888,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
-        _reviewTop(l10n.rdCaptureBack, () => widget.go('home')),
+        _reviewTop(l10n.rdCaptureBack, _returnToOrigin),
         Expanded(
           child: Center(
             child: Padding(
@@ -3009,10 +3011,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _circBtn(
-                '<path d="M6 6l12 12M18 6 6 18"/>',
-                () => widget.go('home'),
-              ),
+              _circBtn('<path d="M6 6l12 12M18 6 6 18"/>', _returnToOrigin),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -3113,7 +3112,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
           children: [
             _circBtn(
               '<path d="M6 6l12 12M18 6 6 18"/>',
-              () => widget.go('home'),
+              _returnToOrigin,
               size: 52,
             ),
             const SizedBox(width: 40),
@@ -3174,7 +3173,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
             children: [
               _circBtn('<path d="M6 6l12 12M18 6 6 18"/>', () async {
                 await _recorder?.cancel();
-                if (mounted) widget.go('home');
+                if (mounted) _returnToOrigin();
               }),
               const Spacer(),
               Text(
@@ -3307,6 +3306,16 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                 color: rd.ink,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.rdCaptureProcessingBody,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 12.5,
+                height: 1.45,
+                color: rd.muted,
+              ),
+            ),
             const SizedBox(height: 18),
             ClipRRect(
               borderRadius: BorderRadius.circular(100),
@@ -3317,6 +3326,36 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
                   color: rd.peri,
                   backgroundColor: rd.line,
                 ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+              decoration: BoxDecoration(
+                color: rd.periSoft,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RdIcon(
+                    RdIcons.shieldCheck,
+                    size: 16,
+                    color: rd.peri,
+                    strokeWidth: 1.8,
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      l10n.rdCaptureTrustConfirm,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 11.5,
+                        color: rd.muted,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -4601,13 +4640,47 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
     final preview = _previewHeader(l10n);
     return Column(
       children: [
-        _reviewTop(l10n.rdCaptureCancel, () => widget.go('home')),
+        _reviewTop(l10n.rdCaptureCancel, _returnToOrigin),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(22, 4, 22, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 13,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: rd.periSoft,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RdIcon(
+                        RdIcons.shieldCheck,
+                        size: 17,
+                        color: rd.peri,
+                        strokeWidth: 1.8,
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          l10n.rdCaptureReviewIntro,
+                          style: GoogleFonts.vazirmatn(
+                            fontSize: 11.8,
+                            height: 1.45,
+                            color: rd.muted,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
                 _eyebrow(_reviewEyebrow(l10n)),
                 const SizedBox(height: 12),
                 if (preview != null) ...[preview, const SizedBox(height: 14)],
@@ -4733,26 +4806,15 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
               ],
             ),
             const SizedBox(height: 40),
-            GestureDetector(
-              onTap: () => widget.go('home'),
-              child: Container(
-                width: 220,
-                height: 52,
-                alignment: Alignment.center,
-                // Fixed navy CTA.
-                decoration: BoxDecoration(
-                  color: rd.navy,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Text(
-                  l10n.rdCaptureDone,
-                  style: GoogleFonts.vazirmatn(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+            _CaptureSuccessAction(
+              label: l10n.rdCaptureDone,
+              filled: true,
+              onTap: _returnToOrigin,
+            ),
+            const SizedBox(height: 10),
+            _CaptureSuccessAction(
+              label: l10n.rdCaptureViewLibrary,
+              onTap: () => widget.go('library'),
             ),
           ],
         ),
@@ -4914,7 +4976,7 @@ class _RdCaptureFlowState extends State<RdCaptureFlow>
               if (captureId != null) {
                 unawaited(_abortClarification(captureId));
               } else {
-                widget.go('home');
+                _returnToOrigin();
               }
             },
             child: Container(
@@ -5688,6 +5750,44 @@ class _SheetShell extends StatelessWidget {
             const SizedBox(height: 16),
             ...children,
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CaptureSuccessAction extends StatelessWidget {
+  const _CaptureSuccessAction({
+    required this.label,
+    required this.onTap,
+    this.filled = false,
+  });
+
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 220,
+        height: 50,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: filled ? rd.navy : rd.card,
+          borderRadius: BorderRadius.circular(14),
+          border: filled ? null : Border.all(color: rd.line),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.vazirmatn(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w600,
+            color: filled ? Colors.white : rd.navy,
+          ),
         ),
       ),
     );

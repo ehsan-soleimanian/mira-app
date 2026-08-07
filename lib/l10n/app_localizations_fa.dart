@@ -816,7 +816,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get rdOnboardingLater => 'بعداً انجام می‌دهم';
 
   @override
-  String get rdCaptureEntryTitle => 'بسپارش به میرا';
+  String get rdCaptureEntryTitle => 'هر چیزی هست به میرا بگو';
 
   @override
   String get rdCaptureEntrySubtitle =>
@@ -1422,6 +1422,13 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get rdCaptureScreenshotBrowseHint =>
       'یک تصویر از گالری گوشی یا این کامپیوتر انتخاب کنید.';
+
+  @override
+  String get rdCaptureScreenshotPrivacyHint =>
+      'اندروید انتخاب‌گر امن خودش را باز می‌کند و میرا فقط به همان تصویری که انتخاب می‌کنی دسترسی دارد.';
+
+  @override
+  String get rdCaptureScreenshotOpening => 'در حال بازکردن گالری…';
 
   @override
   String get rdCaptureScreenshotPickSub =>
@@ -2103,7 +2110,7 @@ class AppLocalizationsFa extends AppLocalizations {
       'افزودن به مجموعه ممکن نشد. اتصال را بررسی کن.';
 
   @override
-  String get rdLibraryAddAnything => 'افزودن';
+  String get rdLibraryAddAnything => 'افزودن هر چیز';
 
   @override
   String get rdLibraryFileImported =>
@@ -4049,4 +4056,170 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get rdSetupMaybeLater => 'شاید بعداً';
+
+  @override
+  String get rdMyMiraShortTitle => 'میرای من';
+
+  @override
+  String get rdMyMiraHeroTitle => 'این تصویری از توست که دارم یاد می‌گیرم.';
+
+  @override
+  String get rdMyMiraHeroSubtitle => 'شفاف، دقیق و همیشه متعلق به تو.';
+
+  @override
+  String get rdMyMiraModelStatus => 'وضعیت مدل';
+
+  @override
+  String get rdMyMiraGoals => 'هدف‌ها';
+
+  @override
+  String get rdMyMiraPeople => 'آدم‌ها';
+
+  @override
+  String get rdMyMiraPreferences => 'ترجیحات';
+
+  @override
+  String get rdMyMiraUpToDate => 'به‌روز';
+
+  @override
+  String get rdMyMiraLearning => 'در حال یادگیری';
+
+  @override
+  String get rdMyMiraNewLearning => 'یادگیری تازه برای بررسی';
+
+  @override
+  String get rdMyMiraKnowsTitle => 'آنچه میرا درباره‌ات می‌داند';
+
+  @override
+  String get rdMyMiraCurrentGoal => 'هدف فعلی';
+
+  @override
+  String get rdMyMiraImportantPerson => 'فرد مهم';
+
+  @override
+  String get rdMyMiraWorkingPreference => 'ترجیح کاری';
+
+  @override
+  String get rdMyMiraFromConversation => 'از گفتگو';
+
+  @override
+  String rdMyMiraConfidence(int percent) {
+    return 'اطمینان $percent٪';
+  }
+
+  @override
+  String get rdMyMiraCorrect => 'اصلاح';
+
+  @override
+  String get rdMyMiraConfirm => 'تأیید';
+
+  @override
+  String get rdMyMiraCorrectTitle => 'میرا به‌جایش چه چیزی یاد بگیرد؟';
+
+  @override
+  String get rdMyMiraCorrectHint => 'نسخه دقیق را بنویس';
+
+  @override
+  String get rdMyMiraConfirmedToast => 'یادگیری تأیید شد';
+
+  @override
+  String get rdMyMiraCorrectedToast => 'اصلاح برای میرا فرستاده شد';
+
+  @override
+  String get rdMyMiraUpdateFailed =>
+      'میرا فعلاً نتوانست این مورد را به‌روز کند. دوباره تلاش کن.';
+
+  @override
+  String get rdMyMiraViewAll => 'دیدن همه دانسته‌ها';
+
+  @override
+  String get rdMyMiraEmptyTitle => 'میرا هنوز در حال یادگیری است';
+
+  @override
+  String get rdMyMiraEmptyBody =>
+      'یک هدف، فرد یا ترجیح را ثبت کن تا همراه با منبعش اینجا دیده شود.';
+
+  @override
+  String get rdMyMiraTeachMira => 'چیزی به میرا بگو';
+
+  @override
+  String get rdMyMiraAgencyTitle => 'مرزها و اختیار';
+
+  @override
+  String get rdMyMiraAgencyBody =>
+      'میرا فقط پیشنهاد می‌دهد و بدون تأیید تو کاری انجام نمی‌دهد.';
+
+  @override
+  String get rdMyMiraAgencyDetail =>
+      'کنترل آنچه میرا به خاطر می‌سپارد و هر اقدامی که پیشنهاد می‌دهد همیشه با توست. یادگیری‌های تازه را اینجا بررسی کن، هر زمان خواستی اصلاحشان کن و منابع متصل را از تنظیمات مدیریت کن.';
+
+  @override
+  String get rdMyMiraReview => 'بررسی';
+
+  @override
+  String get rdMyMiraPreviewGoal => 'دویدن نیمه‌ماراتن در ماه اکتبر.';
+
+  @override
+  String get rdMyMiraPreviewPerson => 'شریک زندگی‌ات، الکس، پرستار است.';
+
+  @override
+  String get rdMyMiraPreviewPreference =>
+      'جلسه‌های کوتاه و متمرکز در صبح را ترجیح می‌دهی.';
+
+  @override
+  String get rdMyMiraPreviewLearning =>
+      'برای نیمه‌ماراتن ماه اکتبر تمرین می‌کنی.';
+
+  @override
+  String get rdHomeTwinLabel => 'میرای من';
+
+  @override
+  String get rdHomeTwinBody =>
+      'ببین میرا چه چیزی از تو می‌داند و هر وقت خواستی اصلاحش کن.';
+
+  @override
+  String get rdHomeCaptureTitle => 'توی ذهنت چی می‌گذره؟';
+
+  @override
+  String get rdHomeCaptureBody =>
+      'میرا قبل از ذخیره، برداشتش را به تو نشان می‌دهد.';
+
+  @override
+  String get rdHomeCaptureSpeak => 'بگو';
+
+  @override
+  String get rdHomeCaptureAttach => 'افزودن';
+
+  @override
+  String get rdLibraryAskMira => 'از میرا بپرس';
+
+  @override
+  String get rdLibraryAskMiraBody => 'پاسخی بر پایه حافظه‌های خودت بگیر.';
+
+  @override
+  String get rdLibraryMoreFilters => 'بیشتر';
+
+  @override
+  String get rdLibraryFiltersTitle => 'فیلترهای بیشتر';
+
+  @override
+  String get rdLibraryEmptyTitle => 'کتابخانه‌ات آماده است';
+
+  @override
+  String get rdLibraryEmptyBody =>
+      'یادداشت، لینک، عکس یا فایل اضافه کن. میرا منبع را نگه می‌دارد و آن را قابل جست‌وجو می‌کند.';
+
+  @override
+  String get rdCaptureTrustConfirm => 'تا تو تأیید نکنی، چیزی ذخیره نمی‌شود.';
+
+  @override
+  String get rdCaptureProcessingBody =>
+      'در حال یافتن آدم‌ها، هدف‌ها و ارتباط‌ها…';
+
+  @override
+  String get rdCaptureReviewIntro =>
+      'برداشت میرا را بررسی کن. پیش از اضافه شدن به حافظه، هر چیزی را می‌توانی ویرایش کنی.';
+
+  @override
+  String get rdCaptureViewLibrary => 'دیدن در کتابخانه';
 }

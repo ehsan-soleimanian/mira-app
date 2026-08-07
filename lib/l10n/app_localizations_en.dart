@@ -815,7 +815,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rdOnboardingLater => 'I\'ll do it later';
 
   @override
-  String get rdCaptureEntryTitle => 'Drop it into Mira';
+  String get rdCaptureEntryTitle => 'Tell Mira anything';
 
   @override
   String get rdCaptureEntrySubtitle =>
@@ -1428,6 +1428,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get rdCaptureScreenshotBrowseHint =>
       'Choose an image from your phone gallery or this computer.';
+
+  @override
+  String get rdCaptureScreenshotPrivacyHint =>
+      'Android opens its system photo picker. Mira can only access the image you choose.';
+
+  @override
+  String get rdCaptureScreenshotOpening => 'Opening gallery…';
 
   @override
   String get rdCaptureScreenshotPickSub =>
@@ -2111,7 +2118,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t add to collection. Check your connection.';
 
   @override
-  String get rdLibraryAddAnything => 'Add';
+  String get rdLibraryAddAnything => 'Add anything';
 
   @override
   String get rdLibraryFileImported =>
@@ -4062,4 +4069,169 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get rdSetupMaybeLater => 'Maybe later';
+
+  @override
+  String get rdMyMiraShortTitle => 'My Mira';
+
+  @override
+  String get rdMyMiraHeroTitle => 'Here’s the version of you I’m learning.';
+
+  @override
+  String get rdMyMiraHeroSubtitle => 'Transparent. Accurate. Always yours.';
+
+  @override
+  String get rdMyMiraModelStatus => 'Model status';
+
+  @override
+  String get rdMyMiraGoals => 'Goals';
+
+  @override
+  String get rdMyMiraPeople => 'People';
+
+  @override
+  String get rdMyMiraPreferences => 'Preferences';
+
+  @override
+  String get rdMyMiraUpToDate => 'Up to date';
+
+  @override
+  String get rdMyMiraLearning => 'Learning';
+
+  @override
+  String get rdMyMiraNewLearning => 'New learning to review';
+
+  @override
+  String get rdMyMiraKnowsTitle => 'What Mira knows about you';
+
+  @override
+  String get rdMyMiraCurrentGoal => 'Current goal';
+
+  @override
+  String get rdMyMiraImportantPerson => 'Important person';
+
+  @override
+  String get rdMyMiraWorkingPreference => 'Working preference';
+
+  @override
+  String get rdMyMiraFromConversation => 'From conversation';
+
+  @override
+  String rdMyMiraConfidence(int percent) {
+    return 'Confidence $percent%';
+  }
+
+  @override
+  String get rdMyMiraCorrect => 'Correct';
+
+  @override
+  String get rdMyMiraConfirm => 'Confirm';
+
+  @override
+  String get rdMyMiraCorrectTitle => 'What should Mira learn instead?';
+
+  @override
+  String get rdMyMiraCorrectHint => 'Write the accurate version';
+
+  @override
+  String get rdMyMiraConfirmedToast => 'Learning confirmed';
+
+  @override
+  String get rdMyMiraCorrectedToast => 'Correction sent to Mira';
+
+  @override
+  String get rdMyMiraUpdateFailed =>
+      'Mira couldn’t update this yet. Try again.';
+
+  @override
+  String get rdMyMiraViewAll => 'View all knowledge';
+
+  @override
+  String get rdMyMiraEmptyTitle => 'Mira is still learning';
+
+  @override
+  String get rdMyMiraEmptyBody =>
+      'Share a goal, person, or preference and it will appear here with its source.';
+
+  @override
+  String get rdMyMiraTeachMira => 'Teach Mira something';
+
+  @override
+  String get rdMyMiraAgencyTitle => 'Boundaries & agency';
+
+  @override
+  String get rdMyMiraAgencyBody =>
+      'Mira only suggests and never acts without your approval.';
+
+  @override
+  String get rdMyMiraAgencyDetail =>
+      'You stay in control of what Mira remembers and every action it proposes. Review new learning here, correct it at any time, and manage connected sources from Settings.';
+
+  @override
+  String get rdMyMiraReview => 'Review';
+
+  @override
+  String get rdMyMiraPreviewGoal => 'Run a half marathon in October.';
+
+  @override
+  String get rdMyMiraPreviewPerson => 'Your partner, Alex, is a nurse.';
+
+  @override
+  String get rdMyMiraPreviewPreference =>
+      'You prefer short, focused sessions in the morning.';
+
+  @override
+  String get rdMyMiraPreviewLearning =>
+      'You’re training for a half marathon in October.';
+
+  @override
+  String get rdHomeTwinLabel => 'MY MIRA';
+
+  @override
+  String get rdHomeTwinBody => 'See what Mira knows and correct it anytime.';
+
+  @override
+  String get rdHomeCaptureTitle => 'What’s on your mind?';
+
+  @override
+  String get rdHomeCaptureBody =>
+      'Mira shows what it understood before anything is saved.';
+
+  @override
+  String get rdHomeCaptureSpeak => 'Speak';
+
+  @override
+  String get rdHomeCaptureAttach => 'Add';
+
+  @override
+  String get rdLibraryAskMira => 'Ask Mira';
+
+  @override
+  String get rdLibraryAskMiraBody => 'Get an answer grounded in your memories.';
+
+  @override
+  String get rdLibraryMoreFilters => 'More';
+
+  @override
+  String get rdLibraryFiltersTitle => 'More filters';
+
+  @override
+  String get rdLibraryEmptyTitle => 'Your library is ready';
+
+  @override
+  String get rdLibraryEmptyBody =>
+      'Add a note, link, photo, or file. Mira keeps the source and makes it searchable.';
+
+  @override
+  String get rdCaptureTrustConfirm => 'Nothing is saved until you confirm.';
+
+  @override
+  String get rdCaptureProcessingBody =>
+      'Finding people, goals, and connections…';
+
+  @override
+  String get rdCaptureReviewIntro =>
+      'Check what Mira understood. Edit anything before it joins your memory.';
+
+  @override
+  String get rdCaptureViewLibrary => 'View in Library';
 }

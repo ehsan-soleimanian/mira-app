@@ -1567,7 +1567,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdCaptureEntryTitle.
   ///
   /// In en, this message translates to:
-  /// **'Drop it into Mira'**
+  /// **'Tell Mira anything'**
   String get rdCaptureEntryTitle;
 
   /// No description provided for @rdCaptureEntrySubtitle.
@@ -2685,6 +2685,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose an image from your phone gallery or this computer.'**
   String get rdCaptureScreenshotBrowseHint;
+
+  /// No description provided for @rdCaptureScreenshotPrivacyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Android opens its system photo picker. Mira can only access the image you choose.'**
+  String get rdCaptureScreenshotPrivacyHint;
+
+  /// No description provided for @rdCaptureScreenshotOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening gallery…'**
+  String get rdCaptureScreenshotOpening;
 
   /// No description provided for @rdCaptureScreenshotPickSub.
   ///
@@ -3859,7 +3871,7 @@ abstract class AppLocalizations {
   /// No description provided for @rdLibraryAddAnything.
   ///
   /// In en, this message translates to:
-  /// **'Add'**
+  /// **'Add anything'**
   String get rdLibraryAddAnything;
 
   /// No description provided for @rdLibraryFileImported.
@@ -7209,6 +7221,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Maybe later'**
   String get rdSetupMaybeLater;
+
+  /// No description provided for @rdMyMiraShortTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Mira'**
+  String get rdMyMiraShortTitle;
+
+  /// No description provided for @rdMyMiraHeroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Here’s the version of you I’m learning.'**
+  String get rdMyMiraHeroTitle;
+
+  /// No description provided for @rdMyMiraHeroSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Transparent. Accurate. Always yours.'**
+  String get rdMyMiraHeroSubtitle;
+
+  /// No description provided for @rdMyMiraModelStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Model status'**
+  String get rdMyMiraModelStatus;
+
+  /// No description provided for @rdMyMiraGoals.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals'**
+  String get rdMyMiraGoals;
+
+  /// No description provided for @rdMyMiraPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get rdMyMiraPeople;
+
+  /// No description provided for @rdMyMiraPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get rdMyMiraPreferences;
+
+  /// No description provided for @rdMyMiraUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to date'**
+  String get rdMyMiraUpToDate;
+
+  /// No description provided for @rdMyMiraLearning.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning'**
+  String get rdMyMiraLearning;
+
+  /// No description provided for @rdMyMiraNewLearning.
+  ///
+  /// In en, this message translates to:
+  /// **'New learning to review'**
+  String get rdMyMiraNewLearning;
+
+  /// No description provided for @rdMyMiraKnowsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What Mira knows about you'**
+  String get rdMyMiraKnowsTitle;
+
+  /// No description provided for @rdMyMiraCurrentGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Current goal'**
+  String get rdMyMiraCurrentGoal;
+
+  /// No description provided for @rdMyMiraImportantPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Important person'**
+  String get rdMyMiraImportantPerson;
+
+  /// No description provided for @rdMyMiraWorkingPreference.
+  ///
+  /// In en, this message translates to:
+  /// **'Working preference'**
+  String get rdMyMiraWorkingPreference;
+
+  /// No description provided for @rdMyMiraFromConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'From conversation'**
+  String get rdMyMiraFromConversation;
+
+  /// No description provided for @rdMyMiraConfidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Confidence {percent}%'**
+  String rdMyMiraConfidence(int percent);
+
+  /// No description provided for @rdMyMiraCorrect.
+  ///
+  /// In en, this message translates to:
+  /// **'Correct'**
+  String get rdMyMiraCorrect;
+
+  /// No description provided for @rdMyMiraConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get rdMyMiraConfirm;
+
+  /// No description provided for @rdMyMiraCorrectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What should Mira learn instead?'**
+  String get rdMyMiraCorrectTitle;
+
+  /// No description provided for @rdMyMiraCorrectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the accurate version'**
+  String get rdMyMiraCorrectHint;
+
+  /// No description provided for @rdMyMiraConfirmedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Learning confirmed'**
+  String get rdMyMiraConfirmedToast;
+
+  /// No description provided for @rdMyMiraCorrectedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Correction sent to Mira'**
+  String get rdMyMiraCorrectedToast;
+
+  /// No description provided for @rdMyMiraUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira couldn’t update this yet. Try again.'**
+  String get rdMyMiraUpdateFailed;
+
+  /// No description provided for @rdMyMiraViewAll.
+  ///
+  /// In en, this message translates to:
+  /// **'View all knowledge'**
+  String get rdMyMiraViewAll;
+
+  /// No description provided for @rdMyMiraEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira is still learning'**
+  String get rdMyMiraEmptyTitle;
+
+  /// No description provided for @rdMyMiraEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Share a goal, person, or preference and it will appear here with its source.'**
+  String get rdMyMiraEmptyBody;
+
+  /// No description provided for @rdMyMiraTeachMira.
+  ///
+  /// In en, this message translates to:
+  /// **'Teach Mira something'**
+  String get rdMyMiraTeachMira;
+
+  /// No description provided for @rdMyMiraAgencyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Boundaries & agency'**
+  String get rdMyMiraAgencyTitle;
+
+  /// No description provided for @rdMyMiraAgencyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira only suggests and never acts without your approval.'**
+  String get rdMyMiraAgencyBody;
+
+  /// No description provided for @rdMyMiraAgencyDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'You stay in control of what Mira remembers and every action it proposes. Review new learning here, correct it at any time, and manage connected sources from Settings.'**
+  String get rdMyMiraAgencyDetail;
+
+  /// No description provided for @rdMyMiraReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get rdMyMiraReview;
+
+  /// No description provided for @rdMyMiraPreviewGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Run a half marathon in October.'**
+  String get rdMyMiraPreviewGoal;
+
+  /// No description provided for @rdMyMiraPreviewPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Your partner, Alex, is a nurse.'**
+  String get rdMyMiraPreviewPerson;
+
+  /// No description provided for @rdMyMiraPreviewPreference.
+  ///
+  /// In en, this message translates to:
+  /// **'You prefer short, focused sessions in the morning.'**
+  String get rdMyMiraPreviewPreference;
+
+  /// No description provided for @rdMyMiraPreviewLearning.
+  ///
+  /// In en, this message translates to:
+  /// **'You’re training for a half marathon in October.'**
+  String get rdMyMiraPreviewLearning;
+
+  /// No description provided for @rdHomeTwinLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'MY MIRA'**
+  String get rdHomeTwinLabel;
+
+  /// No description provided for @rdHomeTwinBody.
+  ///
+  /// In en, this message translates to:
+  /// **'See what Mira knows and correct it anytime.'**
+  String get rdHomeTwinBody;
+
+  /// No description provided for @rdHomeCaptureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What’s on your mind?'**
+  String get rdHomeCaptureTitle;
+
+  /// No description provided for @rdHomeCaptureBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Mira shows what it understood before anything is saved.'**
+  String get rdHomeCaptureBody;
+
+  /// No description provided for @rdHomeCaptureSpeak.
+  ///
+  /// In en, this message translates to:
+  /// **'Speak'**
+  String get rdHomeCaptureSpeak;
+
+  /// No description provided for @rdHomeCaptureAttach.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get rdHomeCaptureAttach;
+
+  /// No description provided for @rdLibraryAskMira.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Mira'**
+  String get rdLibraryAskMira;
+
+  /// No description provided for @rdLibraryAskMiraBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Get an answer grounded in your memories.'**
+  String get rdLibraryAskMiraBody;
+
+  /// No description provided for @rdLibraryMoreFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get rdLibraryMoreFilters;
+
+  /// No description provided for @rdLibraryFiltersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'More filters'**
+  String get rdLibraryFiltersTitle;
+
+  /// No description provided for @rdLibraryEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your library is ready'**
+  String get rdLibraryEmptyTitle;
+
+  /// No description provided for @rdLibraryEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a note, link, photo, or file. Mira keeps the source and makes it searchable.'**
+  String get rdLibraryEmptyBody;
+
+  /// No description provided for @rdCaptureTrustConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing is saved until you confirm.'**
+  String get rdCaptureTrustConfirm;
+
+  /// No description provided for @rdCaptureProcessingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding people, goals, and connections…'**
+  String get rdCaptureProcessingBody;
+
+  /// No description provided for @rdCaptureReviewIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Check what Mira understood. Edit anything before it joins your memory.'**
+  String get rdCaptureReviewIntro;
+
+  /// No description provided for @rdCaptureViewLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'View in Library'**
+  String get rdCaptureViewLibrary;
 }
 
 class _AppLocalizationsDelegate

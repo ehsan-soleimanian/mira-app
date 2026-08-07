@@ -15,6 +15,7 @@ import 'screens/rd_home_screen.dart';
 import 'screens/rd_library_screen.dart';
 import 'screens/rd_listen_screen.dart';
 import 'screens/rd_memory_screen.dart';
+import 'screens/rd_my_mira_screen.dart';
 import 'screens/rd_onboarding.dart';
 import 'screens/rd_paywall.dart';
 import 'screens/rd_reminders.dart';
@@ -59,6 +60,7 @@ class _RdRootState extends State<RdRoot> {
     'paywall',
     'listen',
     'captureflow',
+    'myMira',
   };
 
   late final List<({String id, Object? arg})> _stack = [
@@ -95,22 +97,38 @@ class _RdRootState extends State<RdRoot> {
   }
 
   void _pickCaptureMode(RdCaptureMode mode) {
-    setState(() {
-      _captureSheetOpen = false;
-      _attachmentSheetOnly = false;
-      _stack.add((id: 'captureflow', arg: RdCaptureModeArg(mode)));
-    });
-  }
-
-  void _submitCaptureText(String text) {
+    final returnScreen = _captureReturnScreen;
     setState(() {
       _captureSheetOpen = false;
       _attachmentSheetOnly = false;
       _stack.add((
         id: 'captureflow',
-        arg: RdCaptureModeArg(RdCaptureMode.type, initialText: text),
+        arg: RdCaptureModeArg(mode, returnScreen: returnScreen),
       ));
     });
+  }
+
+  void _submitCaptureText(String text) {
+    final returnScreen = _captureReturnScreen;
+    setState(() {
+      _captureSheetOpen = false;
+      _attachmentSheetOnly = false;
+      _stack.add((
+        id: 'captureflow',
+        arg: RdCaptureModeArg(
+          RdCaptureMode.type,
+          initialText: text,
+          returnScreen: returnScreen,
+        ),
+      ));
+    });
+  }
+
+  /// Capture is an interruptible action, not a tab reset. Returning to the
+  /// surface that launched it preserves the user's place in their workflow.
+  String get _captureReturnScreen {
+    final current = _stack.isEmpty ? 'home' : _stack.last.id;
+    return current == 'captureflow' ? 'home' : current;
   }
 
   void _back() {
@@ -185,6 +203,8 @@ class _RdRootState extends State<RdRoot> {
           title: a?.title,
           body: a?.body,
         );
+      case 'myMira':
+        return RdMyMiraScreen(go: _go);
       case 'listen':
         return RdListenScreen(go: _go, onBack: _back);
       case 'chat':

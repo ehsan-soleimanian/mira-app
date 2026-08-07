@@ -401,50 +401,22 @@ class RdScreenshotPickerView extends StatefulWidget {
 }
 
 class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
-  int? _picked;
-  bool _scanning = false;
-
-  Future<void> _confirm() async {
-    if (_picked == null || _scanning) return;
-    setState(() => _scanning = true);
-    await Future<void>.delayed(const Duration(milliseconds: 2400));
-    await widget.onSelected();
-  }
+  bool _openingPicker = false;
 
   Future<void> _browseDevice() async {
-    if (_scanning) return;
-    await widget.onSelected();
+    if (_openingPicker) return;
+    setState(() => _openingPicker = true);
+    try {
+      await widget.onSelected();
+    } finally {
+      if (mounted) setState(() => _openingPicker = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final rd = context.rd;
     final l10n = AppLocalizations.of(context)!;
-    if (_scanning) {
-      return ColoredBox(
-        color: const Color(0xFF0D0E12),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 15,
-                height: 15,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.rdCaptureScreenshotReading,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -464,7 +436,7 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(26, 20, 26, 4),
+          padding: const EdgeInsets.fromLTRB(26, 20, 26, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -481,118 +453,132 @@ class _RdScreenshotPickerViewState extends State<RdScreenshotPickerView> {
                 l10n.rdCaptureScreenshotPickSub,
                 style: GoogleFonts.vazirmatn(fontSize: 13, color: rd.muted),
               ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                key: const ValueKey('screenshot_browse_device'),
-                onPressed: _browseDevice,
-                icon: const RdIcon(RdIcons.photo, size: 18),
-                label: Text(l10n.rdCaptureScreenshotBrowse),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: rd.ink,
-                  minimumSize: const Size.fromHeight(48),
-                  side: BorderSide(color: rd.line),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  textStyle: GoogleFonts.vazirmatn(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                l10n.rdCaptureScreenshotBrowseHint,
-                style: GoogleFonts.vazirmatn(fontSize: 11, color: rd.muted),
-              ),
             ],
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(22, 8, 22, 0),
-          child: Text(
-            'RECENT',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.8,
-              color: Color(0xFFB7B8BE),
-            ),
-          ),
-        ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 9 / 16,
-            ),
-            itemCount: 6,
-            itemBuilder: (_, i) {
-              final sel = _picked == i;
-              return GestureDetector(
-                onTap: () => setState(() => _picked = i),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: sel ? rd.peri : rd.line,
-                      width: sel ? 2 : 1,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 26),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                decoration: BoxDecoration(
+                  color: rd.card,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: rd.line),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 28,
+                      spreadRadius: -18,
+                      offset: const Offset(0, 12),
                     ),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: i.isEven
-                          ? [const Color(0xFF1B2B6B), const Color(0xFF0F1C4D)]
-                          : [const Color(0xFFEEF0F6), const Color(0xFFE3E6EF)],
-                    ),
-                  ),
-                  child: sel
-                      ? Align(
-                          alignment: Alignment.topLeft,
-                          child: Container(
-                            margin: const EdgeInsets.all(6),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.55),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              i == 4 ? 'Pass' : 'Chat',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 8.5,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        )
-                      : null,
+                  ],
                 ),
-              );
-            },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: rd.periSoft,
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Center(
+                        child: RdIcon(
+                          RdIcons.photo,
+                          size: 30,
+                          color: rd.peri,
+                          strokeWidth: 1.8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      l10n.rdCaptureScreenshotBrowse,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: rd.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      l10n.rdCaptureScreenshotPrivacyHint,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 12.5,
+                        height: 1.55,
+                        color: rd.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    FilledButton.icon(
+                      key: const ValueKey('screenshot_browse_device'),
+                      onPressed: _openingPicker ? null : _browseDevice,
+                      icon: _openingPicker
+                          ? const SizedBox(
+                              width: 17,
+                              height: 17,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const RdIcon(
+                              RdIcons.photo,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                      label: Text(
+                        _openingPicker
+                            ? l10n.rdCaptureScreenshotOpening
+                            : l10n.rdCaptureScreenshotBrowse,
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: rd.navy,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: rd.navy,
+                        disabledForegroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        textStyle: GoogleFonts.vazirmatn(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(22, 0, 22, 20),
-          child: FilledButton(
-            onPressed: _picked == null ? null : _confirm,
-            style: FilledButton.styleFrom(
-              backgroundColor: rd.navy,
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+          padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              RdIcon(
+                RdIcons.shieldCheck,
+                size: 16,
+                color: rd.peri,
+                strokeWidth: 1.8,
               ),
-            ),
-            child: Text(
-              l10n.rdCaptureScreenshotUse,
-              style: GoogleFonts.vazirmatn(fontWeight: FontWeight.w600),
-            ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  l10n.rdCaptureScreenshotBrowseHint,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.vazirmatn(fontSize: 11.5, color: rd.muted),
+                ),
+              ),
+            ],
           ),
         ),
       ],

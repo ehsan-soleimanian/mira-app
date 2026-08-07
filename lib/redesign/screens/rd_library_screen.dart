@@ -7,7 +7,6 @@ import 'package:mira_app/app/memory_store.dart';
 import 'package:mira_app/models/api/collection_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
-import '../models/rd_capture_mode.dart';
 import '../models/rd_library_item_presentation.dart';
 import '../theme/rd_colors.dart';
 import '../theme/rd_theme.dart';
@@ -870,6 +869,7 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                     else ...[
                       _header(),
                       _searchBar(),
+                      _primaryActions(),
                       _filters(),
                       if (_searching)
                         _searchSummary(visible.length)
@@ -987,65 +987,6 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                 ),
               ),
               GestureDetector(
-                onTap: () => widget.go(
-                  'captureflow',
-                  arg: const RdCaptureModeArg(
-                    RdCaptureMode.file,
-                    returnScreen: 'library',
-                  ),
-                ),
-                child: Container(
-                  height: 42,
-                  padding: const EdgeInsets.symmetric(horizontal: 13),
-                  decoration: BoxDecoration(
-                    color: rd.peri,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const RdIcon(
-                        RdIcons.plusCircle,
-                        size: 17,
-                        color: Colors.white,
-                        strokeWidth: 1.8,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        l10n.rdLibraryAddAnything,
-                        style: GoogleFonts.vazirmatn(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: () => widget.go('ask'),
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: rd.card,
-                    border: Border.all(color: rd.line, width: 1),
-                  ),
-                  child: Center(
-                    child: RdIcon(
-                      RdIcons.search,
-                      size: 18,
-                      color: rd.gearIcon,
-                      strokeWidth: 1.8,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              GestureDetector(
                 onTap: () => widget.go('account'),
                 child: Container(
                   width: 42,
@@ -1066,6 +1007,33 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _primaryActions() {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(26, 12, 26, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: _LibraryPrimaryAction(
+              icon: RdIcons.plusCircle,
+              label: l10n.rdLibraryAddAnything,
+              filled: true,
+              onTap: () => widget.go('attachments'),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _LibraryPrimaryAction(
+              icon: RdIcons.bulb,
+              label: l10n.rdLibraryAskMira,
+              onTap: () => widget.go('ask'),
+            ),
           ),
         ],
       ),
@@ -1145,31 +1113,19 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
   // ── filter chips ────────────────────────────────────────────────────
   Widget _filters() {
     final l10n = AppLocalizations.of(context)!;
-    final chips = [
+    final core = [
       ('all', l10n.rdLibraryFilterAll, null),
-      ('task', l10n.rdCaptureTypeTask, RdIcons.checkCircle),
-      ('event', l10n.rdLibraryTypeEvent, RdIcons.calendar),
-      ('reminder', l10n.rdCaptureConvertReminder, RdIcons.bell),
-      ('meeting', l10n.rdCaptureConvertMeeting, RdIcons.people),
-      (
-        'meeting_result',
-        l10n.rdCaptureConvertMeetingResult,
-        RdIcons.checkCircle,
-      ),
-      ('screenshot', l10n.rdCaptureModeScreenshot, RdIcons.photo),
       ('note', l10n.rdLibraryFilterNotes, RdIcons.pencil),
-      ('document', l10n.rdCaptureConvertDocument, RdIcons.book),
-      ('summary', l10n.rdCaptureConvertSummary, RdIcons.textT),
       ('voice', l10n.rdLibraryFilterVoice, RdIcons.micSimple),
-      ('link', l10n.rdLibraryFilterLinks, RdIcons.linkChain),
-      ('person', l10n.rdCaptureTypePerson, RdIcons.user),
     ];
+    final coreIds = core.map((c) => c.$1).toSet();
+    final hasExtraFilter = !coreIds.contains(_filter);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(26, 18, 26, 4),
       child: Row(
         children: [
-          for (final c in chips)
+          for (final c in core)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: _FilterChip(
@@ -1179,9 +1135,99 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
                 onTap: () => setState(() => _filter = c.$1),
               ),
             ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: _FilterChip(
+              label: l10n.rdLibraryMoreFilters,
+              icon: RdIcons.hash,
+              active: hasExtraFilter,
+              onTap: _showMoreFilters,
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _showMoreFilters() async {
+    final l10n = AppLocalizations.of(context)!;
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        final rd = sheetContext.rd;
+        final chips = [
+          ('task', l10n.rdCaptureTypeTask, RdIcons.checkCircle),
+          ('event', l10n.rdLibraryTypeEvent, RdIcons.calendar),
+          ('reminder', l10n.rdCaptureConvertReminder, RdIcons.bell),
+          ('meeting', l10n.rdCaptureConvertMeeting, RdIcons.people),
+          (
+            'meeting_result',
+            l10n.rdCaptureConvertMeetingResult,
+            RdIcons.checkCircle,
+          ),
+          ('screenshot', l10n.rdCaptureModeScreenshot, RdIcons.photo),
+          ('document', l10n.rdCaptureConvertDocument, RdIcons.book),
+          ('summary', l10n.rdCaptureConvertSummary, RdIcons.textT),
+          ('link', l10n.rdLibraryFilterLinks, RdIcons.linkChain),
+          ('person', l10n.rdCaptureTypePerson, RdIcons.user),
+        ];
+        return SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(22, 12, 22, 26),
+            decoration: BoxDecoration(
+              color: rd.bg,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              border: Border(top: BorderSide(color: rd.line)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Align(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: rd.line,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  l10n.rdLibraryFiltersTitle,
+                  style: GoogleFonts.dosis(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: rd.ink,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 9,
+                  children: [
+                    for (final c in chips)
+                      _FilterChip(
+                        label: c.$2,
+                        icon: c.$3,
+                        active: _filter == c.$1,
+                        onTap: () => Navigator.pop(sheetContext, c.$1),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (selected != null && mounted) setState(() => _filter = selected);
   }
 
   Widget _searchSummary(int count) {
@@ -1395,14 +1441,69 @@ class _RdLibraryScreenState extends State<RdLibraryScreen> {
     final l10n = AppLocalizations.of(context)!;
     final rd = context.rd;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(40, 40, 40, 0),
-      child: Text(
-        l10n.rdLibraryEmptyFilter,
-        textAlign: TextAlign.center,
-        style: GoogleFonts.vazirmatn(
-          fontSize: 13.5,
-          color: rd.faint,
-          height: 1.5,
+      padding: const EdgeInsets.fromLTRB(26, 30, 26, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: rd.card,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: rd.line),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: rd.periSoft,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Center(
+                child: RdIcon(
+                  _searching ? RdIcons.search : RdIcons.book,
+                  size: 24,
+                  color: rd.peri,
+                  strokeWidth: 1.8,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              _searching ? l10n.rdLibraryEmptyFilter : l10n.rdLibraryEmptyTitle,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.vazirmatn(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: rd.ink,
+              ),
+            ),
+            if (!_searching) ...[
+              const SizedBox(height: 7),
+              Text(
+                l10n.rdLibraryEmptyBody,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.vazirmatn(
+                  fontSize: 12.5,
+                  color: rd.muted,
+                  height: 1.55,
+                ),
+              ),
+              const SizedBox(height: 18),
+              _LibraryPrimaryAction(
+                icon: RdIcons.plusCircle,
+                label: l10n.rdLibraryAddAnything,
+                filled: true,
+                onTap: () => widget.go('attachments'),
+              ),
+              const SizedBox(height: 9),
+              _LibraryPrimaryAction(
+                icon: RdIcons.bulb,
+                label: l10n.rdLibraryAskMira,
+                onTap: () => widget.go('ask'),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -1975,6 +2076,65 @@ class _FilterChip extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LibraryPrimaryAction extends StatelessWidget {
+  const _LibraryPrimaryAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filled = false,
+  });
+
+  final String icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 46,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: filled ? rd.navy : rd.card,
+            borderRadius: BorderRadius.circular(15),
+            border: filled ? null : Border.all(color: rd.line),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              RdIcon(
+                icon,
+                size: 18,
+                color: filled ? Colors.white : rd.peri,
+                strokeWidth: 1.9,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: filled ? Colors.white : rd.ink,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

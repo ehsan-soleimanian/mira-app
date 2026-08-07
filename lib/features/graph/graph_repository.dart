@@ -164,6 +164,20 @@ class GraphRepository {
     );
   }
 
+  /// Marks a pending assertion as explicitly accepted by the user.
+  Future<MemoryProjectionReceipt> acceptAssertion(String assertionId) async {
+    return applyGraphPatch(
+      idempotencyKey: 'assertion-accept:${_uuid.v4()}',
+      operations: [
+        {
+          'op': 'set_assertion_status',
+          'assertionId': assertionId,
+          'status': 'ACTIVE',
+        },
+      ],
+    );
+  }
+
   Future<MemoryProjectionReceipt> rejectAssertions(
     List<String> assertionIds,
   ) async {

@@ -10,6 +10,7 @@ import 'package:mira_app/models/api/daily_update_models.dart';
 import 'package:mira_app/models/api/reminder_models.dart';
 import 'package:mira_app/models/api/workspace_models.dart';
 
+import '../models/rd_capture_mode.dart';
 import '../theme/rd_theme.dart';
 import '../theme/rd_typography.dart';
 import '../widgets/rd_bottom_nav.dart';
@@ -320,15 +321,17 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
         child: Column(
           children: [
             _header(greeting),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             _hero(l10n),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
+            _captureCard(l10n),
+            const SizedBox(height: 12),
             _memoryViews(l10n),
             if (_visibleWaiting.isNotEmpty) ...[
               const SizedBox(height: 18),
               _waitingSection(l10n),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Expanded(child: _recentsSection(l10n)),
             RdBottomNav(active: 'home', go: widget.go),
           ],
@@ -372,21 +375,141 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     final rd = context.rd;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 26),
-      child: Row(
-        children: [
-          const RdOrb(size: 64),
-          const SizedBox(width: 17),
-          Expanded(
-            child: Text(
-              l10n.rdHomeMemoryReady.replaceFirst('\n', ' '),
-              style: RdText.title.copyWith(
-                color: rd.ink,
-                fontSize: 25,
-                height: 1.14,
-              ),
+      child: Semantics(
+        button: true,
+        label: l10n.rdHomeTwinLabel,
+        child: GestureDetector(
+          onTap: () => widget.go('myMira'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+            decoration: BoxDecoration(
+              color: rd.card,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: rd.line),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.055),
+                  blurRadius: 24,
+                  spreadRadius: -15,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const RdOrb(size: 56),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.rdHomeTwinLabel,
+                        style: RdText.eyebrow.copyWith(color: rd.peri),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        l10n.rdHomeMemoryReady.replaceFirst('\n', ' '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: RdText.title.copyWith(
+                          color: rd.ink,
+                          fontSize: 18,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        l10n.rdHomeTwinBody,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.vazirmatn(
+                          fontSize: 11.5,
+                          color: rd.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                RdIcon(
+                  RdIcons.chevronLeft,
+                  size: 17,
+                  color: rd.faint,
+                  strokeWidth: 1.9,
+                ),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _captureCard(AppLocalizations l10n) {
+    final rd = context.rd;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 26),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 13, 10, 13),
+        decoration: BoxDecoration(
+          color: rd.periSoft.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: rd.peri.withValues(alpha: 0.18)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => widget.go('capture'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.rdHomeCaptureTitle,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: rd.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.rdHomeCaptureBody,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.vazirmatn(
+                        fontSize: 11.5,
+                        color: rd.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            _HomeCaptureAction(
+              icon: RdIcons.plusCircle,
+              label: l10n.rdHomeCaptureAttach,
+              onTap: () => widget.go('attachments'),
+            ),
+            const SizedBox(width: 7),
+            _HomeCaptureAction(
+              icon: RdIcons.micSimple,
+              label: l10n.rdHomeCaptureSpeak,
+              filled: true,
+              onTap: () => widget.go(
+                'captureflow',
+                arg: const RdCaptureModeArg(
+                  RdCaptureMode.voice,
+                  returnScreen: 'home',
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -408,23 +531,21 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
             children: [
               Expanded(
                 child: _HomeMemoryShortcut(
-                  key: const ValueKey('rd-home-board'),
-                  icon: RdIcons.grid4,
-                  label: l10n.rdCanvasBoard,
+                  key: const ValueKey('rd-home-my-mira'),
+                  icon: RdIcons.user,
+                  label: l10n.rdMyMiraShortTitle,
                   reduceMotion: reduceMotion,
-                  onTap: () =>
-                      widget.go('canvas', arg: const RdCanvasArg('board')),
+                  onTap: () => widget.go('myMira'),
                 ),
               ),
               const SizedBox(width: 9),
               Expanded(
                 child: _HomeMemoryShortcut(
-                  key: const ValueKey('rd-home-clusters'),
-                  icon: RdIcons.hash,
-                  label: l10n.rdCanvasClusters,
+                  key: const ValueKey('rd-home-brief'),
+                  icon: RdIcons.navBrief,
+                  label: l10n.rdBriefTitle,
                   reduceMotion: reduceMotion,
-                  onTap: () =>
-                      widget.go('canvas', arg: const RdCanvasArg('clusters')),
+                  onTap: () => widget.go('daily'),
                 ),
               ),
               const SizedBox(width: 9),
@@ -622,14 +743,48 @@ class _RdHomeScreenState extends State<RdHomeScreen> {
     final rd = context.rd;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 40),
-        child: Text(
-          l10n.rdHomeRecentsEmpty,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.vazirmatn(
-            fontSize: 13.5,
-            height: 1.5,
-            color: rd.faint,
+        padding: const EdgeInsets.only(bottom: 24),
+        child: GestureDetector(
+          onTap: () => widget.go('capture'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            decoration: BoxDecoration(
+              color: rd.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: rd.line),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: rd.periSoft,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Center(
+                    child: RdIcon(
+                      RdIcons.plusCircle,
+                      size: 19,
+                      color: rd.peri,
+                      strokeWidth: 1.9,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.rdHomeRecentsEmpty,
+                    style: GoogleFonts.vazirmatn(
+                      fontSize: 12.5,
+                      height: 1.45,
+                      color: rd.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1095,8 +1250,8 @@ class _HomeMemoryShortcutState extends State<_HomeMemoryShortcut> {
               : const Duration(milliseconds: 120),
           curve: Curves.easeOut,
           child: Container(
-            height: 64,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
+            height: 72,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
             decoration: BoxDecoration(
               color: rd.card,
               borderRadius: BorderRadius.circular(18),
@@ -1110,12 +1265,12 @@ class _HomeMemoryShortcutState extends State<_HomeMemoryShortcut> {
                 ),
               ],
             ),
-            child: Row(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
+                  width: 30,
+                  height: 30,
                   decoration: BoxDecoration(
                     color: rd.periSoft,
                     borderRadius: BorderRadius.circular(11),
@@ -1129,20 +1284,62 @@ class _HomeMemoryShortcutState extends State<_HomeMemoryShortcut> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.vazirmatn(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: rd.ink,
-                    ),
+                const SizedBox(height: 5),
+                Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.fade,
+                  softWrap: false,
+                  style: GoogleFonts.vazirmatn(
+                    fontSize: 10.8,
+                    fontWeight: FontWeight.w600,
+                    color: rd.ink,
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeCaptureAction extends StatelessWidget {
+  const _HomeCaptureAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.filled = false,
+  });
+
+  final String icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final rd = context.rd;
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: filled ? rd.navy : rd.card,
+            borderRadius: BorderRadius.circular(13),
+            border: filled ? null : Border.all(color: rd.line),
+          ),
+          child: Center(
+            child: RdIcon(
+              icon,
+              size: 18,
+              color: filled ? Colors.white : rd.peri,
+              strokeWidth: 1.9,
             ),
           ),
         ),

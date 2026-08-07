@@ -144,9 +144,7 @@ class _RdCaptureEntrySheetState extends State<RdCaptureEntrySheet> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  widget.attachmentsOnly
-                                      ? l10n.rdCaptureEntrySubtitle
-                                      : l10n.rdCaptureOrbHint,
+                                  l10n.rdCaptureEntrySubtitle,
                                   style: GoogleFonts.vazirmatn(
                                     fontSize: 11.5,
                                     height: 1.4,
@@ -244,22 +242,54 @@ class _RdCaptureEntrySheetState extends State<RdCaptureEntrySheet> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: rd.periSoft.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            for (var i = 0; i < methods.length; i++) ...[
-                              if (i > 0) const SizedBox(width: 8),
-                              _TransportAction(
-                                icon: methods[i].$2,
-                                label: methods[i].$3,
-                                onTap: () => widget.onPick(methods[i].$1),
+                            RdIcon(
+                              RdIcons.shieldCheck,
+                              size: 16,
+                              color: rd.peri,
+                              strokeWidth: 1.8,
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                l10n.rdCaptureTrustConfirm,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.vazirmatn(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: rd.muted,
+                                ),
                               ),
-                            ],
+                            ),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: 14),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final method in methods)
+                            _TransportAction(
+                              icon: method.$2,
+                              label: method.$3,
+                              onTap: () => widget.onPick(method.$1),
+                            ),
+                        ],
                       ),
                     ],
                   ),
