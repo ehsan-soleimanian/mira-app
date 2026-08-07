@@ -88,7 +88,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Drop it into Mira'), findsOneWidget);
+    expect(find.text('Tell Mira anything'), findsOneWidget);
     expect(find.text('File'), findsOneWidget);
     expect(find.byKey(const ValueKey('rd-capture-voice')), findsOneWidget);
 
@@ -209,7 +209,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Browse gallery or files'), findsOneWidget);
+    expect(
+      find.widgetWithText(FilledButton, 'Browse gallery or files'),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('screenshot_browse_device')));
     await tester.pump();
     expect(browseCalls, 1);
